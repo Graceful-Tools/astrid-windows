@@ -29,7 +29,7 @@ use std::ffi::{c_char, c_void, CStr, CString};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::Arc;
 
-use astrid_core::app::{App, Config};
+use astrid_core::app::{background, App, Config};
 use astrid_core::realtime::Change;
 use secure_store::ProtectedFileStore;
 
@@ -44,6 +44,13 @@ pub struct AstridApp {
     runtime: tokio::runtime::Runtime,
     /// Where change notifications go, if the shell asked for them.
     subscriber: std::sync::Mutex<Option<Arc<Subscriber>>>,
+    /// Cleared by [`astrid_stop`], watched by the background loops.
+    ///
+    /// Dropping the runtime would stop them anyway, but only at their next await point — which for
+    /// a stream sitting on a socket is whenever the server next says something. Asking them to
+    /// stop first means shutting the app takes a moment rather than however long a quiet
+    /// connection stays quiet.
+    running: Arc<std::sync::atomic::AtomicBool>,
 }
 
 /// A callback plus its context, marked as safe to move between threads.
@@ -103,13 +110,39 @@ pub unsafe extern "C" fn astrid_start(
             .build()
             .map_err(|error| error.to_string())?;
 
-        let app = App::start(&config, Arc::new(ProtectedFileStore::at(credential_path)))
-            .map_err(|error| error.to_string())?;
+        let app = Arc::new(
+            App::start(&config, Arc::new(ProtectedFileStore::at(credential_path)))
+                .map_err(|error| error.to_string())?,
+        );
+
+        // The two loops that keep the app up to date without being asked: a sixty-second pass and
+        // the live stream. Started here rather than by the shell, because "is the app current?" is
+        // not a question a window should have to remember to ask.
+        let running = Arc::new(std::sync::atomic::AtomicBool::new(true));
+        {
+            let (app, running) = (app.clone(), running.clone());
+            let keep_going = move || running.load(std::sync::atomic::Ordering::Relaxed);
+            runtime.spawn(background::sync_loop(
+                app,
+                keep_going,
+                background::default_sync_interval(),
+            ));
+        }
+        {
+            let (app, running) = (app.clone(), running.clone());
+            // `Copy` so the reconnect loop inside can check it too.
+            let keep_going = move || running.load(std::sync::atomic::Ordering::Relaxed);
+            runtime.spawn(async move {
+                let keep_going = keep_going;
+                background::realtime_loop(app, &keep_going).await;
+            });
+        }
 
         Ok::<_, String>(AstridApp {
-            app: Arc::new(app),
+            app,
             runtime,
             subscriber: std::sync::Mutex::new(None),
+            running,
         })
     }));
 
@@ -143,7 +176,15 @@ pub unsafe extern "C" fn astrid_stop(handle: *mut AstridApp) {
     if handle.is_null() {
         return;
     }
-    let _ = catch_unwind(AssertUnwindSafe(|| drop(Box::from_raw(handle))));
+    let _ = catch_unwind(AssertUnwindSafe(|| {
+        let handle = Box::from_raw(handle);
+        // Ask the background loops to stop before the runtime is torn down, so shutting the app
+        // takes a moment rather than however long the live stream stays quiet.
+        handle
+            .running
+            .store(false, std::sync::atomic::Ordering::Relaxed);
+        drop(handle);
+    }));
 }
 
 /// Run a command. Returns at once; the answer arrives on `callback`, on a pool thread.
@@ -183,9 +224,16 @@ pub unsafe extern "C" fn astrid_call(
         // than a callback that never fires. A shell awaiting an answer that is never coming is
         // worse than an error: it has no way to find out.
         let worker = tokio::spawn(async move { app.run_json(&request).await });
-        let answer = worker
-            .await
-            .unwrap_or_else(|_| failure_json("the core panicked running that command"));
+        let answer = match worker.await {
+            Ok(answer) => answer,
+            // Cancelled and panicked are different things and the shell can act on the difference:
+            // a cancelled call means the core was stopped underneath it, which is what closing the
+            // app looks like from here, and is not a bug to report.
+            Err(error) if error.is_cancelled() => {
+                failure_json("the core stopped before that command finished")
+            }
+            Err(_) => failure_json("the core panicked running that command"),
+        };
         deliver(subscriber.callback, subscriber.user_data, &answer);
     });
 }
@@ -333,22 +381,20 @@ mod tests {
     use super::*;
     use std::sync::Mutex;
 
-    /// Everything a callback heard, for a test to assert on.
-    static HEARD: Mutex<Vec<String>> = Mutex::new(Vec::new());
+    /// A place for one test's callbacks to land.
+    ///
+    /// Per test rather than a static: the tests run side by side in one process, and a shared
+    /// collector makes each of them see the others' callbacks — which is a flaky test that blames
+    /// the wrong code.
+    type Heard = Mutex<Vec<String>>;
 
-    extern "C" fn record(_user_data: *mut c_void, json: *const c_char) {
+    extern "C" fn record(user_data: *mut c_void, json: *const c_char) {
         let text = unsafe { CStr::from_ptr(json) }
             .to_string_lossy()
             .into_owned();
-        HEARD.lock().expect("lock").push(text);
-    }
-
-    fn heard() -> Vec<String> {
-        HEARD.lock().expect("lock").clone()
-    }
-
-    fn clear() {
-        HEARD.lock().expect("lock").clear();
+        // SAFETY: every caller in these tests passes a pointer to a `Heard` that outlives the call.
+        let heard = unsafe { &*(user_data as *const Heard) };
+        heard.lock().expect("lock").push(text);
     }
 
     fn start_in_memory() -> *mut AstridApp {
@@ -417,31 +463,40 @@ mod tests {
     /// on another thread.
     #[test]
     fn an_asynchronous_call_answers_through_the_callback() {
-        clear();
+        let heard: Heard = Mutex::new(Vec::new());
         let handle = start_in_memory();
         let request = CString::new(r#"{"kind":"lists"}"#).expect("a literal");
-        unsafe { astrid_call(handle, request.as_ptr(), record, std::ptr::null_mut()) };
+        let user_data = &heard as *const Heard as *mut c_void;
+        unsafe { astrid_call(handle, request.as_ptr(), record, user_data) };
 
         // Wait for it rather than assuming stopping will flush it — see the contract on
         // `astrid_stop`, which promises only that no callback *starts* after it returns.
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
-        while heard().is_empty() && std::time::Instant::now() < deadline {
+        while heard.lock().expect("lock").is_empty() && std::time::Instant::now() < deadline {
             std::thread::sleep(std::time::Duration::from_millis(5));
         }
         unsafe { astrid_stop(handle) };
 
-        let heard = heard();
-        assert_eq!(heard.len(), 1, "{heard:?}");
-        assert!(heard[0].contains("\"ok\":true"), "{}", heard[0]);
+        let answers = heard.lock().expect("lock").clone();
+        assert_eq!(answers.len(), 1, "{answers:?}");
+        assert!(answers[0].contains("\"ok\":true"), "{}", answers[0]);
     }
 
     /// Stopping while a call is in flight must not crash, and must not deliver into a handle the
     /// shell has already released. The guarantee is "no callback starts after this returns".
     #[test]
     fn stopping_with_a_call_in_flight_is_safe() {
+        let heard: Heard = Mutex::new(Vec::new());
         let handle = start_in_memory();
         let request = CString::new(r#"{"kind":"sync"}"#).expect("a literal");
-        unsafe { astrid_call(handle, request.as_ptr(), record, std::ptr::null_mut()) };
+        unsafe {
+            astrid_call(
+                handle,
+                request.as_ptr(),
+                record,
+                &heard as *const Heard as *mut c_void,
+            )
+        };
         unsafe { astrid_stop(handle) };
     }
 
