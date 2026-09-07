@@ -40,7 +40,7 @@ still there. Built and tested for x64 and ARM64 by `npm run predeploy`.
 | Task detail | `app/Astrid.App/` → `taskDetail` | done |
 | The shared keyboard scheme, dispatched | `astrid_core::keyboard` → shell | done |
 | Sign-in through the browser hand-off | `astrid_core::services::auth` → shell | done |
-| Board view | — | not started |
+| Board view | `astrid_core::board` (fixture-locked) → shell | done |
 | Due-date quick picks | `astrid_core::rows::due_picks` → shell | done |
 | Virtual lists (Today, Not in a List, I've Assigned) | `astrid_core::filters` → shell | done |
 | Background sync and live updates | `astrid_core::app::background` | done |

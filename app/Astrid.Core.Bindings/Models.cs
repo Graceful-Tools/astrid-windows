@@ -203,6 +203,37 @@ public sealed record DueDateOptions
     [JsonPropertyName("times")] public IReadOnlyList<DuePick> Times { get; init; } = [];
 }
 
+/// <summary>One column of a project board, and the cards in it.</summary>
+public sealed record BoardColumn
+{
+    /// <summary>A status role, or one of the two virtual ids for Inbox and Done.</summary>
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
+
+    [JsonPropertyName("description")] public string Description { get; init; } = string.Empty;
+
+    /// <summary><c>inbox</c>, <c>status</c> or <c>done</c>.</summary>
+    [JsonPropertyName("kind")] public string Kind { get; init; } = string.Empty;
+
+    /// <summary>How many cards the column holds, not how many crossed the boundary.</summary>
+    [JsonPropertyName("total")] public int Total { get; init; }
+
+    [JsonPropertyName("cards")] public IReadOnlyList<TaskRow> Cards { get; init; } = [];
+
+    /// <summary>What the column header shows: its name and how many are in it.</summary>
+    public string Heading => $"{Name} ({Total})";
+}
+
+/// <summary>A project board.</summary>
+public sealed record Board
+{
+    /// <summary>Null when the list belongs to no board.</summary>
+    [JsonPropertyName("projectId")] public string? ProjectId { get; init; }
+
+    [JsonPropertyName("columns")] public IReadOnlyList<BoardColumn> Columns { get; init; } = [];
+}
+
 /// <summary>One choice in the reminder picker, and the instant it means.</summary>
 public sealed record ReminderPick
 {

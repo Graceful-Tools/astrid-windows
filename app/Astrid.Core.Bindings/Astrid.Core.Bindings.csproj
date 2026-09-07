@@ -30,6 +30,12 @@
     If none exists the build still succeeds, with a warning that says which command to run. A
     missing DLL surfaces at startup as "Unable to load DLL 'astrid_ffi'", which sends people
     looking at their PATH rather than at their build order.
+
+    A STALE one is quieter and worse. `dotnet build` does not run cargo, and `cargo test -p
+    astrid-core` does not build this crate, so a core change plus a shell build leaves the app
+    talking to the previous core — where a new command comes back as an unknown one and the screen
+    that needed it is simply empty. After changing the core, run `cargo build -p astrid-ffi` before
+    running the app. `npm run predeploy` builds the Rust first and never sees this.
   -->
   <Target Name="ResolveAstridCoreLibrary" BeforeTargets="AssignTargetPaths">
     <PropertyGroup>

@@ -362,6 +362,47 @@ public sealed partial class ShellPage : UserControl
     private async void OnDetailTitleCommitted(object sender, RoutedEventArgs args) =>
         await Shell.Detail.SaveTitleAsync(DetailTitleBox.Text);
 
+    // ── The board ────────────────────────────────────────────────────────────────────────────
+
+    private async void OnToggleBoard(object sender, RoutedEventArgs args)
+    {
+        await Shell.ShowBoardAsync(BoardToggle.IsChecked == true);
+    }
+
+    private async void OnCardOpened(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is string taskId)
+        {
+            await Shell.OpenTaskAsync(taskId);
+            SyncDetailPriority();
+        }
+    }
+
+    /// <summary>
+    /// Moving a card. A menu rather than a drag, for now.
+    /// </summary>
+    /// <remarks>
+    /// A drag is the gesture people expect from a board and it will come; a card that can ONLY be
+    /// dragged is a card a keyboard cannot move at all, so the menu is the one that has to exist.
+    /// The columns come from the board rather than from a list typed here — a board can be renamed
+    /// and can have columns of its own.
+    /// </remarks>
+    private void OnCardRightTapped(object sender, RightTappedRoutedEventArgs args)
+    {
+        if (sender is not FrameworkElement card || card.Tag is not string taskId)
+        {
+            return;
+        }
+        var menu = new MenuFlyout();
+        foreach (var column in Shell.Board.Columns)
+        {
+            var item = new MenuFlyoutItem { Text = column.Name, Tag = column.Id };
+            item.Click += async (_, _) => await Shell.Board.MoveAsync(taskId, column.Id);
+            menu.Items.Add(item);
+        }
+        menu.ShowAt(card, args.GetPosition(card));
+    }
+
     private async void OnReminderFlyoutOpening(object sender, object args)
     {
         await Shell.Detail.LoadReminderPicksAsync();

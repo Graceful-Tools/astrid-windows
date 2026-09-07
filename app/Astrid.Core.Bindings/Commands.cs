@@ -73,6 +73,22 @@ public static class Commands
     /// <c>assigneeId</c>; this is only the question of who may be offered.
     /// </remarks>
     /// <summary>
+    /// The board a list belongs to: its columns, and the cards in each.
+    /// </summary>
+    /// <remarks>
+    /// Cards come back as rows, so a card draws with the same converters a list row does. Which
+    /// columns a board has and which one a card is in is decided in the core and locked against
+    /// astrid-web's own implementation — a card in the wrong column looks like somebody moved it,
+    /// and a card in no column looks like it was deleted.
+    /// </remarks>
+    public static object Board(string listId, int? limit = null) =>
+        new BoardRequest("board", listId, limit);
+
+    /// <summary>Move a card to a column.</summary>
+    public static object MoveTaskToColumn(string taskId, string columnId, string listId) =>
+        new MoveRequest("moveTaskToColumn", taskId, columnId, listId);
+
+    /// <summary>
     /// When to be reminded about one task, and the instant each choice means.
     /// </summary>
     /// <remarks>
@@ -293,6 +309,17 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("content")] string Content);
+
+    private sealed record BoardRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("listId")] string ListId,
+        [property: JsonPropertyName("limit")] int? Limit);
+
+    private sealed record MoveRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("taskId")] string TaskId,
+        [property: JsonPropertyName("columnId")] string ColumnId,
+        [property: JsonPropertyName("listId")] string ListId);
 
     private sealed record SnoozeRequest(
         [property: JsonPropertyName("kind")] string Kind,

@@ -103,6 +103,16 @@ public sealed partial class BoolToVisibilityConverter : IValueConverter
         throw new NotSupportedException("visibility is read-only in the UI");
 }
 
+/// <summary>Visible when the value is false — for the half of a pair that is not showing.</summary>
+public sealed partial class NotVisibleConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is true ? Visibility.Collapsed : Visibility.Visible;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("visibility is read-only in the UI");
+}
+
 /// <summary>
 /// Turns the core's due-date answer into words.
 /// </summary>

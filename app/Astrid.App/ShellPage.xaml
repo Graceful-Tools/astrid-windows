@@ -22,6 +22,7 @@
         <local:AssigneeNameConverter x:Key="AssigneeText" />
         <local:RepeatSummaryConverter x:Key="RepeatText" />
         <local:ReminderStateConverter x:Key="ReminderText" />
+        <local:NotVisibleConverter x:Key="NotVisible" />
     </UserControl.Resources>
 
     <Grid x:Name="RootGrid" KeyDown="OnKeyDown">
@@ -177,6 +178,16 @@
                             same way. A second surface that behaved almost-but-not-quite like the
                             list is how two code paths for one thing begin.
                         -->
+                        <!--
+                            The board and the list are two views of one list's work, not two
+                            screens: the toggle swaps what is drawn and nothing else moves.
+                        -->
+                        <ToggleButton x:Name="BoardToggle"
+                                      Content="Board"
+                                      VerticalAlignment="Center"
+                                      AutomationProperties.Name="Board view"
+                                      IsChecked="{x:Bind Shell.IsBoardView, Mode=OneWay}"
+                                      Click="OnToggleBoard" />
                         <AutoSuggestBox x:Name="SearchBox"
                                         Width="220"
                                         VerticalAlignment="Center"
@@ -201,7 +212,64 @@
                     has to follow; clicking a row moves it in the list and the keyboard has to
                     follow. One binding rather than two handlers keeping each other in step.
                 -->
+                <!--
+                    The board. One column per status, cards inside them, and a menu on each card to
+                    move it — a drag is the gesture people expect, and it will come, but a card that
+                    can only be dragged is a card a keyboard cannot move at all.
+                -->
+                <ScrollViewer Grid.Row="1"
+                              HorizontalScrollBarVisibility="Auto"
+                              HorizontalScrollMode="Enabled"
+                              VerticalScrollMode="Disabled"
+                              Margin="12,0"
+                              Visibility="{x:Bind Shell.IsBoardView, Mode=OneWay, Converter={StaticResource Visible}}">
+                    <ItemsControl ItemsSource="{x:Bind Shell.Board.Columns, Mode=OneWay}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="12" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="bindings:BoardColumn">
+                                <Border Width="280"
+                                        Padding="12"
+                                        CornerRadius="8"
+                                        Background="{ThemeResource LayerFillColorDefaultBrush}">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="{x:Bind Heading}"
+                                                   Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                                        <TextBlock Text="{x:Bind Description}"
+                                                   TextWrapping="Wrap"
+                                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        <ItemsControl ItemsSource="{x:Bind Cards}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="bindings:TaskRow">
+                                                    <Button HorizontalAlignment="Stretch"
+                                                            HorizontalContentAlignment="Left"
+                                                            Margin="0,4,0,0"
+                                                            Tag="{x:Bind Id}"
+                                                            Click="OnCardOpened"
+                                                            RightTapped="OnCardRightTapped">
+                                                        <StackPanel Spacing="2">
+                                                            <TextBlock Text="{x:Bind Title}" TextWrapping="Wrap" />
+                                                            <TextBlock Text="{x:Bind Due, Converter={StaticResource DueText}}"
+                                                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
                 <ListView Grid.Row="1"
+                          Visibility="{x:Bind Shell.IsBoardView, Mode=OneWay, Converter={StaticResource NotVisible}}"
                           x:Name="TaskRows"
                           Margin="8,0,8,0"
                           ItemsSource="{x:Bind Shell.Tasks.Rows, Mode=OneWay}"

@@ -28,6 +28,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private bool _needsSignIn;
     private string? _statusMessage;
     private bool _disposed;
+    private bool _isBoardView;
 
     /// <param name="post">
     /// Runs work on the UI thread. Given by the shell; a test passes something that runs it inline.
@@ -40,6 +41,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Tasks = new TaskListViewModel(core);
         SignIn = new SignInViewModel(core);
         Detail = new TaskDetailViewModel(core);
+        Board = new BoardViewModel(core);
         _core.Changed += OnChanged;
     }
 
@@ -62,6 +64,33 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     /// <summary>The open task, when there is one.</summary>
     public TaskDetailViewModel Detail { get; }
+
+    /// <summary>The board the open list belongs to, when it belongs to one.</summary>
+    public BoardViewModel Board { get; }
+
+    /// <summary>
+    /// Whether the board is on screen instead of the list.
+    /// </summary>
+    /// <remarks>
+    /// A view of the same tasks, not a different set: the board and the list show one list's work
+    /// two ways, which is why this is a flag here rather than a separate screen with its own
+    /// loading and its own idea of what is selected.
+    /// </remarks>
+    public bool IsBoardView
+    {
+        get => _isBoardView;
+        private set => Set(ref _isBoardView, value);
+    }
+
+    /// <summary>Swap between the list and its board.</summary>
+    public async Task ShowBoardAsync(bool board, CancellationToken cancellationToken = default)
+    {
+        IsBoardView = board;
+        if (board)
+        {
+            await Board.LoadAsync(Tasks.ListId, cancellationToken);
+        }
+    }
 
     /// <summary>True while anything is waiting in the Outbox.</summary>
     public bool HasUnsentWork
@@ -285,6 +314,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             {
                 case "task":
                     await Tasks.RefreshAsync();
+                    if (IsBoardView)
+                    {
+                        await Board.RefreshAsync();
+                    }
                     // Only when it is the task on screen. Reloading the detail pane for every
                     // task somebody else touches would make the open task flicker while a
                     // colleague works elsewhere in the same list.
