@@ -47,6 +47,22 @@ public static class Commands
 
     public static object OutboxStats() => new KindOnly("outboxStats");
 
+    /// <summary>
+    /// What a pressed key means, given what is on screen.
+    /// </summary>
+    /// <remarks>
+    /// The shell asks rather than knowing: the bare-key scheme is a cross-platform contract, and
+    /// so is the guard about when a key may fire at all. Pure — no cache, no network — so it is
+    /// safe to ask while a key is being handled.
+    /// </remarks>
+    public static object ResolveShortcut(string key, bool hasSelection = false,
+        bool isTextFieldFocused = false, bool isModalPresented = false) =>
+        new ShortcutRequest("resolveShortcut", key, hasSelection, isTextFieldFocused,
+            isModalPresented);
+
+    /// <summary>The whole scheme, for a shortcuts sheet.</summary>
+    public static object Shortcuts() => new KindOnly("shortcuts");
+
     // ── Writes ───────────────────────────────────────────────────────────────────────────────
 
     public static object CreateTask(string title, IReadOnlyList<string>? listIds = null,
@@ -188,6 +204,13 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("content")] string Content);
+
+    private sealed record ShortcutRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("key")] string Key,
+        [property: JsonPropertyName("hasSelection")] bool HasSelection,
+        [property: JsonPropertyName("isTextFieldFocused")] bool IsTextFieldFocused,
+        [property: JsonPropertyName("isModalPresented")] bool IsModalPresented);
 
     private sealed record CallbackRequest(
         [property: JsonPropertyName("kind")] string Kind,

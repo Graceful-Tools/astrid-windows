@@ -26,6 +26,7 @@ namespace Astrid.App;
 public sealed partial class ShellPage : UserControl
 {
     private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcher;
+    private readonly ShortcutDispatcher _shortcuts;
 
     public ShellPage()
     {
@@ -38,6 +39,8 @@ public sealed partial class ShellPage : UserControl
             ? running
             : new UnavailableCore(App.StartupError);
         Shell = new ShellViewModel(core, Post);
+        _shortcuts = new ShortcutDispatcher(core, Shell);
+        _shortcuts.ShellActionRequested += OnShellAction;
         Loaded += OnLoaded;
         // Every protocol activation, launch or redirected, arrives here. The core decides which
         // are sign-in callbacks; a deep link to a task uses the same scheme.
@@ -188,34 +191,81 @@ public sealed partial class ShellPage : UserControl
         Post(() => Shell.HandleActivationAsync(uri.ToString()));
 
     /// <summary>
-    /// The keyboard scheme.
+    /// The keyboard.
     /// </summary>
     /// <remarks>
-    /// The bare-key shortcuts and the rule about when they are allowed to fire are a cross-platform
-    /// contract, locked by <c>contracts/fixtures/shortcuts.json</c> and implemented in
-    /// <c>astrid_core::keyboard</c>. What is here is the minimum until that dispatch is wired
-    /// through: the two chords Windows users expect from any app, which are not part of the shared
-    /// scheme and never will be.
+    /// <para>
+    /// Two schemes meet here, and they do not overlap. The <b>bare keys</b> are a cross-platform
+    /// contract — locked by <c>contracts/fixtures/shortcuts.json</c>, resolved by
+    /// <c>astrid_core::keyboard</c> — so muscle memory transfers between web, Mac and Windows
+    /// unchanged, and this window asks what a key means rather than knowing. The <b>Ctrl chords</b>
+    /// are what a Windows user expects from any app; they are additive, local, and deliberately
+    /// not in the shared table, because a bare key from it must never be shadowed by an
+    /// accelerator.
+    /// </para>
+    /// <para>
+    /// A bare key is only offered to the core when nothing is being typed into. That guard is in
+    /// the core too — it is part of the contract — but the answer to "is a text field focused?" is
+    /// something only the window can see.
+    /// </para>
     /// </remarks>
     private async void OnKeyDown(object sender, KeyRoutedEventArgs args)
     {
         var control = Microsoft.UI.Input.InputKeyboardSource
             .GetKeyStateForCurrentThread(VirtualKey.Control)
             .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
-        if (!control)
+
+        if (control)
+        {
+            switch (args.Key)
+            {
+                case VirtualKey.N:
+                    args.Handled = true;
+                    QuickAddBox.Focus(FocusState.Programmatic);
+                    return;
+                case VirtualKey.R:
+                    args.Handled = true;
+                    await Shell.SyncAsync();
+                    return;
+                default:
+                    // Any other chord belongs to Windows or to a control. Not ours to swallow.
+                    return;
+            }
+        }
+
+        var key = KeyNames.For(args.Key);
+        if (key is null)
         {
             return;
         }
 
-        switch (args.Key)
+        args.Handled = await _shortcuts.HandleAsync(key, IsTypingSomewhere(), isModalPresented: false);
+    }
+
+    /// <summary>Whether the focus is inside something that takes text.</summary>
+    /// <remarks>
+    /// The one input to the shared guard that only the window can answer. Getting it wrong in
+    /// either direction is bad in a specific way: too eager and typing "n" in a task title creates
+    /// a new task instead; too shy and the shortcuts never work at all.
+    /// </remarks>
+    private bool IsTypingSomewhere()
+    {
+        var focused = FocusManager.GetFocusedElement(XamlRoot);
+        return focused is TextBox or RichEditBox or AutoSuggestBox or PasswordBox;
+    }
+
+    /// <summary>An action the window has to perform rather than a view model.</summary>
+    private void OnShellAction(string action)
+    {
+        switch (action)
         {
-            case VirtualKey.N:
-                args.Handled = true;
+            case "newTask":
                 QuickAddBox.Focus(FocusState.Programmatic);
                 break;
-            case VirtualKey.R:
-                args.Handled = true;
-                await Shell.SyncAsync();
+            // The rest — editing a title in place, the description, a comment, the detail panel —
+            // arrive with the task detail view. Until then the key is swallowed rather than left
+            // to fall through to the list, where it would do something else entirely.
+            default:
                 break;
         }
     }

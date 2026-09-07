@@ -38,6 +38,7 @@ public sealed class TaskListViewModel : ObservableObject
     private int _total;
     private string? _errorMessage;
     private bool _needsSignIn;
+    private TaskRow? _selected;
 
     public TaskListViewModel(IAstridCore core)
     {
@@ -94,7 +95,51 @@ public sealed class TaskListViewModel : ObservableObject
         private set => Set(ref _needsSignIn, value);
     }
 
+    /// <summary>
+    /// The row the keyboard acts on.
+    /// </summary>
+    /// <remarks>
+    /// Held here rather than read from the ListView, because the shared shortcut scheme is
+    /// selection-scoped — half its actions do nothing without one — and a selection that only
+    /// exists in a control cannot be asked about from a view model or a test.
+    /// </remarks>
+    public TaskRow? Selected
+    {
+        get => _selected;
+        set
+        {
+            if (Set(ref _selected, value))
+            {
+                Raise(nameof(HasSelection));
+            }
+        }
+    }
+
+    public bool HasSelection => Selected is not null;
+
     public bool IsEmpty => Rows.Count == 0 && !IsLoading;
+
+    /// <summary>Move the selection by <paramref name="delta"/> rows, stopping at the ends.</summary>
+    /// <remarks>
+    /// Stopping rather than wrapping: a list that jumps from the last row to the first when
+    /// somebody holds the down arrow reads as a bug, whatever the intent.
+    /// </remarks>
+    public void MoveSelection(int delta)
+    {
+        if (Rows.Count == 0)
+        {
+            Selected = null;
+            return;
+        }
+
+        var current = Selected is null ? -1 : Rows.IndexOf(Selected);
+        // With nothing selected, down picks the first row and up picks the last — which is what
+        // pressing a direction key on an unfocused list is asking for.
+        var next = current < 0
+            ? (delta > 0 ? 0 : Rows.Count - 1)
+            : Math.Clamp(current + delta, 0, Rows.Count - 1);
+        Selected = Rows[next];
+    }
 
     /// <summary>Show a different list.</summary>
     public async Task OpenAsync(string listId, string listName, CancellationToken cancellationToken = default)
@@ -175,7 +220,14 @@ public sealed class TaskListViewModel : ObservableObject
             }
 
             Total = window.Total;
+            var selectedId = Selected?.Id;
             Replace(window.Rows);
+            // Keep the selection across a refresh, by id: the row object is replaced every time,
+            // and a selection that vanishes whenever a colleague edits something in the same list
+            // makes the keyboard unusable.
+            Selected = selectedId is null
+                ? null
+                : Rows.FirstOrDefault(row => row.Id == selectedId);
         }
         finally
         {
@@ -225,6 +277,41 @@ public sealed class TaskListViewModel : ObservableObject
             return false;
         }
 
+        await RefreshAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>Set a task's priority.</summary>
+    public async Task<bool> SetPriorityAsync(string taskId, int priority,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(
+            Commands.UpdateTask(taskId, new Dictionary<string, object?> { ["priority"] = priority }),
+            cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        await RefreshAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// Take a task's due date off.
+    /// </summary>
+    /// <remarks>
+    /// An explicit null, which is what clears a field — an absent one would leave the date exactly
+    /// where it was. See <c>astrid_core::services::TaskChanges</c>.
+    /// </remarks>
+    public async Task<bool> ClearDueDateAsync(string taskId, CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(
+            Commands.UpdateTask(taskId, new Dictionary<string, object?> { ["dueDateTime"] = null }),
+            cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
         await RefreshAsync(cancellationToken);
         return true;
     }
