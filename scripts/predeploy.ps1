@@ -80,8 +80,18 @@ if (Test-Path $appSolution) {
 }
 
 if ($Full) {
-    Write-Host ""
-    Write-Host "[-] UI smoke tests skipped - WinAppDriver suite arrives with the shell (M2)" -ForegroundColor DarkGray
+    # The UI smoke tests launch the built app and drive it through UI Automation. They need a
+    # desktop session, they take about a minute, and they run one at a time — which is why they are
+    # here rather than in the ordinary gate.
+    #
+    # The Release build above is for x64 and ARM64; these run the host's, so the app is built once
+    # more for the host RID in Debug, which is what the tests look for first.
+    $hostRid = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'win-arm64' } else { 'win-x64' }
+    $uiTests = Join-Path $repoRoot 'app/Astrid.App.UITests/Astrid.App.UITests.csproj'
+    Invoke-Step "shell build for the UI tests ($hostRid)" {
+        dotnet build (Join-Path $repoRoot 'app/Astrid.App/Astrid.App.csproj') -c Debug -r $hostRid --self-contained false
+    }
+    Invoke-Step 'UI smoke tests' { dotnet test $uiTests -c Debug }
 }
 
 Write-Host ""

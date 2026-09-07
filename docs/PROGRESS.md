@@ -45,7 +45,7 @@ still there. Built and tested for x64 and ARM64 by `npm run predeploy`.
 | Virtual lists (Today, Not in a List, I've Assigned) | `astrid_core::filters` → shell | done |
 | Background sync and live updates | `astrid_core::app::background` | done |
 | Localisation (`.resw`) | `app/Astrid.App/Strings/` | done — English; a language is a folder |
-| UI smoke tests | `app/Astrid.App.UITests/` | not started |
+| UI smoke tests | `app/Astrid.App.UITests/` | done — four, in `npm run predeploy:full` |
 | Assignee picker | `astrid_core::rows::assignee` → shell | done |
 | Repeat editor | `astrid_core::rows::repeat` → shell | done |
 | Search | `astrid_core::services::search` → shell | done |

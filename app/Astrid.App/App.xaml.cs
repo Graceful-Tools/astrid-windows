@@ -140,11 +140,23 @@ public partial class App : Application
     /// </remarks>
     private static string CachePath() => Path.Combine(DataDirectory(), "astrid.db");
 
+    /// <summary>
+    /// Where the cache and the credential live.
+    /// </summary>
+    /// <remarks>
+    /// <c>ASTRID_DATA_DIR</c> moves both. It exists for the UI smoke tests, which need a signed-in
+    /// app with a known list in it and must not touch the account of whoever is running them — a
+    /// test that wrote a fake session over somebody's real one would be a test nobody runs twice.
+    /// It is also the honest way to try a second account without signing out of the first.
+    /// </remarks>
     private static string DataDirectory()
     {
-        var directory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Astrid");
+        var chosen = Environment.GetEnvironmentVariable("ASTRID_DATA_DIR");
+        var directory = string.IsNullOrWhiteSpace(chosen)
+            ? Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Astrid")
+            : chosen;
         Directory.CreateDirectory(directory);
         return directory;
     }
