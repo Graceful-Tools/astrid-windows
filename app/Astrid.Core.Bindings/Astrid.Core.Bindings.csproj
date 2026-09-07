@@ -1,0 +1,69 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The managed side of the C ABI in crates/astrid-ffi.
+
+    Deliberately NOT a WinUI project and deliberately not Windows-targeted beyond what P/Invoke
+    needs: the tests reference it, and a test project that has to start the Windows App SDK to
+    check a JSON round-trip is a test project nobody runs.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- P/Invoke into a hand-written C ABI: the analyser's marshalling advice does not apply. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RustTargetRoot>$(MSBuildThisFileDirectory)..\..\target\</RustTargetRoot>
+  </PropertyGroup>
+
+  <!--
+    Carry the core's DLL next to whatever consumes this.
+
+    Cargo puts it under target/<profile>/ for a host build and target/<triple>/<profile>/ for a
+    cross build, and the .NET configuration does not have to match the cargo profile — a Release
+    test run against a debug core is a perfectly ordinary thing to want. So this looks in a short
+    ordered list and takes the first that exists, preferring the matching profile.
+
+    If none exists the build still succeeds, with a warning that says which command to run. A
+    missing DLL surfaces at startup as "Unable to load DLL 'astrid_ffi'", which sends people
+    looking at their PATH rather than at their build order.
+  -->
+  <Target Name="ResolveAstridCoreLibrary" BeforeTargets="AssignTargetPaths">
+    <PropertyGroup>
+      <_RustProfile Condition="'$(Configuration)' == 'Release'">release</_RustProfile>
+      <_RustProfile Condition="'$(_RustProfile)' == ''">debug</_RustProfile>
+      <_OtherRustProfile Condition="'$(_RustProfile)' == 'release'">debug</_OtherRustProfile>
+      <_OtherRustProfile Condition="'$(_RustProfile)' == 'debug'">release</_OtherRustProfile>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_AstridCoreCandidate Include="$(RustTargetRoot)$(_RustProfile)\astrid_ffi.dll" />
+      <_AstridCoreCandidate Include="$(RustTargetRoot)$(_OtherRustProfile)\astrid_ffi.dll" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <_AstridCoreFound Include="@(_AstridCoreCandidate)" Condition="Exists('%(FullPath)')" />
+    </ItemGroup>
+
+    <PropertyGroup>
+      <!-- The first that exists. Taking one rather than all of them, because two candidates would
+           both copy to the same `Link` and race. -->
+      <_AstridCoreLibrary>%(_AstridCoreFound.FullPath)</_AstridCoreLibrary>
+    </PropertyGroup>
+
+    <ItemGroup Condition="'$(_AstridCoreLibrary)' != ''">
+      <None Include="$(_AstridCoreLibrary)">
+        <Link>astrid_ffi.dll</Link>
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
+    <Warning Condition="'$(_AstridCoreLibrary)' == ''"
+             Code="ASTRID001"
+             Text="astrid_ffi.dll was not found under $(RustTargetRoot). Run `cargo build -p astrid-ffi` first; the app will fail to start without it." />
+  </Target>
+
+</Project>

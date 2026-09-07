@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <assemblyIdentity version="1.0.0.0" name="Astrid.App" />
+
+  <!--
+    Per-monitor v2 DPI. Without it the app is bitmap-scaled on a mixed-DPI desktop — a laptop
+    screen beside an external monitor — and every glyph in a task list goes soft the moment the
+    window is dragged across. That is the first thing anyone notices about a Windows app that was
+    ported rather than written.
+
+    Both elements are needed: Windows 10 reads the 2016 one, and the 2005 one is the fallback for
+    the versions that do not.
+  -->
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
+    </windowsSettings>
+  </application>
+
+  <!-- The Windows versions this build has been tested against. -->
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <!-- Windows 10 and 11 -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />
+    </application>
+  </compatibility>
+</assembly>

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    What the shell dispatches with: the state a screen holds and the calls it makes.
+    Deliberately free of WinUI, so it can be tested without a window.
+
+    "No business logic in app/" (docs/ASTRID.md §0 rule 9) applies here more than anywhere else in
+    the shell, because this is the layer that could most plausibly grow some. A view model here
+    holds what is on screen and which command to send. It does not decide what a row shows, which
+    tasks belong in a list, or what completing one means — all three are already decided in
+    astrid-core, and asking again would be asking twice.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Astrid.Core.Bindings\Astrid.Core.Bindings.csproj" />
+  </ItemGroup>
+
+</Project>

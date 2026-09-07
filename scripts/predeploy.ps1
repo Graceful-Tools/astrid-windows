@@ -54,16 +54,29 @@ if (-not $Quick) {
     Invoke-Step 'ARM64 build' { cargo build --workspace --target aarch64-pc-windows-msvc }
 }
 
-# The shell arrives in M2. Until then there is nothing to build, and claiming otherwise would make
-# this gate read as greener than it is.
+# The shell. It links against the DLL the Rust steps above produce, which is why they come first:
+# a shell built against a stale core is a build that passes and an app that does not run.
+#
+# Architecture is chosen with a RID rather than a Platform, because that is what an SDK-style
+# project with a WinUI target understands; `-p:Platform=x64` is silently ignored here and builds
+# the host architecture twice.
 $appSolution = Join-Path $repoRoot 'app/Astrid.sln'
 if (Test-Path $appSolution) {
-    Invoke-Step 'shell build (x64)' { dotnet build $appSolution -c Release -p:Platform=x64 }
-    Invoke-Step 'shell build (ARM64)' { dotnet build $appSolution -c Release -p:Platform=ARM64 }
-    Invoke-Step 'shell tests' { dotnet test $appSolution -c Release --no-build }
+    # Per project, not per solution: a solution cannot be built with a RuntimeIdentifier, and
+    # asking it to is an error rather than something it quietly ignores.
+    $appProject = Join-Path $repoRoot 'app/Astrid.App/Astrid.App.csproj'
+    Invoke-Step 'shell build (x64)' {
+        dotnet build $appProject -c Release -r win-x64 --self-contained false
+    }
+    Invoke-Step 'shell build (ARM64)' {
+        dotnet build $appProject -c Release -r win-arm64 --self-contained false
+    }
+    # The tests are plain net9.0 and run on the host, so they are built and run without a RID.
+    # They include the C#-to-Rust boundary tests, which need the DLL the Rust steps built.
+    Invoke-Step 'shell tests' { dotnet test $appSolution -c Release }
 } else {
     Write-Host ""
-    Write-Host "[-] shell build skipped - app/Astrid.sln does not exist yet (M2)" -ForegroundColor DarkGray
+    Write-Host "[-] shell build skipped - app/Astrid.sln does not exist yet" -ForegroundColor DarkGray
 }
 
 if ($Full) {

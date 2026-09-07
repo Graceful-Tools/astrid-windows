@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Application
+    x:Class="Astrid.App.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!--
+                Astrid's blue, matching the default list colour the core hands back
+                (`TaskList::display_color`). Stated once so a control that needs the brand colour
+                does not spell the hex again and drift from it.
+            -->
+            <SolidColorBrush x:Key="AstridAccentBrush" Color="#3B82F6" />
+
+            <!-- Priority, in the colours every client uses. Mirrors `Task.Priority.color`. -->
+            <SolidColorBrush x:Key="PriorityHighBrush" Color="#EF4444" />
+            <SolidColorBrush x:Key="PriorityMediumBrush" Color="#F59E0B" />
+            <SolidColorBrush x:Key="PriorityLowBrush" Color="#10B981" />
+
+            <x:Double x:Key="RowIndentPerDepth">24</x:Double>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

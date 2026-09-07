@@ -1,0 +1,195 @@
+using Astrid.Core.Bindings;
+
+namespace Astrid.App.ViewModels;
+
+/// <summary>
+/// The window: a sidebar, a list, and the state that spans both.
+/// </summary>
+/// <remarks>
+/// <para>
+/// It owns the two smaller view models and the wiring between them — selecting a list opens it,
+/// a change notification refreshes what is on screen, a sync updates the "not synced yet"
+/// indicator.
+/// </para>
+/// <para>
+/// <b>Notifications arrive on a pool thread.</b> The shell hands in a <see cref="Post"/> that
+/// marshals to the UI thread; without one, everything still works in tests and crashes in the app.
+/// Making it a required constructor argument rather than an optional property is deliberate: a
+/// default that silently does the wrong thing on one of the two callers is worse than a compile
+/// error.
+/// </para>
+/// </remarks>
+public sealed class ShellViewModel : ObservableObject, IDisposable
+{
+    private readonly IAstridCore _core;
+    private readonly Action<Func<Task>> _post;
+    private bool _hasUnsentWork;
+    private bool _isSyncing;
+    private bool _needsSignIn;
+    private string? _statusMessage;
+    private bool _disposed;
+
+    /// <param name="post">
+    /// Runs work on the UI thread. Given by the shell; a test passes something that runs it inline.
+    /// </param>
+    public ShellViewModel(IAstridCore core, Action<Func<Task>> post)
+    {
+        _core = core;
+        _post = post;
+        Sidebar = new SidebarViewModel(core);
+        Tasks = new TaskListViewModel(core);
+        _core.Changed += OnChanged;
+    }
+
+    public SidebarViewModel Sidebar { get; }
+
+    public TaskListViewModel Tasks { get; }
+
+    /// <summary>True while anything is waiting in the Outbox.</summary>
+    public bool HasUnsentWork
+    {
+        get => _hasUnsentWork;
+        private set => Set(ref _hasUnsentWork, value);
+    }
+
+    public bool IsSyncing
+    {
+        get => _isSyncing;
+        private set => Set(ref _isSyncing, value);
+    }
+
+    /// <summary>Set when the session has gone and the user has to sign in again.</summary>
+    public bool NeedsSignIn
+    {
+        get => _needsSignIn;
+        private set => Set(ref _needsSignIn, value);
+    }
+
+    public string? StatusMessage
+    {
+        get => _statusMessage;
+        private set => Set(ref _statusMessage, value);
+    }
+
+    /// <summary>
+    /// Draw what is already cached, then go and look for more.
+    /// </summary>
+    /// <remarks>
+    /// In that order, and it is the whole feel of the app: the first paint comes from disk and owes
+    /// nothing to the network, and the sync that follows updates what is already on screen. An app
+    /// that waited for the network to draw its first list would be unusable on a train and
+    /// noticeably slower everywhere else.
+    /// </remarks>
+    public async Task StartAsync(CancellationToken cancellationToken = default)
+    {
+        await Sidebar.LoadAsync(cancellationToken).ConfigureAwait(false);
+        await OpenSelectedAsync(cancellationToken).ConfigureAwait(false);
+        await RefreshOutboxAsync(cancellationToken).ConfigureAwait(false);
+        await SyncAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Open whatever the sidebar has selected.</summary>
+    public async Task OpenSelectedAsync(CancellationToken cancellationToken = default)
+    {
+        var selected = Sidebar.Selected;
+        if (selected is null)
+        {
+            return;
+        }
+        await Tasks.OpenAsync(selected.Id, selected.Name, cancellationToken).ConfigureAwait(false);
+        NeedsSignIn |= Tasks.NeedsSignIn;
+    }
+
+    /// <summary>One sync pass: push what is queued, fetch what is new.</summary>
+    public async Task SyncAsync(CancellationToken cancellationToken = default)
+    {
+        if (IsSyncing)
+        {
+            return;
+        }
+        IsSyncing = true;
+        try
+        {
+            var response = await _core.CallAsync(Commands.Sync(), cancellationToken).ConfigureAwait(false);
+            if (response.NeedsSignIn)
+            {
+                NeedsSignIn = true;
+                return;
+            }
+
+            // A pass that could not reach the server is not an error. It says so, and the app
+            // carries on with what it has.
+            var fetched = response.Ok
+                && response.Value.TryGetProperty("fetched", out var element)
+                && element.GetBoolean();
+            StatusMessage = fetched ? null : "offline";
+
+            if (fetched)
+            {
+                await Sidebar.LoadAsync(cancellationToken).ConfigureAwait(false);
+                await Tasks.RefreshAsync(cancellationToken).ConfigureAwait(false);
+            }
+            await RefreshOutboxAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            IsSyncing = false;
+        }
+    }
+
+    public async Task RefreshOutboxAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.OutboxStats(), cancellationToken)
+            .ConfigureAwait(false);
+        var stats = response.Read<OutboxStats>();
+        HasUnsentWork = stats?.HasUnsentWork ?? false;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+        _disposed = true;
+        // Unsubscribing matters: the core outlives a window that is being closed, and a handler on
+        // a disposed view model would keep it alive and then touch a UI that is gone.
+        _core.Changed -= OnChanged;
+    }
+
+    /// <summary>
+    /// Something changed underneath us. Refresh exactly that.
+    /// </summary>
+    /// <remarks>
+    /// Not everything. The live stream can deliver several notifications a second while a
+    /// colleague works in the same list, and a full reload on each would make the app slower the
+    /// more people are using it.
+    /// </remarks>
+    private void OnChanged(ChangeNotification notification)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _post(async () =>
+        {
+            switch (notification.Change)
+            {
+                case "task":
+                    await Tasks.RefreshAsync().ConfigureAwait(false);
+                    await RefreshOutboxAsync().ConfigureAwait(false);
+                    break;
+                case "list":
+                    await Sidebar.LoadAsync().ConfigureAwait(false);
+                    break;
+                case "needsSync":
+                    await SyncAsync().ConfigureAwait(false);
+                    break;
+                default:
+                    // A change this build does not draw anything for. The next sync carries it.
+                    break;
+            }
+        });
+    }
+}

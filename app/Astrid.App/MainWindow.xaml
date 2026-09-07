@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Astrid.App.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Astrid.App"
+    Title="Astrid">
+
+    <!--
+        The window is a frame and nothing else. Everything it shows lives in ShellPage, because
+        x:Bind with Mode=OneWay needs a FrameworkElement to hang its update registrations on and a
+        WinUI Window is not one — bindings written directly here compile and then do not update.
+    -->
+    <local:ShellPage x:Name="Shell" />
+</Window>
