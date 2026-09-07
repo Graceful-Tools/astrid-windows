@@ -49,7 +49,9 @@ public sealed class TaskDetailViewModelTests
         Assert.Equal("Home", view.ListChips[0].Name);
         Assert.Equal("Book flights", view.Subtasks[0].Title);
         Assert.Equal("asked Sam", view.Comments[0].Content);
-        Assert.Single(core.Sent);
+        // Two: the screen, and the quick date choices that depend on the task's own date. Both are
+        // cache reads.
+        Assert.Equal(["taskDetail", "dueDateOptions"], core.SentKinds());
     }
 
     /// <summary>
@@ -164,6 +166,95 @@ public sealed class TaskDetailViewModelTests
 
         Assert.Same(first, view.Comments[0]);
         Assert.Equal("two changed", view.Comments[1].Content);
+    }
+
+    /// <summary>
+    /// The quick choices arrive with the instant each one means, so the shell never computes a
+    /// date. Every part of that arithmetic is decided once, in the core, for all three clients.
+    /// </summary>
+    [Fact]
+    public async Task The_due_picks_carry_the_instants_they_mean()
+    {
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail())
+            .AnswerOk("dueDateOptions", new
+            {
+                isAllDay = true,
+                dueDateTime = "2026-09-07T00:00:00Z",
+                dates = new object[]
+                {
+                    new { titleKey = "picker.no_due_date", dueDateTime = (string?)null, isSelected = false },
+                    new { titleKey = "picker.today", dueDateTime = "2026-09-07T00:00:00Z", isSelected = true },
+                },
+                times = new object[]
+                {
+                    new { titleKey = "picker.morning", hour = 9, dueDateTime = "2026-09-07T09:00:00Z", isSelected = false },
+                },
+            });
+        var view = new TaskDetailViewModel(core);
+
+        await view.OpenAsync("t1");
+
+        Assert.Equal("picker.no_due_date", view.DatePicks[0].TitleKey);
+        Assert.Null(view.DatePicks[0].DueDateTime);
+        Assert.True(view.DatePicks[1].IsSelected);
+        Assert.Equal("2026-09-07T09:00:00Z", view.TimePicks[0].DueDateTime);
+        Assert.True(view.IsAllDay);
+    }
+
+    /// <summary>Choosing "No due date" sends an explicit null, which is what clears the field.</summary>
+    [Fact]
+    public async Task Choosing_no_due_date_clears_it()
+    {
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail())
+            .AnswerOk("dueDateOptions", new
+            {
+                isAllDay = true,
+                dates = new object[]
+                {
+                    new { titleKey = "picker.no_due_date", dueDateTime = (string?)null, isSelected = false },
+                },
+                times = Array.Empty<object>(),
+            })
+            .AnswerOk("updateTask")
+            .AnswerOk("taskDetail", Detail())
+            .AnswerOk("dueDateOptions", new { isAllDay = true, dates = Array.Empty<object>(), times = Array.Empty<object>() });
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.TakeDuePickAsync(view.DatePicks[0]);
+
+        var sent = core.Sent.Last(json => json.Contains("updateTask", StringComparison.Ordinal));
+        Assert.Contains("\"dueDateTime\":null", sent, StringComparison.Ordinal);
+    }
+
+    /// <summary>Choosing a time makes the task timed rather than all-day.</summary>
+    [Fact]
+    public async Task Choosing_a_time_makes_the_task_timed()
+    {
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail())
+            .AnswerOk("dueDateOptions", new
+            {
+                isAllDay = true,
+                dates = Array.Empty<object>(),
+                times = new object[]
+                {
+                    new { titleKey = "picker.morning", hour = 9, dueDateTime = "2026-09-07T09:00:00Z", isSelected = false },
+                },
+            })
+            .AnswerOk("updateTask")
+            .AnswerOk("taskDetail", Detail())
+            .AnswerOk("dueDateOptions", new { isAllDay = false, dates = Array.Empty<object>(), times = Array.Empty<object>() });
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.TakeDuePickAsync(view.TimePicks[0]);
+
+        var sent = core.Sent.Last(json => json.Contains("updateTask", StringComparison.Ordinal));
+        Assert.Contains("\"isAllDay\":false", sent, StringComparison.Ordinal);
+        Assert.Contains("2026-09-07T09:00:00Z", sent, StringComparison.Ordinal);
     }
 
     /// <summary>

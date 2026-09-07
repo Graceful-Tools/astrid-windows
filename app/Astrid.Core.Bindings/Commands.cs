@@ -51,6 +51,18 @@ public static class Commands
 
     public static object Comments(string taskId) => new WithTaskId("comments", taskId);
 
+    /// <summary>
+    /// The quick date and time choices for a task, with the instant each one means.
+    /// </summary>
+    /// <remarks>
+    /// The shell shows a label and sends back a value it did not have to compute. The arithmetic
+    /// is where this goes wrong — a day is 23 or 25 hours across a daylight-saving boundary, an
+    /// all-day date is stored differently from a timed one, and "morning" means 09:00 where the
+    /// reader is — so it is done once, in the core, for all three clients.
+    /// </remarks>
+    public static object DueDateOptions(string taskId) =>
+        new WithTaskId("dueDateOptions", taskId);
+
     public static object CurrentUser() => new KindOnly("currentUser");
 
     /// <summary>Whether there is a stored session. Not whether the server still accepts it.</summary>

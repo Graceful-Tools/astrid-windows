@@ -18,6 +18,7 @@
         <local:DepthIndentConverter x:Key="DepthIndent" />
         <local:BoolToVisibilityConverter x:Key="Visible" />
         <local:DueLabelConverter x:Key="DueText" />
+        <local:PickTitleConverter x:Key="PickTitle" />
     </UserControl.Resources>
 
     <Grid x:Name="RootGrid" KeyDown="OnKeyDown">
@@ -294,10 +295,46 @@
                     <Button Grid.Column="2" Content="Close" Click="OnCloseDetail" />
                 </Grid>
 
-                <TextBlock Text="{x:Bind Shell.Detail.Due, Mode=OneWay, Converter={StaticResource DueText}}"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Style="{ThemeResource CaptionTextBlockStyle}"
-                           Visibility="{x:Bind Shell.Detail.Due.HasDate, Mode=OneWay, Converter={StaticResource Visible}}" />
+                <!--
+                    The due date. A button rather than a label, because the date is the field a
+                    task app is most often opened to change, and the quick choices behind it come
+                    from the core with the instant each one means already worked out.
+                -->
+                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                        AutomationProperties.Name="Due date">
+                    <TextBlock Text="{x:Bind Shell.Detail.Due, Mode=OneWay, Converter={StaticResource DueText}}" />
+                    <Button.Flyout>
+                        <Flyout>
+                            <StackPanel Spacing="4" MinWidth="200">
+                                <TextBlock Text="When" Style="{ThemeResource CaptionTextBlockStyle}" />
+                                <ItemsControl ItemsSource="{x:Bind Shell.Detail.DatePicks, Mode=OneWay}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="bindings:DuePick">
+                                            <Button HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Left"
+                                                    Tag="{x:Bind TitleKey}"
+                                                    Click="OnDuePickChosen"
+                                                    Content="{x:Bind TitleKey, Converter={StaticResource PickTitle}}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="Time" Style="{ThemeResource CaptionTextBlockStyle}"
+                                           Margin="0,8,0,0" />
+                                <ItemsControl ItemsSource="{x:Bind Shell.Detail.TimePicks, Mode=OneWay}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="bindings:DuePick">
+                                            <Button HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Left"
+                                                    Tag="{x:Bind TitleKey}"
+                                                    Click="OnDuePickChosen"
+                                                    Content="{x:Bind TitleKey, Converter={StaticResource PickTitle}}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
 
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <TextBlock Text="{x:Bind Shell.Detail.PriorityGlyph, Mode=OneWay}"

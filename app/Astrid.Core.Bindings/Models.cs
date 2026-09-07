@@ -176,6 +176,33 @@ public sealed record ListSummary
     public override string ToString() => Name;
 }
 
+/// <summary>One quick due-date or time choice.</summary>
+public sealed record DuePick
+{
+    /// <summary>A resource key. The core never returns words — see <c>astrid_core::rows</c>.</summary>
+    [JsonPropertyName("titleKey")] public string TitleKey { get; init; } = string.Empty;
+
+    /// <summary>The instant this choice means, or null for "no due date".</summary>
+    [JsonPropertyName("dueDateTime")] public string? DueDateTime { get; init; }
+
+    [JsonPropertyName("hour")] public int? Hour { get; init; }
+
+    /// <summary>Whether the task is already set to this.</summary>
+    [JsonPropertyName("isSelected")] public bool IsSelected { get; init; }
+}
+
+/// <summary>The quick choices for one task.</summary>
+public sealed record DueDateOptions
+{
+    [JsonPropertyName("isAllDay")] public bool IsAllDay { get; init; }
+
+    [JsonPropertyName("dueDateTime")] public string? DueDateTime { get; init; }
+
+    [JsonPropertyName("dates")] public IReadOnlyList<DuePick> Dates { get; init; } = [];
+
+    [JsonPropertyName("times")] public IReadOnlyList<DuePick> Times { get; init; } = [];
+}
+
 /// <summary>What the Outbox is holding, for the "not synced yet" indicator.</summary>
 public sealed record OutboxStats
 {

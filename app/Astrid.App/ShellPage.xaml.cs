@@ -287,6 +287,29 @@ public sealed partial class ShellPage : UserControl
 
     private void OnCloseDetail(object sender, RoutedEventArgs args) => Shell.Detail.Close();
 
+    /// <summary>
+    /// Somebody chose a quick due-date option.
+    /// </summary>
+    /// <remarks>
+    /// The button carries the option's key and the view model holds the instant that goes with it,
+    /// so the window never computes a date. Every part of that arithmetic — daylight saving, all-day
+    /// storage, what "morning" means where the reader is — is decided in the core for all three
+    /// clients.
+    /// </remarks>
+    private async void OnDuePickChosen(object sender, RoutedEventArgs args)
+    {
+        if (sender is not FrameworkElement { Tag: string key })
+        {
+            return;
+        }
+        var pick = Shell.Detail.DatePicks.Concat(Shell.Detail.TimePicks)
+            .FirstOrDefault(option => option.TitleKey == key);
+        if (pick is not null)
+        {
+            await Shell.Detail.TakeDuePickAsync(pick);
+        }
+    }
+
     private async void OnDetailChecked(object sender, RoutedEventArgs args) =>
         await Shell.Detail.SetCompletedAsync(true);
 

@@ -132,7 +132,9 @@ public sealed partial class DueLabelConverter : IValueConverter
             "tomorrow" => "Tomorrow",
             "yesterday" => "Yesterday",
             "on" => Format(due),
-            _ => string.Empty,
+            // A task with no date reads as "No due date" rather than as nothing: this text is on a
+            // button, and a button with no label is one nobody knows they can press.
+            _ => "No due date",
         };
     }
 
@@ -156,4 +158,43 @@ public sealed partial class DueLabelConverter : IValueConverter
         var day = date.ToDateTime(TimeOnly.MinValue).ToString("ddd d MMM");
         return due.Time is { Length: > 0 } time ? $"{day}, {time}" : day;
     }
+}
+
+/// <summary>
+/// A resource key from the core, as words.
+/// </summary>
+/// <remarks>
+/// <para>
+/// The core returns <c>picker.today</c> rather than "Today" on purpose — see
+/// <c>astrid_core::rows::due_picks</c> — so the arithmetic lives in one place and the words live
+/// where they can be translated. This is the lookup, and it is the only place in the shell that
+/// turns a key into English.
+/// </para>
+/// <para>
+/// The table here is the placeholder for the <c>.resw</c> resources. Keeping it in one converter
+/// rather than scattered through XAML is what makes that swap a small change; an unknown key falls
+/// back to itself, which is ugly on screen and immediately obvious in a screenshot, rather than
+/// blank and invisible.
+/// </para>
+/// </remarks>
+public sealed partial class PickTitleConverter : IValueConverter
+{
+    private static readonly Dictionary<string, string> Titles = new(StringComparer.Ordinal)
+    {
+        ["picker.no_due_date"] = "No due date",
+        ["picker.today"] = "Today",
+        ["picker.tomorrow"] = "Tomorrow",
+        ["picker.in_3_days"] = "In 3 days",
+        ["picker.next_week"] = "Next week",
+        ["picker.morning"] = "Morning",
+        ["picker.afternoon"] = "Afternoon",
+        ["picker.evening"] = "Evening",
+        ["picker.night"] = "Night",
+    };
+
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is string key && Titles.TryGetValue(key, out var title) ? title : value ?? string.Empty;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("titles are read-only in the UI");
 }

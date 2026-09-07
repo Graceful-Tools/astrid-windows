@@ -41,6 +41,12 @@ public sealed class TaskDetailViewModel : ObservableObject
         _core = core;
     }
 
+    /// <summary>The quick date choices, with the instant each one means.</summary>
+    public ObservableCollection<DuePick> DatePicks { get; } = [];
+
+    /// <summary>The quick time choices.</summary>
+    public ObservableCollection<DuePick> TimePicks { get; } = [];
+
     /// <summary>The order to lay the fields out in, as the core gave it.</summary>
     public ObservableCollection<string> FieldOrder { get; } = [];
 
@@ -135,6 +141,8 @@ public sealed class TaskDetailViewModel : ObservableObject
         Subtasks.Clear();
         ListChips.Clear();
         FieldOrder.Clear();
+        DatePicks.Clear();
+        TimePicks.Clear();
     }
 
     /// <summary>Re-read the open task. What a change notification for it does.</summary>
@@ -164,6 +172,10 @@ public sealed class TaskDetailViewModel : ObservableObject
 
             ErrorMessage = null;
             Read(response.Value);
+            // The quick choices depend on the task's own date, so they are re-read with it. Both
+            // are cache reads; the alternative is a picker that offers "Today" as unselected on a
+            // task somebody just set to today.
+            await LoadDuePicksAsync(cancellationToken);
         }
         finally
         {
@@ -199,6 +211,39 @@ public sealed class TaskDetailViewModel : ObservableObject
             ["dueDateTime"] = dueDateTime,
             ["isAllDay"] = isAllDay,
         }, cancellationToken);
+
+    /// <summary>
+    /// Take a quick choice: a date, or a time of day.
+    /// </summary>
+    /// <remarks>
+    /// A time makes the task timed; clearing the date leaves it all-day, which is the state a task
+    /// with no date is in.
+    /// </remarks>
+    public Task<bool> TakeDuePickAsync(DuePick pick, CancellationToken cancellationToken = default)
+        => SetDueDateAsync(pick.DueDateTime, isAllDay: pick.Hour is null && pick.DueDateTime is not null
+            ? IsAllDay
+            : pick.Hour is null, cancellationToken);
+
+    /// <summary>Whether the open task is all-day. Drawn from the last set of choices read.</summary>
+    public bool IsAllDay { get; private set; } = true;
+
+    /// <summary>Fetch the quick choices for the open task.</summary>
+    public async Task LoadDuePicksAsync(CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return;
+        }
+        var response = await _core.CallAsync(Commands.DueDateOptions(TaskId), cancellationToken);
+        var options = response.Read<DueDateOptions>();
+        if (options is null)
+        {
+            return;
+        }
+        IsAllDay = options.IsAllDay;
+        Replace(DatePicks, options.Dates);
+        Replace(TimePicks, options.Times);
+    }
 
     /// <summary>
     /// Complete or un-complete the open task.
