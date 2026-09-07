@@ -31,6 +31,7 @@ public sealed class ListSettingsViewModel : ObservableObject
     private bool _canLeave;
     private bool _isLoading;
     private string? _errorMessage;
+    private bool _needsSignIn;
 
     public ListSettingsViewModel(IAstridCore core)
     {
@@ -81,6 +82,20 @@ public sealed class ListSettingsViewModel : ObservableObject
     {
         get => _isLoading;
         private set => Set(ref _isLoading, value);
+    }
+
+    /// <summary>
+    /// The session has expired.
+    /// </summary>
+    /// <remarks>
+    /// Membership is the first thing to notice, because it is the only screen here that reaches
+    /// the network on its own. Reporting "the session is not valid" as a red line beside an empty
+    /// member list would leave somebody staring at a message instead of a sign-in button.
+    /// </remarks>
+    public bool NeedsSignIn
+    {
+        get => _needsSignIn;
+        private set => Set(ref _needsSignIn, value);
     }
 
     public string? ErrorMessage
@@ -212,6 +227,12 @@ public sealed class ListSettingsViewModel : ObservableObject
         {
             ErrorMessage = null;
             return true;
+        }
+        if (response.NeedsSignIn)
+        {
+            NeedsSignIn = true;
+            ErrorMessage = null;
+            return false;
         }
         ErrorMessage = response.IsStillPending
             ? "That needs a connection — nobody has been invited yet."

@@ -109,6 +109,23 @@ public sealed class ListSettingsViewModelTests
         Assert.NotNull(view.ErrorMessage);
     }
 
+    /// <summary>
+    /// An expired session belongs on the sign-in screen, not in a red line beside an empty member
+    /// list. Membership is usually the first thing to notice, being the only screen that reaches
+    /// the network on its own.
+    /// </summary>
+    [Fact]
+    public async Task An_expired_session_asks_for_a_sign_in_rather_than_showing_an_error()
+    {
+        var core = new FakeCore().AnswerFailure("listMembers", AstridFailureKind.Unauthorized);
+        var view = new ListSettingsViewModel(core);
+
+        await view.LoadAsync("l1");
+
+        Assert.True(view.NeedsSignIn);
+        Assert.Null(view.ErrorMessage);
+    }
+
     [Fact]
     public async Task Removing_somebody_reloads_the_list()
     {

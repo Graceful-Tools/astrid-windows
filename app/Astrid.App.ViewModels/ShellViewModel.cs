@@ -29,6 +29,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private string? _statusMessage;
     private bool _disposed;
     private bool _isBoardView;
+    private bool _isChatOpen;
 
     /// <param name="post">
     /// Runs work on the UI thread. Given by the shell; a test passes something that runs it inline.
@@ -43,6 +44,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Detail = new TaskDetailViewModel(core);
         Board = new BoardViewModel(core);
         ListSettings = new ListSettingsViewModel(core);
+        Chat = new ChatViewModel(core);
         _core.Changed += OnChanged;
     }
 
@@ -72,11 +74,39 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// <summary>The open list's settings and members, loaded when they are asked for.</summary>
     public ListSettingsViewModel ListSettings { get; }
 
+    /// <summary>The open list's conversation.</summary>
+    public ChatViewModel Chat { get; }
+
+    /// <summary>Whether the conversation is on screen.</summary>
+    public bool IsChatOpen
+    {
+        get => _isChatOpen;
+        private set => Set(ref _isChatOpen, value);
+    }
+
+    /// <summary>Show or hide the conversation for the open list.</summary>
+    public async Task ShowChatAsync(bool open, CancellationToken cancellationToken = default)
+    {
+        IsChatOpen = open;
+        if (open)
+        {
+            await Chat.OpenAsync(Tasks.ListId, cancellationToken);
+        }
+    }
+
     /// <summary>Load the open list's settings.</summary>
-    public Task LoadListSettingsAsync(CancellationToken cancellationToken = default) =>
-        string.IsNullOrEmpty(Tasks.ListId)
-            ? Task.CompletedTask
-            : ListSettings.LoadAsync(Tasks.ListId, cancellationToken);
+    public async Task LoadListSettingsAsync(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(Tasks.ListId))
+        {
+            return;
+        }
+        await ListSettings.LoadAsync(Tasks.ListId, cancellationToken);
+        // Membership is the one screen that reaches the network on its own, so it is usually the
+        // first to notice an expired session. That belongs on the sign-in screen, not in a red line
+        // beside an empty member list.
+        NeedsSignIn |= ListSettings.NeedsSignIn;
+    }
 
     /// <summary>
     /// Delete the open list.
@@ -375,6 +405,12 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                     break;
                 case "list":
                     await Sidebar.LoadAsync();
+                    break;
+                case "chat":
+                    if (IsChatOpen)
+                    {
+                        await Chat.RefreshAsync();
+                    }
                     break;
                 case "remindersDue":
                     await RaiseRemindersAsync();

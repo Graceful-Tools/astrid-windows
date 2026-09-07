@@ -203,6 +203,48 @@ public sealed record DueDateOptions
     [JsonPropertyName("times")] public IReadOnlyList<DuePick> Times { get; init; } = [];
 }
 
+/// <summary>One message in a list's conversation.</summary>
+public sealed record MessageRow
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("content")] public string Content { get; init; } = string.Empty;
+
+    /// <summary>Null for a message the server wrote rather than a person.</summary>
+    [JsonPropertyName("authorName")] public string? AuthorName { get; init; }
+
+    [JsonPropertyName("initials")] public string Initials { get; init; } = string.Empty;
+
+    [JsonPropertyName("image")] public string? Image { get; init; }
+
+    /// <summary>Whether this account wrote it. Which side the bubble sits on.</summary>
+    [JsonPropertyName("isMine")] public bool IsMine { get; init; }
+
+    /// <summary>Still in the Outbox. Not an error.</summary>
+    [JsonPropertyName("isPending")] public bool IsPending { get; init; }
+
+    /// <summary>Written by the server — "Dana joined the list" — rather than by somebody.</summary>
+    [JsonPropertyName("isSystem")] public bool IsSystem { get; init; }
+
+    [JsonPropertyName("createdAt")] public string? CreatedAt { get; init; }
+
+    /// <summary>What goes above the bubble: who said it, and whether it has landed.</summary>
+    public string Byline => IsSystem
+        ? string.Empty
+        : IsPending ? $"{AuthorName} · sending" : AuthorName ?? string.Empty;
+}
+
+/// <summary>A list's conversation.</summary>
+public sealed record ChatPanel
+{
+    /// <summary>Null when this deployment has no channel for the list.</summary>
+    [JsonPropertyName("channelId")] public string? ChannelId { get; init; }
+
+    [JsonPropertyName("name")] public string? Name { get; init; }
+
+    [JsonPropertyName("messages")] public IReadOnlyList<MessageRow> Messages { get; init; } = [];
+}
+
 /// <summary>Somebody a list is shared with.</summary>
 public sealed record ListMember
 {

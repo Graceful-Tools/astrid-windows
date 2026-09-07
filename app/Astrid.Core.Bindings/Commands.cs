@@ -72,6 +72,20 @@ public static class Commands
     /// board could not offer an AI agent at all. Assigning is an ordinary update carrying an
     /// <c>assigneeId</c>; this is only the question of who may be offered.
     /// </remarks>
+    /// <summary>A list's conversation, from the cache.</summary>
+    public static object Chat(string listId) => new WithListId("chat", listId);
+
+    /// <summary>Catch the conversation up with the server.</summary>
+    /// <remarks>
+    /// Separate from <see cref="Chat"/> so a panel draws instantly from what is already on this
+    /// machine and catches up afterwards — the same order the task list uses.
+    /// </remarks>
+    public static object RefreshChat(string listId) => new WithListId("refreshChat", listId);
+
+    /// <summary>Say something. In the transcript before this returns.</summary>
+    public static object SendChatMessage(string channelId, string content, string? replyToId = null) =>
+        new SendMessageRequest("sendChatMessage", channelId, content, replyToId);
+
     /// <summary>
     /// Who a list is shared with, and what this account may do about it.
     /// </summary>
@@ -332,6 +346,12 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("content")] string Content);
+
+    private sealed record SendMessageRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("channelId")] string ChannelId,
+        [property: JsonPropertyName("content")] string Content,
+        [property: JsonPropertyName("replyToId")] string? ReplyToId);
 
     private sealed record InviteRequest(
         [property: JsonPropertyName("kind")] string Kind,

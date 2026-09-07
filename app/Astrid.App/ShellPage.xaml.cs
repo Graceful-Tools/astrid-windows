@@ -362,6 +362,26 @@ public sealed partial class ShellPage : UserControl
     private async void OnDetailTitleCommitted(object sender, RoutedEventArgs args) =>
         await Shell.Detail.SaveTitleAsync(DetailTitleBox.Text);
 
+    // ── The conversation ─────────────────────────────────────────────────────────────────────
+
+    private async void OnToggleChat(object sender, RoutedEventArgs args)
+    {
+        await Shell.ShowChatAsync(ChatToggle.IsChecked == true);
+    }
+
+    private async void OnChatKeyDown(object sender, KeyRoutedEventArgs args)
+    {
+        if (args.Key != VirtualKey.Enter)
+        {
+            return;
+        }
+        args.Handled = true;
+        if (await Shell.Chat.SendAsync(ChatBox.Text))
+        {
+            ChatBox.Text = string.Empty;
+        }
+    }
+
     // ── The list's settings and members ──────────────────────────────────────────────────────
 
     private async void OnListSettingsOpening(object sender, object args)

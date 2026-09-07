@@ -56,7 +56,7 @@ still there. Built and tested for x64 and ARM64 by `npm run predeploy`.
 | Piece | Path | State |
 |---|---|---|
 | List settings, sharing and members | `astrid_core::services::list` → shell | done |
-| Chat | `astrid_core::services::chat` → shell | not started |
+| Chat | `astrid_core::services::chat`, `rows::chat` → shell | done |
 | Attachments | — | not started |
 | Filters and saved views | `astrid_core::filters` → shell | partly — the virtual lists are done |
 | Account and settings screens | — | not started |

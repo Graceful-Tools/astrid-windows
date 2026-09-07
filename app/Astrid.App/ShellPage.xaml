@@ -31,9 +31,10 @@
                 <ColumnDefinition Width="260" />
                 <ColumnDefinition Width="*" />
                 <!--
-                    The detail pane. Auto rather than a fixed width so it takes no space at all
-                    when nothing is open, and the list gets the whole window back.
+                    The conversation, then the detail pane. Auto rather than fixed widths so each
+                    takes no space at all when it is shut, and the list gets the window back.
                 -->
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
@@ -178,6 +179,17 @@
                             same way. A second surface that behaved almost-but-not-quite like the
                             list is how two code paths for one thing begin.
                         -->
+                        <!--
+                            The conversation about this list. A panel beside the tasks rather than
+                            a screen of its own: it is about the work on the left, and reading it
+                            should not mean losing sight of that.
+                        -->
+                        <ToggleButton x:Name="ChatToggle"
+                                      Content="Chat"
+                                      VerticalAlignment="Center"
+                                      AutomationProperties.Name="Chat"
+                                      IsChecked="{x:Bind Shell.IsChatOpen, Mode=OneWay}"
+                                      Click="OnToggleChat" />
                         <!--
                             The list's own settings: its name, who it is shared with, and the way
                             out of it. Behind a button rather than always on screen, because it is
@@ -435,13 +447,55 @@
             </Grid>
 
         <!--
+            The conversation. Beside the list, and collapsed rather than narrow when it is shut, so
+            it is out of the tab order as well as out of the way.
+        -->
+        <Grid Grid.Column="2" Width="320" Padding="12"
+              Background="{ThemeResource LayerFillColorDefaultBrush}"
+              Visibility="{x:Bind Shell.IsChatOpen, Mode=OneWay, Converter={StaticResource Visible}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Text="Chat" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,8">
+                <ItemsControl ItemsSource="{x:Bind Shell.Chat.Messages, Mode=OneWay}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="bindings:MessageRow">
+                            <StackPanel Margin="0,0,0,10">
+                                <TextBlock Text="{x:Bind Byline}"
+                                           Style="{ThemeResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           Visibility="{x:Bind Byline, Converter={StaticResource Visible}}" />
+                                <TextBlock Text="{x:Bind Content}" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+            <TextBlock Grid.Row="2"
+                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                       TextWrapping="Wrap"
+                       Text="{x:Bind Shell.Chat.ErrorMessage, Mode=OneWay}"
+                       Visibility="{x:Bind Shell.Chat.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
+            <TextBox Grid.Row="3"
+                     x:Name="ChatBox"
+                     PlaceholderText="Say something"
+                     AutomationProperties.Name="Message"
+                     IsEnabled="{x:Bind Shell.Chat.HasChannel, Mode=OneWay}"
+                     KeyDown="OnChatKeyDown" />
+        </Grid>
+
+        <!--
             The task detail. Collapsed rather than merely narrow when nothing is open, so it is out
             of the tab order as well as out of the way.
 
             The rows are laid out in the order the core gave — Who, Date, Priority, Lists — which
             is a product decision shared with web and both Apple clients. It is not re-decided here.
         -->
-        <Grid Grid.Column="2" Width="340" Padding="16"
+        <Grid Grid.Column="3" Width="340" Padding="16"
               Background="{ThemeResource LayerFillColorDefaultBrush}"
               Visibility="{x:Bind Shell.Detail.IsOpen, Mode=OneWay, Converter={StaticResource Visible}}">
             <Grid.RowDefinitions>
