@@ -32,6 +32,30 @@ The parser is deliberately anchored on markers (`switch (key) {`) rather than a 
 regex. Line endings and indentation differ between checkouts, and a brittle match fails as
 "contract missing" rather than "parser stale" — the worse of the two errors to be handed.
 
+### Sign-in exists on both sides, and is testable without a server
+
+The browser hand-off is built end to end: `astrid-web` serves `/auth/desktop`,
+`POST /api/auth/desktop/grant` and `POST /api/v1/auth/desktop/exchange`; this crate has the client
+half in `auth::desktop_handoff`. Both are pure enough to test with no network — 17 tests here, 40 on
+the server — and the rules are stated once per side in [CONTRACTS.md](./CONTRACTS.md) §4 so neither
+can quietly drift.
+
+Two things came out of building it that were not obvious from the plan:
+
+- **The plan said Redis; it is a database table instead.** Redis is optional in that deployment and
+  returns null with no `REDIS_URL`, so a Redis-backed code store would have made sign-in impossible
+  against a local dev server — which is exactly what M0's exit criterion requires. The table also
+  gets hashing at rest and an atomic single-use claim for free, matching what astrid-web already
+  decided for OAuth codes.
+- **The server has to name the session cookie.** Production issues
+  `__Secure-next-auth.session-token` and development does not, and a native client picks a name
+  before it has ever seen a server cookie. So the exchange returns `sessionCookieName`, and
+  `session_cookie::replacing_token_named` uses it. Without it, signing in against a dev server
+  succeeds and then reads as signed out on the very next request.
+
+What is still untested is the part that needs a running shell: whether protocol activation actually
+delivers the callback to a packaged app, cold and already-running. That spike is still open below.
+
 ### Three divergences between the existing clients
 
 Found while porting the repeating calculator, recorded in [CONTRACTS.md](./CONTRACTS.md) rather

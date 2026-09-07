@@ -23,6 +23,13 @@ chrono = { version = "0.4", default-features = false, features = ["std", "clock"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
+# Desktop hand-off sign-in: PKCE is SHA-256 + base64url, the callback arrives as a
+# URL that must be parsed rather than string-matched, and the verifier has to come
+# from the OS CSPRNG.
+sha2 = "0.10"
+base64 = "0.22"
+getrandom = "0.2"
+url = "2"
 
 [profile.release]
 lto = "thin"
