@@ -187,6 +187,84 @@ public sealed class TaskListViewModelTests
     }
 
     /// <summary>
+    /// Search replaces what the list shows. The results are rows like any other, so they complete
+    /// and open exactly the same way.
+    /// </summary>
+    [Fact]
+    public async Task Searching_replaces_the_list_with_its_results()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(2, "Buy milk", "Book flights"))
+            .AnswerOk("searchTasks", Window(1, "Book flights"));
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Home");
+
+        await view.SearchAsync("book");
+
+        Assert.True(view.IsShowingSearchResults);
+        Assert.Single(view.Rows);
+        Assert.Equal("Book flights", view.Rows[0].Title);
+    }
+
+    /// <summary>Emptying the box goes back to the list rather than leaving the results up.</summary>
+    [Fact]
+    public async Task Clearing_the_search_returns_to_the_list()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(2, "Buy milk", "Book flights"))
+            .AnswerOk("searchTasks", Window(1, "Book flights"))
+            .AnswerOk("rowsForList", Window(2, "Buy milk", "Book flights"));
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Home");
+        await view.SearchAsync("book");
+
+        await view.SearchAsync("");
+
+        Assert.False(view.IsShowingSearchResults);
+        Assert.Equal(2, view.Rows.Count);
+    }
+
+    /// <summary>
+    /// A refresh while results are on screen re-runs the search. Reloading the list underneath
+    /// would replace what somebody is reading every time a colleague touched anything.
+    /// </summary>
+    [Fact]
+    public async Task A_refresh_during_a_search_keeps_the_results()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(2, "Buy milk", "Book flights"))
+            .AnswerOk("searchTasks", Window(1, "Book flights"))
+            .AnswerOk("searchTasks", Window(1, "Book flights"));
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Home");
+        await view.SearchAsync("book");
+
+        await view.RefreshAsync();
+
+        Assert.True(view.IsShowingSearchResults);
+        Assert.Single(view.Rows);
+        Assert.Equal(2, core.SentKinds().Count(kind => kind == "searchTasks"));
+    }
+
+    /// <summary>Choosing a list is a way out of a search, and the box has to agree.</summary>
+    [Fact]
+    public async Task Opening_a_list_ends_the_search()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(1, "Buy milk"))
+            .AnswerOk("searchTasks", Window(1, "Book flights"))
+            .AnswerOk("rowsForList", Window(1, "Buy milk"));
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Home");
+        await view.SearchAsync("book");
+
+        await view.OpenAsync("l2", "Work");
+
+        Assert.False(view.IsShowingSearchResults);
+        Assert.Equal(string.Empty, view.SearchQuery);
+    }
+
+    /// <summary>
     /// A refresh keeps as many rows as were on screen, so it does not scroll the list back to the
     /// top under somebody's cursor.
     /// </summary>

@@ -48,7 +48,7 @@ still there. Built and tested for x64 and ARM64 by `npm run predeploy`.
 | UI smoke tests | `app/Astrid.App.UITests/` | not started |
 | Assignee picker | — | not started |
 | Repeat editor | — | not started |
-| Search | — | not started |
+| Search | `astrid_core::services::search` → shell | done |
 | Reminders and toasts | — | not started |
 
 ## M3 — collaboration and remaining parity

@@ -156,6 +156,24 @@ public sealed partial class ShellPage : UserControl
     private async void OnSync(object sender, RoutedEventArgs args) => await Shell.SyncAsync();
 
     /// <summary>
+    /// Search as the query is typed.
+    /// </summary>
+    /// <remarks>
+    /// Only when the change came from the keyboard: the box also raises this when its text is set
+    /// in code, and searching for what was just put there would fight whoever set it. The search
+    /// itself is a cache read, so there is no debounce — a round trip that never leaves the process
+    /// is faster than the delay a debounce would add.
+    /// </remarks>
+    private async void OnSearchChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+    {
+        if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput)
+        {
+            return;
+        }
+        await Shell.Tasks.SearchAsync(sender.Text);
+    }
+
+    /// <summary>
     /// Open the browser to sign in.
     /// </summary>
     /// <remarks>

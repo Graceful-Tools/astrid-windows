@@ -49,9 +49,45 @@ public sealed class TaskDetailViewModelTests
         Assert.Equal("Home", view.ListChips[0].Name);
         Assert.Equal("Book flights", view.Subtasks[0].Title);
         Assert.Equal("asked Sam", view.Comments[0].Content);
-        // Two: the screen, and the quick date choices that depend on the task's own date. Both are
-        // cache reads.
-        Assert.Equal(["taskDetail", "dueDateOptions"], core.SentKinds());
+        // The screen and the quick date choices, both cache reads, and then the comment thread
+        // from the server — sync does not pull threads, so one is fetched when it is opened.
+        Assert.Equal(["taskDetail", "dueDateOptions", "refreshComments"], core.SentKinds());
+    }
+
+    /// <summary>
+    /// A thread that cannot be fetched leaves the cached one on screen. That is the right thing to
+    /// be looking at offline, and an error banner over a working screen is noise.
+    /// </summary>
+    [Fact]
+    public async Task A_comment_refresh_that_fails_leaves_the_cached_thread_alone()
+    {
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail(comments: ["asked Sam"]))
+            .AnswerFailure("refreshComments", AstridFailureKind.Offline, "no network");
+        var view = new TaskDetailViewModel(core);
+
+        await view.OpenAsync("t1");
+
+        Assert.Equal("asked Sam", view.Comments[0].Content);
+        Assert.Null(view.ErrorMessage);
+    }
+
+    /// <summary>And one that succeeds replaces it from the answer, without re-reading the screen.</summary>
+    [Fact]
+    public async Task A_comment_refresh_updates_the_thread_from_its_own_answer()
+    {
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail(comments: ["stale"]))
+            .AnswerOk("refreshComments", new object[]
+            {
+                new { id = "c1", content = "fresh", createdAt = "2026-09-07T12:00:00Z" },
+            });
+        var view = new TaskDetailViewModel(core);
+
+        await view.OpenAsync("t1");
+
+        Assert.Equal("fresh", view.Comments[0].Content);
+        Assert.Equal(1, core.SentKinds().Count(kind => kind == "taskDetail"));
     }
 
     /// <summary>

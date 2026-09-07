@@ -39,6 +39,8 @@ public sealed class TaskListViewModel : ObservableObject
     private string? _errorMessage;
     private bool _needsSignIn;
     private TaskRow? _selected;
+    private string _searchQuery = string.Empty;
+    private bool _isSearching;
 
     public TaskListViewModel(IAstridCore core)
     {
@@ -117,6 +119,28 @@ public sealed class TaskListViewModel : ObservableObject
 
     public bool HasSelection => Selected is not null;
 
+    /// <summary>
+    /// What is being searched for, or empty.
+    /// </summary>
+    /// <remarks>
+    /// Searching replaces what the list shows rather than opening a separate screen: the results
+    /// are rows like any other, they complete and open the same way, and a second surface that
+    /// behaved almost-but-not-quite like the list is how two code paths for one thing begin.
+    /// </remarks>
+    public string SearchQuery
+    {
+        get => _searchQuery;
+        private set
+        {
+            if (Set(ref _searchQuery, value))
+            {
+                Raise(nameof(IsShowingSearchResults));
+            }
+        }
+    }
+
+    public bool IsShowingSearchResults => _isSearching;
+
     public bool IsEmpty => Rows.Count == 0 && !IsLoading;
 
     /// <summary>Move the selection by <paramref name="delta"/> rows, stopping at the ends.</summary>
@@ -144,6 +168,11 @@ public sealed class TaskListViewModel : ObservableObject
     /// <summary>Show a different list.</summary>
     public async Task OpenAsync(string listId, string listName, CancellationToken cancellationToken = default)
     {
+        // Choosing a list is a way out of a search, and leaving the query in the box while showing
+        // a list's contents would be showing one thing and saying another.
+        SearchQuery = string.Empty;
+        _isSearching = false;
+        Raise(nameof(IsShowingSearchResults));
         ListId = listId;
         ListName = listName;
         Rows.Clear();
@@ -192,9 +221,62 @@ public sealed class TaskListViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Search, or go back to the list when the query is emptied.
+    /// </summary>
+    /// <remarks>
+    /// The core decides what is too short to search for and answers with nothing, so a query of one
+    /// character shows an empty result list rather than flashing the whole account on the way to
+    /// the answer.
+    /// </remarks>
+    public async Task SearchAsync(string query, CancellationToken cancellationToken = default)
+    {
+        SearchQuery = query;
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            _isSearching = false;
+            Raise(nameof(IsShowingSearchResults));
+            await RefreshAsync(cancellationToken);
+            return;
+        }
+
+        _isSearching = true;
+        Raise(nameof(IsShowingSearchResults));
+        IsLoading = true;
+        try
+        {
+            var response = await _core.CallAsync(
+                Commands.SearchTasks(query, limit: PageSize), cancellationToken);
+            if (!Handle(response))
+            {
+                return;
+            }
+            var window = response.Read<RowWindow>();
+            if (window is null)
+            {
+                return;
+            }
+            Total = window.Total;
+            Replace(window.Rows);
+        }
+        finally
+        {
+            IsLoading = false;
+            Raise(nameof(IsEmpty));
+        }
+    }
+
     /// <summary>Reload from the top. What a change notification and a pull-to-refresh both do.</summary>
     public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {
+        // A refresh while search results are on screen re-runs the search. Reloading the list
+        // underneath would replace what somebody is reading with something they did not ask for,
+        // every time a colleague touched anything.
+        if (_isSearching)
+        {
+            await SearchAsync(SearchQuery, cancellationToken);
+            return;
+        }
         if (string.IsNullOrEmpty(ListId))
         {
             return;

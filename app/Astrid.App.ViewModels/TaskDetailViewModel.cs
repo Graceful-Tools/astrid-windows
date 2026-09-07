@@ -125,11 +125,40 @@ public sealed class TaskDetailViewModel : ObservableObject
     }
 
     /// <summary>Open a task.</summary>
+    /// <remarks>
+    /// The cached screen first, then a fetch of the comments. Sync pulls tasks and lists but not
+    /// comment threads — there are too many and almost all of them are never looked at — so a
+    /// thread is fetched when somebody opens it. Cache first means the pane is filled before the
+    /// request goes out, rather than blank until it comes back.
+    /// </remarks>
     public async Task OpenAsync(string taskId, CancellationToken cancellationToken = default)
     {
         TaskId = taskId;
         IsOpen = true;
         await ReloadAsync(cancellationToken);
+        await RefreshCommentsAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Fetch the comment thread from the server.
+    /// </summary>
+    /// <remarks>
+    /// A failure here is not shown. The cached thread is still on screen, which is the right thing
+    /// to be looking at offline, and an error banner over a working screen is noise.
+    /// </remarks>
+    public async Task RefreshCommentsAsync(CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return;
+        }
+        var response = await _core.CallAsync(Commands.RefreshComments(TaskId), cancellationToken);
+        if (response.Ok)
+        {
+            // The refreshed thread comes back with the answer, so the pane is updated from it
+            // directly rather than by re-reading the whole screen.
+            Replace(Comments, response.ReadArray<CommentSummary>());
+        }
     }
 
     /// <summary>Close the pane.</summary>

@@ -65,6 +65,17 @@ public static class Commands
 
     public static object CurrentUser() => new KindOnly("currentUser");
 
+    /// <summary>
+    /// Find a task by what it says.
+    /// </summary>
+    /// <remarks>
+    /// Over the cache: there is no server search endpoint, and every client matches over what it
+    /// already has. Instant, and it works on a train.
+    /// </remarks>
+    public static object SearchTasks(string query, string? listId = null,
+        bool? includeCompleted = null, int? limit = null) =>
+        new SearchTasksRequest("searchTasks", query, listId, includeCompleted, limit);
+
     /// <summary>Whether there is a stored session. Not whether the server still accepts it.</summary>
     public static object IsSignedIn() => new KindOnly("isSignedIn");
 
@@ -227,6 +238,13 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("content")] string Content);
+
+    private sealed record SearchTasksRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("query")] string Query,
+        [property: JsonPropertyName("listId")] string? ListId,
+        [property: JsonPropertyName("includeCompleted")] bool? IncludeCompleted,
+        [property: JsonPropertyName("limit")] int? Limit);
 
     private sealed record DetailRequest(
         [property: JsonPropertyName("kind")] string Kind,

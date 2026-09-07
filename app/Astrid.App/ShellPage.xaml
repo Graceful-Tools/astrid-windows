@@ -163,10 +163,25 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0"
-                               Text="{x:Bind Shell.Tasks.ListName, Mode=OneWay}"
-                               Style="{ThemeResource TitleTextBlockStyle}"
-                               VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12"
+                                VerticalAlignment="Center">
+                        <TextBlock Text="{x:Bind Shell.Tasks.ListName, Mode=OneWay}"
+                                   Style="{ThemeResource TitleTextBlockStyle}"
+                                   VerticalAlignment="Center" />
+                        <!--
+                            Search replaces what the list shows rather than opening a screen of its
+                            own: the results are rows like any other, and they complete and open the
+                            same way. A second surface that behaved almost-but-not-quite like the
+                            list is how two code paths for one thing begin.
+                        -->
+                        <AutoSuggestBox x:Name="SearchBox"
+                                        Width="220"
+                                        VerticalAlignment="Center"
+                                        QueryIcon="Find"
+                                        PlaceholderText="Search tasks"
+                                        AutomationProperties.Name="Search tasks"
+                                        TextChanged="OnSearchChanged" />
+                    </StackPanel>
                     <!-- Not synced yet. Quiet, because it is a normal state and not a problem. -->
                     <TextBlock Grid.Column="1"
                                Text="Not synced yet"
