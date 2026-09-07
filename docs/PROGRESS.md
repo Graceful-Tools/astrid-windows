@@ -41,8 +41,15 @@ still there. Built and tested for x64 and ARM64 by `npm run predeploy`.
 | The shared keyboard scheme, dispatched | `astrid_core::keyboard` → shell | done |
 | Sign-in through the browser hand-off | `astrid_core::services::auth` → shell | done |
 | Board view | — | not started |
+| Due-date quick picks | `astrid_core::rows::due_picks` → shell | done |
+| Virtual lists (Today, Not in a List, I've Assigned) | `astrid_core::filters` → shell | done |
+| Background sync and live updates | `astrid_core::app::background` | done |
 | Localisation (`.resw`) | — | not started |
 | UI smoke tests | `app/Astrid.App.UITests/` | not started |
+| Assignee picker | — | not started |
+| Repeat editor | — | not started |
+| Search | — | not started |
+| Reminders and toasts | — | not started |
 
 ## M3 — collaboration and remaining parity
 
