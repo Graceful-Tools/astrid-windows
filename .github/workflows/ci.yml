@@ -1,0 +1,100 @@
+# The PR gate. Mirrors `npm run predeploy` so a green local run means a green CI run.
+#
+# ARM64 is a shipping architecture, so it is cross-built on every push and, where a native ARM
+# runner is available, tested natively too. A dependency that cannot target ARM64 is caught the day
+# it lands rather than the week of a release.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: core (${{ matrix.name }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: x64
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+          # Native ARM64 runners are still rolling out. The job is allowed to be skipped rather
+          # than to fail the gate; the cross-build below always runs, so ARM64 is never unchecked.
+          - name: arm64
+            runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+    continue-on-error: ${{ matrix.name == 'arm64' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # The toolchain, its components and both targets come from rust-toolchain.toml, so there is
+      # one place that decides which Rust this repo builds with.
+      - name: Show toolchain
+        run: |
+          rustup show
+          cargo --version
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace
+
+  cross-build:
+    name: ARM64 cross-build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: cross-arm64
+      - run: cargo build --workspace --target aarch64-pc-windows-msvc
+
+  contracts:
+    name: cross-platform contracts
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: astrid-windows
+
+      # The fixtures are generated from astrid-web. Checking them against that repo's default
+      # branch is what turns a shared-behaviour change into a failing build here instead of a
+      # divergence a user reports later.
+      #
+      # Needs a repo secret `ASTRID_WEB_READ_TOKEN` with read access to astrid-web (a fine-grained
+      # PAT with Contents: read is enough). Without it this job cannot check out the canonical
+      # source and the check is meaningless, so it fails rather than passing vacuously.
+      - uses: actions/checkout@v4
+        with:
+          repository: Graceful-Tools/astrid-web
+          path: astrid-web
+          token: ${{ secrets.ASTRID_WEB_READ_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Check fixtures against astrid-web
+        working-directory: astrid-windows
+        run: node contracts/export-from-web.mjs --check --web ../astrid-web

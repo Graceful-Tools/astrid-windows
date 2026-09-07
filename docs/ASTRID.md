@@ -1,0 +1,131 @@
+# Astrid for Windows — single source of truth for AI agents
+
+*Read by every AI agent working in this repo, and by anyone new to it.*
+
+This file owns the architecture and the rules. [CLAUDE.md](../CLAUDE.md) and
+[AGENTS.md](../AGENTS.md) are thin operational adapters holding commands and workflow, and they
+point here for everything else. **When architecture changes, change it here and nowhere else** —
+duplicating it into the adapters is how the sibling repos drifted before.
+
+**Read this before touching code that involves:** tasks, task completion, repeating tasks, the
+Outbox, sync, chat, list members, permissions, or any API call.
+
+---
+
+## 0. Non-negotiable rules
+
+These carry over from `astrid-ios/ASTRID.md` §0. Each one exists because breaking it shipped a
+regression on another platform.
+
+1. **All backend writes go through a service.** Never call the API client directly from the shell, a
+   timer, a notification handler or a sync worker. If a service lacks the method you need, add it to
+   the service first.
+2. **Complete a task ONLY via `TaskService::complete_task`.** Never `update_task(completed: true)` —
+   that path skips repeat rollover.
+3. **Completing from a view that lets the user edit fields first?** Copy the edited fields (due date,
+   all-day flag, repeating, repeating data, repeat-from) into the task argument first, so rollover
+   anchors on what the user sees rather than on stale cache.
+4. **Next-occurrence math lives ONLY in `repeating`.** Never inline pattern math. Mirror any change
+   into `astrid-web/types/repeating.ts` and `astrid-ios/.../RepeatingTaskHandler.swift`.
+5. **Preserve offline behaviour.** Writes journal through the Outbox; local-first caching and dedup
+   must keep working. Nothing bypasses the Outbox.
+6. **All API paths are `/api/v1/...`.** New endpoints go in `api::client`, and
+   `docs/API_ENDPOINTS.md` is generated from the source and locked by a test.
+7. **TDD for bug fixes:** write a RED regression test naming the task id, watch it fail, then make
+   it green. Run `npm run predeploy` before calling a task done.
+8. **For breaking API changes, add a new version** — keep the existing one working.
+9. **No business logic in `app/`.** The shell is windows, XAML, key dispatch and platform adapters.
+   If it decides anything about tasks, lists, sync, permissions or user-facing copy, it belongs in
+   `astrid-core`.
+10. **Reuse before you write.** Permission helpers, i18n resources and the shared row view-model
+    already exist; never inline a role comparison or a user-facing string literal.
+
+---
+
+## 1. Why the code is shaped this way
+
+Astrid ships a web app (`astrid-web`, which is also the API server) and an Apple repo
+(`astrid-ios`) containing two apps. The Mac app is the model this repo follows: it adds **zero**
+business logic and is a thin shell over the iOS service layer, so a change that flows web → iOS
+reaches Mac for free.
+
+Windows cannot compile that Swift, so the shared layer is rebuilt once in Rust as `astrid-core`,
+and the WinUI 3 shell sits on it under the same rule. The cost of the port is paid once; the cost
+of a second set of business rules would be paid forever.
+
+```
+app/Astrid.App          WinUI 3, C#      windows, XAML, key dispatch, platform adapters
+app/Astrid.Core.Bindings                 generated C# over the core's C ABI
+crates/astrid-core      Rust             models, API client, SQLite cache, Outbox, services,
+                                         sync, SSE, auth, and every cross-platform contract
+        |
+        v  HTTPS /api/v1/*
+astrid-web (astrid.cc)
+```
+
+`astrid-core` has **no Windows dependency**. Platform services — secure storage, notifications,
+network reachability, file access — arrive through callback traits the shell implements. That keeps
+the crate testable on any machine and keeps the platform boundary visible.
+
+---
+
+## 2. Cross-platform contracts
+
+Rules that must read identically on web, Apple and Windows are locked by **generated fixtures**, not
+by prose. `contracts/fixtures/*.json` is produced from the astrid-web sources by
+`contracts/export-from-web.mjs`; the Rust tests compile those files in, so a web change fails this
+crate's tests instead of shipping a silent divergence.
+
+`cargo xtask check-contracts` (part of `npm run predeploy`) regenerates and diffs them.
+
+| Contract | Canonical | Here | Status |
+|---|---|---|---|
+| Keyboard shortcuts (bare-key scheme + input/modal guard) | `astrid-web/hooks/useKeyboardShortcuts.ts` | `keyboard` | locked by `shortcuts.json` |
+| Repeating-task rollover | `astrid-web/types/repeating.ts` | `repeating` | ported; fixture pending |
+| Session credential format | `astrid-ios/.../SessionCookie.swift` | `auth::session_cookie` | ported with its tests |
+| List permissions, all-day dates, parser, wire shapes, leading control, editing session | see plan §3 | — | to come |
+
+Known divergences between the existing clients are recorded in [CONTRACTS.md](./CONTRACTS.md)
+rather than silently resolved here.
+
+**Change order for any contract:** change web first with its tests, regenerate the fixtures, update
+this client, then mirror into astrid-ios. Deploy web before shipping a client that depends on it.
+
+---
+
+## 3. Where things live
+
+| Area | Path | Notes |
+|---|---|---|
+| Models and wire shapes | `crates/astrid-core/src/model/` | serde; lenient decoding, because the server is permissive |
+| API client | `crates/astrid-core/src/api/` | the only place that speaks HTTP; sends `x-platform: windows-app` |
+| Local cache | `crates/astrid-core/src/store/` | SQLite; the read path never waits on the network |
+| Outbox | `crates/astrid-core/src/outbox/` | the only write path: idempotent, retrying, dependency-ordered, dead-lettering |
+| Services | `crates/astrid-core/src/services/` | the canonical control points |
+| Sync + real time | `crates/astrid-core/src/{sync,realtime}/` | 60s pull, delta sync, SSE with a polling fallback |
+| Contracts | `crates/astrid-core/src/{repeating,permissions,filters,parse,keyboard,rows}/` | pure, fixture-locked |
+| Shell | `app/Astrid.App/` | no business logic |
+| Automation | `crates/xtask/`, `scripts/` | `cargo xtask <command>`, `npm run predeploy` |
+
+---
+
+## 4. Milestones
+
+The full plan, including what each milestone must prove before it is done, is in the approved build
+plan. In short: **M0** foundation spike, **M1** core contracts and services, **M2** shell with
+navigation, list, detail and keyboard, **M3** collaboration and remaining parity, **M4**
+distribution, **M5** external sync providers.
+
+Parity target is the Mac app, minus the Apple-only surfaces (Apple Reminders, on-device Apple
+intelligence, native Sign in with Apple). `docs/PARITY.md` tracks it row by row from M2 onwards.
+
+---
+
+## 5. References
+
+- [CLAUDE.md](../CLAUDE.md) / [AGENTS.md](../AGENTS.md) — commands and workflow
+- [CONTRACTS.md](./CONTRACTS.md) — cross-platform rules and known divergences
+- [context/stack.md](./context/stack.md) — pinned tool versions and machine setup
+- `astrid-ios/ASTRID.md` — the Apple clients' architecture, which this mirrors
+- `astrid-web/docs/PRODUCT_CONTRACT.md` — shared behaviour and copy
+- `astrid-web/docs/API_CONTRACT.md` — the wire contract

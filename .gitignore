@@ -1,0 +1,27 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# .NET / WinUI
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+.vs/
+/app/**/AppPackages/
+/app/**/BundleArtifacts/
+*.appx
+*.msix
+*.msixbundle
+*.appinstaller
+*.pfx
+*.cer
+
+# Tooling
+node_modules/
+.DS_Store
+Thumbs.db
+
+# Local overrides
+.env.local
+/docs/M0_NOTES.local.md
