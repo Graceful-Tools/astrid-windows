@@ -7,6 +7,13 @@
     this project ever needs to know what a row shows, which tasks belong in a list, or what
     completing one means, the answer belongs in the core and this project should be asking for it.
   -->
+  <!--
+    The words. One file per language under Strings/<tag>/; a translator adds a folder beside en-US
+    and nothing else changes — the SDK picks up every .resw in the project on its own. Strings.cs
+    holds the same English as a fallback for the build whose .pri does not make it next to the
+    executable.
+  -->
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>

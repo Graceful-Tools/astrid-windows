@@ -103,6 +103,43 @@ public sealed partial class BoolToVisibilityConverter : IValueConverter
         throw new NotSupportedException("visibility is read-only in the UI");
 }
 
+/// <summary>What goes above a chat bubble: who said it, and whether it has landed.</summary>
+/// <remarks>
+/// In the shell rather than on the model, because "· sending" is a word in a language. A message
+/// the server wrote gets no byline at all — it is nobody's message.
+/// </remarks>
+public sealed partial class MessageBylineConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        if (value is not MessageRow message || message.IsSystem)
+        {
+            return string.Empty;
+        }
+        var author = message.AuthorName ?? Strings.Get("user.unknown");
+        return message.IsPending ? Strings.Get("chat.sending", author) : author;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a byline is read-only in the UI");
+}
+
+/// <summary>A board column's header: its name and how many cards it holds.</summary>
+/// <remarks>
+/// The count is of every card in the column, not of the ones that crossed the boundary — the same
+/// distinction the task list's total makes.
+/// </remarks>
+public sealed partial class ColumnHeadingConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is BoardColumn column
+            ? Strings.Get("board.column_heading", column.Name, column.Total)
+            : string.Empty;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a heading is read-only in the UI");
+}
+
 /// <summary>What the filter button says: whether anything is being hidden.</summary>
 /// <remarks>
 /// A list quietly showing half its tasks because of a setting made last month — possibly on
@@ -111,7 +148,7 @@ public sealed partial class BoolToVisibilityConverter : IValueConverter
 public sealed partial class FilterStateConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language) =>
-        value is true ? "Filtered" : "Filter";
+        Strings.Get(value is true ? "filter.button.active" : "filter.button");
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("a filter is chosen from the sheet");
@@ -153,13 +190,13 @@ public sealed partial class DueLabelConverter : IValueConverter
 
         return due.Key switch
         {
-            "today" => "Today",
-            "tomorrow" => "Tomorrow",
-            "yesterday" => "Yesterday",
+            "today" => Strings.Get("due.today"),
+            "tomorrow" => Strings.Get("due.tomorrow"),
+            "yesterday" => Strings.Get("due.yesterday"),
             "on" => Format(due),
             // A task with no date reads as "No due date" rather than as nothing: this text is on a
             // button, and a button with no label is one nobody knows they can press.
-            _ => "No due date",
+            _ => Strings.Get("due.none"),
         };
     }
 
@@ -210,9 +247,7 @@ public sealed partial class DueLabelConverter : IValueConverter
 public sealed partial class ReminderStateConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language) =>
-        value is true
-            ? PickTitleConverter.Titles["reminder.set"]
-            : PickTitleConverter.Titles["reminder.none"];
+        Strings.Get(value is true ? "reminder.set" : "reminder.none");
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("a reminder is chosen from the picker");
@@ -259,34 +294,44 @@ public sealed partial class RepeatSummaryConverter : IValueConverter
         }
         // A task that does not repeat says so. An empty label beside "No due date" reads as a
         // field that failed to load rather than one with nothing in it.
-        return text.Length > 0 ? text.ToString() : PickTitleConverter.Titles["repeat.none"];
+        return text.Length > 0 ? text.ToString() : Strings.Get("repeat.none");
     }
 
     private static string Say(SummaryPart part)
     {
         var count = part.Count ?? 1;
         var format = System.Globalization.CultureInfo.CurrentCulture;
+        // The singular is its own key rather than a rule about the number: "every 1 week" is wrong
+        // in English and differently wrong in languages with more than two plural forms.
         return part.Key switch
         {
-            "repeat.daily" => "Daily",
-            "repeat.weekly" => "Weekly",
-            "repeat.monthly" => "Monthly",
-            "repeat.yearly" => "Yearly",
-            "repeat.every_n_days" => count == 1 ? "Every day" : $"Every {count} days",
-            "repeat.every_n_weeks" => count == 1 ? "Every week" : $"Every {count} weeks",
-            "repeat.every_n_months" => count == 1 ? "Every month" : $"Every {count} months",
-            "repeat.every_n_years" => count == 1 ? "Every year" : $"Every {count} years",
-            "repeat.on_weekdays" => $"on {string.Join(", ", part.Values.Select(Weekday))}",
-            "repeat.on_day_of_month" => $"on the {Ordinal(count)}",
-            "repeat.on_nth_weekday" =>
-                $"on the {Ordinal(count)} {Weekday(part.Values.FirstOrDefault() ?? string.Empty)}",
-            "repeat.on_month_and_day" =>
-                $"on {Month(part.Values.FirstOrDefault())} {Ordinal(count)}",
-            "repeat.ends_after" => $"({count}x)",
+            "repeat.daily" or "repeat.weekly" or "repeat.monthly" or "repeat.yearly"
+                or "repeat.from_due_date" => Strings.Get(part.Key),
+            "repeat.every_n_days" => count == 1
+                ? Strings.Get("repeat.every_day")
+                : Strings.Get("repeat.every_n_days", count),
+            "repeat.every_n_weeks" => count == 1
+                ? Strings.Get("repeat.every_week")
+                : Strings.Get("repeat.every_n_weeks", count),
+            "repeat.every_n_months" => count == 1
+                ? Strings.Get("repeat.every_month")
+                : Strings.Get("repeat.every_n_months", count),
+            "repeat.every_n_years" => count == 1
+                ? Strings.Get("repeat.every_year")
+                : Strings.Get("repeat.every_n_years", count),
+            "repeat.on_weekdays" => Strings.Get(
+                "repeat.on_weekdays", string.Join(", ", part.Values.Select(Weekday))),
+            "repeat.on_day_of_month" => Strings.Get("repeat.on_day_of_month", Ordinal(count)),
+            "repeat.on_nth_weekday" => Strings.Get(
+                "repeat.on_nth_weekday",
+                Ordinal(count),
+                Weekday(part.Values.FirstOrDefault() ?? string.Empty)),
+            "repeat.on_month_and_day" => Strings.Get(
+                "repeat.on_month_and_day", Month(part.Values.FirstOrDefault()), Ordinal(count)),
+            "repeat.ends_after" => Strings.Get("repeat.ends_after", count),
             "repeat.ends_on" => DateTimeOffset.TryParse(part.Date, out var until)
-                ? $"until {until.ToLocalTime().ToString("d", format)}"
+                ? Strings.Get("repeat.ends_on", until.ToLocalTime().ToString("d", format))
                 : string.Empty,
-            "repeat.from_due_date" => "from due date",
             _ => string.Empty,
         };
     }
@@ -328,9 +373,7 @@ public sealed partial class RepeatSummaryConverter : IValueConverter
 public sealed partial class AssigneeNameConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language) =>
-        value is UserSummary user
-            ? user.DisplayName
-            : PickTitleConverter.Titles["assignee.unassigned"];
+        value is UserSummary user ? user.DisplayName : Strings.Get("assignee.unassigned");
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("the assignee is chosen from the picker");
@@ -338,74 +381,8 @@ public sealed partial class AssigneeNameConverter : IValueConverter
 
 public sealed partial class PickTitleConverter : IValueConverter
 {
-    internal static readonly Dictionary<string, string> Titles = new(StringComparer.Ordinal)
-    {
-        ["picker.no_due_date"] = "No due date",
-        ["picker.today"] = "Today",
-        ["picker.tomorrow"] = "Tomorrow",
-        ["picker.in_3_days"] = "In 3 days",
-        ["picker.next_week"] = "Next week",
-        ["picker.morning"] = "Morning",
-        ["picker.afternoon"] = "Afternoon",
-        ["picker.evening"] = "Evening",
-        ["picker.night"] = "Night",
-        ["assignee.unassigned"] = "Unassigned",
-        ["repeat.never"] = "Never",
-        ["filter.any"] = "Any",
-        ["filter.completion"] = "Finished tasks",
-        ["filter.completion.recent"] = "Recently finished",
-        ["filter.completion.hide"] = "Hide them",
-        ["filter.completion.all"] = "Show them all",
-        ["filter.priority"] = "Priority",
-        ["filter.due"] = "Due",
-        ["filter.due.overdue"] = "Overdue",
-        ["filter.due.today"] = "Today",
-        ["filter.due.this_week"] = "This week",
-        ["filter.due.this_month"] = "This month",
-        ["filter.due.none"] = "No due date",
-        ["filter.assignee"] = "Assigned to",
-        ["filter.assignee.me"] = "Me",
-        ["filter.assignee.someone_else"] = "Somebody else",
-        ["filter.assignee.nobody"] = "Nobody",
-        ["filter.repeat"] = "Repeat",
-        ["filter.repeat.never"] = "Does not repeat",
-        ["filter.assigned_by"] = "Assigned by",
-        ["filter.assigned_by.me"] = "Me",
-        ["filter.assigned_by.someone_else"] = "Somebody else",
-        ["filter.lists"] = "Lists",
-        ["filter.lists.in_a_list"] = "In a list",
-        ["filter.lists.not_in_a_list"] = "Not in a list",
-        ["filter.lists.public"] = "In a public list",
-        ["priority.none"] = "No priority",
-        ["priority.low"] = "Low",
-        ["priority.medium"] = "Medium",
-        ["priority.high"] = "High",
-        ["sort"] = "Sort by",
-        ["sort.auto"] = "Automatic",
-        ["sort.priority"] = "Priority",
-        ["sort.when"] = "When it is due",
-        ["sort.created"] = "When it was added",
-        ["sort.manual"] = "The order I arranged",
-        ["repeat.daily"] = "Daily",
-        ["repeat.weekly"] = "Weekly",
-        ["repeat.monthly"] = "Monthly",
-        ["repeat.yearly"] = "Yearly",
-        ["repeat.custom"] = "Custom…",
-        ["repeat.none"] = "Does not repeat",
-        ["reminder.none"] = "No reminder",
-        ["reminder.set"] = "Reminder set",
-        ["reminder.at_due_time"] = "At the time it is due",
-        ["reminder.5_minutes_before"] = "5 minutes before",
-        ["reminder.15_minutes_before"] = "15 minutes before",
-        ["reminder.30_minutes_before"] = "30 minutes before",
-        ["reminder.hour_before"] = "An hour before",
-        ["reminder.2_hours_before"] = "2 hours before",
-        ["reminder.day_before"] = "A day before",
-        ["reminder.week_before"] = "A week before",
-    };
-
     public object Convert(object value, Type targetType, object parameter, string language) =>
-        value is string key && Titles.TryGetValue(key, out var title) ? title : value ?? string.Empty;
+        value is string key ? Strings.Get(key) : value ?? string.Empty;
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("titles are read-only in the UI");

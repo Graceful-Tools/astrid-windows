@@ -53,7 +53,9 @@ public sealed class ChatViewModelTests
 
         await view.OpenAsync("l1");
 
-        Assert.Equal("Jon · sending", view.Messages[0].Byline);
+        // "sending" is a word, so it lives in the shell; the model carries the fact.
+        Assert.True(view.Messages[0].IsPending);
+        Assert.Equal("Jon", view.Messages[0].AuthorName);
     }
 
     /// <summary>"Dana joined the list" is nobody's message and gets no byline.</summary>
@@ -67,8 +69,8 @@ public sealed class ChatViewModelTests
 
         await view.OpenAsync("l1");
 
-        Assert.Equal(string.Empty, view.Messages[0].Byline);
         Assert.True(view.Messages[0].IsSystem);
+        Assert.Null(view.Messages[0].AuthorName);
     }
 
     /// <summary>

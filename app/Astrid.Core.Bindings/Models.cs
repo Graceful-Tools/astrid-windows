@@ -270,10 +270,6 @@ public sealed record MessageRow
 
     [JsonPropertyName("createdAt")] public string? CreatedAt { get; init; }
 
-    /// <summary>What goes above the bubble: who said it, and whether it has landed.</summary>
-    public string Byline => IsSystem
-        ? string.Empty
-        : IsPending ? $"{AuthorName} · sending" : AuthorName ?? string.Empty;
 }
 
 /// <summary>A list's conversation.</summary>
@@ -303,10 +299,8 @@ public sealed record ListMember
     /// </summary>
     public string DisplayName => User?.DisplayName ?? UserId;
 
-    /// <summary>The role, capitalised, for the row. The core never sends words for these.</summary>
-    public string RoleLabel => Role.Length == 0
-        ? string.Empty
-        : char.ToUpperInvariant(Role[0]) + Role[1..].ToLowerInvariant();
+    /// <summary>The resource key for this role. The words live in the shell.</summary>
+    public string RoleKey => Role.Length == 0 ? string.Empty : $"role.{Role.ToLowerInvariant()}";
 }
 
 /// <summary>One list's settings, and who it is shared with.</summary>
@@ -349,8 +343,6 @@ public sealed record BoardColumn
 
     [JsonPropertyName("cards")] public IReadOnlyList<TaskRow> Cards { get; init; } = [];
 
-    /// <summary>What the column header shows: its name and how many are in it.</summary>
-    public string Heading => $"{Name} ({Total})";
 }
 
 /// <summary>A project board.</summary>

@@ -24,6 +24,8 @@
         <local:ReminderStateConverter x:Key="ReminderText" />
         <local:NotVisibleConverter x:Key="NotVisible" />
         <local:FilterStateConverter x:Key="FilterText" />
+        <local:MessageBylineConverter x:Key="Byline" />
+        <local:ColumnHeadingConverter x:Key="ColumnHeading" />
     </UserControl.Resources>
 
     <Grid x:Name="RootGrid" KeyDown="OnKeyDown">
@@ -264,7 +266,7 @@
                                                                    Text="{x:Bind DisplayName}"
                                                                    VerticalAlignment="Center" />
                                                         <TextBlock Grid.Column="1"
-                                                                   Text="{x:Bind RoleLabel}"
+                                                                   Text="{x:Bind RoleKey, Converter={StaticResource PickTitle}}"
                                                                    VerticalAlignment="Center"
                                                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                                    Style="{ThemeResource CaptionTextBlockStyle}" />
@@ -375,7 +377,7 @@
                                         CornerRadius="8"
                                         Background="{ThemeResource LayerFillColorDefaultBrush}">
                                     <StackPanel Spacing="8">
-                                        <TextBlock Text="{x:Bind Heading}"
+                                        <TextBlock Text="{x:Bind Converter={StaticResource ColumnHeading}}"
                                                    Style="{ThemeResource BodyStrongTextBlockStyle}" />
                                         <TextBlock Text="{x:Bind Description}"
                                                    TextWrapping="Wrap"
@@ -504,10 +506,10 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="bindings:MessageRow">
                             <StackPanel Margin="0,0,0,10">
-                                <TextBlock Text="{x:Bind Byline}"
+                                <TextBlock Text="{x:Bind Converter={StaticResource Byline}}"
                                            Style="{ThemeResource CaptionTextBlockStyle}"
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                           Visibility="{x:Bind Byline, Converter={StaticResource Visible}}" />
+                                           Visibility="{x:Bind IsSystem, Converter={StaticResource NotVisible}}" />
                                 <TextBlock Text="{x:Bind Content}" TextWrapping="Wrap" />
                             </StackPanel>
                         </DataTemplate>

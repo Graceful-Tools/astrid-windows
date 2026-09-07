@@ -80,7 +80,9 @@ public sealed class BoardViewModelTests
 
         await view.LoadAsync("l1");
 
-        Assert.Equal("Ready (120)", view.Columns[0].Heading);
+        // The words are the shell's; what the view model carries is the count itself.
+        Assert.Equal(120, view.Columns[0].Total);
+        Assert.Empty(view.Columns[0].Cards);
     }
 
     /// <summary>A list that belongs to no board is not an error; there is simply nothing to draw.</summary>

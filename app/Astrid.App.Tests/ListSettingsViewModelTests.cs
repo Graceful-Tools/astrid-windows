@@ -38,7 +38,7 @@ public sealed class ListSettingsViewModelTests
         Assert.Equal("Work", view.Name);
         Assert.Equal(2, view.Members.Count);
         Assert.Equal("Dana", view.Members[1].DisplayName);
-        Assert.Equal("Member", view.Members[1].RoleLabel);
+        Assert.Equal("role.member", view.Members[1].RoleKey);
         Assert.True(view.CanManageMembers);
     }
 
