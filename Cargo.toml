@@ -30,6 +30,19 @@ sha2 = "0.10"
 base64 = "0.22"
 getrandom = "0.2"
 url = "2"
+# The HTTP stack, over the platform's own TLS: schannel on Windows, Security.framework on macOS,
+# OpenSSL on Linux. A bundled rustls would ship a second root store that ignores the enterprise
+# roots and revocation policy a managed Windows machine expects — and its `ring` backend needs
+# clang to assemble on aarch64-pc-windows-msvc, which is the architecture this is built ON.
+reqwest = { version = "0.12", default-features = false, features = ["json", "native-tls", "gzip", "stream", "charset", "http2"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "sync", "time", "fs"] }
+async-trait = "0.1"
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+# The offline cache. `bundled` compiles SQLite itself: the version is then the same on every
+# machine and on both architectures, rather than whatever the OS happens to ship.
+rusqlite = { version = "0.32", features = ["bundled", "chrono", "serde_json", "backup"] }
+uuid = { version = "1", features = ["v4"] }
+tracing = "0.1"
 
 [profile.release]
 lto = "thin"

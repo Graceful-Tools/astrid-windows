@@ -45,9 +45,13 @@ Invoke-Step 'core tests' { cargo test --workspace }
 Invoke-Step 'cross-platform contracts' { cargo xtask check-contracts }
 
 if (-not $Quick) {
-    # ARM64 is a shipping architecture, not an afterthought: it is cross-built on every run so a
-    # dependency that cannot target it is caught the day it lands.
-    Invoke-Step 'ARM64 cross-build' { cargo build --target aarch64-pc-windows-msvc }
+    # BOTH shipping architectures are built by name on every run, rather than trusting that the
+    # host covers one of them. The machine this was written on is ARM64, where a bare
+    # `cargo build` and an "ARM64 cross-build" are the same command twice and x64 — the
+    # architecture most users are on — is never compiled at all. A dependency that cannot target
+    # one of them is caught the day it lands, whichever machine lands it.
+    Invoke-Step 'x64 build' { cargo build --workspace --target x86_64-pc-windows-msvc }
+    Invoke-Step 'ARM64 build' { cargo build --workspace --target aarch64-pc-windows-msvc }
 }
 
 # The shell arrives in M2. Until then there is nothing to build, and claiming otherwise would make
