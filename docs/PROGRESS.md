@@ -13,14 +13,16 @@ shell exists (M2).
 
 | Piece | Path | State |
 |---|---|---|
-| Wire models | `crates/astrid-core/src/model/` | not started |
-| Dates and all-day handling | `crates/astrid-core/src/model/date.rs` | not started |
-| API client | `crates/astrid-core/src/api/` | not started |
-| SQLite cache | `crates/astrid-core/src/store/` | not started |
-| Outbox write journal | `crates/astrid-core/src/outbox/` | not started |
-| Services | `crates/astrid-core/src/services/` | not started |
-| Sync + SSE | `crates/astrid-core/src/{sync,realtime}/` | not started |
-| Filters, rows, parse | `crates/astrid-core/src/{filters,rows,parse}/` | not started |
+| Wire models | `crates/astrid-core/src/model/` | done |
+| Dates and all-day handling | `crates/astrid-core/src/model/date.rs` | done |
+| API client | `crates/astrid-core/src/api/` | done |
+| SQLite cache | `crates/astrid-core/src/store/` | done |
+| Outbox write journal | `crates/astrid-core/src/outbox/` | done |
+| Services | `crates/astrid-core/src/services/` | done |
+| Sync + SSE | `crates/astrid-core/src/{sync,realtime}/` | done |
+| Filters, sorting, subtasks | `crates/astrid-core/src/filters/` | done |
+| Row and label projections | `crates/astrid-core/src/rows/` | in progress |
+| Natural-language quick add | `crates/astrid-core/src/parse/` | not started |
 
 ## M2 — shell
 
