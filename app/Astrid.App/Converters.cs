@@ -217,7 +217,9 @@ public sealed partial class RepeatSummaryConverter : IValueConverter
             }
             text.Append(piece);
         }
-        return text.ToString();
+        // A task that does not repeat says so. An empty label beside "No due date" reads as a
+        // field that failed to load rather than one with nothing in it.
+        return text.Length > 0 ? text.ToString() : PickTitleConverter.Titles["repeat.none"];
     }
 
     private static string Say(SummaryPart part)

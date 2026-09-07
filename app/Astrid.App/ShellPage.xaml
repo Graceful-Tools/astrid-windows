@@ -206,7 +206,7 @@
                           ItemsSource="{x:Bind Shell.Tasks.Rows, Mode=OneWay}"
                           SelectedItem="{x:Bind Shell.Tasks.Selected, Mode=TwoWay}"
                           SelectionMode="Single"
-                          DoubleTapped="OnRowOpened"
+                          SelectionChanged="OnRowSelected"
                           ShowsScrollingPlaceholders="True">
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="bindings:TaskRow">

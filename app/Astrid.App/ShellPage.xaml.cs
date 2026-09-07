@@ -295,7 +295,16 @@ public sealed partial class ShellPage : UserControl
     // "saved" and "sent" are already different things, and a Save button would be claiming to do
     // the second when it does the first.
 
-    private async void OnRowOpened(object sender, DoubleTappedRoutedEventArgs args)
+    /// <summary>
+    /// Selecting a task opens it.
+    /// </summary>
+    /// <remarks>
+    /// Selection and opening are one thing on web — a click sets <c>selectedTaskId</c>, and that
+    /// is what the pane draws from, so moving with j and k opens each task in turn. This was a
+    /// double-tap here, which made the pane the only screen a keyboard could not reach and asked
+    /// for a gesture no other client asks for.
+    /// </remarks>
+    private async void OnRowSelected(object sender, SelectionChangedEventArgs args)
     {
         if (Shell.Tasks.Selected is { } row)
         {
