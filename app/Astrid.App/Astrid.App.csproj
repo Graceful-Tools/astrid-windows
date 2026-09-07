@@ -26,6 +26,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!--
+      The entry point is hand-written (Program.cs) so the app can be single-instance and receive
+      the sign-in callback as a redirected activation. The generated one starts a second copy per
+      launch, which for this app means a second copy with none of the flow state the first is
+      waiting with.
+    -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

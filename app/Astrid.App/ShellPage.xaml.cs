@@ -39,7 +39,14 @@ public sealed partial class ShellPage : UserControl
             : new UnavailableCore(App.StartupError);
         Shell = new ShellViewModel(core, Post);
         Loaded += OnLoaded;
-        Unloaded += (_, _) => Shell.Dispose();
+        // Every protocol activation, launch or redirected, arrives here. The core decides which
+        // are sign-in callbacks; a deep link to a task uses the same scheme.
+        App.UriActivated += OnUriActivated;
+        Unloaded += (_, _) =>
+        {
+            App.UriActivated -= OnUriActivated;
+            Shell.Dispose();
+        };
     }
 
     /// <summary>What the window binds to.</summary>
@@ -144,6 +151,41 @@ public sealed partial class ShellPage : UserControl
     }
 
     private async void OnSync(object sender, RoutedEventArgs args) => await Shell.SyncAsync();
+
+    /// <summary>
+    /// Open the browser to sign in.
+    /// </summary>
+    /// <remarks>
+    /// The URL comes from the core, which minted the PKCE verifier and the state that go with it.
+    /// The shell only opens what it is given — building the URL here would be a second place for
+    /// the hand-off's rules to live.
+    /// </remarks>
+    private async void OnSignIn(object sender, RoutedEventArgs args)
+    {
+        var url = await Shell.SignIn.BeginAsync();
+        if (url is null)
+        {
+            return;
+        }
+        await Windows.System.Launcher.LaunchUriAsync(new Uri(url));
+    }
+
+    private async void OnCancelSignIn(object sender, RoutedEventArgs args) =>
+        await Shell.SignIn.CancelAsync();
+
+    private async void OnSignOut(object sender, RoutedEventArgs args) => await Shell.SignOutAsync();
+
+    /// <summary>
+    /// Windows activated the app with a URL — the browser coming back, most likely.
+    /// </summary>
+    /// <remarks>
+    /// The activation arrives on the UI thread for a redirect and during startup for a cold
+    /// launch, so it is posted rather than awaited directly: handling it inline during
+    /// <c>OnLaunched</c> would run the sign-in exchange before the window had finished its first
+    /// layout.
+    /// </remarks>
+    private void OnUriActivated(Uri uri) =>
+        Post(() => Shell.HandleActivationAsync(uri.ToString()));
 
     /// <summary>
     /// The keyboard scheme.

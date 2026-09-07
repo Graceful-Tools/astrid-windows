@@ -20,13 +20,62 @@
     </UserControl.Resources>
 
     <Grid x:Name="RootGrid" KeyDown="OnKeyDown">
+
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="260" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
+
+            <!--
+                The sign-in screen. It covers the app rather than replacing it, so the window does
+                not have to tear down and rebuild the whole tree on the way in and out — and so
+                signing out leaves an empty list behind it rather than a blank window.
+
+                It sits AFTER the column definitions on purpose: in XAML a property element cannot
+                follow a content child, and putting this first made the XAML compiler fail with no
+                message at all — an hour of bisecting to find one ordering rule.
+            -->
+            <Grid x:Name="SignInLayer"
+                  Grid.Column="0" Grid.ColumnSpan="2"
+                  Canvas.ZIndex="10"
+                  Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                  Visibility="{x:Bind Shell.SignIn.NeedsSignIn, Mode=OneWay, Converter={StaticResource Visible}}">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                            Spacing="12" MaxWidth="360">
+                    <TextBlock Text="Astrid" Style="{ThemeResource TitleLargeTextBlockStyle}"
+                               HorizontalAlignment="Center" />
+                    <TextBlock TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Text="Sign in with your browser. Passkeys, Google and magic links all work there, and you stay signed in here afterwards." />
+                    <Button x:Name="SignInButton"
+                            Content="Sign in with your browser"
+                            HorizontalAlignment="Center"
+                            Style="{ThemeResource AccentButtonStyle}"
+                            Click="OnSignIn" />
+                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center"
+                                Visibility="{x:Bind Shell.SignIn.IsWaitingForBrowser, Mode=OneWay, Converter={StaticResource Visible}}">
+                        <ProgressRing IsActive="True" Width="16" Height="16" />
+                        <TextBlock Text="Waiting for your browser…"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <HyperlinkButton Content="Cancel" Click="OnCancelSignIn" />
+                    </StackPanel>
+                    <TextBlock TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center"
+                               Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                               Text="{x:Bind Shell.SignIn.ErrorMessage, Mode=OneWay}"
+                               Visibility="{x:Bind Shell.SignIn.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
+                </StackPanel>
+            </Grid>
     
-            <!-- The sidebar: favourites, then everything else. -->
-            <Grid Grid.Column="0" Background="{ThemeResource LayerFillColorDefaultBrush}">
+            <!--
+                The sidebar: favourites, then everything else.
+
+                Collapsed while signed out rather than merely covered. An overlay hides it from the
+                eye and leaves it in the tab order and in the accessibility tree, so a keyboard or
+                screen-reader user can reach the previous session's lists from behind the sign-in
+                screen.
+            -->
+            <Grid Grid.Column="0" Background="{ThemeResource LayerFillColorDefaultBrush}"
+                  Visibility="{x:Bind Shell.SignIn.IsSignedIn, Mode=OneWay, Converter={StaticResource Visible}}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
@@ -90,8 +139,9 @@
                 </StackPanel>
             </Grid>
     
-            <!-- The list itself. -->
-            <Grid Grid.Column="1" Margin="0">
+            <!-- The list itself. Collapsed while signed out, for the reason above. -->
+            <Grid Grid.Column="1" Margin="0"
+                  Visibility="{x:Bind Shell.SignIn.IsSignedIn, Mode=OneWay, Converter={StaticResource Visible}}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
@@ -102,6 +152,7 @@
                 <Grid Grid.Row="0" Margin="20,16,20,8" ColumnSpacing="12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
@@ -117,6 +168,7 @@
                                Style="{ThemeResource CaptionTextBlockStyle}"
                                Visibility="{x:Bind Shell.HasUnsentWork, Mode=OneWay, Converter={StaticResource Visible}}" />
                     <Button Grid.Column="2" Content="Sync" Click="OnSync" />
+                <Button Grid.Column="3" Content="Sign out" Click="OnSignOut" />
                 </Grid>
     
                 <ListView Grid.Row="1"

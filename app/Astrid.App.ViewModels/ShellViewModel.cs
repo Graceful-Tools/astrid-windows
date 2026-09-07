@@ -38,12 +38,15 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _post = post;
         Sidebar = new SidebarViewModel(core);
         Tasks = new TaskListViewModel(core);
+        SignIn = new SignInViewModel(core);
         _core.Changed += OnChanged;
     }
 
     public SidebarViewModel Sidebar { get; }
 
     public TaskListViewModel Tasks { get; }
+
+    public SignInViewModel SignIn { get; }
 
     /// <summary>True while anything is waiting in the Outbox.</summary>
     public bool HasUnsentWork
@@ -82,6 +85,16 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// </remarks>
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
+        // Whether we are signed in decides what the window shows, so it is asked first. It is a
+        // cache read — no network — so it costs nothing to put ahead of the first paint.
+        await SignIn.RefreshAsync(cancellationToken);
+        if (SignIn.NeedsSignIn)
+        {
+            // Nothing to draw and nothing to sync until there is a session. Loading the sidebar
+            // anyway would show the previous user's lists behind a sign-in screen.
+            return;
+        }
+
         await Sidebar.LoadAsync(cancellationToken);
         await OpenSelectedAsync(cancellationToken);
         await RefreshOutboxAsync(cancellationToken);
@@ -114,6 +127,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             if (response.NeedsSignIn)
             {
                 NeedsSignIn = true;
+                // The session has gone, so the window has to go back to the sign-in screen rather
+                // than sit on a list it can no longer refresh.
+                await SignIn.RefreshAsync(cancellationToken);
                 return;
             }
 
@@ -142,6 +158,35 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         var response = await _core.CallAsync(Commands.OutboxStats(), cancellationToken);
         var stats = response.Read<OutboxStats>();
         HasUnsentWork = stats?.HasUnsentWork ?? false;
+    }
+
+    /// <summary>
+    /// Windows activated the app with a URL.
+    /// </summary>
+    /// <remarks>
+    /// Every protocol activation comes here, not only sign-in callbacks — the core decides which
+    /// is which. A completed sign-in is followed by a full start, because until now there was
+    /// nothing to draw.
+    /// </remarks>
+    public async Task HandleActivationAsync(string url, CancellationToken cancellationToken = default)
+    {
+        if (await SignIn.CompleteAsync(url, cancellationToken))
+        {
+            NeedsSignIn = false;
+            await StartAsync(cancellationToken);
+        }
+    }
+
+    /// <summary>Sign out, and put the window back to the sign-in screen.</summary>
+    public async Task SignOutAsync(CancellationToken cancellationToken = default)
+    {
+        await SignIn.SignOutAsync(cancellationToken);
+        Sidebar.Favorites.Clear();
+        Sidebar.Lists.Clear();
+        Sidebar.Selected = null;
+        Tasks.Rows.Clear();
+        HasUnsentWork = false;
+        NeedsSignIn = false;
     }
 
     public void Dispose()

@@ -82,12 +82,48 @@ before M0 is called done; record the result here when it is.
 
 | Spike | Question it answers | Fallback if it fails |
 |---|---|---|
-| UniFFI C# bindings | Does a 10k-row snapshot cross the boundary fast enough to render a list without hitching? | Move `TaskRow` transport to a compact binary buffer decoded in C#; keep the API shape |
-| Protocol activation | Does `astrid://auth/callback` reach the app both cold and already-running? | Single-instance redirection via `AppInstance.GetCurrent()` |
 | Global hotkey | Which default chord is free, and does `RegisterHotKey` behave in a packaged app? | Ship rebindable from day one; detect conflicts at registration |
 | Toast actions | Do Complete and Snooze buttons activate the app and reach the core? | In-app reminder surface only, until it does |
-| Credential Locker | Can the core's `SecureStore` trait be satisfied by `PasswordVault` from a background thread? | Encrypted file in the app's local data, DPAPI-protected |
 | MSIX on ARM64 | Does an x64 + ARM64 bundle install and run on Windows 11 ARM? | Separate per-architecture packages |
+
+### Settled — the boundary, 2026-09-07
+
+**Not UniFFI.** The question was whether a 10k-row snapshot could cross fast enough to draw a list.
+The answer was to stop sending snapshots: `rowsForList` returns the window on screen and the total
+behind it, so a list of ten thousand crosses as the fifty rows being looked at. With the transport
+question answered that way, UniFFI's C# generator — a third-party project that has to keep step with
+UniFFI itself — bought nothing over the boundary that is there now: seven C functions and one
+callback, in `crates/astrid-ffi/include/astrid.h`, with everything else a JSON command. Adding a
+feature is a `Command` variant in the core rather than a symbol, a header entry, a `DllImport` and a
+marshalling rule.
+
+Two lifetime rules came out of building it, both tested and both the kind of bug that shows up as a
+process vanishing with no stack: the completion delegate is a static field (a per-call one is
+collected before the answer arrives), and `Dispose` stops the core *before* releasing its
+`GCHandle`, because the contract `astrid_stop` can honour is "no callback starts after this
+returns" — not "everything in flight finishes".
+
+### Settled — protocol activation, 2026-09-07
+
+It works cold and warm, and the fallback that was held in reserve is the design. `Program.cs` is
+hand-written (`DISABLE_XAML_GENERATED_MAIN`), takes the single-instance key, and redirects any
+later activation into the instance that owns the app. That is not a nicety: the sign-in callback
+arrives as a *launch*, and a second copy of the app has none of the PKCE flow the first one is
+waiting with — so without the redirect the hand-off could never complete.
+
+Verified on this machine: launching the executable twice leaves one process with one window, and
+`astrid://auth/callback?…` resolves and reaches the running instance without starting another. The
+scheme is registered under HKCU on every start rather than at install time, because an unpackaged
+app can be moved and a stale registration silently stops sign-in from ever completing.
+
+### Settled — the credential at rest, 2026-09-07
+
+The fallback, on purpose. `PasswordVault` is a WinRT API with apartment sensitivity, called from
+whichever pool thread the runtime picks — which is exactly what the spike was worried about. DPAPI
+is a flat Win32 call with neither problem, and `astrid-ffi`'s `ProtectedFileStore` uses it, with a
+test asserting the token is not readable in the file. The `SecureStore` trait keeps this a decision
+rather than a commitment: a Credential Locker implementation can be handed in later and nothing
+above it changes.
 
 **M0 is done when**, on x64 and ARM64: sign in through the browser hand-off against a local
 astrid-web, go offline, create a task, relaunch and still see it, then reconnect and watch it appear

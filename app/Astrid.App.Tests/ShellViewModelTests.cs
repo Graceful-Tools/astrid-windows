@@ -19,8 +19,16 @@ public sealed class ShellViewModelTests
 
     private static object EmptyWindow() => new { total = 0, offset = 0, rows = Array.Empty<object>() };
 
+    /// <summary>
+    /// A core that is signed in with these lists.
+    /// </summary>
+    /// <remarks>
+    /// The session answer comes first because the window asks for it first: what to show depends
+    /// on it, and loading a sidebar behind a sign-in screen would show the previous user's lists.
+    /// </remarks>
     private static FakeCore StartedCore(params (string Id, string Name, bool Favorite)[] lists) =>
         new FakeCore()
+            .AnswerOk("isSignedIn", new { signedIn = true, waitingForCallback = false })
             .AnswerOk("lists", Lists(lists))
             .AnswerOk("rowsForList", EmptyWindow())
             .AnswerOk("outboxStats", new { pending = 0, running = 0, failed = 0, hasUnsentWork = false })
@@ -39,8 +47,9 @@ public sealed class ShellViewModelTests
         await shell.StartAsync();
 
         var kinds = core.SentKinds().ToList();
-        Assert.Equal("lists", kinds[0]);
-        Assert.Equal("rowsForList", kinds[1]);
+        Assert.Equal("isSignedIn", kinds[0]);
+        Assert.Equal("lists", kinds[1]);
+        Assert.Equal("rowsForList", kinds[2]);
         Assert.Contains("sync", kinds);
         Assert.True(kinds.IndexOf("rowsForList") < kinds.IndexOf("sync"));
     }
@@ -76,6 +85,7 @@ public sealed class ShellViewModelTests
     public async Task Board_columns_never_appear_in_the_sidebar()
     {
         var core = new FakeCore()
+            .AnswerOk("isSignedIn", new { signedIn = true, waitingForCallback = false })
             .AnswerOk("lists", new object[]
             {
                 new { id = "l1", name = "Home" },
@@ -112,10 +122,13 @@ public sealed class ShellViewModelTests
     public async Task An_expired_session_during_sync_asks_for_a_sign_in()
     {
         var core = new FakeCore()
+            .AnswerOk("isSignedIn", new { signedIn = true, waitingForCallback = false })
             .AnswerOk("lists", Lists(("l1", "Home", false)))
             .AnswerOk("rowsForList", EmptyWindow())
             .AnswerOk("outboxStats", new { hasUnsentWork = false })
-            .AnswerFailure("sync", AstridFailureKind.Unauthorized);
+            .AnswerFailure("sync", AstridFailureKind.Unauthorized)
+            // The session has gone, so the window asks again and goes back to the sign-in screen.
+            .AnswerOk("isSignedIn", new { signedIn = false, waitingForCallback = false });
         using var shell = new ShellViewModel(core, RunInline);
 
         await shell.StartAsync();
@@ -127,6 +140,7 @@ public sealed class ShellViewModelTests
     public async Task Unsent_work_is_visible_to_the_window()
     {
         var core = new FakeCore()
+            .AnswerOk("isSignedIn", new { signedIn = true, waitingForCallback = false })
             .AnswerOk("lists", Lists(("l1", "Home", false)))
             .AnswerOk("rowsForList", EmptyWindow())
             .AnswerOk("outboxStats", new { pending = 3, hasUnsentWork = true })

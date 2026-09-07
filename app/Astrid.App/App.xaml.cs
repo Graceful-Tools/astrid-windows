@@ -1,10 +1,11 @@
 using Astrid.Core.Bindings;
 using Microsoft.UI.Xaml;
+using Microsoft.Windows.AppLifecycle;
 
 namespace Astrid.App;
 
 /// <summary>
-/// The process: start the core, open a window, and stop the core when the last one closes.
+/// The process: start the core, open a window, and route every activation to it.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -20,10 +21,12 @@ namespace Astrid.App;
 /// </remarks>
 public partial class App : Application
 {
+    private readonly AppActivationArguments? _launchActivation;
     private Window? _window;
 
-    public App()
+    public App(AppActivationArguments? launchActivation = null)
     {
+        _launchActivation = launchActivation;
         InitializeComponent();
 
         // A WinUI app that throws during layout dies as exit code 0xC000027B with nothing on
@@ -38,28 +41,21 @@ public partial class App : Application
         };
     }
 
-    /// <summary>Where the last crash was written.</summary>
-    internal static string CrashLogPath => Path.Combine(DataDirectory(), "crash.log");
-
-    private static void Log(Exception exception)
-    {
-        try
-        {
-            File.AppendAllText(
-                CrashLogPath,
-                $"{DateTimeOffset.Now:O}  {exception}{Environment.NewLine}{Environment.NewLine}");
-        }
-        catch (IOException)
-        {
-            // Nothing useful to do when even the log will not write.
-        }
-    }
+    /// <summary>Raised for every activation, launch or redirected, with its URI.</summary>
+    /// <remarks>
+    /// A sign-in callback is an activation. It arrives as a launch when the app was closed and as a
+    /// redirect when it was open, and the window has to handle both the same way.
+    /// </remarks>
+    internal static event Action<Uri>? UriActivated;
 
     /// <summary>The running core, for the windows to use.</summary>
     internal static AstridClient? Core { get; private set; }
 
     /// <summary>Why the core would not start, if it would not.</summary>
     internal static string? StartupError { get; private set; }
+
+    /// <summary>Where the last crash was written.</summary>
+    internal static string CrashLogPath => Path.Combine(DataDirectory(), "crash.log");
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
@@ -76,6 +72,11 @@ public partial class App : Application
             StartupError = error.Message;
         }
 
+        // Every later activation — the browser coming back with a sign-in code, a deep link —
+        // arrives here rather than as a new process, because Program.Main made this instance the
+        // one that owns the app.
+        AppInstance.GetCurrent().Activated += (_, activation) => Deliver(activation);
+
         _window = new MainWindow();
         _window.Closed += (_, _) =>
         {
@@ -83,10 +84,45 @@ public partial class App : Application
             Core = null;
         };
         _window.Activate();
+
+        // The cold case: the app was started BY the callback. The window exists now, so it can be
+        // told. Doing this before Activate would raise the event with nobody listening, which is
+        // the difference between signing in and appearing to hang on the browser hand-off.
+        if (_launchActivation is not null)
+        {
+            Deliver(_launchActivation);
+        }
+    }
+
+    /// <summary>Pull the URI out of an activation and tell whoever is listening.</summary>
+    private static void Deliver(AppActivationArguments activation)
+    {
+        if (activation.Kind != ExtendedActivationKind.Protocol)
+        {
+            return;
+        }
+        if (activation.Data is Windows.ApplicationModel.Activation.IProtocolActivatedEventArgs protocol)
+        {
+            UriActivated?.Invoke(protocol.Uri);
+        }
+    }
+
+    private static void Log(Exception exception)
+    {
+        try
+        {
+            File.AppendAllText(
+                CrashLogPath,
+                $"{DateTimeOffset.Now:O}  {exception}{Environment.NewLine}{Environment.NewLine}");
+        }
+        catch (IOException)
+        {
+            // Nothing useful to do when even the log will not write.
+        }
     }
 
     /// <summary>
-    /// Where the cache lives: the roaming-free per-user local app data folder.
+    /// Where the cache lives: the per-user local app data folder.
     /// </summary>
     /// <remarks>
     /// Local rather than roaming, deliberately. The cache is a cache — it can be rebuilt from the

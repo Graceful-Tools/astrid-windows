@@ -42,6 +42,9 @@ public static class Commands
 
     public static object CurrentUser() => new KindOnly("currentUser");
 
+    /// <summary>Whether there is a stored session. Not whether the server still accepts it.</summary>
+    public static object IsSignedIn() => new KindOnly("isSignedIn");
+
     public static object OutboxStats() => new KindOnly("outboxStats");
 
     // ── Writes ───────────────────────────────────────────────────────────────────────────────
@@ -103,6 +106,15 @@ public static class Commands
     public static object SearchUsers(string query) => new SearchRequest("searchUsers", query);
 
     public static object RefreshCapabilities() => new KindOnly("refreshCapabilities");
+
+    /// <summary>Start signing in. Answers with the URL to open in the browser.</summary>
+    public static object BeginSignIn() => new KindOnly("beginSignIn");
+
+    /// <summary>Finish signing in, from the URL Windows activated the app with.</summary>
+    public static object CompleteSignIn(string callbackUrl) =>
+        new CallbackRequest("completeSignIn", callbackUrl);
+
+    public static object CancelSignIn() => new KindOnly("cancelSignIn");
 
     public static object SignOut() => new KindOnly("signOut");
 
@@ -176,6 +188,10 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("content")] string Content);
+
+    private sealed record CallbackRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("callbackUrl")] string CallbackUrl);
 
     private sealed record SearchRequest(
         [property: JsonPropertyName("kind")] string Kind,
