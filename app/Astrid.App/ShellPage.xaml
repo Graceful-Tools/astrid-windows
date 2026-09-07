@@ -20,6 +20,7 @@
         <local:DueLabelConverter x:Key="DueText" />
         <local:PickTitleConverter x:Key="PickTitle" />
         <local:AssigneeNameConverter x:Key="AssigneeText" />
+        <local:RepeatSummaryConverter x:Key="RepeatText" />
     </UserControl.Resources>
 
     <Grid x:Name="RootGrid" KeyDown="OnKeyDown">
@@ -377,6 +378,72 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+
+                <!--
+                    How the task repeats. The summary is the picker's own sentence rather than a
+                    chip saying "Custom", which says nothing about when the task comes back.
+                -->
+                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                        AutomationProperties.Name="Repeat">
+                    <TextBlock Text="{x:Bind Shell.Detail.RepeatSummary, Mode=OneWay, Converter={StaticResource RepeatText}}" />
+                    <Button.Flyout>
+                        <Flyout Opening="OnRepeatFlyoutOpening">
+                            <StackPanel Spacing="4" MinWidth="260">
+                                <ItemsControl ItemsSource="{x:Bind Shell.Detail.RepeatPresets, Mode=OneWay}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="bindings:RepeatPreset">
+                                            <Button HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Left"
+                                                    Tag="{x:Bind Value}"
+                                                    Click="OnRepeatPresetChosen"
+                                                    Content="{x:Bind TitleKey, Converter={StaticResource PickTitle}}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <ToggleSwitch x:Name="RepeatFromDueDate"
+                                              Header="Count from the due date"
+                                              OnContent="Due date" OffContent="When finished"
+                                              IsOn="{x:Bind Shell.Detail.RepeatsFromDueDate, Mode=OneWay}"
+                                              Toggled="OnRepeatFromToggled" />
+                                <TextBlock Text="Custom" Style="{ThemeResource CaptionTextBlockStyle}"
+                                           Margin="0,8,0,0" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <NumberBox x:Name="RepeatInterval" Value="1" Minimum="1" Maximum="365"
+                                               Width="96" AutomationProperties.Name="Every" />
+                                    <ComboBox x:Name="RepeatUnit" SelectedIndex="0"
+                                              AutomationProperties.Name="Unit">
+                                        <ComboBoxItem Content="days" Tag="days" />
+                                        <ComboBoxItem Content="weeks" Tag="weeks" />
+                                        <ComboBoxItem Content="months" Tag="months" />
+                                        <ComboBoxItem Content="years" Tag="years" />
+                                    </ComboBox>
+                                </StackPanel>
+                                <StackPanel x:Name="RepeatWeekdays" Orientation="Horizontal" Spacing="2">
+                                    <ToggleButton Content="M" Tag="monday" MinWidth="32" />
+                                    <ToggleButton Content="T" Tag="tuesday" MinWidth="32" />
+                                    <ToggleButton Content="W" Tag="wednesday" MinWidth="32" />
+                                    <ToggleButton Content="T" Tag="thursday" MinWidth="32" />
+                                    <ToggleButton Content="F" Tag="friday" MinWidth="32" />
+                                    <ToggleButton Content="S" Tag="saturday" MinWidth="32" />
+                                    <ToggleButton Content="S" Tag="sunday" MinWidth="32" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <ComboBox x:Name="RepeatEnd" SelectedIndex="0"
+                                              AutomationProperties.Name="Ends">
+                                        <ComboBoxItem Content="never ends" Tag="never" />
+                                        <ComboBoxItem Content="ends after" Tag="after_occurrences" />
+                                        <ComboBoxItem Content="ends on" Tag="until_date" />
+                                    </ComboBox>
+                                    <NumberBox x:Name="RepeatEndCount" Value="10" Minimum="1" Maximum="999"
+                                               Width="86" AutomationProperties.Name="Occurrences" />
+                                    <CalendarDatePicker x:Name="RepeatEndDate"
+                                                        AutomationProperties.Name="Ends on" />
+                                </StackPanel>
+                                <Button Content="Save custom repeat" Click="OnCustomRepeatSaved" />
                             </StackPanel>
                         </Flyout>
                     </Button.Flyout>

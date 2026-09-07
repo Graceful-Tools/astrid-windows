@@ -72,6 +72,17 @@ public static class Commands
     /// board could not offer an AI agent at all. Assigning is an ordinary update carrying an
     /// <c>assigneeId</c>; this is only the question of who may be offered.
     /// </remarks>
+    /// <summary>
+    /// The repeat presets, and how this task's repeat describes itself.
+    /// </summary>
+    /// <remarks>
+    /// The summary comes back as parts carrying resource keys rather than a finished sentence: a
+    /// sentence built by joining fragments is exactly what does not survive translation, where the
+    /// order of "every 2 weeks" and "on Mondays" is not the English order.
+    /// </remarks>
+    public static object RepeatOptions(string taskId) =>
+        new WithTaskId("repeatOptions", taskId);
+
     public static object AssigneeOptions(string taskId) =>
         new WithTaskId("assigneeOptions", taskId);
 

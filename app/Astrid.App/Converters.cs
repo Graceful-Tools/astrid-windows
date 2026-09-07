@@ -3,6 +3,7 @@ using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
+using System.Text;
 using Windows.UI;
 
 namespace Astrid.App;
@@ -178,6 +179,103 @@ public sealed partial class DueLabelConverter : IValueConverter
 /// </para>
 /// </remarks>
 /// <summary>
+/// A repeat, as a sentence.
+/// </summary>
+/// <remarks>
+/// <para>
+/// The core hands over parts — a key, a number, some weekday names — rather than a sentence,
+/// because a sentence assembled from fragments is what does not survive translation: the order of
+/// "every 2 weeks" and "on Mondays" is not the English order everywhere. Joining them is this
+/// converter's job, and it is the only place in the shell that knows the English order.
+/// </para>
+/// <para>
+/// Weekday and month names come from .NET's culture data rather than a table typed here, so they
+/// are already right in whatever the reader's Windows is set to.
+/// </para>
+/// </remarks>
+public sealed partial class RepeatSummaryConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        if (value is not IEnumerable<SummaryPart> parts)
+        {
+            return string.Empty;
+        }
+
+        var text = new StringBuilder();
+        foreach (var part in parts)
+        {
+            var piece = Say(part);
+            if (piece.Length == 0)
+            {
+                continue;
+            }
+            if (text.Length > 0)
+            {
+                // Only the trailing qualifier takes a comma, the way the Apple clients word it.
+                text.Append(part.Key == "repeat.from_due_date" ? ", " : " ");
+            }
+            text.Append(piece);
+        }
+        return text.ToString();
+    }
+
+    private static string Say(SummaryPart part)
+    {
+        var count = part.Count ?? 1;
+        var format = System.Globalization.CultureInfo.CurrentCulture;
+        return part.Key switch
+        {
+            "repeat.daily" => "Daily",
+            "repeat.weekly" => "Weekly",
+            "repeat.monthly" => "Monthly",
+            "repeat.yearly" => "Yearly",
+            "repeat.every_n_days" => count == 1 ? "Every day" : $"Every {count} days",
+            "repeat.every_n_weeks" => count == 1 ? "Every week" : $"Every {count} weeks",
+            "repeat.every_n_months" => count == 1 ? "Every month" : $"Every {count} months",
+            "repeat.every_n_years" => count == 1 ? "Every year" : $"Every {count} years",
+            "repeat.on_weekdays" => $"on {string.Join(", ", part.Values.Select(Weekday))}",
+            "repeat.on_day_of_month" => $"on the {Ordinal(count)}",
+            "repeat.on_nth_weekday" =>
+                $"on the {Ordinal(count)} {Weekday(part.Values.FirstOrDefault() ?? string.Empty)}",
+            "repeat.on_month_and_day" =>
+                $"on {Month(part.Values.FirstOrDefault())} {Ordinal(count)}",
+            "repeat.ends_after" => $"({count}x)",
+            "repeat.ends_on" => DateTimeOffset.TryParse(part.Date, out var until)
+                ? $"until {until.ToLocalTime().ToString("d", format)}"
+                : string.Empty,
+            "repeat.from_due_date" => "from due date",
+            _ => string.Empty,
+        };
+    }
+
+    /// <summary>A wire weekday as this reader's Windows names it.</summary>
+    private static string Weekday(string wire) =>
+        Enum.TryParse<DayOfWeek>(wire, ignoreCase: true, out var day)
+            ? System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat
+                .GetAbbreviatedDayName(day)
+            : wire;
+
+    private static string Month(string? number) =>
+        int.TryParse(number, out var month) && month is >= 1 and <= 12
+            ? System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month)
+            : string.Empty;
+
+    private static string Ordinal(long number) => (number % 100) is >= 11 and <= 13
+        ? $"{number}th"
+        : (number % 10) switch
+        {
+            1 => $"{number}st",
+            2 => $"{number}nd",
+            3 => $"{number}rd",
+            _ => $"{number}th",
+        };
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a repeat is chosen from the picker");
+}
+
+/// <summary>
 /// Who holds a task, as words.
 /// </summary>
 /// <remarks>
@@ -210,6 +308,13 @@ public sealed partial class PickTitleConverter : IValueConverter
         ["picker.evening"] = "Evening",
         ["picker.night"] = "Night",
         ["assignee.unassigned"] = "Unassigned",
+        ["repeat.never"] = "Never",
+        ["repeat.daily"] = "Daily",
+        ["repeat.weekly"] = "Weekly",
+        ["repeat.monthly"] = "Monthly",
+        ["repeat.yearly"] = "Yearly",
+        ["repeat.custom"] = "Custom…",
+        ["repeat.none"] = "Does not repeat",
     };
 
     public object Convert(object value, Type targetType, object parameter, string language) =>

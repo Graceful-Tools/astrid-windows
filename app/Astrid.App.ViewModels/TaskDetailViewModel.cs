@@ -35,6 +35,7 @@ public sealed class TaskDetailViewModel : ObservableObject
     private DueLabel _due = new();
     private string _priorityGlyph = "○";
     private UserSummary? _assignee;
+    private bool _repeatsFromDueDate;
 
     public TaskDetailViewModel(IAstridCore core)
     {
@@ -51,6 +52,18 @@ public sealed class TaskDetailViewModel : ObservableObject
     public ObservableCollection<string> FieldOrder { get; } = [];
 
     public ObservableCollection<ListChip> ListChips { get; } = [];
+
+    /// <summary>The repeat presets, loaded when the picker opens.</summary>
+    public ObservableCollection<RepeatPreset> RepeatPresets { get; } = [];
+
+    /// <summary>
+    /// How the open task's repeat reads, in parts. The shell turns these into words.
+    /// </summary>
+    /// <remarks>
+    /// A custom repeat cannot describe itself in a chip — "Custom" says nothing — so the detail
+    /// gives it its own row, worded by the same function the picker uses.
+    /// </remarks>
+    public ObservableCollection<SummaryPart> RepeatSummary { get; } = [];
 
     /// <summary>Who this task can be assigned to. Loaded when the picker opens.</summary>
     public ObservableCollection<AssigneeOption> Assignees { get; } = [];
@@ -277,6 +290,108 @@ public sealed class TaskDetailViewModel : ObservableObject
         Replace(TimePicks, options.Times);
     }
 
+    /// <summary>Whether the open task counts from its due date rather than from completion.</summary>
+    public bool RepeatsFromDueDate
+    {
+        get => _repeatsFromDueDate;
+        private set => Set(ref _repeatsFromDueDate, value);
+    }
+
+    /// <summary>Whether the open task repeats at all. What draws the glyph on the row.</summary>
+    public bool IsRepeating => RepeatSummary.Count > 0;
+
+    /// <summary>Fetch the repeat presets for the open task.</summary>
+    public async Task LoadRepeatAsync(CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return;
+        }
+        var response = await _core.CallAsync(Commands.RepeatOptions(TaskId), cancellationToken);
+        if (!Handle(response))
+        {
+            return;
+        }
+        var choices = response.Read<RepeatChoices>();
+        if (choices is null)
+        {
+            return;
+        }
+        RepeatsFromDueDate = choices.RepeatFrom == "DUE_DATE";
+        Replace(RepeatPresets, choices.Presets);
+        Replace(RepeatSummary, choices.Summary);
+        Raise(nameof(IsRepeating));
+    }
+
+    /// <summary>Choose one of the presets, or stop repeating.</summary>
+    /// <remarks>
+    /// Choosing "custom" from the preset list is not a write: there is nothing to store until a
+    /// pattern has been built, and writing <c>custom</c> with no pattern is what leaves a task
+    /// repeating on a rule nobody can read.
+    /// </remarks>
+    public Task<bool> SetRepeatAsync(string value, CancellationToken cancellationToken = default)
+    {
+        if (value == "custom")
+        {
+            return Task.FromResult(false);
+        }
+        return UpdateAsync(new Dictionary<string, object?>
+        {
+            ["repeating"] = value,
+            // Clearing the pattern with the preset: a daily task carrying a leftover custom rule
+            // is a task that repeats one way and reads another.
+            ["repeatingData"] = null,
+        }, cancellationToken);
+    }
+
+    /// <summary>Count the next occurrence from the due date, or from when it was finished.</summary>
+    public Task<bool> SetRepeatFromAsync(bool fromDueDate,
+        CancellationToken cancellationToken = default) =>
+        UpdateAsync(new Dictionary<string, object?>
+        {
+            ["repeatFrom"] = fromDueDate ? "DUE_DATE" : "COMPLETION_DATE",
+        }, cancellationToken);
+
+    /// <summary>Store a custom pattern.</summary>
+    /// <remarks>
+    /// The fields the pattern does not need are left out rather than sent as nulls — the server's
+    /// column is free-form JSON, and a weekly pattern carrying a stale <c>monthDay</c> is a rule
+    /// that means something different to whichever client reads it next.
+    /// </remarks>
+    public Task<bool> SetCustomRepeatAsync(string unit, int interval,
+        IReadOnlyList<string>? weekdays = null, string? endCondition = null,
+        int? endAfterOccurrences = null, string? endUntilDate = null,
+        CancellationToken cancellationToken = default)
+    {
+        var pattern = new Dictionary<string, object?>
+        {
+            ["type"] = "custom",
+            ["unit"] = unit,
+            ["interval"] = Math.Max(1, interval),
+        };
+        if (unit == "weeks" && weekdays is { Count: > 0 })
+        {
+            pattern["weekdays"] = weekdays;
+        }
+        if (endCondition is not null)
+        {
+            pattern["endCondition"] = endCondition;
+            if (endCondition == "after_occurrences" && endAfterOccurrences is > 0)
+            {
+                pattern["endAfterOccurrences"] = endAfterOccurrences;
+            }
+            if (endCondition == "until_date" && endUntilDate is not null)
+            {
+                pattern["endUntilDate"] = endUntilDate;
+            }
+        }
+        return UpdateAsync(new Dictionary<string, object?>
+        {
+            ["repeating"] = "custom",
+            ["repeatingData"] = pattern,
+        }, cancellationToken);
+    }
+
     /// <summary>Fetch who the open task can be assigned to.</summary>
     /// <remarks>
     /// Asked for when the picker opens rather than held with the task: the answer depends on the
@@ -419,6 +534,10 @@ public sealed class TaskDetailViewModel : ObservableObject
         Replace(ListChips, Read<ListChip>(value, "listChips"));
         Replace(Comments, Read<CommentSummary>(value, "comments"));
         Replace(Subtasks, Read<SubtaskSummary>(value, "subtasks"));
+        // The repeat comes with the screen rather than with the picker: the row has to say how the
+        // task repeats before anybody opens anything.
+        Replace(RepeatSummary, Read<SummaryPart>(value, "repeatSummary"));
+        Raise(nameof(IsRepeating));
     }
 
     private static List<T> Read<T>(JsonElement value, string name) =>

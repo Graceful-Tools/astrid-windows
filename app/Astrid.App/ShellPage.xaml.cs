@@ -2,6 +2,7 @@ using Astrid.App.ViewModels;
 using Astrid.Core.Bindings;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Windows.System;
 
@@ -344,6 +345,47 @@ public sealed partial class ShellPage : UserControl
     /// </remarks>
     private async void OnDetailTitleCommitted(object sender, RoutedEventArgs args) =>
         await Shell.Detail.SaveTitleAsync(DetailTitleBox.Text);
+
+    private async void OnRepeatFlyoutOpening(object sender, object args)
+    {
+        await Shell.Detail.LoadRepeatAsync();
+    }
+
+    private async void OnRepeatPresetChosen(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is string value)
+        {
+            await Shell.Detail.SetRepeatAsync(value);
+        }
+    }
+
+    private async void OnRepeatFromToggled(object sender, RoutedEventArgs args)
+    {
+        // Only when it differs: the switch is set from the task as the flyout opens, and reacting
+        // to that would write the value back to itself on every open.
+        if (RepeatFromDueDate.IsOn != Shell.Detail.RepeatsFromDueDate)
+        {
+            await Shell.Detail.SetRepeatFromAsync(RepeatFromDueDate.IsOn);
+        }
+    }
+
+    private async void OnCustomRepeatSaved(object sender, RoutedEventArgs args)
+    {
+        var unit = (RepeatUnit.SelectedItem as FrameworkElement)?.Tag as string ?? "days";
+        var days = RepeatWeekdays.Children
+            .OfType<ToggleButton>()
+            .Where(button => button.IsChecked == true)
+            .Select(button => (string)button.Tag)
+            .ToList();
+        var ends = (RepeatEnd.SelectedItem as FrameworkElement)?.Tag as string;
+        await Shell.Detail.SetCustomRepeatAsync(
+            unit,
+            (int)RepeatInterval.Value,
+            days,
+            ends,
+            (int)RepeatEndCount.Value,
+            RepeatEndDate.Date?.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"));
+    }
 
     /// <summary>
     /// Load the picker's rows as it opens, so they are never stale and never fetched for a screen

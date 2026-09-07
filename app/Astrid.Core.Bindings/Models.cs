@@ -203,6 +203,44 @@ public sealed record DueDateOptions
     [JsonPropertyName("times")] public IReadOnlyList<DuePick> Times { get; init; } = [];
 }
 
+/// <summary>One fragment of a repeat's description: a key, and what it interpolates.</summary>
+public sealed record SummaryPart
+{
+    /// <summary>A resource key. The core never returns words.</summary>
+    [JsonPropertyName("key")] public string Key { get; init; } = string.Empty;
+
+    /// <summary>The number the key's plural form and its placeholder refer to.</summary>
+    [JsonPropertyName("count")] public long? Count { get; init; }
+
+    /// <summary>Weekdays as the wire spells them, for the shell to translate itself.</summary>
+    [JsonPropertyName("values")] public IReadOnlyList<string> Values { get; init; } = [];
+
+    [JsonPropertyName("date")] public string? Date { get; init; }
+}
+
+/// <summary>One choice in the repeat picker.</summary>
+public sealed record RepeatPreset
+{
+    /// <summary>What to write back, as the wire spells it: <c>never</c>, <c>daily</c>, …</summary>
+    [JsonPropertyName("value")] public string Value { get; init; } = string.Empty;
+
+    [JsonPropertyName("titleKey")] public string TitleKey { get; init; } = string.Empty;
+
+    [JsonPropertyName("isSelected")] public bool IsSelected { get; init; }
+}
+
+/// <summary>The repeat picker's rows, and how the current repeat reads.</summary>
+public sealed record RepeatChoices
+{
+    [JsonPropertyName("repeating")] public string? Repeating { get; init; }
+
+    [JsonPropertyName("repeatFrom")] public string? RepeatFrom { get; init; }
+
+    [JsonPropertyName("presets")] public IReadOnlyList<RepeatPreset> Presets { get; init; } = [];
+
+    [JsonPropertyName("summary")] public IReadOnlyList<SummaryPart> Summary { get; init; } = [];
+}
+
 /// <summary>One row of the assignee picker. A null <see cref="UserId"/> is "no one".</summary>
 public sealed record AssigneeOption
 {

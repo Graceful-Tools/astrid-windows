@@ -31,6 +31,126 @@ public sealed class TaskDetailViewModelTests
             }).ToArray(),
         };
 
+    private static object NoDuePicks() =>
+        new { isAllDay = true, dates = Array.Empty<object>(), times = Array.Empty<object>() };
+
+    private static FakeCore OpenedTask() => new FakeCore()
+        .AnswerOk("taskDetail", Detail())
+        .AnswerOk("dueDateOptions", NoDuePicks())
+        .AnswerOk("refreshComments");
+
+    /// <summary>
+    /// The presets come from the core, marked. A shell that decided which row was selected would
+    /// be the fourth place to decide it.
+    /// </summary>
+    [Fact]
+    public async Task The_repeat_picker_is_loaded_when_it_is_opened()
+    {
+        var core = OpenedTask().AnswerOk("repeatOptions", new
+        {
+            repeating = "weekly",
+            repeatFrom = "DUE_DATE",
+            presets = new[]
+            {
+                new { value = "never", titleKey = "repeat.never", isSelected = false },
+                new { value = "weekly", titleKey = "repeat.weekly", isSelected = true },
+            },
+            summary = new[] { new { key = "repeat.weekly" }, new { key = "repeat.from_due_date" } },
+        });
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.LoadRepeatAsync();
+
+        Assert.Equal(2, view.RepeatPresets.Count);
+        Assert.True(view.RepeatPresets[1].IsSelected);
+        Assert.True(view.RepeatsFromDueDate);
+        Assert.True(view.IsRepeating);
+    }
+
+    /// <summary>
+    /// A preset clears any custom pattern with it: a daily task carrying a leftover custom rule
+    /// repeats one way and reads another.
+    /// </summary>
+    [Fact]
+    public async Task Choosing_a_preset_clears_the_custom_pattern()
+    {
+        var core = OpenedTask().AnswerOk("updateTask").AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.True(await view.SetRepeatAsync("daily"));
+
+        var update = core.Sent.First(sent => sent.Contains("updateTask"));
+        Assert.Contains("\"repeating\":\"daily\"", update);
+        Assert.Contains("\"repeatingData\":null", update);
+    }
+
+    /// <summary>
+    /// "Custom" is not a repeat until a pattern has been built. Writing it with nothing behind it
+    /// leaves a task repeating on a rule nobody can read.
+    /// </summary>
+    [Fact]
+    public async Task Choosing_custom_writes_nothing_on_its_own()
+    {
+        var core = OpenedTask();
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.False(await view.SetRepeatAsync("custom"));
+
+        Assert.DoesNotContain("updateTask", core.SentKinds());
+    }
+
+    [Fact]
+    public async Task A_custom_pattern_is_stored_with_the_preset_that_names_it()
+    {
+        var core = OpenedTask().AnswerOk("updateTask").AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.SetCustomRepeatAsync("weeks", 2, ["monday", "wednesday"]);
+
+        var update = core.Sent.First(sent => sent.Contains("updateTask"));
+        Assert.Contains("\"repeating\":\"custom\"", update);
+        Assert.Contains("\"unit\":\"weeks\"", update);
+        Assert.Contains("\"interval\":2", update);
+        Assert.Contains("monday", update);
+    }
+
+    /// <summary>
+    /// The fields a pattern does not need are left out. The column is free-form JSON, and a
+    /// monthly pattern carrying weekdays from a previous edit means something different to
+    /// whichever client reads it next.
+    /// </summary>
+    [Fact]
+    public async Task A_pattern_carries_only_the_fields_its_unit_needs()
+    {
+        var core = OpenedTask().AnswerOk("updateTask").AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.SetCustomRepeatAsync("months", 1, ["monday"], "never", 10, "2027-01-01T00:00:00Z");
+
+        var update = core.Sent.First(sent => sent.Contains("updateTask"));
+        Assert.DoesNotContain("weekdays", update);
+        Assert.DoesNotContain("endAfterOccurrences", update);
+        Assert.DoesNotContain("endUntilDate", update);
+    }
+
+    /// <summary>An interval of zero is not a repeat, it is a loop.</summary>
+    [Fact]
+    public async Task An_interval_below_one_is_pulled_back_up()
+    {
+        var core = OpenedTask().AnswerOk("updateTask").AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.SetCustomRepeatAsync("days", 0);
+
+        Assert.Contains("\"interval\":1", core.Sent.First(sent => sent.Contains("updateTask")));
+    }
+
     /// <summary>
     /// The picker is asked for as it opens rather than carried with the task: the answer depends on
     /// the account's agents and on every list the task is on.
