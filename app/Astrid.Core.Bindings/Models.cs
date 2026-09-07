@@ -53,6 +53,23 @@ public sealed record TaskRow
     [JsonPropertyName("assignee")] public UserSummary? Assignee { get; init; }
 
     [JsonPropertyName("statusRole")] public string? StatusRole { get; init; }
+
+    /// <summary>What a screen reader should call the checkbox on this row.</summary>
+    public string CompleteActionName => $"Complete {Title}";
+
+    /// <summary>What a screen reader should call the delete button on this row.</summary>
+    public string DeleteActionName => $"Delete {Title}";
+
+    /// <summary>
+    /// The title.
+    /// </summary>
+    /// <remarks>
+    /// Overridden because a <c>ListView</c> names its container from the item's <c>ToString()</c>,
+    /// and a record's generated one prints every field — so Narrator reads out an id, a colour and
+    /// eight nulls before reaching the task. Setting <c>AutomationProperties.Name</c> inside the
+    /// template does not help: the name that is read belongs to the container, not to its content.
+    /// </remarks>
+    public override string ToString() => Title;
 }
 
 /// <summary>
@@ -154,6 +171,9 @@ public sealed record ListSummary
     public bool IsStatusList => ListType == "status";
 
     public string DisplayColor => string.IsNullOrWhiteSpace(Color) ? "#3b82f6" : Color!;
+
+    /// <summary>The name. See <see cref="TaskRow.ToString"/> for why this is overridden.</summary>
+    public override string ToString() => Name;
 }
 
 /// <summary>What the Outbox is holding, for the "not synced yet" indicator.</summary>

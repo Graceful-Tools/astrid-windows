@@ -52,8 +52,7 @@ public sealed class SidebarViewModel : ObservableObject
         IsLoading = true;
         try
         {
-            var response = await _core.CallAsync(Commands.Lists(), cancellationToken)
-                .ConfigureAwait(false);
+            var response = await _core.CallAsync(Commands.Lists(), cancellationToken);
             if (!response.Ok)
             {
                 ErrorMessage = response.IsStillPending ? null : response.Error?.Message;
@@ -98,15 +97,14 @@ public sealed class SidebarViewModel : ObservableObject
             return false;
         }
 
-        var response = await _core.CallAsync(Commands.CreateList(trimmed), cancellationToken)
-            .ConfigureAwait(false);
+        var response = await _core.CallAsync(Commands.CreateList(trimmed), cancellationToken);
         if (!response.Ok)
         {
             ErrorMessage = response.IsStillPending ? null : response.Error?.Message;
             return false;
         }
 
-        await LoadAsync(cancellationToken).ConfigureAwait(false);
+        await LoadAsync(cancellationToken);
         var created = response.Read<ListSummary>();
         if (created is not null)
         {
@@ -118,14 +116,13 @@ public sealed class SidebarViewModel : ObservableObject
     public async Task<bool> SetFavoriteAsync(string listId, bool favorite,
         CancellationToken cancellationToken = default)
     {
-        var response = await _core.CallAsync(Commands.SetListFavorite(listId, favorite), cancellationToken)
-            .ConfigureAwait(false);
+        var response = await _core.CallAsync(Commands.SetListFavorite(listId, favorite), cancellationToken);
         if (!response.Ok)
         {
             ErrorMessage = response.IsStillPending ? null : response.Error?.Message;
             return false;
         }
-        await LoadAsync(cancellationToken).ConfigureAwait(false);
+        await LoadAsync(cancellationToken);
         return true;
     }
 

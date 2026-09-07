@@ -82,10 +82,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// </remarks>
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
-        await Sidebar.LoadAsync(cancellationToken).ConfigureAwait(false);
-        await OpenSelectedAsync(cancellationToken).ConfigureAwait(false);
-        await RefreshOutboxAsync(cancellationToken).ConfigureAwait(false);
-        await SyncAsync(cancellationToken).ConfigureAwait(false);
+        await Sidebar.LoadAsync(cancellationToken);
+        await OpenSelectedAsync(cancellationToken);
+        await RefreshOutboxAsync(cancellationToken);
+        await SyncAsync(cancellationToken);
     }
 
     /// <summary>Open whatever the sidebar has selected.</summary>
@@ -96,7 +96,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         {
             return;
         }
-        await Tasks.OpenAsync(selected.Id, selected.Name, cancellationToken).ConfigureAwait(false);
+        await Tasks.OpenAsync(selected.Id, selected.Name, cancellationToken);
         NeedsSignIn |= Tasks.NeedsSignIn;
     }
 
@@ -110,7 +110,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         IsSyncing = true;
         try
         {
-            var response = await _core.CallAsync(Commands.Sync(), cancellationToken).ConfigureAwait(false);
+            var response = await _core.CallAsync(Commands.Sync(), cancellationToken);
             if (response.NeedsSignIn)
             {
                 NeedsSignIn = true;
@@ -126,10 +126,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
             if (fetched)
             {
-                await Sidebar.LoadAsync(cancellationToken).ConfigureAwait(false);
-                await Tasks.RefreshAsync(cancellationToken).ConfigureAwait(false);
+                await Sidebar.LoadAsync(cancellationToken);
+                await Tasks.RefreshAsync(cancellationToken);
             }
-            await RefreshOutboxAsync(cancellationToken).ConfigureAwait(false);
+            await RefreshOutboxAsync(cancellationToken);
         }
         finally
         {
@@ -139,8 +139,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     public async Task RefreshOutboxAsync(CancellationToken cancellationToken = default)
     {
-        var response = await _core.CallAsync(Commands.OutboxStats(), cancellationToken)
-            .ConfigureAwait(false);
+        var response = await _core.CallAsync(Commands.OutboxStats(), cancellationToken);
         var stats = response.Read<OutboxStats>();
         HasUnsentWork = stats?.HasUnsentWork ?? false;
     }
@@ -177,14 +176,14 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             switch (notification.Change)
             {
                 case "task":
-                    await Tasks.RefreshAsync().ConfigureAwait(false);
-                    await RefreshOutboxAsync().ConfigureAwait(false);
+                    await Tasks.RefreshAsync();
+                    await RefreshOutboxAsync();
                     break;
                 case "list":
-                    await Sidebar.LoadAsync().ConfigureAwait(false);
+                    await Sidebar.LoadAsync();
                     break;
                 case "needsSync":
-                    await SyncAsync().ConfigureAwait(false);
+                    await SyncAsync();
                     break;
                 default:
                     // A change this build does not draw anything for. The next sync carries it.

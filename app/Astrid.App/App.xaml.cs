@@ -25,6 +25,34 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
+
+        // A WinUI app that throws during layout dies as exit code 0xC000027B with nothing on
+        // screen and nothing in the console — a "stowed exception", which tells the person running
+        // it precisely nothing. Writing the exception somewhere findable is the difference between
+        // a bug report that can be acted on and one that says "it just closes".
+        UnhandledException += (_, args) =>
+        {
+            Log(args.Exception);
+            // Left unhandled on purpose: swallowing it leaves the app running in whatever state
+            // the failure produced, which is worse than stopping.
+        };
+    }
+
+    /// <summary>Where the last crash was written.</summary>
+    internal static string CrashLogPath => Path.Combine(DataDirectory(), "crash.log");
+
+    private static void Log(Exception exception)
+    {
+        try
+        {
+            File.AppendAllText(
+                CrashLogPath,
+                $"{DateTimeOffset.Now:O}  {exception}{Environment.NewLine}{Environment.NewLine}");
+        }
+        catch (IOException)
+        {
+            // Nothing useful to do when even the log will not write.
+        }
     }
 
     /// <summary>The running core, for the windows to use.</summary>
@@ -65,12 +93,14 @@ public partial class App : Application
     /// server in a sync — and roaming a SQLite file between machines is a good way to corrupt it
     /// while two of them have it open.
     /// </remarks>
-    private static string CachePath()
+    private static string CachePath() => Path.Combine(DataDirectory(), "astrid.db");
+
+    private static string DataDirectory()
     {
         var directory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "Astrid");
         Directory.CreateDirectory(directory);
-        return Path.Combine(directory, "astrid.db");
+        return directory;
     }
 }

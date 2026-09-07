@@ -26,7 +26,23 @@ shell exists (M2).
 
 ## M2 — shell
 
-Not started. `app/Astrid.sln` does not exist; `npm run predeploy` skips the shell steps and says so.
+The app exists and runs: create a list, add a task, complete it, sync, relaunch and it is all
+still there. Built and tested for x64 and ARM64 by `npm run predeploy`.
+
+| Piece | Path | State |
+|---|---|---|
+| Command layer (the one door) | `crates/astrid-core/src/app/` | done |
+| C ABI | `crates/astrid-ffi/`, `include/astrid.h` | done |
+| P/Invoke and the managed client | `app/Astrid.Core.Bindings/` | done |
+| View models | `app/Astrid.App.ViewModels/` | done |
+| WinUI window: sidebar, list, quick add | `app/Astrid.App/` | done |
+| Tests either side of the boundary | `app/Astrid.App.Tests/` | done |
+| Task detail | — | not started |
+| The shared keyboard scheme, dispatched | `astrid_core::keyboard` → shell | not started |
+| Sign-in through the browser hand-off | `astrid_core::auth::desktop_handoff` → shell | not started |
+| Board view | — | not started |
+| Localisation (`.resw`) | — | not started |
+| UI smoke tests | `app/Astrid.App.UITests/` | not started |
 
 ## M3 — collaboration and remaining parity
 

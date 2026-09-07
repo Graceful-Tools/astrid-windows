@@ -6,14 +6,20 @@
     xmlns:bindings="using:Astrid.Core.Bindings"
     xmlns:local="using:Astrid.App">
 
+    <!--
+        The converters live on the page rather than on the Grid inside it. `x:Bind` resolves a
+        converter key against the ROOT element's resources only, so one declared on a nested Grid
+        compiles, binds, and then throws "Cannot find a resource with the given key" the moment the
+        page loads — with no line number and no element name.
+    -->
+    <UserControl.Resources>
+        <local:PriorityBrushConverter x:Key="PriorityBrush" />
+        <local:DepthIndentConverter x:Key="DepthIndent" />
+        <local:BoolToVisibilityConverter x:Key="Visible" />
+        <local:DueLabelConverter x:Key="DueText" />
+    </UserControl.Resources>
+
     <Grid x:Name="RootGrid" KeyDown="OnKeyDown">
-            <Grid.Resources>
-                <local:PriorityBrushConverter x:Key="PriorityBrush" />
-                <local:DepthIndentConverter x:Key="DepthIndent" />
-                <local:BoolToVisibilityConverter x:Key="Visible" />
-                <local:DueLabelConverter x:Key="DueText" />
-            </Grid.Resources>
-    
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="260" />
                 <ColumnDefinition Width="*" />
@@ -132,6 +138,7 @@
     
                                 <CheckBox Grid.Column="0"
                                           MinWidth="0"
+                                          AutomationProperties.Name="{x:Bind CompleteActionName}"
                                           IsChecked="{x:Bind Completed}"
                                           Tag="{x:Bind Id}"
                                           Checked="OnRowChecked"
@@ -159,6 +166,7 @@
     
                                 <Button Grid.Column="3"
                                         Content="Delete"
+                                        AutomationProperties.Name="{x:Bind DeleteActionName}"
                                         Tag="{x:Bind Id}"
                                         Click="OnDeleteRow" />
                             </Grid>

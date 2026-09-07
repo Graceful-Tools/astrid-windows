@@ -103,7 +103,7 @@ public sealed class TaskListViewModel : ObservableObject
         ListName = listName;
         Rows.Clear();
         Total = 0;
-        await LoadMoreAsync(cancellationToken).ConfigureAwait(false);
+        await LoadMoreAsync(cancellationToken);
     }
 
     /// <summary>Fetch the next window of rows.</summary>
@@ -122,8 +122,7 @@ public sealed class TaskListViewModel : ObservableObject
         try
         {
             var response = await _core
-                .CallAsync(Commands.RowsForList(ListId, Rows.Count, PageSize), cancellationToken)
-                .ConfigureAwait(false);
+                .CallAsync(Commands.RowsForList(ListId, Rows.Count, PageSize), cancellationToken);
             if (!Handle(response))
             {
                 return;
@@ -163,8 +162,7 @@ public sealed class TaskListViewModel : ObservableObject
         try
         {
             var response = await _core
-                .CallAsync(Commands.RowsForList(ListId, 0, wanted), cancellationToken)
-                .ConfigureAwait(false);
+                .CallAsync(Commands.RowsForList(ListId, 0, wanted), cancellationToken);
             if (!Handle(response))
             {
                 return;
@@ -199,14 +197,13 @@ public sealed class TaskListViewModel : ObservableObject
 
         var listIds = string.IsNullOrEmpty(ListId) ? Array.Empty<string>() : [ListId];
         var response = await _core
-            .CallAsync(Commands.CreateTask(trimmed, listIds), cancellationToken)
-            .ConfigureAwait(false);
+            .CallAsync(Commands.CreateTask(trimmed, listIds), cancellationToken);
         if (!Handle(response))
         {
             return false;
         }
 
-        await RefreshAsync(cancellationToken).ConfigureAwait(false);
+        await RefreshAsync(cancellationToken);
         return true;
     }
 
@@ -222,22 +219,20 @@ public sealed class TaskListViewModel : ObservableObject
         CancellationToken cancellationToken = default)
     {
         var response = await _core
-            .CallAsync(Commands.CompleteTask(taskId, completed), cancellationToken)
-            .ConfigureAwait(false);
+            .CallAsync(Commands.CompleteTask(taskId, completed), cancellationToken);
         if (!Handle(response))
         {
             return false;
         }
 
-        await RefreshAsync(cancellationToken).ConfigureAwait(false);
+        await RefreshAsync(cancellationToken);
         return true;
     }
 
     public async Task<bool> DeleteTaskAsync(string taskId, CancellationToken cancellationToken = default)
     {
         var response = await _core
-            .CallAsync(Commands.DeleteTask(taskId), cancellationToken)
-            .ConfigureAwait(false);
+            .CallAsync(Commands.DeleteTask(taskId), cancellationToken);
         if (!Handle(response))
         {
             return false;

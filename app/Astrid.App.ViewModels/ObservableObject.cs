@@ -3,6 +3,23 @@ using System.Runtime.CompilerServices;
 
 namespace Astrid.App.ViewModels;
 
+/*
+ * A note that applies to every view model in this project, kept here because it is the file
+ * somebody opens first.
+ *
+ * NOTHING HERE USES ConfigureAwait(false), and that is deliberate.
+ *
+ * The usual advice — a library should always continue on the pool — is exactly wrong for a view
+ * model. These types own ObservableCollections that a ListView is bound to, and mutating one from
+ * a thread that is not the UI thread crashes WinUI inside CoreMessagingXP with E_NOINTERFACE and
+ * no managed stack. The answers arrive from a Rust pool thread, so without the captured context
+ * every continuation would be on the wrong thread; letting them come back to the dispatcher is
+ * what makes the collection mutations legal.
+ *
+ * The tests have no synchronization context, so their continuations run on the pool, which is
+ * correct there and is why the crash did not show up until the app was run.
+ */
+
 /// <summary>
 /// The smallest thing XAML binding needs.
 /// </summary>
