@@ -24,10 +24,11 @@ shell exists (M2).
 | Row and label projections | `crates/astrid-core/src/rows/` | done |
 | Quick-add `#list` autocomplete | `crates/astrid-core/src/parse/` | done |
 
-## M2 — shell
+## M2 — shell — done
 
 The app exists and runs: create a list, add a task, complete it, sync, relaunch and it is all
-still there. Built and tested for x64 and ARM64 by `npm run predeploy`.
+still there. Built and tested for x64 and ARM64 by `npm run predeploy`, and driven through its own
+accessibility tree by `npm run predeploy:full`.
 
 | Piece | Path | State |
 |---|---|---|
@@ -60,7 +61,7 @@ still there. Built and tested for x64 and ARM64 by `npm run predeploy`.
 | Attachments | — | not started |
 | Filters and saved views | `astrid_core::filters`, `rows::filter_picks` → shell | done |
 | Account and settings screens | — | not started |
-| `docs/PARITY.md` | — | not started |
+| `docs/PARITY.md` | `docs/PARITY.md` | done |
 
 ## M4 — distribution
 

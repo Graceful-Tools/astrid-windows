@@ -99,6 +99,8 @@ manually triggered act, the same discipline astrid-web follows for production de
 |---|---|
 | **[docs/ASTRID.md](./docs/ASTRID.md)** | **Architecture and rules — read first** |
 | [docs/CONTRACTS.md](./docs/CONTRACTS.md) | Cross-platform rules and known divergences between clients |
+| [docs/PARITY.md](./docs/PARITY.md) | What this app does against the Mac, and what it never will |
+| [docs/PROGRESS.md](./docs/PROGRESS.md) | Where the milestones stand |
 | [docs/context/stack.md](./docs/context/stack.md) | Pinned tool versions, machine setup |
 | [contracts/README.md](./contracts/README.md) | How the fixtures are generated |
 | [README.md](./README.md) | Project overview |
