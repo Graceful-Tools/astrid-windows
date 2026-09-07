@@ -37,9 +37,9 @@ still there. Built and tested for x64 and ARM64 by `npm run predeploy`.
 | View models | `app/Astrid.App.ViewModels/` | done |
 | WinUI window: sidebar, list, quick add | `app/Astrid.App/` | done |
 | Tests either side of the boundary | `app/Astrid.App.Tests/` | done |
-| Task detail | — | not started |
-| The shared keyboard scheme, dispatched | `astrid_core::keyboard` → shell | not started |
-| Sign-in through the browser hand-off | `astrid_core::auth::desktop_handoff` → shell | not started |
+| Task detail | `app/Astrid.App/` → `taskDetail` | done |
+| The shared keyboard scheme, dispatched | `astrid_core::keyboard` → shell | done |
+| Sign-in through the browser hand-off | `astrid_core::services::auth` → shell | done |
 | Board view | — | not started |
 | Localisation (`.resw`) | — | not started |
 | UI smoke tests | `app/Astrid.App.UITests/` | not started |

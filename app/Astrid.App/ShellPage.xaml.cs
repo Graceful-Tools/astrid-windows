@@ -270,6 +270,99 @@ public sealed partial class ShellPage : UserControl
         }
     }
 
+    // ── The task detail ──────────────────────────────────────────────────────────────────────
+    //
+    // Edits save as they are made rather than on a Save button. Every write goes to the Outbox, so
+    // "saved" and "sent" are already different things, and a Save button would be claiming to do
+    // the second when it does the first.
+
+    private async void OnRowOpened(object sender, DoubleTappedRoutedEventArgs args)
+    {
+        if (Shell.Tasks.Selected is { } row)
+        {
+            await Shell.OpenTaskAsync(row.Id);
+            SyncDetailPriority();
+        }
+    }
+
+    private void OnCloseDetail(object sender, RoutedEventArgs args) => Shell.Detail.Close();
+
+    private async void OnDetailChecked(object sender, RoutedEventArgs args) =>
+        await Shell.Detail.SetCompletedAsync(true);
+
+    private async void OnDetailUnchecked(object sender, RoutedEventArgs args) =>
+        await Shell.Detail.SetCompletedAsync(false);
+
+    /// <summary>
+    /// Save the title when the box loses focus.
+    /// </summary>
+    /// <remarks>
+    /// On focus loss rather than on every keystroke: a command per character would put a hundred
+    /// entries in the Outbox for one rename, and every one of them a separate request when the
+    /// network came back.
+    /// </remarks>
+    private async void OnDetailTitleCommitted(object sender, RoutedEventArgs args) =>
+        await Shell.Detail.SaveTitleAsync(DetailTitleBox.Text);
+
+    private async void OnDetailTitleKeyDown(object sender, KeyRoutedEventArgs args)
+    {
+        if (args.Key != VirtualKey.Enter)
+        {
+            return;
+        }
+        args.Handled = true;
+        await Shell.Detail.SaveTitleAsync(DetailTitleBox.Text);
+    }
+
+    private async void OnDetailDescriptionCommitted(object sender, RoutedEventArgs args) =>
+        await Shell.Detail.SaveDescriptionAsync(DetailDescriptionBox.Text);
+
+    private async void OnDetailPriorityChanged(object sender, SelectionChangedEventArgs args)
+    {
+        // The combo raises this while the pane is being filled in as well as when somebody picks
+        // something, and saving then would write the value back that was just read.
+        if (!Shell.Detail.IsOpen || DetailPriority.SelectedIndex < 0
+            || DetailPriority.SelectedIndex == Shell.Detail.Priority)
+        {
+            return;
+        }
+        await Shell.Detail.SetPriorityAsync(DetailPriority.SelectedIndex);
+    }
+
+    private async void OnSubtaskKeyDown(object sender, KeyRoutedEventArgs args)
+    {
+        if (args.Key != VirtualKey.Enter)
+        {
+            return;
+        }
+        args.Handled = true;
+        if (await Shell.Detail.AddSubtaskAsync(SubtaskBox.Text))
+        {
+            SubtaskBox.Text = string.Empty;
+        }
+    }
+
+    private async void OnCommentKeyDown(object sender, KeyRoutedEventArgs args)
+    {
+        if (args.Key != VirtualKey.Enter)
+        {
+            return;
+        }
+        args.Handled = true;
+        if (await Shell.Detail.AddCommentAsync(CommentBox.Text))
+        {
+            CommentBox.Text = string.Empty;
+        }
+    }
+
+    /// <summary>Put the priority combo where the open task says it should be.</summary>
+    /// <remarks>
+    /// A ComboBox has no two-way binding to an index that survives the list being rebuilt, so the
+    /// selection is set once when a task is opened. The guard in the changed handler is what stops
+    /// this from being read back as an edit.
+    /// </remarks>
+    private void SyncDetailPriority() => DetailPriority.SelectedIndex = Shell.Detail.Priority;
+
     /// <summary>Put the highlight where the view model says the selection is.</summary>
     private void SyncSelectionFromViewModel()
     {

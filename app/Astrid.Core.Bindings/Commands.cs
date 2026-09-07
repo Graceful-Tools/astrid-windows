@@ -38,6 +38,17 @@ public static class Commands
 
     public static object Task(string taskId) => new WithTaskId("task", taskId);
 
+    /// <summary>
+    /// Everything one task's detail screen needs, including the order to lay its fields out in.
+    /// </summary>
+    /// <remarks>
+    /// One command rather than five. The field order — Who, Date, Priority, Lists — is a product
+    /// decision shared with web and both Apple clients, and a shell that assembled the screen
+    /// itself would be the fifth place to get it wrong.
+    /// </remarks>
+    public static object TaskDetail(string taskId, string? displayMode = null) =>
+        new DetailRequest("taskDetail", taskId, displayMode);
+
     public static object Comments(string taskId) => new WithTaskId("comments", taskId);
 
     public static object CurrentUser() => new KindOnly("currentUser");
@@ -204,6 +215,11 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("content")] string Content);
+
+    private sealed record DetailRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("taskId")] string TaskId,
+        [property: JsonPropertyName("displayMode")] string? DisplayMode);
 
     private sealed record ShortcutRequest(
         [property: JsonPropertyName("kind")] string Kind,

@@ -4,7 +4,8 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:bindings="using:Astrid.Core.Bindings"
-    xmlns:local="using:Astrid.App">
+    xmlns:local="using:Astrid.App"
+    xmlns:viewmodels="using:Astrid.App.ViewModels">
 
     <!--
         The converters live on the page rather than on the Grid inside it. `x:Bind` resolves a
@@ -24,6 +25,11 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="260" />
                 <ColumnDefinition Width="*" />
+                <!--
+                    The detail pane. Auto rather than a fixed width so it takes no space at all
+                    when nothing is open, and the list gets the whole window back.
+                -->
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
             <!--
@@ -36,7 +42,7 @@
                 message at all — an hour of bisecting to find one ordering rule.
             -->
             <Grid x:Name="SignInLayer"
-                  Grid.Column="0" Grid.ColumnSpan="2"
+                  Grid.Column="0" Grid.ColumnSpan="3"
                   Canvas.ZIndex="10"
                   Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
                   Visibility="{x:Bind Shell.SignIn.NeedsSignIn, Mode=OneWay, Converter={StaticResource Visible}}">
@@ -182,6 +188,7 @@
                           ItemsSource="{x:Bind Shell.Tasks.Rows, Mode=OneWay}"
                           SelectedItem="{x:Bind Shell.Tasks.Selected, Mode=TwoWay}"
                           SelectionMode="Single"
+                          DoubleTapped="OnRowOpened"
                           ShowsScrollingPlaceholders="True">
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="bindings:TaskRow">
@@ -251,5 +258,119 @@
                     <Button Grid.Column="1" Content="Add" Click="OnQuickAdd" Style="{ThemeResource AccentButtonStyle}" />
                 </Grid>
             </Grid>
+
+        <!--
+            The task detail. Collapsed rather than merely narrow when nothing is open, so it is out
+            of the tab order as well as out of the way.
+
+            The rows are laid out in the order the core gave — Who, Date, Priority, Lists — which
+            is a product decision shared with web and both Apple clients. It is not re-decided here.
+        -->
+        <Grid Grid.Column="2" Width="340" Padding="16"
+              Background="{ThemeResource LayerFillColorDefaultBrush}"
+              Visibility="{x:Bind Shell.Detail.IsOpen, Mode=OneWay, Converter={StaticResource Visible}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0" Spacing="8">
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <CheckBox Grid.Column="0" MinWidth="0"
+                              AutomationProperties.Name="Complete this task"
+                              IsChecked="{x:Bind Shell.Detail.Completed, Mode=OneWay}"
+                              Checked="OnDetailChecked" Unchecked="OnDetailUnchecked" />
+                    <TextBox Grid.Column="1" x:Name="DetailTitleBox"
+                             AutomationProperties.Name="Title"
+                             Text="{x:Bind Shell.Detail.Title, Mode=TwoWay}"
+                             LostFocus="OnDetailTitleCommitted"
+                             KeyDown="OnDetailTitleKeyDown" />
+                    <Button Grid.Column="2" Content="Close" Click="OnCloseDetail" />
+                </Grid>
+
+                <TextBlock Text="{x:Bind Shell.Detail.Due, Mode=OneWay, Converter={StaticResource DueText}}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           Visibility="{x:Bind Shell.Detail.Due.HasDate, Mode=OneWay, Converter={StaticResource Visible}}" />
+
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{x:Bind Shell.Detail.PriorityGlyph, Mode=OneWay}"
+                               VerticalAlignment="Center"
+                               Foreground="{x:Bind Shell.Detail.Priority, Mode=OneWay, Converter={StaticResource PriorityBrush}}" />
+                    <ComboBox x:Name="DetailPriority"
+                              AutomationProperties.Name="Priority"
+                              SelectionChanged="OnDetailPriorityChanged">
+                        <ComboBoxItem Content="No priority" />
+                        <ComboBoxItem Content="Low" />
+                        <ComboBoxItem Content="Medium" />
+                        <ComboBoxItem Content="High" />
+                    </ComboBox>
+                </StackPanel>
+
+                <ItemsControl ItemsSource="{x:Bind Shell.Detail.ListChips, Mode=OneWay}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="bindings:ListChip">
+                            <Border CornerRadius="4" Padding="6,2" Margin="0,2,4,2"
+                                    Background="{ThemeResource ControlFillColorSecondaryBrush}">
+                                <TextBlock Text="{x:Bind Name}" Style="{ThemeResource CaptionTextBlockStyle}" />
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBox x:Name="DetailDescriptionBox"
+                         AutomationProperties.Name="Description"
+                         PlaceholderText="Notes"
+                         AcceptsReturn="True" TextWrapping="Wrap" Height="90"
+                         Text="{x:Bind Shell.Detail.Description, Mode=TwoWay}"
+                         LostFocus="OnDetailDescriptionCommitted" />
+            </StackPanel>
+
+            <ScrollViewer Grid.Row="1" Margin="0,12,0,0">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Subtasks" Style="{ThemeResource CaptionTextBlockStyle}" />
+                    <ItemsControl ItemsSource="{x:Bind Shell.Detail.Subtasks, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="viewmodels:SubtaskSummary">
+                                <TextBlock Text="{x:Bind Title}" Margin="0,2" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBox x:Name="SubtaskBox" PlaceholderText="Add a subtask"
+                             KeyDown="OnSubtaskKeyDown" />
+
+                    <TextBlock Text="Comments" Style="{ThemeResource CaptionTextBlockStyle}"
+                               Margin="0,8,0,0" />
+                    <ItemsControl ItemsSource="{x:Bind Shell.Detail.Comments, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="viewmodels:CommentSummary">
+                                <StackPanel Margin="0,4">
+                                    <TextBlock Text="{x:Bind Content}" TextWrapping="Wrap" />
+                                    <TextBlock Text="Not synced yet"
+                                               Style="{ThemeResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                               Visibility="{x:Bind IsPending, Converter={StaticResource Visible}}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+
+            <StackPanel Grid.Row="2" Spacing="8" Margin="0,8,0,0">
+                <TextBox x:Name="CommentBox" PlaceholderText="Add a comment"
+                         KeyDown="OnCommentKeyDown" />
+                <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                           TextWrapping="Wrap"
+                           Text="{x:Bind Shell.Detail.ErrorMessage, Mode=OneWay}"
+                           Visibility="{x:Bind Shell.Detail.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
+            </StackPanel>
+        </Grid>
         </Grid>
 </UserControl>

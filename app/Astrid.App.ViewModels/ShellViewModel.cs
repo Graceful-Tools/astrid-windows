@@ -39,6 +39,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Sidebar = new SidebarViewModel(core);
         Tasks = new TaskListViewModel(core);
         SignIn = new SignInViewModel(core);
+        Detail = new TaskDetailViewModel(core);
         _core.Changed += OnChanged;
     }
 
@@ -47,6 +48,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public TaskListViewModel Tasks { get; }
 
     public SignInViewModel SignIn { get; }
+
+    /// <summary>The open task, when there is one.</summary>
+    public TaskDetailViewModel Detail { get; }
 
     /// <summary>True while anything is waiting in the Outbox.</summary>
     public bool HasUnsentWork
@@ -101,6 +105,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         await SyncAsync(cancellationToken);
     }
 
+    /// <summary>Open a task in the detail pane.</summary>
+    public Task OpenTaskAsync(string taskId, CancellationToken cancellationToken = default)
+        => Detail.OpenAsync(taskId, cancellationToken);
+
     /// <summary>Open whatever the sidebar has selected.</summary>
     public async Task OpenSelectedAsync(CancellationToken cancellationToken = default)
     {
@@ -109,6 +117,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         {
             return;
         }
+        // A different list means the open task probably is not in it. Closing is more honest than
+        // leaving a detail pane showing something the list beside it no longer contains.
+        Detail.Close();
         await Tasks.OpenAsync(selected.Id, selected.Name, cancellationToken);
         NeedsSignIn |= Tasks.NeedsSignIn;
     }
@@ -222,7 +233,20 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             {
                 case "task":
                     await Tasks.RefreshAsync();
+                    // Only when it is the task on screen. Reloading the detail pane for every
+                    // task somebody else touches would make the open task flicker while a
+                    // colleague works elsewhere in the same list.
+                    if (Detail.IsOpen && (notification.Id is null || notification.Id == Detail.TaskId))
+                    {
+                        await Detail.ReloadAsync();
+                    }
                     await RefreshOutboxAsync();
+                    break;
+                case "comments":
+                    if (Detail.IsOpen && notification.Id == Detail.TaskId)
+                    {
+                        await Detail.ReloadAsync();
+                    }
                     break;
                 case "list":
                     await Sidebar.LoadAsync();

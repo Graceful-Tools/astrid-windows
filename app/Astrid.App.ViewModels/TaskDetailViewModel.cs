@@ -1,0 +1,390 @@
+using System.Collections.ObjectModel;
+using System.Text.Json;
+using Astrid.Core.Bindings;
+
+namespace Astrid.App.ViewModels;
+
+/// <summary>
+/// One task, open.
+/// </summary>
+/// <remarks>
+/// <para>
+/// The screen arrives assembled: <c>taskDetail</c> answers with the task, its comments, its
+/// subtasks, its list chips and <b>the order to lay the fields out in</b>. That last one is a
+/// product decision shared with web and both Apple clients — "Who, Date, Priority, Lists" — and
+/// both Apple platforms got it wrong the same way before it was written down once. This view model
+/// reads the order it is given rather than having an opinion.
+/// </para>
+/// <para>
+/// Edits are saved as they are made, not on a Save button. Every write goes to the Outbox, so
+/// "saved" and "sent" are already different things and a button that pretended otherwise would be
+/// lying about which one it did.
+/// </para>
+/// </remarks>
+public sealed class TaskDetailViewModel : ObservableObject
+{
+    private readonly IAstridCore _core;
+    private string? _taskId;
+    private string _title = string.Empty;
+    private string _description = string.Empty;
+    private int _priority;
+    private bool _completed;
+    private bool _isOpen;
+    private bool _isLoading;
+    private string? _errorMessage;
+    private DueLabel _due = new();
+    private string _priorityGlyph = "○";
+    private UserSummary? _assignee;
+
+    public TaskDetailViewModel(IAstridCore core)
+    {
+        _core = core;
+    }
+
+    /// <summary>The order to lay the fields out in, as the core gave it.</summary>
+    public ObservableCollection<string> FieldOrder { get; } = [];
+
+    public ObservableCollection<ListChip> ListChips { get; } = [];
+
+    public ObservableCollection<CommentSummary> Comments { get; } = [];
+
+    public ObservableCollection<SubtaskSummary> Subtasks { get; } = [];
+
+    /// <summary>Whether the detail pane is showing anything.</summary>
+    public bool IsOpen
+    {
+        get => _isOpen;
+        private set => Set(ref _isOpen, value);
+    }
+
+    public bool IsLoading
+    {
+        get => _isLoading;
+        private set => Set(ref _isLoading, value);
+    }
+
+    public string? TaskId
+    {
+        get => _taskId;
+        private set => Set(ref _taskId, value);
+    }
+
+    public string Title
+    {
+        get => _title;
+        set => Set(ref _title, value);
+    }
+
+    public string Description
+    {
+        get => _description;
+        set => Set(ref _description, value);
+    }
+
+    public int Priority
+    {
+        get => _priority;
+        private set => Set(ref _priority, value);
+    }
+
+    public bool Completed
+    {
+        get => _completed;
+        private set => Set(ref _completed, value);
+    }
+
+    public DueLabel Due
+    {
+        get => _due;
+        private set => Set(ref _due, value);
+    }
+
+    /// <summary>The mark that stands for this task's priority — the core's, not the shell's.</summary>
+    public string PriorityGlyph
+    {
+        get => _priorityGlyph;
+        private set => Set(ref _priorityGlyph, value);
+    }
+
+    public UserSummary? Assignee
+    {
+        get => _assignee;
+        private set => Set(ref _assignee, value);
+    }
+
+    public string? ErrorMessage
+    {
+        get => _errorMessage;
+        private set => Set(ref _errorMessage, value);
+    }
+
+    /// <summary>Open a task.</summary>
+    public async Task OpenAsync(string taskId, CancellationToken cancellationToken = default)
+    {
+        TaskId = taskId;
+        IsOpen = true;
+        await ReloadAsync(cancellationToken);
+    }
+
+    /// <summary>Close the pane.</summary>
+    public void Close()
+    {
+        IsOpen = false;
+        TaskId = null;
+        Comments.Clear();
+        Subtasks.Clear();
+        ListChips.Clear();
+        FieldOrder.Clear();
+    }
+
+    /// <summary>Re-read the open task. What a change notification for it does.</summary>
+    public async Task ReloadAsync(CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return;
+        }
+
+        IsLoading = true;
+        try
+        {
+            var response = await _core.CallAsync(Commands.TaskDetail(TaskId), cancellationToken);
+            if (!response.Ok)
+            {
+                // A task that has gone — deleted here or elsewhere — closes the pane rather than
+                // leaving a screen showing something that is not there any more.
+                if (response.Error?.Kind == AstridFailureKind.NotFound)
+                {
+                    Close();
+                    return;
+                }
+                ErrorMessage = response.IsStillPending ? null : response.Error?.Message;
+                return;
+            }
+
+            ErrorMessage = null;
+            Read(response.Value);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    /// <summary>Save the title, if it changed.</summary>
+    public Task<bool> SaveTitleAsync(string title, CancellationToken cancellationToken = default)
+    {
+        var trimmed = title.Trim();
+        // An empty title would leave a row nobody can identify. Refusing is kinder than saving it
+        // and making the user work out which blank row was theirs.
+        return trimmed.Length == 0
+            ? Task.FromResult(false)
+            : UpdateAsync(new Dictionary<string, object?> { ["title"] = trimmed }, cancellationToken);
+    }
+
+    public Task<bool> SaveDescriptionAsync(string description, CancellationToken cancellationToken = default)
+        => UpdateAsync(new Dictionary<string, object?> { ["description"] = description },
+            cancellationToken);
+
+    public Task<bool> SetPriorityAsync(int priority, CancellationToken cancellationToken = default)
+        => UpdateAsync(new Dictionary<string, object?> { ["priority"] = priority }, cancellationToken);
+
+    /// <summary>Set or clear the due date.</summary>
+    /// <param name="dueDateTime">An ISO-8601 instant, or null to clear it.</param>
+    public Task<bool> SetDueDateAsync(string? dueDateTime, bool isAllDay,
+        CancellationToken cancellationToken = default)
+        => UpdateAsync(new Dictionary<string, object?>
+        {
+            // Explicitly null to clear: an absent field would leave the date where it was.
+            ["dueDateTime"] = dueDateTime,
+            ["isAllDay"] = isAllDay,
+        }, cancellationToken);
+
+    /// <summary>
+    /// Complete or un-complete the open task.
+    /// </summary>
+    /// <remarks>
+    /// The complete command, never an update carrying a flag: a repeating task rolls forward to its
+    /// next occurrence instead of finishing, and only that path does it.
+    /// </remarks>
+    public async Task<bool> SetCompletedAsync(bool completed, CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(Commands.CompleteTask(TaskId, completed), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        await ReloadAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> AddCommentAsync(string content, CancellationToken cancellationToken = default)
+    {
+        var trimmed = content.Trim();
+        if (TaskId is null || trimmed.Length == 0)
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(Commands.PostComment(TaskId, trimmed), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        await ReloadAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> AddSubtaskAsync(string title, CancellationToken cancellationToken = default)
+    {
+        var trimmed = title.Trim();
+        if (TaskId is null || trimmed.Length == 0)
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(
+            Commands.CreateTask(trimmed, parentTaskId: TaskId), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        await ReloadAsync(cancellationToken);
+        return true;
+    }
+
+    private async Task<bool> UpdateAsync(IReadOnlyDictionary<string, object?> changes,
+        CancellationToken cancellationToken)
+    {
+        if (TaskId is null)
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(Commands.UpdateTask(TaskId, changes), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        await ReloadAsync(cancellationToken);
+        return true;
+    }
+
+    private bool Handle(AstridResponse response)
+    {
+        if (response.Ok)
+        {
+            ErrorMessage = null;
+            return true;
+        }
+        // Offline is not a failure to report: the change is journalled and will go.
+        ErrorMessage = response.IsStillPending ? null : response.Error?.Message;
+        return false;
+    }
+
+    private void Read(JsonElement value)
+    {
+        if (value.TryGetProperty("task", out var task))
+        {
+            Title = task.TryGetProperty("title", out var title) ? title.GetString() ?? string.Empty : string.Empty;
+            Description = task.TryGetProperty("description", out var description)
+                ? description.GetString() ?? string.Empty
+                : string.Empty;
+            Priority = task.TryGetProperty("priority", out var priority) ? priority.GetInt32() : 0;
+            Completed = task.TryGetProperty("completed", out var completed) && completed.GetBoolean();
+        }
+
+        PriorityGlyph = value.TryGetProperty("priorityGlyph", out var glyph)
+            ? glyph.GetString() ?? "○"
+            : "○";
+        Due = value.TryGetProperty("due", out var due)
+            ? due.Deserialize<DueLabel>(CommandJson.Options) ?? new DueLabel()
+            : new DueLabel();
+        Assignee = value.TryGetProperty("assignee", out var assignee)
+                   && assignee.ValueKind != JsonValueKind.Null
+            ? assignee.Deserialize<UserSummary>(CommandJson.Options)
+            : null;
+
+        ReplaceStrings(FieldOrder, Read<string>(value, "fieldOrder"));
+        Replace(ListChips, Read<ListChip>(value, "listChips"));
+        Replace(Comments, Read<CommentSummary>(value, "comments"));
+        Replace(Subtasks, Read<SubtaskSummary>(value, "subtasks"));
+    }
+
+    private static List<T> Read<T>(JsonElement value, string name) =>
+        value.TryGetProperty(name, out var element) && element.ValueKind == JsonValueKind.Array
+            ? element.Deserialize<List<T>>(CommandJson.Options) ?? []
+            : [];
+
+    /// <summary>
+    /// Swap in a new set, keeping the collection the UI is bound to.
+    /// </summary>
+    /// <remarks>
+    /// Clearing and re-adding would collapse every expander and lose the caret in a comment being
+    /// typed, on every reload — and a reload happens after every edit.
+    /// </remarks>
+    private static void Replace<T>(ObservableCollection<T> target, IReadOnlyList<T> source)
+    {
+        for (var index = 0; index < source.Count; index++)
+        {
+            if (index < target.Count)
+            {
+                if (!EqualityComparer<T>.Default.Equals(target[index], source[index]))
+                {
+                    target[index] = source[index];
+                }
+            }
+            else
+            {
+                target.Add(source[index]);
+            }
+        }
+        while (target.Count > source.Count)
+        {
+            target.RemoveAt(target.Count - 1);
+        }
+    }
+
+    private static void ReplaceStrings(ObservableCollection<string> target, IReadOnlyList<string> source)
+        => Replace(target, source);
+}
+
+/// <summary>A comment, as the detail screen shows it.</summary>
+public sealed record CommentSummary
+{
+    [System.Text.Json.Serialization.JsonPropertyName("id")]
+    public string Id { get; init; } = string.Empty;
+
+    [System.Text.Json.Serialization.JsonPropertyName("content")]
+    public string Content { get; init; } = string.Empty;
+
+    [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
+    public string? CreatedAt { get; init; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("author")]
+    public UserSummary? Author { get; init; }
+
+    /// <summary>True while this comment exists only on this device.</summary>
+    public bool IsPending => Id.StartsWith("temp_", StringComparison.Ordinal);
+
+    public override string ToString() => Content;
+}
+
+/// <summary>A subtask, as the detail screen lists it.</summary>
+public sealed record SubtaskSummary
+{
+    [System.Text.Json.Serialization.JsonPropertyName("id")]
+    public string Id { get; init; } = string.Empty;
+
+    [System.Text.Json.Serialization.JsonPropertyName("title")]
+    public string Title { get; init; } = string.Empty;
+
+    [System.Text.Json.Serialization.JsonPropertyName("completed")]
+    public bool Completed { get; init; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("isPending")]
+    public bool IsPending { get; init; }
+
+    public override string ToString() => Title;
+}
