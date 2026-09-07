@@ -73,6 +73,29 @@ public static class Commands
     /// <c>assigneeId</c>; this is only the question of who may be offered.
     /// </remarks>
     /// <summary>
+    /// Who a list is shared with, and what this account may do about it.
+    /// </summary>
+    /// <remarks>
+    /// Reaches the network. Membership is not a local fact: a cached member list a day old is how
+    /// somebody removed last week is still offered a role.
+    /// </remarks>
+    public static object ListMembers(string listId) =>
+        new WithListId("listMembers", listId);
+
+    /// <summary>Invite somebody by email.</summary>
+    public static object InviteToList(string listId, string email, string role) =>
+        new InviteRequest("inviteToList", listId, email, role);
+
+    public static object SetMemberRole(string listId, string userId, string role) =>
+        new MemberRoleRequest("setMemberRole", listId, userId, role);
+
+    public static object RemoveMember(string listId, string userId) =>
+        new MemberRequest("removeMember", listId, userId);
+
+    /// <summary>Leave a list somebody else owns.</summary>
+    public static object LeaveList(string listId) => new WithListId("leaveList", listId);
+
+    /// <summary>
     /// The board a list belongs to: its columns, and the cards in each.
     /// </summary>
     /// <remarks>
@@ -309,6 +332,23 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("content")] string Content);
+
+    private sealed record InviteRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("listId")] string ListId,
+        [property: JsonPropertyName("email")] string Email,
+        [property: JsonPropertyName("role")] string Role);
+
+    private sealed record MemberRoleRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("listId")] string ListId,
+        [property: JsonPropertyName("userId")] string UserId,
+        [property: JsonPropertyName("role")] string Role);
+
+    private sealed record MemberRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("listId")] string ListId,
+        [property: JsonPropertyName("userId")] string UserId);
 
     private sealed record BoardRequest(
         [property: JsonPropertyName("kind")] string Kind,

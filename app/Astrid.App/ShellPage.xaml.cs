@@ -362,6 +362,58 @@ public sealed partial class ShellPage : UserControl
     private async void OnDetailTitleCommitted(object sender, RoutedEventArgs args) =>
         await Shell.Detail.SaveTitleAsync(DetailTitleBox.Text);
 
+    // ── The list's settings and members ──────────────────────────────────────────────────────
+
+    private async void OnListSettingsOpening(object sender, object args)
+    {
+        await Shell.LoadListSettingsAsync();
+    }
+
+    private async void OnListRenamed(object sender, RoutedEventArgs args)
+    {
+        await Shell.ListSettings.RenameAsync(ListNameBox.Text);
+        await Shell.Sidebar.LoadAsync();
+    }
+
+    private async void OnInvite(object sender, RoutedEventArgs args)
+    {
+        if (await Shell.ListSettings.InviteAsync(InviteBox.Text))
+        {
+            InviteBox.Text = string.Empty;
+        }
+    }
+
+    private async void OnInviteKeyDown(object sender, KeyRoutedEventArgs args)
+    {
+        if (args.Key != VirtualKey.Enter)
+        {
+            return;
+        }
+        args.Handled = true;
+        if (await Shell.ListSettings.InviteAsync(InviteBox.Text))
+        {
+            InviteBox.Text = string.Empty;
+        }
+    }
+
+    private async void OnRemoveMember(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is string userId)
+        {
+            await Shell.ListSettings.RemoveAsync(userId);
+        }
+    }
+
+    private async void OnLeaveList(object sender, RoutedEventArgs args)
+    {
+        await Shell.LeaveListAsync();
+    }
+
+    private async void OnDeleteList(object sender, RoutedEventArgs args)
+    {
+        await Shell.DeleteListAsync();
+    }
+
     // ── The board ────────────────────────────────────────────────────────────────────────────
 
     private async void OnToggleBoard(object sender, RoutedEventArgs args)

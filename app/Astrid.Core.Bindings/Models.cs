@@ -203,6 +203,50 @@ public sealed record DueDateOptions
     [JsonPropertyName("times")] public IReadOnlyList<DuePick> Times { get; init; } = [];
 }
 
+/// <summary>Somebody a list is shared with.</summary>
+public sealed record ListMember
+{
+    [JsonPropertyName("userId")] public string UserId { get; init; } = string.Empty;
+
+    /// <summary><c>owner</c>, <c>admin</c>, <c>member</c>, <c>viewer</c> — never compared here.</summary>
+    [JsonPropertyName("role")] public string Role { get; init; } = string.Empty;
+
+    [JsonPropertyName("user")] public UserSummary? User { get; init; }
+
+    /// <summary>
+    /// What to show for this person. Never a bare id: a raw UUID where a name goes reads as a bug,
+    /// and it was one on the Mac.
+    /// </summary>
+    public string DisplayName => User?.DisplayName ?? UserId;
+
+    /// <summary>The role, capitalised, for the row. The core never sends words for these.</summary>
+    public string RoleLabel => Role.Length == 0
+        ? string.Empty
+        : char.ToUpperInvariant(Role[0]) + Role[1..].ToLowerInvariant();
+}
+
+/// <summary>One list's settings, and who it is shared with.</summary>
+public sealed record ListSettings
+{
+    [JsonPropertyName("listId")] public string ListId { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
+
+    [JsonPropertyName("ownerId")] public string? OwnerId { get; init; }
+
+    [JsonPropertyName("canManageMembers")] public bool CanManageMembers { get; init; }
+
+    [JsonPropertyName("canManageList")] public bool CanManageList { get; init; }
+
+    [JsonPropertyName("canDeleteList")] public bool CanDeleteList { get; init; }
+
+    [JsonPropertyName("canLeave")] public bool CanLeave { get; init; }
+
+    [JsonPropertyName("currentUserId")] public string? CurrentUserId { get; init; }
+
+    [JsonPropertyName("members")] public IReadOnlyList<ListMember> Members { get; init; } = [];
+}
+
 /// <summary>One column of a project board, and the cards in it.</summary>
 public sealed record BoardColumn
 {

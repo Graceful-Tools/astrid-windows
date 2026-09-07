@@ -179,6 +179,94 @@
                             list is how two code paths for one thing begin.
                         -->
                         <!--
+                            The list's own settings: its name, who it is shared with, and the way
+                            out of it. Behind a button rather than always on screen, because it is
+                            the thing somebody does once per list and never again.
+                        -->
+                        <Button x:Name="ListSettingsButton"
+                                Content="List"
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="List settings">
+                            <Button.Flyout>
+                                <Flyout Opening="OnListSettingsOpening">
+                                    <StackPanel Spacing="8" MinWidth="320">
+                                        <TextBlock Text="List settings"
+                                                   Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                                        <TextBox x:Name="ListNameBox"
+                                                 Header="Name"
+                                                 AutomationProperties.Name="List name"
+                                                 Text="{x:Bind Shell.ListSettings.Name, Mode=OneWay}"
+                                                 LostFocus="OnListRenamed" />
+                                        <TextBlock Text="Shared with"
+                                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                                   Margin="0,8,0,0" />
+                                        <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.Members, Mode=OneWay}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="bindings:ListMember">
+                                                    <Grid ColumnSpacing="8" Padding="0,2">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0"
+                                                                   Text="{x:Bind DisplayName}"
+                                                                   VerticalAlignment="Center" />
+                                                        <TextBlock Grid.Column="1"
+                                                                   Text="{x:Bind RoleLabel}"
+                                                                   VerticalAlignment="Center"
+                                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                                   Style="{ThemeResource CaptionTextBlockStyle}" />
+                                                        <Button Grid.Column="2"
+                                                                Content="Remove"
+                                                                Tag="{x:Bind UserId}"
+                                                                Click="OnRemoveMember" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <StackPanel Orientation="Horizontal" Spacing="8"
+                                                    Visibility="{x:Bind Shell.ListSettings.CanManageMembers, Mode=OneWay, Converter={StaticResource Visible}}">
+                                            <TextBox x:Name="InviteBox"
+                                                     Width="200"
+                                                     PlaceholderText="Invite by email"
+                                                     AutomationProperties.Name="Invite by email"
+                                                     KeyDown="OnInviteKeyDown" />
+                                            <Button Content="Invite" Click="OnInvite" />
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                                            <Button Content="Leave list"
+                                                    Click="OnLeaveList"
+                                                    Visibility="{x:Bind Shell.ListSettings.CanLeave, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                            <!--
+                                                Deleting asks first. It takes the list away from
+                                                everybody it is shared with, and there is no undo
+                                                for that on any client.
+                                            -->
+                                            <Button Content="Delete list"
+                                                    Visibility="{x:Bind Shell.ListSettings.CanDeleteList, Mode=OneWay, Converter={StaticResource Visible}}">
+                                                <Button.Flyout>
+                                                    <Flyout>
+                                                        <StackPanel Spacing="8" MaxWidth="260">
+                                                            <TextBlock TextWrapping="Wrap"
+                                                                       Text="Delete this list and its tasks, for everybody it is shared with?" />
+                                                            <Button Content="Delete it"
+                                                                    Click="OnDeleteList"
+                                                                    Style="{ThemeResource AccentButtonStyle}" />
+                                                        </StackPanel>
+                                                    </Flyout>
+                                                </Button.Flyout>
+                                            </Button>
+                                        </StackPanel>
+                                        <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                                   TextWrapping="Wrap"
+                                                   Text="{x:Bind Shell.ListSettings.ErrorMessage, Mode=OneWay}"
+                                                   Visibility="{x:Bind Shell.ListSettings.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                        <!--
                             The board and the list are two views of one list's work, not two
                             screens: the toggle swaps what is drawn and nothing else moves.
                         -->

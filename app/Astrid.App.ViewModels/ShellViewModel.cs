@@ -42,6 +42,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         SignIn = new SignInViewModel(core);
         Detail = new TaskDetailViewModel(core);
         Board = new BoardViewModel(core);
+        ListSettings = new ListSettingsViewModel(core);
         _core.Changed += OnChanged;
     }
 
@@ -67,6 +68,45 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     /// <summary>The board the open list belongs to, when it belongs to one.</summary>
     public BoardViewModel Board { get; }
+
+    /// <summary>The open list's settings and members, loaded when they are asked for.</summary>
+    public ListSettingsViewModel ListSettings { get; }
+
+    /// <summary>Load the open list's settings.</summary>
+    public Task LoadListSettingsAsync(CancellationToken cancellationToken = default) =>
+        string.IsNullOrEmpty(Tasks.ListId)
+            ? Task.CompletedTask
+            : ListSettings.LoadAsync(Tasks.ListId, cancellationToken);
+
+    /// <summary>
+    /// Delete the open list.
+    /// </summary>
+    /// <remarks>
+    /// Through the Outbox like every other write, so it works offline — and it takes the list from
+    /// everybody it is shared with, which is why the button that calls this asks first.
+    /// </remarks>
+    public async Task DeleteListAsync(CancellationToken cancellationToken = default)
+    {
+        var listId = Tasks.ListId;
+        if (string.IsNullOrEmpty(listId))
+        {
+            return;
+        }
+        var response = await _core.CallAsync(Commands.DeleteList(listId), cancellationToken);
+        if (response.Ok || response.IsStillPending)
+        {
+            await Sidebar.LoadAsync(cancellationToken);
+        }
+    }
+
+    /// <summary>Leave the open list, and stop showing it.</summary>
+    public async Task LeaveListAsync(CancellationToken cancellationToken = default)
+    {
+        if (await ListSettings.LeaveAsync(cancellationToken))
+        {
+            await Sidebar.LoadAsync(cancellationToken);
+        }
+    }
 
     /// <summary>
     /// Whether the board is on screen instead of the list.
