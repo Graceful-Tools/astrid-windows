@@ -21,8 +21,8 @@ shell exists (M2).
 | Services | `crates/astrid-core/src/services/` | done |
 | Sync + SSE | `crates/astrid-core/src/{sync,realtime}/` | done |
 | Filters, sorting, subtasks | `crates/astrid-core/src/filters/` | done |
-| Row and label projections | `crates/astrid-core/src/rows/` | in progress |
-| Natural-language quick add | `crates/astrid-core/src/parse/` | not started |
+| Row and label projections | `crates/astrid-core/src/rows/` | done |
+| Quick-add `#list` autocomplete | `crates/astrid-core/src/parse/` | done |
 
 ## M2 — shell
 
