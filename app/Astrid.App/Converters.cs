@@ -177,9 +177,28 @@ public sealed partial class DueLabelConverter : IValueConverter
 /// blank and invisible.
 /// </para>
 /// </remarks>
+/// <summary>
+/// Who holds a task, as words.
+/// </summary>
+/// <remarks>
+/// Unassigned is a state in its own right, not an empty name, so it gets the word both Apple
+/// clients use — under the key they use, <c>assignee.unassigned</c>, rather than English typed
+/// into a third place.
+/// </remarks>
+public sealed partial class AssigneeNameConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is UserSummary user
+            ? user.DisplayName
+            : PickTitleConverter.Titles["assignee.unassigned"];
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("the assignee is chosen from the picker");
+}
+
 public sealed partial class PickTitleConverter : IValueConverter
 {
-    private static readonly Dictionary<string, string> Titles = new(StringComparer.Ordinal)
+    internal static readonly Dictionary<string, string> Titles = new(StringComparer.Ordinal)
     {
         ["picker.no_due_date"] = "No due date",
         ["picker.today"] = "Today",
@@ -190,6 +209,7 @@ public sealed partial class PickTitleConverter : IValueConverter
         ["picker.afternoon"] = "Afternoon",
         ["picker.evening"] = "Evening",
         ["picker.night"] = "Night",
+        ["assignee.unassigned"] = "Unassigned",
     };
 
     public object Convert(object value, Type targetType, object parameter, string language) =>

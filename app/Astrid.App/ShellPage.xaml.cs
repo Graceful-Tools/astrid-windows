@@ -345,6 +345,22 @@ public sealed partial class ShellPage : UserControl
     private async void OnDetailTitleCommitted(object sender, RoutedEventArgs args) =>
         await Shell.Detail.SaveTitleAsync(DetailTitleBox.Text);
 
+    /// <summary>
+    /// Load the picker's rows as it opens, so they are never stale and never fetched for a screen
+    /// nobody opened.
+    /// </summary>
+    private async void OnAssigneeFlyoutOpening(object sender, object args)
+    {
+        await Shell.Detail.LoadAssigneesAsync();
+    }
+
+    private async void OnAssigneeChosen(object sender, RoutedEventArgs args)
+    {
+        // A null tag is the unassigned row, and clearing is a real choice rather than a no-op.
+        var userId = (sender as FrameworkElement)?.Tag as string;
+        await Shell.Detail.AssignAsync(userId);
+    }
+
     private async void OnDetailTitleKeyDown(object sender, KeyRoutedEventArgs args)
     {
         if (args.Key != VirtualKey.Enter)

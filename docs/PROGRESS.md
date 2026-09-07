@@ -46,7 +46,7 @@ still there. Built and tested for x64 and ARM64 by `npm run predeploy`.
 | Background sync and live updates | `astrid_core::app::background` | done |
 | Localisation (`.resw`) | — | not started |
 | UI smoke tests | `app/Astrid.App.UITests/` | not started |
-| Assignee picker | — | not started |
+| Assignee picker | `astrid_core::rows::assignee` → shell | done |
 | Repeat editor | — | not started |
 | Search | `astrid_core::services::search` → shell | done |
 | Reminders and toasts | — | not started |

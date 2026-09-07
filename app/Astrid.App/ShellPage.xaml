@@ -19,6 +19,7 @@
         <local:BoolToVisibilityConverter x:Key="Visible" />
         <local:DueLabelConverter x:Key="DueText" />
         <local:PickTitleConverter x:Key="PickTitle" />
+        <local:AssigneeNameConverter x:Key="AssigneeText" />
     </UserControl.Resources>
 
     <Grid x:Name="RootGrid" KeyDown="OnKeyDown">
@@ -309,6 +310,36 @@
                              KeyDown="OnDetailTitleKeyDown" />
                     <Button Grid.Column="2" Content="Close" Click="OnCloseDetail" />
                 </Grid>
+
+                <!--
+                    Who holds the task. First, because the field order — Who, Date, Priority,
+                    Lists — is a product decision shared with web and both Apple clients.
+                -->
+                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                        AutomationProperties.Name="Assignee">
+                    <TextBlock Text="{x:Bind Shell.Detail.Assignee, Mode=OneWay, Converter={StaticResource AssigneeText}}" />
+                    <Button.Flyout>
+                        <Flyout Opening="OnAssigneeFlyoutOpening">
+                            <ItemsControl ItemsSource="{x:Bind Shell.Detail.Assignees, Mode=OneWay}"
+                                          MinWidth="220">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="bindings:AssigneeOption">
+                                        <Button HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Left"
+                                                Tag="{x:Bind UserId}"
+                                                Click="OnAssigneeChosen">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <TextBlock Text="{x:Bind Glyph}"
+                                                           Width="24" TextAlignment="Center" />
+                                                <TextBlock Text="{x:Bind TitleKey, Converter={StaticResource PickTitle}}" />
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
 
                 <!--
                     The due date. A button rather than a label, because the date is the field a

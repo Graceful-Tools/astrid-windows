@@ -63,6 +63,18 @@ public static class Commands
     public static object DueDateOptions(string taskId) =>
         new WithTaskId("dueDateOptions", taskId);
 
+    /// <summary>
+    /// Who a task can be assigned to, in the order the picker shows them.
+    /// </summary>
+    /// <remarks>
+    /// One rule for every surface. On iOS the picker built its option list inside the view, so
+    /// "who can this be assigned to" depended on what the surrounding screen had loaded, and the
+    /// board could not offer an AI agent at all. Assigning is an ordinary update carrying an
+    /// <c>assigneeId</c>; this is only the question of who may be offered.
+    /// </remarks>
+    public static object AssigneeOptions(string taskId) =>
+        new WithTaskId("assigneeOptions", taskId);
+
     public static object CurrentUser() => new KindOnly("currentUser");
 
     /// <summary>

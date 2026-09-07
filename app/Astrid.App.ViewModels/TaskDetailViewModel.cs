@@ -52,6 +52,9 @@ public sealed class TaskDetailViewModel : ObservableObject
 
     public ObservableCollection<ListChip> ListChips { get; } = [];
 
+    /// <summary>Who this task can be assigned to. Loaded when the picker opens.</summary>
+    public ObservableCollection<AssigneeOption> Assignees { get; } = [];
+
     public ObservableCollection<CommentSummary> Comments { get; } = [];
 
     public ObservableCollection<SubtaskSummary> Subtasks { get; } = [];
@@ -273,6 +276,38 @@ public sealed class TaskDetailViewModel : ObservableObject
         Replace(DatePicks, options.Dates);
         Replace(TimePicks, options.Times);
     }
+
+    /// <summary>Fetch who the open task can be assigned to.</summary>
+    /// <remarks>
+    /// Asked for when the picker opens rather than held with the task: the answer depends on the
+    /// account's agents and on the members of every list the task is on, and none of that is worth
+    /// carrying around for a screen nobody has opened.
+    /// </remarks>
+    public async Task LoadAssigneesAsync(CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return;
+        }
+        var response = await _core.CallAsync(Commands.AssigneeOptions(TaskId), cancellationToken);
+        if (!Handle(response))
+        {
+            return;
+        }
+        var choices = response.Read<AssigneeChoices>();
+        if (choices is not null)
+        {
+            Replace(Assignees, choices.Options);
+        }
+    }
+
+    /// <summary>Give the task to someone, or to no one.</summary>
+    /// <remarks>
+    /// An ordinary update carrying an <c>assigneeId</c> — null clears it, which is why the value is
+    /// written rather than omitted. The core's edits distinguish "leave alone" from "clear".
+    /// </remarks>
+    public Task<bool> AssignAsync(string? userId, CancellationToken cancellationToken = default) =>
+        UpdateAsync(new Dictionary<string, object?> { ["assigneeId"] = userId }, cancellationToken);
 
     /// <summary>
     /// Complete or un-complete the open task.

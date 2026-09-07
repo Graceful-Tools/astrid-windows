@@ -203,6 +203,46 @@ public sealed record DueDateOptions
     [JsonPropertyName("times")] public IReadOnlyList<DuePick> Times { get; init; } = [];
 }
 
+/// <summary>One row of the assignee picker. A null <see cref="UserId"/> is "no one".</summary>
+public sealed record AssigneeOption
+{
+    /// <summary>Null for the unassigned row.</summary>
+    [JsonPropertyName("userId")] public string? UserId { get; init; }
+
+    /// <summary>Null for the unassigned row, which the shell names from its resources.</summary>
+    [JsonPropertyName("name")] public string? Name { get; init; }
+
+    [JsonPropertyName("initials")] public string Initials { get; init; } = string.Empty;
+
+    [JsonPropertyName("image")] public string? Image { get; init; }
+
+    [JsonPropertyName("isCurrentUser")] public bool IsCurrentUser { get; init; }
+
+    [JsonPropertyName("isAgent")] public bool IsAgent { get; init; }
+
+    /// <summary>
+    /// What to put on the row: the person's name, or the key the unassigned word lives under.
+    /// </summary>
+    /// <remarks>
+    /// <c>assignee.unassigned</c> is the key both Apple clients use. The Mac passed its own English
+    /// "No one" to the localiser as a key, no such key existed, and all twelve translations fell
+    /// back to English — user-facing strings are a cross-platform contract, not a per-platform
+    /// choice.
+    /// </remarks>
+    [JsonIgnore] public string TitleKey => Name ?? "assignee.unassigned";
+
+    /// <summary>Its own glyph: "unassigned" is a state, not an empty person.</summary>
+    [JsonIgnore] public string Glyph => UserId is null ? "\u2014" : Initials;
+}
+
+/// <summary>The picker's rows, and which of them the task currently holds.</summary>
+public sealed record AssigneeChoices
+{
+    [JsonPropertyName("assigneeId")] public string? AssigneeId { get; init; }
+
+    [JsonPropertyName("options")] public IReadOnlyList<AssigneeOption> Options { get; init; } = [];
+}
+
 /// <summary>What the Outbox is holding, for the "not synced yet" indicator.</summary>
 public sealed record OutboxStats
 {

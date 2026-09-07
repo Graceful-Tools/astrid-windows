@@ -31,6 +31,78 @@ public sealed class TaskDetailViewModelTests
             }).ToArray(),
         };
 
+    /// <summary>
+    /// The picker is asked for as it opens rather than carried with the task: the answer depends on
+    /// the account's agents and on every list the task is on.
+    /// </summary>
+    [Fact]
+    public async Task The_assignee_picker_is_loaded_when_it_is_opened()
+    {
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail())
+            .AnswerOk("dueDateOptions", new { isAllDay = true, dates = Array.Empty<object>(), times = Array.Empty<object>() })
+            .AnswerOk("refreshComments")
+            .AnswerOk("assigneeOptions", new
+            {
+                assigneeId = (string?)null,
+                options = new[]
+                {
+                    new { userId = (string?)null, name = (string?)null, initials = "", isCurrentUser = false, isAgent = false },
+                    new { userId = (string?)"me", name = (string?)"Jon", initials = "JO", isCurrentUser = true, isAgent = false },
+                },
+            });
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.LoadAssigneesAsync();
+
+        Assert.Equal(2, view.Assignees.Count);
+        // Unassigned first, and it carries no word — the shell names it from its resources.
+        Assert.Null(view.Assignees[0].UserId);
+        Assert.Equal("assignee.unassigned", view.Assignees[0].TitleKey);
+        Assert.Equal("Jon", view.Assignees[1].TitleKey);
+    }
+
+    [Fact]
+    public async Task Assigning_writes_the_chosen_person()
+    {
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail())
+            .AnswerOk("dueDateOptions", new { isAllDay = true, dates = Array.Empty<object>(), times = Array.Empty<object>() })
+            .AnswerOk("refreshComments")
+            .AnswerOk("updateTask")
+            .AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.True(await view.AssignAsync("u1"));
+
+        var update = core.Sent.First(sent => sent.Contains("updateTask"));
+        Assert.Contains("\"assigneeId\":\"u1\"", update);
+    }
+
+    /// <summary>
+    /// Clearing has to send null rather than leave the field out: absent means "leave alone", and a
+    /// picker that cannot express "no one" cannot take a task off somebody.
+    /// </summary>
+    [Fact]
+    public async Task Choosing_no_one_clears_the_assignee_rather_than_saying_nothing()
+    {
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail())
+            .AnswerOk("dueDateOptions", new { isAllDay = true, dates = Array.Empty<object>(), times = Array.Empty<object>() })
+            .AnswerOk("refreshComments")
+            .AnswerOk("updateTask")
+            .AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.AssignAsync(null);
+
+        var update = core.Sent.First(sent => sent.Contains("updateTask"));
+        Assert.Contains("\"assigneeId\":null", update);
+    }
+
     [Fact]
     public async Task Opening_a_task_fills_the_pane_from_one_command()
     {
