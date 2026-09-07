@@ -115,9 +115,10 @@ pub unsafe extern "C" fn astrid_start(
                 .map_err(|error| error.to_string())?,
         );
 
-        // The two loops that keep the app up to date without being asked: a sixty-second pass and
-        // the live stream. Started here rather than by the shell, because "is the app current?" is
-        // not a question a window should have to remember to ask.
+        // The three loops that keep the app up to date without being asked: a sixty-second sync
+        // pass, the live stream, and the half-minute look for a reminder that has come due.
+        // Started here rather than by the shell, because "is the app current?" is not a question a
+        // window should have to remember to ask.
         let running = Arc::new(std::sync::atomic::AtomicBool::new(true));
         {
             let (app, running) = (app.clone(), running.clone());
@@ -126,6 +127,15 @@ pub unsafe extern "C" fn astrid_start(
                 app,
                 keep_going,
                 background::default_sync_interval(),
+            ));
+        }
+        {
+            let (app, running) = (app.clone(), running.clone());
+            let keep_going = move || running.load(std::sync::atomic::Ordering::Relaxed);
+            runtime.spawn(background::reminder_loop(
+                app,
+                keep_going,
+                background::REMINDER_INTERVAL,
             ));
         }
         {
@@ -371,6 +381,7 @@ fn change_json(change: &Change) -> String {
             "change": "agentTyping", "channelId": channel_id, "active": active
         }),
         Change::Settings => serde_json::json!({ "change": "settings" }),
+        Change::RemindersDue => serde_json::json!({ "change": "remindersDue" }),
         Change::NeedsSync => serde_json::json!({ "change": "needsSync" }),
     };
     value.to_string()

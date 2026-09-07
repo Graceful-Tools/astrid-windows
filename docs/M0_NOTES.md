@@ -83,8 +83,33 @@ before M0 is called done; record the result here when it is.
 | Spike | Question it answers | Fallback if it fails |
 |---|---|---|
 | Global hotkey | Which default chord is free, and does `RegisterHotKey` behave in a packaged app? | Ship rebindable from day one; detect conflicts at registration |
-| Toast actions | Do Complete and Snooze buttons activate the app and reach the core? | In-app reminder surface only, until it does |
 | MSIX on ARM64 | Does an x64 + ARM64 bundle install and run on Windows 11 ARM? | Separate per-architecture packages |
+
+### Settled — toasts from an unpackaged app, 2026-09-07
+
+**Registration works.** `AppNotificationManager.Default.Register()` succeeds from the unpackaged
+build and creates the AUMID under `HKCU\Software\Classes\AppUserModelId\` keyed by the exe path,
+so no packaged identity and no hand-made Start-menu shortcut are needed. Registration is wrapped in
+a `try` regardless: a machine with notifications off by policy is a normal machine, and the app runs
+there without banners rather than refusing to start.
+
+**The payload carries both buttons.** Driving the built app with a reminder due in the cache
+produced exactly one banner, with `Complete` and `Snooze 10 min` as actions and the task id in the
+arguments of each:
+
+```
+<toast launch='action=open;taskId=…'>… <actions>
+  <action content='Complete' arguments='action=complete;taskId=…'/>
+  <action content='Snooze 10 min' arguments='action=snooze;minutes=10;taskId=…'/>
+</actions></toast>
+```
+
+**What is still unverified: a person clicking one.** `Show` returned without error, but nothing
+appeared on screen and Windows recorded no notification for the AUMID, because
+`SHQueryUserNotificationState` reported `QUNS_NOT_PRESENT` in this session — the system suppresses
+display when it does not believe a user is at the machine. The activation path
+(`NotificationInvoked` → `complete` / `snooze`) is written and its handlers are the same commands
+the UI uses, but it needs somebody at a desk to press the button before it can be called settled.
 
 ### Settled — the boundary, 2026-09-07
 

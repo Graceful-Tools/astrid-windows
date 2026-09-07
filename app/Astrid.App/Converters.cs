@@ -178,6 +178,22 @@ public sealed partial class DueLabelConverter : IValueConverter
 /// blank and invisible.
 /// </para>
 /// </remarks>
+/// <summary>Whether a task has a reminder, as words.</summary>
+/// <remarks>
+/// The state, not the instant: the row says whether anything will happen, and the picker beneath
+/// it says when. A row showing a raw timestamp beside a due date is two dates and no explanation.
+/// </remarks>
+public sealed partial class ReminderStateConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is true
+            ? PickTitleConverter.Titles["reminder.set"]
+            : PickTitleConverter.Titles["reminder.none"];
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a reminder is chosen from the picker");
+}
+
 /// <summary>
 /// A repeat, as a sentence.
 /// </summary>
@@ -317,6 +333,16 @@ public sealed partial class PickTitleConverter : IValueConverter
         ["repeat.yearly"] = "Yearly",
         ["repeat.custom"] = "Custom…",
         ["repeat.none"] = "Does not repeat",
+        ["reminder.none"] = "No reminder",
+        ["reminder.set"] = "Reminder set",
+        ["reminder.at_due_time"] = "At the time it is due",
+        ["reminder.5_minutes_before"] = "5 minutes before",
+        ["reminder.15_minutes_before"] = "15 minutes before",
+        ["reminder.30_minutes_before"] = "30 minutes before",
+        ["reminder.hour_before"] = "An hour before",
+        ["reminder.2_hours_before"] = "2 hours before",
+        ["reminder.day_before"] = "A day before",
+        ["reminder.week_before"] = "A week before",
     };
 
     public object Convert(object value, Type targetType, object parameter, string language) =>

@@ -35,6 +35,63 @@ public sealed class ShellViewModelTests
             .AnswerOk("sync", new { fetched = false });
 
     /// <summary>
+    /// A reminder reaches whoever draws banners, and nothing marks itself shown on the way — a
+    /// banner that failed to appear is still owed.
+    /// </summary>
+    [Fact]
+    public async Task A_reminder_coming_due_is_handed_to_the_shell()
+    {
+        var core = StartedCore().AnswerOk("remindersDue", new
+        {
+            reminders = new[]
+            {
+                new { taskId = "t1", title = "Call the vet", reminderTime = "2026-09-07T11:59:00Z" },
+            },
+        });
+        using var shell = new ShellViewModel(core, RunInline);
+        var heard = new List<Reminder>();
+        shell.RemindersDue += reminders => heard.AddRange(reminders);
+
+        await shell.RaiseRemindersAsync();
+
+        Assert.Single(heard);
+        Assert.Equal("Call the vet", heard[0].Title);
+        Assert.DoesNotContain("reminderShown", core.SentKinds());
+    }
+
+    /// <summary>Nothing due, nothing raised. An empty banner is worse than none.</summary>
+    [Fact]
+    public async Task Nothing_due_raises_nothing()
+    {
+        var core = StartedCore().AnswerOk("remindersDue", new { reminders = Array.Empty<object>() });
+        using var shell = new ShellViewModel(core, RunInline);
+        var heard = 0;
+        shell.RemindersDue += _ => heard++;
+
+        await shell.RaiseRemindersAsync();
+
+        Assert.Equal(0, heard);
+    }
+
+    /// <summary>
+    /// Completing from a banner goes through the completion command like everywhere else, so a
+    /// repeating task rolls forward instead of finishing. A banner is not a special case.
+    /// </summary>
+    [Fact]
+    public async Task Completing_from_a_reminder_rolls_repeating_tasks_over()
+    {
+        var core = StartedCore()
+            .AnswerOk("completeTask", new { id = "t1" })
+            .AnswerOk("rowsForList", EmptyWindow());
+        using var shell = new ShellViewModel(core, RunInline);
+
+        await shell.CompleteFromReminderAsync("t1");
+
+        Assert.Contains("completeTask", core.SentKinds());
+        Assert.DoesNotContain("updateTask", core.SentKinds());
+    }
+
+    /// <summary>
     /// The first paint comes from the cache and owes nothing to the network — which is the whole
     /// feel of the app, and is why the order of these four calls is a test rather than a comment.
     /// </summary>

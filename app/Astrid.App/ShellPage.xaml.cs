@@ -28,6 +28,7 @@ public sealed partial class ShellPage : UserControl
 {
     private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcher;
     private readonly ShortcutDispatcher _shortcuts;
+    private readonly Reminders _reminders;
 
     public ShellPage()
     {
@@ -40,6 +41,7 @@ public sealed partial class ShellPage : UserControl
             ? running
             : new UnavailableCore(App.StartupError);
         Shell = new ShellViewModel(core, Post);
+        _reminders = new Reminders(Shell, Post);
         _shortcuts = new ShortcutDispatcher(core, Shell);
         _shortcuts.ShellActionRequested += OnShellAction;
         Loaded += OnLoaded;
@@ -49,6 +51,7 @@ public sealed partial class ShellPage : UserControl
         Unloaded += (_, _) =>
         {
             App.UriActivated -= OnUriActivated;
+            _reminders.Stop();
             Shell.Dispose();
         };
     }
@@ -58,7 +61,11 @@ public sealed partial class ShellPage : UserControl
 
     private async void OnLoaded(object sender, RoutedEventArgs args)
     {
+        // Banners before the first load: a reminder that came due while the app was closed should
+        // arrive as the window opens, not a half-minute later when the loop first ticks.
+        _reminders.Start();
         await Shell.StartAsync();
+        await Shell.RaiseRemindersAsync();
         SyncSelectionFromViewModel();
     }
 
@@ -354,6 +361,17 @@ public sealed partial class ShellPage : UserControl
     /// </remarks>
     private async void OnDetailTitleCommitted(object sender, RoutedEventArgs args) =>
         await Shell.Detail.SaveTitleAsync(DetailTitleBox.Text);
+
+    private async void OnReminderFlyoutOpening(object sender, object args)
+    {
+        await Shell.Detail.LoadReminderPicksAsync();
+    }
+
+    private async void OnReminderChosen(object sender, RoutedEventArgs args)
+    {
+        // A null tag is "no reminder", which is a choice rather than a no-op.
+        await Shell.Detail.SetReminderAsync((sender as FrameworkElement)?.Tag as string);
+    }
 
     private async void OnRepeatFlyoutOpening(object sender, object args)
     {

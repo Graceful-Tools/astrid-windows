@@ -203,6 +203,46 @@ public sealed record DueDateOptions
     [JsonPropertyName("times")] public IReadOnlyList<DuePick> Times { get; init; } = [];
 }
 
+/// <summary>One choice in the reminder picker, and the instant it means.</summary>
+public sealed record ReminderPick
+{
+    [JsonPropertyName("titleKey")] public string TitleKey { get; init; } = string.Empty;
+
+    /// <summary>The instant to store, or null for "no reminder".</summary>
+    [JsonPropertyName("reminderTime")] public string? ReminderTime { get; init; }
+
+    [JsonPropertyName("isSelected")] public bool IsSelected { get; init; }
+}
+
+/// <summary>The reminder picker's choices, and the one the task holds.</summary>
+public sealed record ReminderOptions
+{
+    [JsonPropertyName("reminderTime")] public string? ReminderTime { get; init; }
+
+    [JsonPropertyName("picks")] public IReadOnlyList<ReminderPick> Picks { get; init; } = [];
+}
+
+/// <summary>A task asking to be remembered.</summary>
+public sealed record Reminder
+{
+    [JsonPropertyName("taskId")] public string TaskId { get; init; } = string.Empty;
+
+    [JsonPropertyName("title")] public string Title { get; init; } = string.Empty;
+
+    /// <summary>
+    /// When the reminder was for — not "now", so a banner that waited can say what it waited for.
+    /// </summary>
+    [JsonPropertyName("reminderTime")] public string ReminderTime { get; init; } = string.Empty;
+
+    [JsonPropertyName("dueDateTime")] public string? DueDateTime { get; init; }
+}
+
+/// <summary>What is outstanding.</summary>
+public sealed record RemindersDue
+{
+    [JsonPropertyName("reminders")] public IReadOnlyList<Reminder> Reminders { get; init; } = [];
+}
+
 /// <summary>One fragment of a repeat's description: a key, and what it interpolates.</summary>
 public sealed record SummaryPart
 {

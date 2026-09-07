@@ -21,6 +21,7 @@
         <local:PickTitleConverter x:Key="PickTitle" />
         <local:AssigneeNameConverter x:Key="AssigneeText" />
         <local:RepeatSummaryConverter x:Key="RepeatText" />
+        <local:ReminderStateConverter x:Key="ReminderText" />
     </UserControl.Resources>
 
     <Grid x:Name="RootGrid" KeyDown="OnKeyDown">
@@ -379,6 +380,31 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+
+                <!--
+                    When to be reminded. The instants come from the core with the choices, so the
+                    shell never subtracts an hour from a date itself.
+                -->
+                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                        AutomationProperties.Name="Reminder">
+                    <TextBlock Text="{x:Bind Shell.Detail.HasReminder, Mode=OneWay, Converter={StaticResource ReminderText}}" />
+                    <Button.Flyout>
+                        <Flyout Opening="OnReminderFlyoutOpening">
+                            <ItemsControl ItemsSource="{x:Bind Shell.Detail.ReminderPicks, Mode=OneWay}"
+                                          MinWidth="220">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="bindings:ReminderPick">
+                                        <Button HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Left"
+                                                Tag="{x:Bind ReminderTime}"
+                                                Click="OnReminderChosen"
+                                                Content="{x:Bind TitleKey, Converter={StaticResource PickTitle}}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </Flyout>
                     </Button.Flyout>
                 </Button>

@@ -73,6 +73,38 @@ public static class Commands
     /// <c>assigneeId</c>; this is only the question of who may be offered.
     /// </remarks>
     /// <summary>
+    /// When to be reminded about one task, and the instant each choice means.
+    /// </summary>
+    /// <remarks>
+    /// Offsets from the due time rather than a clock: "an hour before" is what somebody means, and
+    /// an hour before a time is not the same wall-clock answer across a daylight-saving boundary.
+    /// </remarks>
+    public static object ReminderOptions(string taskId) =>
+        new WithTaskId("reminderOptions", taskId);
+
+    /// <summary>
+    /// Reminders that have come due and have not been shown yet.
+    /// </summary>
+    /// <remarks>
+    /// The server owns push and email — it knows about quiet hours, digests, and every device
+    /// somebody owns. This is only what a running client can notice: that a reminder's time has
+    /// arrived for the app open in front of them.
+    /// </remarks>
+    public static object RemindersDue() => new KindOnly("remindersDue");
+
+    /// <summary>Remember that a reminder was shown, so it is not shown twice.</summary>
+    public static object ReminderShown(string taskId) =>
+        new WithTaskId("reminderShown", taskId);
+
+    /// <summary>Move a reminder forward.</summary>
+    /// <remarks>
+    /// A write, not a timer: an in-memory snooze is lost on a restart, and it would leave the
+    /// server's copy where it was, so the push still arrives at the original time.
+    /// </remarks>
+    public static object SnoozeReminder(string taskId, int minutes) =>
+        new SnoozeRequest("snoozeReminder", taskId, minutes);
+
+    /// <summary>
     /// The repeat presets, and how this task's repeat describes itself.
     /// </summary>
     /// <remarks>
@@ -261,6 +293,11 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("content")] string Content);
+
+    private sealed record SnoozeRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("taskId")] string TaskId,
+        [property: JsonPropertyName("minutes")] int Minutes);
 
     private sealed record SearchTasksRequest(
         [property: JsonPropertyName("kind")] string Kind,

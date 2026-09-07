@@ -49,7 +49,7 @@ still there. Built and tested for x64 and ARM64 by `npm run predeploy`.
 | Assignee picker | `astrid_core::rows::assignee` → shell | done |
 | Repeat editor | `astrid_core::rows::repeat` → shell | done |
 | Search | `astrid_core::services::search` → shell | done |
-| Reminders and toasts | — | not started |
+| Reminders and toasts | `astrid_core::reminders`, `rows::reminder_picks` → shell | done |
 
 ## M3 — collaboration and remaining parity
 

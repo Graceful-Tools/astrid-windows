@@ -36,6 +36,7 @@ public sealed class TaskDetailViewModel : ObservableObject
     private string _priorityGlyph = "○";
     private UserSummary? _assignee;
     private bool _repeatsFromDueDate;
+    private bool _hasReminder;
 
     public TaskDetailViewModel(IAstridCore core)
     {
@@ -52,6 +53,9 @@ public sealed class TaskDetailViewModel : ObservableObject
     public ObservableCollection<string> FieldOrder { get; } = [];
 
     public ObservableCollection<ListChip> ListChips { get; } = [];
+
+    /// <summary>When to be reminded, loaded when the picker opens.</summary>
+    public ObservableCollection<ReminderPick> ReminderPicks { get; } = [];
 
     /// <summary>The repeat presets, loaded when the picker opens.</summary>
     public ObservableCollection<RepeatPreset> RepeatPresets { get; } = [];
@@ -299,6 +303,44 @@ public sealed class TaskDetailViewModel : ObservableObject
 
     /// <summary>Whether the open task repeats at all. What draws the glyph on the row.</summary>
     public bool IsRepeating => RepeatSummary.Count > 0;
+
+    /// <summary>Whether the open task has a reminder set.</summary>
+    public bool HasReminder
+    {
+        get => _hasReminder;
+        private set => Set(ref _hasReminder, value);
+    }
+
+    /// <summary>Fetch when the open task could be reminded.</summary>
+    public async Task LoadReminderPicksAsync(CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return;
+        }
+        var response = await _core.CallAsync(Commands.ReminderOptions(TaskId), cancellationToken);
+        if (!Handle(response))
+        {
+            return;
+        }
+        var options = response.Read<ReminderOptions>();
+        if (options is null)
+        {
+            return;
+        }
+        HasReminder = options.ReminderTime is not null;
+        Replace(ReminderPicks, options.Picks);
+    }
+
+    /// <summary>Set or clear the reminder.</summary>
+    /// <remarks>
+    /// The instant comes from the core with the choice, so the shell never subtracts an hour from
+    /// a date itself — which is the arithmetic that goes wrong across a daylight-saving boundary.
+    /// </remarks>
+    public Task<bool> SetReminderAsync(string? reminderTime,
+        CancellationToken cancellationToken = default) =>
+        UpdateAsync(new Dictionary<string, object?> { ["reminderTime"] = reminderTime },
+            cancellationToken);
 
     /// <summary>Fetch the repeat presets for the open task.</summary>
     public async Task LoadRepeatAsync(CancellationToken cancellationToken = default)

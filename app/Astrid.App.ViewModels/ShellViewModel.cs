@@ -43,6 +43,17 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _core.Changed += OnChanged;
     }
 
+    /// <summary>
+    /// Reminders that have come due and want a banner.
+    /// </summary>
+    /// <remarks>
+    /// An event rather than a collection: a reminder is a moment, not a state, and what the shell
+    /// does with it — a toast, a window, a sound — is a platform decision this layer must not
+    /// make. Nothing marks itself shown here either: the shell says so once a banner is actually
+    /// on screen, because one that failed to appear is still owed.
+    /// </remarks>
+    public event Action<IReadOnlyList<Reminder>>? RemindersDue;
+
     public SidebarViewModel Sidebar { get; }
 
     public TaskListViewModel Tasks { get; }
@@ -212,6 +223,47 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _core.Changed -= OnChanged;
     }
 
+    /// <summary>Ask what is outstanding and hand it to whoever draws banners.</summary>
+    public async Task RaiseRemindersAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.RemindersDue(), cancellationToken);
+        if (!response.Ok)
+        {
+            return;
+        }
+        var due = response.Read<RemindersDue>();
+        if (due is { Reminders.Count: > 0 })
+        {
+            RemindersDue?.Invoke(due.Reminders);
+        }
+    }
+
+    /// <summary>Remember that a reminder reached the screen.</summary>
+    public Task ReminderShownAsync(string taskId, CancellationToken cancellationToken = default) =>
+        _core.CallAsync(Commands.ReminderShown(taskId), cancellationToken);
+
+    /// <summary>Move a reminder forward and let it ask again.</summary>
+    public async Task SnoozeReminderAsync(string taskId, int minutes,
+        CancellationToken cancellationToken = default)
+    {
+        await _core.CallAsync(Commands.SnoozeReminder(taskId, minutes), cancellationToken);
+        await Tasks.RefreshAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Finish a task from its reminder.
+    /// </summary>
+    /// <remarks>
+    /// Through the same completion path as everywhere else, so a repeating task rolls forward to
+    /// its next occurrence instead of finishing — a banner is not a special case.
+    /// </remarks>
+    public async Task CompleteFromReminderAsync(string taskId,
+        CancellationToken cancellationToken = default)
+    {
+        await _core.CallAsync(Commands.CompleteTask(taskId, true), cancellationToken);
+        await Tasks.RefreshAsync(cancellationToken);
+    }
+
     /// <summary>
     /// Something changed underneath us. Refresh exactly that.
     /// </summary>
@@ -250,6 +302,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                     break;
                 case "list":
                     await Sidebar.LoadAsync();
+                    break;
+                case "remindersDue":
+                    await RaiseRemindersAsync();
                     break;
                 case "needsSync":
                     await SyncAsync();

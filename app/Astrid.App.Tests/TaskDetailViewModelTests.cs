@@ -40,6 +40,59 @@ public sealed class TaskDetailViewModelTests
         .AnswerOk("refreshComments");
 
     /// <summary>
+    /// The choices carry the instant each one means, so the shell never subtracts an hour from a
+    /// date — the arithmetic that goes wrong across a daylight-saving boundary.
+    /// </summary>
+    [Fact]
+    public async Task The_reminder_picker_writes_the_instant_the_core_worked_out()
+    {
+        var core = OpenedTask()
+            .AnswerOk("reminderOptions", new
+            {
+                reminderTime = (string?)null,
+                picks = new[]
+                {
+                    new { titleKey = "reminder.none", reminderTime = (string?)null, isSelected = true },
+                    new
+                    {
+                        titleKey = "reminder.hour_before",
+                        reminderTime = (string?)"2026-09-20T08:00:00+00:00",
+                        isSelected = false,
+                    },
+                },
+            })
+            .AnswerOk("updateTask")
+            .AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+        await view.LoadReminderPicksAsync();
+
+        Assert.Equal(2, view.ReminderPicks.Count);
+        Assert.False(view.HasReminder);
+
+        await view.SetReminderAsync(view.ReminderPicks[1].ReminderTime);
+
+        var update = core.Sent.First(sent => sent.Contains("updateTask"));
+        // The offset's "+" comes back escaped by the JSON writer, so this looks for the instant
+        // rather than the exact spelling of the separator.
+        Assert.Contains("reminderTime", update);
+        Assert.Contains("2026-09-20T08:00:00", update);
+    }
+
+    /// <summary>Clearing sends null, because absent means "leave it alone".</summary>
+    [Fact]
+    public async Task Choosing_no_reminder_clears_it()
+    {
+        var core = OpenedTask().AnswerOk("updateTask").AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.SetReminderAsync(null);
+
+        Assert.Contains("\"reminderTime\":null", core.Sent.First(sent => sent.Contains("updateTask")));
+    }
+
+    /// <summary>
     /// The presets come from the core, marked. A shell that decided which row was selected would
     /// be the fourth place to decide it.
     /// </summary>

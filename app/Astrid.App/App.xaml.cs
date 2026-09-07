@@ -107,13 +107,22 @@ public partial class App : Application
         }
     }
 
-    private static void Log(Exception exception)
+    private static void Log(Exception exception) => Log(exception.ToString());
+
+    /// <summary>
+    /// Note something that went wrong but did not stop the app.
+    /// </summary>
+    /// <remarks>
+    /// The same file as a crash, because the question being answered is always "what happened on
+    /// that machine?" and two files means finding one of them.
+    /// </remarks>
+    internal static void Log(string message)
     {
         try
         {
             File.AppendAllText(
                 CrashLogPath,
-                $"{DateTimeOffset.Now:O}  {exception}{Environment.NewLine}{Environment.NewLine}");
+                $"{DateTimeOffset.Now:O}  {message}{Environment.NewLine}{Environment.NewLine}");
         }
         catch (IOException)
         {
