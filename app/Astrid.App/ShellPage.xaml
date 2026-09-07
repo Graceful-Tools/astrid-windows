@@ -23,6 +23,7 @@
         <local:RepeatSummaryConverter x:Key="RepeatText" />
         <local:ReminderStateConverter x:Key="ReminderText" />
         <local:NotVisibleConverter x:Key="NotVisible" />
+        <local:FilterStateConverter x:Key="FilterText" />
     </UserControl.Resources>
 
     <Grid x:Name="RootGrid" KeyDown="OnKeyDown">
@@ -179,6 +180,44 @@
                             same way. A second surface that behaved almost-but-not-quite like the
                             list is how two code paths for one thing begin.
                         -->
+                        <!--
+                            What the list is filtered and sorted by. The values come from the core,
+                            which is the only place they are matched on — a filter set here means
+                            the same thing on web and on the Mac, because it is the same string.
+                        -->
+                        <Button x:Name="FilterButton"
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="Filters"
+                                Content="{x:Bind Shell.Tasks.IsFiltered, Mode=OneWay, Converter={StaticResource FilterText}}">
+                            <Button.Flyout>
+                                <Flyout Opening="OnFiltersOpening">
+                                    <ScrollViewer MaxHeight="480" VerticalScrollBarVisibility="Auto">
+                                        <ItemsControl ItemsSource="{x:Bind Shell.Tasks.FilterGroups, Mode=OneWay}"
+                                                      MinWidth="240">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="bindings:FilterGroup">
+                                                    <StackPanel Margin="0,0,0,12">
+                                                        <TextBlock Text="{x:Bind TitleKey, Converter={StaticResource PickTitle}}"
+                                                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                        <ItemsControl ItemsSource="{x:Bind Picks}">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate x:DataType="bindings:FilterPick">
+                                                                    <RadioButton Content="{x:Bind TitleKey, Converter={StaticResource PickTitle}}"
+                                                                                 IsChecked="{x:Bind IsSelected}"
+                                                                                 GroupName="{x:Bind Field}"
+                                                                                 Checked="OnFilterChosen" />
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
                         <!--
                             The conversation about this list. A panel beside the tasks rather than
                             a screen of its own: it is about the work on the left, and reading it

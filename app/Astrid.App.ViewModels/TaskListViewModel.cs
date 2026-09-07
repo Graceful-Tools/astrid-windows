@@ -41,6 +41,7 @@ public sealed class TaskListViewModel : ObservableObject
     private TaskRow? _selected;
     private string _searchQuery = string.Empty;
     private bool _isSearching;
+    private bool _isFiltered;
 
     public TaskListViewModel(IAstridCore core)
     {
@@ -264,6 +265,67 @@ public sealed class TaskListViewModel : ObservableObject
             IsLoading = false;
             Raise(nameof(IsEmpty));
         }
+    }
+
+    /// <summary>What this list is filtered and sorted by, loaded when the sheet opens.</summary>
+    public ObservableCollection<FilterGroup> FilterGroups { get; } = [];
+
+    /// <summary>
+    /// Whether anything is narrowing what the list shows.
+    /// </summary>
+    /// <remarks>
+    /// Worth saying on the button. A list quietly hiding half its tasks because of a setting made
+    /// last month — possibly on another client — is a list that looks like it lost them.
+    /// </remarks>
+    public bool IsFiltered
+    {
+        get => _isFiltered;
+        private set => Set(ref _isFiltered, value);
+    }
+
+    /// <summary>Fetch the filter and sort choices for this list.</summary>
+    public async Task LoadFiltersAsync(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(ListId))
+        {
+            return;
+        }
+        var response = await _core.CallAsync(Commands.FilterOptions(ListId), cancellationToken);
+        if (!Handle(response))
+        {
+            return;
+        }
+        var options = response.Read<FilterOptions>();
+        if (options is null)
+        {
+            return;
+        }
+        IsFiltered = options.IsFiltered;
+        FilterGroups.Clear();
+        foreach (var group in options.Groups)
+        {
+            FilterGroups.Add(group);
+        }
+    }
+
+    /// <summary>Set one filter, and redraw the list it changes.</summary>
+    public async Task<bool> SetFilterAsync(string field, string value,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(ListId))
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(
+            Commands.UpdateList(ListId, new Dictionary<string, object?> { [field] = value }),
+            cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        await RefreshAsync(cancellationToken);
+        await LoadFiltersAsync(cancellationToken);
+        return true;
     }
 
     /// <summary>Reload from the top. What a change notification and a pull-to-refresh both do.</summary>

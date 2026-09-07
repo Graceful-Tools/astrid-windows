@@ -103,6 +103,20 @@ public sealed partial class BoolToVisibilityConverter : IValueConverter
         throw new NotSupportedException("visibility is read-only in the UI");
 }
 
+/// <summary>What the filter button says: whether anything is being hidden.</summary>
+/// <remarks>
+/// A list quietly showing half its tasks because of a setting made last month — possibly on
+/// another client — is a list that looks like it lost them. The button is where that gets noticed.
+/// </remarks>
+public sealed partial class FilterStateConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is true ? "Filtered" : "Filter";
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a filter is chosen from the sheet");
+}
+
 /// <summary>Visible when the value is false — for the half of a pair that is not showing.</summary>
 public sealed partial class NotVisibleConverter : IValueConverter
 {
@@ -337,6 +351,41 @@ public sealed partial class PickTitleConverter : IValueConverter
         ["picker.night"] = "Night",
         ["assignee.unassigned"] = "Unassigned",
         ["repeat.never"] = "Never",
+        ["filter.any"] = "Any",
+        ["filter.completion"] = "Finished tasks",
+        ["filter.completion.recent"] = "Recently finished",
+        ["filter.completion.hide"] = "Hide them",
+        ["filter.completion.all"] = "Show them all",
+        ["filter.priority"] = "Priority",
+        ["filter.due"] = "Due",
+        ["filter.due.overdue"] = "Overdue",
+        ["filter.due.today"] = "Today",
+        ["filter.due.this_week"] = "This week",
+        ["filter.due.this_month"] = "This month",
+        ["filter.due.none"] = "No due date",
+        ["filter.assignee"] = "Assigned to",
+        ["filter.assignee.me"] = "Me",
+        ["filter.assignee.someone_else"] = "Somebody else",
+        ["filter.assignee.nobody"] = "Nobody",
+        ["filter.repeat"] = "Repeat",
+        ["filter.repeat.never"] = "Does not repeat",
+        ["filter.assigned_by"] = "Assigned by",
+        ["filter.assigned_by.me"] = "Me",
+        ["filter.assigned_by.someone_else"] = "Somebody else",
+        ["filter.lists"] = "Lists",
+        ["filter.lists.in_a_list"] = "In a list",
+        ["filter.lists.not_in_a_list"] = "Not in a list",
+        ["filter.lists.public"] = "In a public list",
+        ["priority.none"] = "No priority",
+        ["priority.low"] = "Low",
+        ["priority.medium"] = "Medium",
+        ["priority.high"] = "High",
+        ["sort"] = "Sort by",
+        ["sort.auto"] = "Automatic",
+        ["sort.priority"] = "Priority",
+        ["sort.when"] = "When it is due",
+        ["sort.created"] = "When it was added",
+        ["sort.manual"] = "The order I arranged",
         ["repeat.daily"] = "Daily",
         ["repeat.weekly"] = "Weekly",
         ["repeat.monthly"] = "Monthly",

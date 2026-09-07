@@ -264,6 +264,69 @@ public sealed class TaskListViewModelTests
         Assert.Equal(string.Empty, view.SearchQuery);
     }
 
+    private static object FilterOptions(bool filtered, string dueValue) => new
+    {
+        listId = "l1",
+        isFiltered = filtered,
+        groups = new[]
+        {
+            new
+            {
+                field = "filterDueDate",
+                titleKey = "filter.due",
+                picks = new[]
+                {
+                    new { field = "filterDueDate", value = "all", titleKey = "filter.any", isSelected = dueValue == "all" },
+                    new { field = "filterDueDate", value = "today", titleKey = "filter.due.today", isSelected = dueValue == "today" },
+                },
+            },
+        },
+    };
+
+    /// <summary>
+    /// The choices come from the core, marked. A shell that decided which one was on would be the
+    /// fourth place that knows what "today" means.
+    /// </summary>
+    [Fact]
+    public async Task The_filter_sheet_shows_what_the_list_is_set_to()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(1, "Buy milk"))
+            .AnswerOk("filterOptions", FilterOptions(false, "all"));
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Home");
+
+        await view.LoadFiltersAsync();
+
+        Assert.Single(view.FilterGroups);
+        Assert.True(view.FilterGroups[0].Picks[0].IsSelected);
+        Assert.False(view.IsFiltered);
+    }
+
+    /// <summary>
+    /// Choosing one writes the field the core named, then redraws — the list is what changed, and
+    /// the sheet has to agree with it afterwards.
+    /// </summary>
+    [Fact]
+    public async Task Choosing_a_filter_writes_it_and_redraws_the_list()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(2, "Buy milk", "Book flights"))
+            .AnswerOk("filterOptions", FilterOptions(false, "all"))
+            .AnswerOk("updateList")
+            .AnswerOk("rowsForList", Window(1, "Book flights"))
+            .AnswerOk("filterOptions", FilterOptions(true, "today"));
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Home");
+        await view.LoadFiltersAsync();
+
+        Assert.True(await view.SetFilterAsync("filterDueDate", "today"));
+
+        Assert.Contains("\"filterDueDate\":\"today\"", core.Sent.First(sent => sent.Contains("updateList")));
+        Assert.Single(view.Rows);
+        Assert.True(view.IsFiltered);
+    }
+
     /// <summary>
     /// A refresh keeps as many rows as were on screen, so it does not scroll the list back to the
     /// top under somebody's cursor.

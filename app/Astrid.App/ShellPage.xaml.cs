@@ -362,6 +362,30 @@ public sealed partial class ShellPage : UserControl
     private async void OnDetailTitleCommitted(object sender, RoutedEventArgs args) =>
         await Shell.Detail.SaveTitleAsync(DetailTitleBox.Text);
 
+    // ── What the list shows ──────────────────────────────────────────────────────────
+
+    private async void OnFiltersOpening(object sender, object args)
+    {
+        await Shell.Tasks.LoadFiltersAsync();
+    }
+
+    /// <summary>
+    /// A filter was chosen.
+    /// </summary>
+    /// <remarks>
+    /// The already-chosen one fires this too, as the flyout draws itself and sets the radio button
+    /// that was on. Writing then would send the list's own setting back to it on every open — a
+    /// pointless round trip, and an edit in the Outbox that nobody made.
+    /// </remarks>
+    private async void OnFilterChosen(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not FilterPick pick || pick.IsSelected)
+        {
+            return;
+        }
+        await Shell.Tasks.SetFilterAsync(pick.Field, pick.Value);
+    }
+
     // ── The conversation ─────────────────────────────────────────────────────────────────────
 
     private async void OnToggleChat(object sender, RoutedEventArgs args)

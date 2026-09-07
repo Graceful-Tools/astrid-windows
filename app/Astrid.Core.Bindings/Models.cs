@@ -203,6 +203,48 @@ public sealed record DueDateOptions
     [JsonPropertyName("times")] public IReadOnlyList<DuePick> Times { get; init; } = [];
 }
 
+/// <summary>One choice in a filter group.</summary>
+public sealed record FilterPick
+{
+    /// <summary>
+    /// The field this choice writes.
+    /// </summary>
+    /// <remarks>
+    /// On the pick as well as on the group, because a radio button is drawn one at a time and one
+    /// that does not know its group clears the wrong one.
+    /// </remarks>
+    [JsonPropertyName("field")] public string Field { get; init; } = string.Empty;
+
+    /// <summary>The value to write back, exactly as the core's rules match it.</summary>
+    [JsonPropertyName("value")] public string Value { get; init; } = string.Empty;
+
+    [JsonPropertyName("titleKey")] public string TitleKey { get; init; } = string.Empty;
+
+    [JsonPropertyName("isSelected")] public bool IsSelected { get; init; }
+}
+
+/// <summary>One filter: the field it writes, and the choices for it.</summary>
+public sealed record FilterGroup
+{
+    /// <summary>The field on the list, as the API spells it.</summary>
+    [JsonPropertyName("field")] public string Field { get; init; } = string.Empty;
+
+    [JsonPropertyName("titleKey")] public string TitleKey { get; init; } = string.Empty;
+
+    [JsonPropertyName("picks")] public IReadOnlyList<FilterPick> Picks { get; init; } = [];
+}
+
+/// <summary>What a list is filtered and sorted by.</summary>
+public sealed record FilterOptions
+{
+    [JsonPropertyName("listId")] public string ListId { get; init; } = string.Empty;
+
+    /// <summary>Whether anything is narrowing what the list shows.</summary>
+    [JsonPropertyName("isFiltered")] public bool IsFiltered { get; init; }
+
+    [JsonPropertyName("groups")] public IReadOnlyList<FilterGroup> Groups { get; init; } = [];
+}
+
 /// <summary>One message in a list's conversation.</summary>
 public sealed record MessageRow
 {

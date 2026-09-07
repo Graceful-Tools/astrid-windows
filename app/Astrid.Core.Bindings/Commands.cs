@@ -72,6 +72,18 @@ public static class Commands
     /// board could not offer an AI agent at all. Assigning is an ordinary update carrying an
     /// <c>assigneeId</c>; this is only the question of who may be offered.
     /// </remarks>
+    /// <summary>
+    /// What a list is filtered and sorted by, and what else it could be.
+    /// </summary>
+    /// <remarks>
+    /// Setting one is an ordinary <see cref="UpdateList"/> carrying the field the group names.
+    /// The values are the ones the core's rules match on — they are saved on the list and read by
+    /// every client, so one spelled differently would be a filter the others keep and this one
+    /// silently ignores.
+    /// </remarks>
+    public static object FilterOptions(string listId) =>
+        new WithListId("filterOptions", listId);
+
     /// <summary>A list's conversation, from the cache.</summary>
     public static object Chat(string listId) => new WithListId("chat", listId);
 
