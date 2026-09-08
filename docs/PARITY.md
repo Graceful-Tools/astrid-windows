@@ -36,16 +36,16 @@ milestones; this tracks the *product*.
 | Localisation | ✅ (12 languages) | ✅ (English) | Windows has the mechanism and one language |
 | Attachments | ✅ | ✅ | Open, and attach from disk — see below for what is not queued |
 | Timer on a task | ✅ | ✅ | Windows keeps a running timer across a restart; the Mac's is in memory |
+| Account screen and reminder settings | ✅ | ✅ | Push, email, default offset, digest, quiet hours |
 
 ## Not yet
 
 | What | Mac | Windows | What it needs |
 |---|---|---|---|
 | An attachment queued offline | ✅ | ❌ | Everything else here writes through the Outbox; an upload needs a connection and says so |
-| Account and profile screens | ✅ | ❌ | Profile, stats, data export |
-| Reminder settings (digest, quiet hours) | ✅ | ❌ | `/user/settings` — the per-task reminder is done |
 | Board drag and drop | ✅ | ➖ | Windows moves from a menu, which a keyboard can also do |
 | My Tasks filters | ✅ | ➖ | The list filters are done; the virtual views take defaults |
+| Profile stats and data export | ✅ | ❌ | The account screen has the profile, not the numbers |
 | Onboarding | ✅ | ❌ | |
 | Agent Hub, AI keys | ✅ | ❌ | |
 | External sync (Google Tasks, GitHub) | ✅ | ❌ | M5 |

@@ -346,7 +346,84 @@
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                Style="{ThemeResource CaptionTextBlockStyle}"
                                Visibility="{x:Bind Shell.HasUnsentWork, Mode=OneWay, Converter={StaticResource Visible}}" />
-                    <Button Grid.Column="2" Content="Sync" Click="OnSync" />
+                    <!--
+                        The account. A flyout rather than a page: it is four toggles and a name,
+                        and a screen you have to navigate back out of is a screen people avoid.
+                    -->
+                    <Button Grid.Column="2"
+                            Content="Account"
+                            AutomationProperties.Name="Account"
+                            Margin="0,0,8,0">
+                        <Button.Flyout>
+                            <Flyout Opening="OnAccountOpening">
+                                <StackPanel Spacing="8" MinWidth="300">
+                                    <TextBlock Text="{x:Bind Shell.Settings.DisplayName, Mode=OneWay}"
+                                               Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                                    <TextBlock Text="{x:Bind Shell.Settings.Email, Mode=OneWay}"
+                                               Style="{ThemeResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+
+                                    <TextBlock Text="Reminders" Margin="0,8,0,0"
+                                               Style="{ThemeResource CaptionTextBlockStyle}" />
+                                    <ToggleSwitch x:Name="PushToggle"
+                                                  Header="Push reminders"
+                                                  AutomationProperties.Name="Push reminders"
+                                                  IsOn="{x:Bind Shell.Settings.PushEnabled, Mode=OneWay}"
+                                                  Toggled="OnPushToggled" />
+                                    <ToggleSwitch x:Name="EmailToggle"
+                                                  Header="Email reminders"
+                                                  AutomationProperties.Name="Email reminders"
+                                                  IsOn="{x:Bind Shell.Settings.EmailEnabled, Mode=OneWay}"
+                                                  Toggled="OnEmailToggled" />
+                                    <ComboBox x:Name="DefaultOffsetBox"
+                                              Header="Remind me by default"
+                                              AutomationProperties.Name="Default reminder"
+                                              ItemsSource="{x:Bind Shell.Settings.Offsets, Mode=OneWay}"
+                                              SelectionChanged="OnDefaultOffsetChanged">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate x:DataType="bindings:ReminderOffset">
+                                                <TextBlock Text="{x:Bind TitleKey, Converter={StaticResource PickTitle}}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+
+                                    <TextBlock Text="Daily digest" Margin="0,8,0,0"
+                                               Style="{ThemeResource CaptionTextBlockStyle}" />
+                                    <ToggleSwitch x:Name="DigestToggle"
+                                                  Header="Send a daily digest"
+                                                  AutomationProperties.Name="Daily digest"
+                                                  IsOn="{x:Bind Shell.Settings.DigestEnabled, Mode=OneWay}"
+                                                  Toggled="OnDigestToggled" />
+                                    <TimePicker x:Name="DigestTimeBox"
+                                                Header="At"
+                                                AutomationProperties.Name="Digest time"
+                                                SelectedTimeChanged="OnDigestTimeChanged" />
+
+                                    <TextBlock Text="Quiet hours" Margin="0,8,0,0"
+                                               Style="{ThemeResource CaptionTextBlockStyle}" />
+                                    <ToggleSwitch x:Name="QuietToggle"
+                                                  Header="No reminders overnight"
+                                                  AutomationProperties.Name="Quiet hours"
+                                                  IsOn="{x:Bind Shell.Settings.QuietHoursEnabled, Mode=OneWay}"
+                                                  Toggled="OnQuietHoursToggled" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TimePicker x:Name="QuietStartBox" Header="From"
+                                                    AutomationProperties.Name="Quiet from"
+                                                    SelectedTimeChanged="OnQuietHoursChanged" />
+                                        <TimePicker x:Name="QuietEndBox" Header="Until"
+                                                    AutomationProperties.Name="Quiet until"
+                                                    SelectedTimeChanged="OnQuietHoursChanged" />
+                                    </StackPanel>
+
+                                    <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                               TextWrapping="Wrap"
+                                               Text="{x:Bind Shell.Settings.ErrorMessage, Mode=OneWay}"
+                                               Visibility="{x:Bind Shell.Settings.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                    <Button Grid.Column="2" Content="Sync" Click="OnSync" HorizontalAlignment="Right" />
                 <Button Grid.Column="3" Content="Sign out" Click="OnSignOut" />
                 </Grid>
     

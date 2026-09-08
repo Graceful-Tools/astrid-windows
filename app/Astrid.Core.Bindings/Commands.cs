@@ -72,6 +72,23 @@ public static class Commands
     /// board could not offer an AI agent at all. Assigning is an ordinary update carrying an
     /// <c>assigneeId</c>; this is only the question of who may be offered.
     /// </remarks>
+    /// <summary>The account and its reminder settings, from the cache.</summary>
+    public static object Settings() => new KindOnly("settings");
+
+    /// <summary>Fetch the account and its settings from the server.</summary>
+    public static object RefreshSettings() => new KindOnly("refreshSettings");
+
+    /// <summary>
+    /// Change the reminder settings.
+    /// </summary>
+    /// <remarks>
+    /// The fields are the server's — <c>enablePushReminders</c>, <c>dailyDigestTime</c> — and they
+    /// are merged into what is stored, so one toggle does not clear everything else this account
+    /// has chosen, possibly on another client.
+    /// </remarks>
+    public static object UpdateReminderSettings(IReadOnlyDictionary<string, object?> changes) =>
+        new SettingsRequest("updateReminderSettings", changes);
+
     /// <summary>Start timing a task.</summary>
     /// <remarks>
     /// The start time is kept in the cache rather than in memory, so a timer survives a restart —
@@ -391,6 +408,10 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("content")] string Content);
+
+    private sealed record SettingsRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("changes")] IReadOnlyDictionary<string, object?> Changes);
 
     private sealed record DownloadRequest(
         [property: JsonPropertyName("kind")] string Kind,

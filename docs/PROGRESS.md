@@ -60,7 +60,7 @@ accessibility tree by `npm run predeploy:full`.
 | Chat | `astrid_core::services::chat`, `rows::chat` → shell | done |
 | Attachments | `astrid_core::services::attachment` → shell | done |
 | Filters and saved views | `astrid_core::filters`, `rows::filter_picks` → shell | done |
-| Account and settings screens | — | not started |
+| Account and settings screens | `astrid_core::services::account` → shell | done |
 | `docs/PARITY.md` | `docs/PARITY.md` | done |
 
 ## M4 — distribution

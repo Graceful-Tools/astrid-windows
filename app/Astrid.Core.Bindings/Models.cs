@@ -203,6 +203,54 @@ public sealed record DueDateOptions
     [JsonPropertyName("times")] public IReadOnlyList<DuePick> Times { get; init; } = [];
 }
 
+/// <summary>How this account wants to be reminded. The server's fields, unchanged.</summary>
+public sealed record ReminderSettings
+{
+    [JsonPropertyName("enablePushReminders")] public bool EnablePushReminders { get; init; }
+
+    [JsonPropertyName("enableEmailReminders")] public bool EnableEmailReminders { get; init; }
+
+    /// <summary>Minutes before a task is due. Zero means at the time it is due.</summary>
+    [JsonPropertyName("defaultReminderTime")] public int DefaultReminderTime { get; init; }
+
+    [JsonPropertyName("enableDailyDigest")] public bool EnableDailyDigest { get; init; }
+
+    /// <summary><c>HH:MM</c>.</summary>
+    [JsonPropertyName("dailyDigestTime")] public string? DailyDigestTime { get; init; }
+
+    [JsonPropertyName("dailyDigestTimezone")] public string? DailyDigestTimezone { get; init; }
+
+    /// <summary>Null when there are no quiet hours at all.</summary>
+    [JsonPropertyName("quietHoursStart")] public string? QuietHoursStart { get; init; }
+
+    [JsonPropertyName("quietHoursEnd")] public string? QuietHoursEnd { get; init; }
+}
+
+/// <summary>One choice for the default reminder offset.</summary>
+public sealed record ReminderOffset
+{
+    [JsonPropertyName("titleKey")] public string TitleKey { get; init; } = string.Empty;
+
+    [JsonPropertyName("minutes")] public int Minutes { get; init; }
+}
+
+/// <summary>The account screen.</summary>
+public sealed record AccountSettings
+{
+    [JsonPropertyName("user")] public UserSummary? User { get; init; }
+
+    [JsonPropertyName("reminderSettings")]
+    public ReminderSettings ReminderSettings { get; init; } = new();
+
+    /// <summary>
+    /// The offsets a new task's reminder can default to — the same list the per-task picker uses,
+    /// so "15 minutes before" means one thing in this app rather than two.
+    /// </summary>
+    [JsonPropertyName("offsets")] public IReadOnlyList<ReminderOffset> Offsets { get; init; } = [];
+
+    [JsonPropertyName("timezone")] public string? Timezone { get; init; }
+}
+
 /// <summary>What a task's timer is doing.</summary>
 public sealed record TimerState
 {

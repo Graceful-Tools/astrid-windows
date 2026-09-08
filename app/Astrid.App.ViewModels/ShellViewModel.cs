@@ -45,6 +45,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Board = new BoardViewModel(core);
         ListSettings = new ListSettingsViewModel(core);
         Chat = new ChatViewModel(core);
+        Settings = new SettingsViewModel(core);
         _core.Changed += OnChanged;
     }
 
@@ -76,6 +77,18 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     /// <summary>The open list's conversation.</summary>
     public ChatViewModel Chat { get; }
+
+    /// <summary>The account, and how it wants to be reminded.</summary>
+    public SettingsViewModel Settings { get; }
+
+    /// <summary>Load the account screen.</summary>
+    public async Task LoadSettingsAsync(CancellationToken cancellationToken = default)
+    {
+        await Settings.LoadAsync(cancellationToken);
+        // This screen asks the server for the account, so it is often the first to notice an
+        // expired session — which belongs on the sign-in screen rather than beside somebody's name.
+        NeedsSignIn |= Settings.NeedsSignIn;
+    }
 
     /// <summary>Whether the conversation is on screen.</summary>
     public bool IsChatOpen
