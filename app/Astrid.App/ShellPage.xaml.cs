@@ -508,6 +508,7 @@ public sealed partial class ShellPage : UserControl
         {
             await Shell.LoadSettingsAsync();
             await Shell.Settings.LoadAgentsAsync();
+            await Shell.Settings.LoadGoogleSyncModeAsync();
             var reminders = Shell.Settings.Reminders;
             DigestTimeBox.SelectedTime = ParseTime(reminders.DailyDigestTime);
             QuietStartBox.SelectedTime = ParseTime(reminders.QuietHoursStart);
@@ -618,6 +619,23 @@ public sealed partial class ShellPage : UserControl
         {
             await Shell.Settings.ExportAsync(format, file.Path);
         }
+    }
+
+    /// <summary>Choose how Google lists get linked.</summary>
+    /// <remarks>
+    /// Guarded against the load that fills the box in: without it, opening the flyout would send
+    /// the mode the account already has back to the server every time.
+    /// </remarks>
+    private async void OnGoogleSyncModeChosen(object sender, SelectionChangedEventArgs args)
+    {
+        if (_settingsLoading
+            || sender is not ComboBox box
+            || box.SelectedItem is not string mode
+            || mode == Shell.Settings.GoogleSyncMode)
+        {
+            return;
+        }
+        await Shell.Settings.SetGoogleSyncModeAsync(mode);
     }
 
     private async void OnConnectCopilot(object sender, RoutedEventArgs args)

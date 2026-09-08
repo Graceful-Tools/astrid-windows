@@ -29,6 +29,7 @@ public sealed class SettingsViewModel : ObservableObject
     private bool _needsSignIn;
     private ProfileStats _stats = new();
     private bool _copilotConnected;
+    private string _googleSyncMode = "manual";
     private string? _lastExportPath;
 
     public SettingsViewModel(IAstridCore core)
@@ -145,6 +146,50 @@ public sealed class SettingsViewModel : ObservableObject
         {
             Credentials.Add(credential);
         }
+    }
+
+    /// <summary>
+    /// How Google lists get linked: <c>manual</c>, or one of the three all-lists modes.
+    /// </summary>
+    public string GoogleSyncMode
+    {
+        get => _googleSyncMode;
+        private set => Set(ref _googleSyncMode, value);
+    }
+
+    /// <summary>Read back how this account links Google lists.</summary>
+    /// <remarks>
+    /// Read rather than remembered: the choice belongs to the account, so a machine that assumed
+    /// its own last answer would show the wrong one to somebody who changed it elsewhere.
+    /// </remarks>
+    public async Task LoadGoogleSyncModeAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.GoogleSyncMode(), cancellationToken);
+        if (!response.Ok)
+        {
+            return;
+        }
+        if (response.Value.TryGetProperty("mode", out var mode) && mode.GetString() is { } value)
+        {
+            GoogleSyncMode = value;
+        }
+    }
+
+    /// <summary>Choose how Google lists get linked.</summary>
+    public async Task<bool> SetGoogleSyncModeAsync(string mode,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(
+            Commands.SetGoogleSyncMode(mode), cancellationToken);
+        if (!response.Ok)
+        {
+            ErrorMessage = response.IsStillPending
+                ? "Changing how lists link needs a connection."
+                : response.Error?.Message;
+            return false;
+        }
+        await LoadGoogleSyncModeAsync(cancellationToken);
+        return true;
     }
 
     /// <summary>Whether Copilot is connected.</summary>

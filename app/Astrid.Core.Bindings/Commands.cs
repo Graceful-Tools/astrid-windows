@@ -124,6 +124,17 @@ public static class Commands
     public static object UnlinkList(string provider, string linkId) =>
         new UnlinkRequest("unlinkList", provider, linkId);
 
+    /// <summary>How Google lists get linked, and what a list made here is called.</summary>
+    public static object GoogleSyncMode() => new KindOnly("googleSyncMode");
+
+    /// <summary>Choose how Google lists get linked.</summary>
+    /// <remarks>
+    /// The choice is the account's rather than this machine's, so somebody who turns on "every
+    /// list" at a desk finds it on their laptop too.
+    /// </remarks>
+    public static object SetGoogleSyncMode(string mode) =>
+        new SyncModeRequest("setGoogleSyncMode", mode);
+
     /// <summary>
     /// Run one Google pass over every linked list.
     /// </summary>
@@ -524,6 +535,10 @@ public static class Commands
         [property: JsonPropertyName("provider")] string Provider,
         [property: JsonPropertyName("listId")] string ListId,
         [property: JsonPropertyName("containerId")] string ContainerId);
+
+    private sealed record SyncModeRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("mode")] string Mode);
 
     private sealed record UnlinkRequest(
         [property: JsonPropertyName("kind")] string Kind,

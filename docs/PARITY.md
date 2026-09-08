@@ -42,6 +42,7 @@ milestones; this tracks the *product*.
 | First-run tour | ✅ | ✅ | The three things nobody can discover by looking |
 | External sync: connect, link a list | ✅ | ✅ | Both providers |
 | External sync: mirroring Google Tasks | ✅ | ✅ | Pull and push, every five minutes and on demand |
+| Google auto-link modes (all lists, bidirectional) | ✅ | ✅ | Chosen in the account flyout; the pass makes counterparts on both sides, adopting a same-name list rather than duplicating it (CONTRACTS D9) |
 | Deleting a Google twin when a task is deleted here | ✅ | ✅ | A ledger captures the link at delete time — the server's link row cascades away with the task — and the next pass removes the twin and tombstones the id |
 | Agent Hub: modes, AI keys, Copilot | ✅ | ✅ | Modes, credentials, connecting and disconnecting Copilot; custom agents and webhooks are not here |
 | Profile numbers and data export | ✅ | ✅ | JSON or CSV, written where you choose |
@@ -51,7 +52,6 @@ milestones; this tracks the *product*.
 | What | Mac | Windows | What it needs |
 |---|---|---|---|
 | An attachment queued offline | ✅ | ❌ | Everything else here writes through the Outbox; an upload needs a connection and says so |
-| Google auto-link modes (all lists, bidirectional) | ✅ | ➖ | The planner is ported and tested; nothing calls it yet — links are made by hand |
 | Custom agents and webhook settings | ✅ | ➖ | Copilot connects and disconnects; editing custom agents and their webhooks is not here |
 | My Tasks filters | ✅ | ➖ | The filter sheet covers the virtual lists; the account-wide My Tasks preferences endpoint is not implemented |
 | MSIX packaging and updates | n/a | ❌ | M4 |
@@ -83,5 +83,6 @@ milestones; this tracks the *product*.
 
 Every difference in *behaviour* — as opposed to a screen that exists on one client and not the
 other — is written up in [CONTRACTS.md](./CONTRACTS.md) with the reason it was reproduced rather
-than fixed. D7 (an unknown due-date filter hides undated tasks) and D8 (the two Apple clients order
-the assignee picker differently) are the ones that touch this app today.
+than fixed. D7 (an unknown due-date filter hides undated tasks), D8 (the two Apple clients order
+the assignee picker differently) and D9 (auto-link duplicates a list Apple cannot get to the
+server) are the ones that touch this app today.

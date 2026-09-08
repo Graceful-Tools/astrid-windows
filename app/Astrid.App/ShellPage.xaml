@@ -636,6 +636,24 @@
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
 
+                                    <!--
+                                        Account-wide, not per list: the modes make counterparts for
+                                        every list on both sides, so the choice lives beside the
+                                        account rather than in one list's settings.
+                                    -->
+                                    <TextBlock Text="Google lists" Margin="0,8,0,0"
+                                               Style="{ThemeResource CaptionTextBlockStyle}" />
+                                    <ComboBox x:Name="GoogleSyncModeBox"
+                                              AutomationProperties.Name="Google list linking"
+                                              HorizontalAlignment="Stretch"
+                                              SelectedItem="{x:Bind Shell.Settings.GoogleSyncMode, Mode=OneWay}"
+                                              SelectionChanged="OnGoogleSyncModeChosen">
+                                        <x:String>manual</x:String>
+                                        <x:String>all_google_to_astrid</x:String>
+                                        <x:String>all_astrid_to_google</x:String>
+                                        <x:String>all_bidirectional</x:String>
+                                    </ComboBox>
+
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <Button Content="Connect Copilot"
                                                 Click="OnConnectCopilot"
