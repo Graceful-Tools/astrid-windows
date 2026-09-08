@@ -163,6 +163,20 @@ public sealed partial class ChipTintConverter : IValueConverter
         throw new NotSupportedException("a tint is not a value to read back");
 }
 
+/// <summary>A count worth showing: present, and more than none.</summary>
+/// <remarks>
+/// A badge reading "0" beside every empty list is noise on a sidebar that exists to be scanned,
+/// and a list with no count at all has nothing to say.
+/// </remarks>
+public sealed partial class CountVisibleConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is int count && count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a count is not a visibility to read back");
+}
+
 /// <summary>A finished task is quieter, at the three-quarters the web uses.</summary>
 public sealed partial class CompletedOpacityConverter : IValueConverter
 {

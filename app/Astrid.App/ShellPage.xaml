@@ -34,8 +34,79 @@
         <local:CredentialStateConverter x:Key="CredentialState" />
         <local:FileGlyphConverter x:Key="FileGlyph" />
         <local:ChipTintConverter x:Key="ChipTint" />
+
+        <!--
+            One sidebar row, shared by My Tasks, the favourites and the lists.
+
+            astrid-web's `ListItem`: a round mark, the name, and a count badge on the right. Its
+            selection is a blue tint with blue text rather than Windows' accent bar, and the
+            container carries it — a row that painted its own selection would sit inside WinUI's.
+        -->
+        <!--
+            One field row in the task detail, as astrid-web draws them: no button chrome, a 32px
+            icon column, and the value where the title is. The icon replaces the word — it keeps
+            every row's content starting at the same x, which is what the label was really for, in
+            32px rather than 80.
+        -->
+        <Style x:Key="DetailField" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0,6" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="MinHeight" Value="36" />
+        </Style>
+
+        <Style x:Key="SidebarRowStyle" TargetType="ListViewItem">
+            <!--
+                Keyboard focus stays visible — it has to — but as a hairline in the accent rather
+                than the two-tone black rectangle WinUI draws over the row it indicates.
+            -->
+            <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource AstridAccentBrush}" />
+            <Setter Property="FocusVisualSecondaryBrush" Value="Transparent" />
+            <Setter Property="FocusVisualPrimaryThickness" Value="1" />
+            <Setter Property="FocusVisualMargin" Value="-1" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="MinHeight" Value="36" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Margin" Value="0,0,0,2" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+
+        <DataTemplate x:Key="SidebarRowTemplate" x:DataType="bindings:ListSummary">
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Width="20" Height="20" CornerRadius="10"
+                        VerticalAlignment="Center"
+                        Background="{x:Bind DisplayColor, Converter={StaticResource PriorityBrush}}" />
+                <TextBlock Grid.Column="1"
+                           Text="{x:Bind Name}"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{ThemeResource AstridTextSecondary}" />
+                <!-- How many are behind it. The web puts this on every row and it is the one
+                     number that makes a sidebar worth reading. -->
+                <Border Grid.Column="2"
+                        CornerRadius="4"
+                        Padding="6,1"
+                        VerticalAlignment="Center"
+                        Background="{ThemeResource AstridSurfaceHover}"
+                        Visibility="{x:Bind TaskCount, Converter={StaticResource CountVisible}}">
+                    <TextBlock Text="{x:Bind TaskCount}"
+                               FontSize="11"
+                               Foreground="{ThemeResource AstridTextPrimary}" />
+                </Border>
+            </Grid>
+        </DataTemplate>
+
         <local:CompletedOpacityConverter x:Key="CompletedOpacity" />
         <local:CompletedStrikeConverter x:Key="CompletedStrike" />
+        <local:CountVisibleConverter x:Key="CountVisible" />
     </UserControl.Resources>
 
     <!--
@@ -274,70 +345,85 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
     
-                <TextBlock Grid.Row="0"
-                           Text="Astrid"
-                           Margin="16,16,16,8"
-                           Style="{ThemeResource SubtitleTextBlockStyle}" />
-    
+                <!--
+                    The wordmark, at astrid-web's own weight and size: 18px semibold, tight
+                    tracking, beside a 28px mark.
+                -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8"
+                            Margin="12,12,12,4" VerticalAlignment="Center">
+                    <Border Width="28" Height="28" CornerRadius="4"
+                            Background="{ThemeResource AstridAccentBrush}">
+                        <TextBlock Text="&#xE930;"
+                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                   FontSize="15"
+                                   Foreground="White"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="Astrid"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               Foreground="{ThemeResource AstridTextPrimary}" />
+                </StackPanel>
+
                 <ScrollViewer Grid.Row="1">
-                    <StackPanel Margin="8,0,8,8">
+                    <StackPanel Margin="12,8,12,8" Spacing="4">
                         <!--
-                            My Tasks first: it is the view the app opens on, not one of the lists,
-                            which is why it is its own collection rather than a row among them.
+                            The sidebar's own selection, from astrid-web: a blue tint behind blue
+                            text, not Windows' accent bar and heavy focus box. Declared here rather
+                            than on each of the three lists — resources resolve up the tree, and the
+                            task rows set their own, so the two do not borrow each other's.
+                        -->
+                        <StackPanel.Resources>
+                            <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#3B82F6" Opacity="0.15" />
+                            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#3B82F6" Opacity="0.22" />
+                            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="#3B82F6" Opacity="0.22" />
+                            <SolidColorBrush x:Key="ListViewItemForegroundSelected" Color="#1D4ED8" />
+                            <SolidColorBrush x:Key="ListViewItemSelectionIndicatorBrush" Color="Transparent" />
+                            <StaticResource x:Key="ListViewItemBackgroundPointerOver" ResourceKey="AstridSurfaceHover" />
+                        </StackPanel.Resources>
+                        <!--
+                            Every entry in here is the same row: a mark, a name, and the number of
+                            tasks behind it. astrid-web draws them from one component and so does
+                            this — three collections, one template, because three copies of a row
+                            is how they drift.
+
+                            My Tasks first. It is the view the app opens on rather than one of the
+                            lists, which is why it is its own collection.
                         -->
                         <ListView x:Name="MyTasksList"
                                   ItemsSource="{x:Bind Shell.Sidebar.MyTasks, Mode=OneWay}"
                                   SelectionChanged="OnListSelected"
-                                  SelectionMode="Single">
-                            <ListView.ItemTemplate>
-                                <DataTemplate x:DataType="bindings:ListSummary">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <FontIcon FontSize="12" Glyph="&#xE77B;"
-                                                  VerticalAlignment="Center" />
-                                        <TextBlock Text="{x:Bind Name}" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
+                                  ItemContainerStyle="{StaticResource SidebarRowStyle}"
+                                  ItemTemplate="{StaticResource SidebarRowTemplate}"
+                                  SelectionMode="Single" />
 
                         <TextBlock Text="Favourites"
-                                   Margin="8,8,8,4"
-                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Margin="8,12,8,2"
+                                   FontSize="11"
+                                   FontWeight="Medium"
+                                   Opacity="0.5"
+                                   Foreground="{ThemeResource AstridTextPrimary}"
                                    Visibility="{x:Bind Shell.Sidebar.Favorites.Count, Mode=OneWay, Converter={StaticResource Visible}}" />
                         <ListView x:Name="FavoritesList"
                                   ItemsSource="{x:Bind Shell.Sidebar.Favorites, Mode=OneWay}"
                                   SelectionChanged="OnListSelected"
-                                  SelectionMode="Single">
-                            <ListView.ItemTemplate>
-                                <DataTemplate x:DataType="bindings:ListSummary">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <Border Width="10" Height="10" CornerRadius="5"
-                                                VerticalAlignment="Center"
-                                                Background="{x:Bind DisplayColor, Converter={StaticResource PriorityBrush}}" />
-                                        <TextBlock Text="{x:Bind Name}" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-    
+                                  ItemContainerStyle="{StaticResource SidebarRowStyle}"
+                                  ItemTemplate="{StaticResource SidebarRowTemplate}"
+                                  SelectionMode="Single" />
+
                         <TextBlock Text="Lists"
-                                   Margin="8,12,8,4"
-                                   Style="{ThemeResource CaptionTextBlockStyle}" />
+                                   Margin="8,12,8,2"
+                                   FontSize="11"
+                                   FontWeight="Medium"
+                                   Opacity="0.5"
+                                   Foreground="{ThemeResource AstridTextPrimary}" />
                         <ListView x:Name="ListsList"
                                   ItemsSource="{x:Bind Shell.Sidebar.Lists, Mode=OneWay}"
                                   SelectionChanged="OnListSelected"
-                                  SelectionMode="Single">
-                            <ListView.ItemTemplate>
-                                <DataTemplate x:DataType="bindings:ListSummary">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <Border Width="10" Height="10" CornerRadius="5"
-                                                VerticalAlignment="Center"
-                                                Background="{x:Bind DisplayColor, Converter={StaticResource PriorityBrush}}" />
-                                        <TextBlock Text="{x:Bind Name}" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
+                                  ItemContainerStyle="{StaticResource SidebarRowStyle}"
+                                  ItemTemplate="{StaticResource SidebarRowTemplate}"
+                                  SelectionMode="Single" />
                     </StackPanel>
                 </ScrollViewer>
     
@@ -1012,6 +1098,10 @@
                     </ListView.Resources>
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem">
+                            <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource AstridAccentBrush}" />
+                            <Setter Property="FocusVisualSecondaryBrush" Value="Transparent" />
+                            <Setter Property="FocusVisualPrimaryThickness" Value="1" />
+                            <Setter Property="FocusVisualMargin" Value="-1" />
                             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                             <Setter Property="VerticalContentAlignment" Value="Center" />
                             <Setter Property="Padding" Value="12,8" />
@@ -1175,8 +1265,10 @@
             The rows are laid out in the order the core gave — Who, Date, Priority, Lists — which
             is a product decision shared with web and both Apple clients. It is not re-decided here.
         -->
-        <Grid Grid.Column="3" Width="340" Padding="16"
-              Background="{ThemeResource LayerFillColorDefaultBrush}"
+        <Grid Grid.Column="3" Width="360" Padding="0,0,0,16"
+              Background="{ThemeResource AstridSurface}"
+              BorderThickness="1,0,0,0"
+              BorderBrush="{ThemeResource AstridBorder}"
               Visibility="{x:Bind Shell.Detail.IsOpen, Mode=OneWay, Converter={StaticResource Visible}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -1184,24 +1276,66 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <StackPanel Grid.Row="0" Spacing="8">
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <CheckBox Grid.Column="0" MinWidth="0"
-                              AutomationProperties.Name="Complete this task"
-                              IsChecked="{x:Bind Shell.Detail.Completed, Mode=OneWay}"
-                              Checked="OnDetailChecked" Unchecked="OnDetailUnchecked" />
-                    <TextBox Grid.Column="1" x:Name="DetailTitleBox"
-                             AutomationProperties.Name="Title"
-                             Text="{x:Bind Shell.Detail.Title, Mode=TwoWay}"
-                             LostFocus="OnDetailTitleCommitted"
-                             KeyDown="OnDetailTitleKeyDown" />
-                    <Button Grid.Column="2" Content="Close" Click="OnCloseDetail" />
-                </Grid>
+            <StackPanel Grid.Row="0">
+                <!--
+                    The header, as astrid-web's `TaskHeader` draws it: the mark the row already
+                    wears, the title beside it, the action menu at the far right, and a rule under
+                    the lot.
+
+                    The 16px padding and the 32px mark are the alignment invariant that file states
+                    in its own words — content starts at 16 + 32 + 8 = 56px on the header row and on
+                    every field row under it, so the icons land under the mark and the values under
+                    the title. Changing one without the other is what made the web's own panel drift
+                    before somebody wrote the sum down.
+                -->
+                <Border Padding="16"
+                        BorderThickness="0,0,0,1"
+                        BorderBrush="{ThemeResource AstridBorder}">
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="32" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0"
+                                Background="Transparent" BorderThickness="0" Padding="0"
+                                Width="32" Height="32"
+                                VerticalAlignment="Top"
+                                AutomationProperties.Name="Complete this task"
+                                Click="OnDetailMarkClicked">
+                            <Image Source="{x:Bind Shell.Detail.CheckboxAsset, Mode=OneWay}"
+                                   Width="32" Height="32" />
+                        </Button>
+                        <TextBox Grid.Column="1" x:Name="DetailTitleBox"
+                                 AutomationProperties.Name="Title"
+                                 Text="{x:Bind Shell.Detail.Title, Mode=TwoWay}"
+                                 FontSize="16"
+                                 FontWeight="SemiBold"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 Padding="0,4"
+                                 TextWrapping="Wrap"
+                                 AcceptsReturn="False"
+                                 Foreground="{ThemeResource AstridTextPrimary}"
+                                 LostFocus="OnDetailTitleCommitted"
+                                 KeyDown="OnDetailTitleKeyDown" />
+                        <Button Grid.Column="2"
+                                Background="Transparent" BorderThickness="0"
+                                VerticalAlignment="Top"
+                                AutomationProperties.Name="Task actions">
+                            <TextBlock Text="&#xE712;"
+                                       FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                       FontSize="16" />
+                            <Button.Flyout>
+                                <MenuFlyout>
+                                    <MenuFlyoutItem Text="Close" Click="OnCloseDetail" />
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <StackPanel Spacing="2" Margin="16,12,16,0">
 
                 <!--
                     Who holds the task. First, because the field order — Who, Date, Priority,
@@ -1396,9 +1530,10 @@
                          AcceptsReturn="True" TextWrapping="Wrap" Height="90"
                          Text="{x:Bind Shell.Detail.Description, Mode=TwoWay}"
                          LostFocus="OnDetailDescriptionCommitted" />
+                </StackPanel>
             </StackPanel>
 
-            <ScrollViewer Grid.Row="1" Margin="0,12,0,0">
+            <ScrollViewer Grid.Row="1" Margin="16,12,16,0">
                 <StackPanel Spacing="8">
                     <TextBlock Text="Subtasks" Style="{ThemeResource CaptionTextBlockStyle}" />
                     <ItemsControl ItemsSource="{x:Bind Shell.Detail.Subtasks, Mode=OneWay}">
@@ -1507,7 +1642,7 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <StackPanel Grid.Row="2" Spacing="8" Margin="0,8,0,0">
+            <StackPanel Grid.Row="2" Spacing="8" Margin="16,8,16,0">
                 <!--
                     Return posted a comment and nothing else did, so the affordance for the most
                     common action in the panel was a keystroke you had to already know about. The

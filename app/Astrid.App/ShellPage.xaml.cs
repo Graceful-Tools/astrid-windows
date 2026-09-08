@@ -403,11 +403,9 @@ public sealed partial class ShellPage : UserControl
         }
     }
 
-    private async void OnDetailChecked(object sender, RoutedEventArgs args) =>
-        await Shell.Detail.SetCompletedAsync(true);
-
-    private async void OnDetailUnchecked(object sender, RoutedEventArgs args) =>
-        await Shell.Detail.SetCompletedAsync(false);
+    /// <summary>The mark in the detail header, tapped. The row's handler, one task over.</summary>
+    private async void OnDetailMarkClicked(object sender, RoutedEventArgs args) =>
+        await Shell.Detail.SetCompletedAsync(!Shell.Detail.Completed);
 
     /// <summary>
     /// Save the title when the box loses focus.
