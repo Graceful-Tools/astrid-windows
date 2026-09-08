@@ -313,6 +313,68 @@ public sealed record AgentHub
     [JsonPropertyName("copilot")] public CopilotStatus Copilot { get; init; } = new();
 }
 
+/// <summary>
+/// One client-credentials pair this account has registered.
+/// </summary>
+/// <remarks>
+/// No secret: the server returns it once at creation and stores a hash. A field that was sometimes
+/// a secret and sometimes null is a field somebody will try to read.
+/// </remarks>
+public sealed record OAuthClientRow
+{
+    [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The public half.
+    /// </summary>
+    /// <remarks>
+    /// Safe to show, the half somebody has to copy again later, and what a revoke addresses — the
+    /// route matches <c>clientId</c> and nothing else.
+    /// </remarks>
+    [JsonPropertyName("clientId")] public string ClientId { get; init; } = string.Empty;
+
+    /// <summary>What it may do. "A pair for CI" and "a pair that can delete every list" look the
+    /// same without it.</summary>
+    [JsonPropertyName("scopes")] public IReadOnlyList<string> Scopes { get; init; } = [];
+
+    [JsonPropertyName("createdAt")] public string? CreatedAt { get; init; }
+
+    /// <summary>A revoked pair stays in the list saying so, rather than vanishing.</summary>
+    [JsonPropertyName("isActive")] public bool IsActive { get; init; } = true;
+
+    /// <summary>The scopes as one line, for the row under the name.</summary>
+    public string ScopeLabel => Scopes.Count == 0 ? string.Empty : string.Join(", ", Scopes);
+
+    public override string ToString() => Name.Length > 0 ? Name : ClientId;
+}
+
+/// <summary>The API-access panel: what is registered, before anything new is made.</summary>
+public sealed record ApiAccessPanel
+{
+    [JsonPropertyName("clients")] public IReadOnlyList<OAuthClientRow> Clients { get; init; } = [];
+}
+
+/// <summary>
+/// A credential the server has just made, in the one form it will ever be readable.
+/// </summary>
+/// <remarks>
+/// Never written to disk. The account cannot rotate a secret it does not know is there.
+/// </remarks>
+public sealed record MintedClient
+{
+    [JsonPropertyName("clientId")] public string ClientId { get; init; } = string.Empty;
+
+    [JsonPropertyName("clientSecret")] public string ClientSecret { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
+}
+
+/// <summary>An MCP token, plaintext, as minted.</summary>
+public sealed record MintedToken
+{
+    [JsonPropertyName("token")] public string Token { get; init; } = string.Empty;
+}
+
 /// <summary>Where an account's own agent is told about work.</summary>
 public sealed record WebhookSettings
 {

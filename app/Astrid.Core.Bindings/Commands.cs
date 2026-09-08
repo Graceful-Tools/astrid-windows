@@ -115,6 +115,37 @@ public static class Commands
     public static object DeleteCustomAgent(string agentId) =>
         new AgentIdRequest("deleteCustomAgent", agentId);
 
+    // ── API access ───────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The client-credentials pairs this account has registered.
+    /// </summary>
+    /// <remarks>
+    /// Read-only, so the panel opens without minting anything. No secret comes back: the server
+    /// stores a hash and shows plaintext once, at creation.
+    /// </remarks>
+    public static object ApiAccess() => new KindOnly("apiAccess");
+
+    /// <summary>
+    /// Mint an MCP token for this device, or hand back the one it already has.
+    /// </summary>
+    /// <remarks>
+    /// The server decides which. Asking twice gives the same token rather than a second one, so a
+    /// screen that lost its copy can get it back without revoking anything.
+    /// </remarks>
+    public static object CreateMcpToken() => new KindOnly("createMcpToken");
+
+    /// <summary>Revoke every MCP token minted from a device. All of them: there is no id.</summary>
+    public static object RevokeMcpTokens() => new KindOnly("revokeMcpTokens");
+
+    /// <summary>Register a pair. Answers with the secret shown only this once.</summary>
+    public static object CreateOAuthClient(string name) =>
+        new NamedRequest("createOAuthClient", name);
+
+    /// <summary>Revoke one pair, addressed by its public half.</summary>
+    public static object DeleteOAuthClient(string clientId) =>
+        new ClientIdRequest("deleteOAuthClient", clientId);
+
     /// <summary>Start connecting Copilot. Answers with the URL a browser should open.</summary>
     public static object ConnectCopilot() => new KindOnly("connectCopilot");
 
@@ -600,6 +631,15 @@ public static class Commands
     private sealed record AgentIdRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("agentId")] string AgentId);
+
+    private sealed record NamedRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("name")] string Name);
+
+    /// <summary>A pair is addressed by its public half — the route matches nothing else.</summary>
+    private sealed record ClientIdRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("clientId")] string ClientId);
 
     private sealed record AgentModeRequest(
         [property: JsonPropertyName("kind")] string Kind,

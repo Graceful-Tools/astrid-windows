@@ -834,6 +834,7 @@
                                 sections here are its pages.
                             -->
                             <Flyout Opening="OnAccountOpening"
+                                    Closed="OnAccountClosed"
                                     Placement="BottomEdgeAlignedRight"
                                     ShouldConstrainToRootBounds="False">
                                 <Grid Width="720" Height="540">
@@ -924,6 +925,16 @@
                                                                VerticalAlignment="Center"
                                                                Foreground="{ThemeResource AstridTextMuted}" />
                                                     <TextBlock Text="AI agents" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </ListViewItem>
+                                            <ListViewItem Tag="ApiAccess" AutomationProperties.Name="API access">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="&#xE192;"
+                                                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                               FontSize="15" Width="20"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{ThemeResource AstridTextMuted}" />
+                                                    <TextBlock Text="API access" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </ListViewItem>
                                             <ListViewItem Tag="Integrations" AutomationProperties.Name="Integrations">
@@ -1163,6 +1174,131 @@
                                                              Width="180" />
                                                     <Button Content="Register" Click="OnRegisterCustomAgent" />
                                                 </StackPanel>
+                                            </StackPanel>
+
+                                            <!--
+                                                API access, as astrid-web's own settings page has
+                                                it. This client is already signed in, so it can
+                                                mint its own credentials rather than sending
+                                                somebody to a browser to do what it is authorised
+                                                for.
+
+                                                Both plaintexts live only as long as this panel:
+                                                the server stores a hash and shows each once, and a
+                                                secret written to disk is one the account cannot
+                                                rotate by revoking, because nobody knows it is
+                                                there.
+                                            -->
+                                            <StackPanel x:Name="ApiAccessSection" Spacing="10"
+                                                        Visibility="Collapsed">
+                                                <TextBlock Text="MCP token" Style="{StaticResource DetailSection}" />
+                                                <TextBlock TextWrapping="Wrap"
+                                                           FontSize="12"
+                                                           Foreground="{ThemeResource AstridTextMuted}"
+                                                           Text="For a coding agent or an MCP client. Ninety days. Asking twice gives the same token back rather than a second one." />
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <Button Content="Create a token" Click="OnCreateMcpToken" />
+                                                    <Button Content="Revoke all" Click="OnRevokeMcpTokens" />
+                                                </StackPanel>
+                                                <!--
+                                                    Shown until this panel closes and never
+                                                    written down. Selectable so it can be copied,
+                                                    which is the only reason it is on screen.
+                                                -->
+                                                <Border CornerRadius="8"
+                                                        Padding="10,8"
+                                                        Background="{ThemeResource AstridSurfaceHover}"
+                                                        Visibility="{x:Bind Shell.Settings.HasMcpToken, Mode=OneWay, Converter={StaticResource Visible}}">
+                                                    <StackPanel Spacing="6">
+                                                        <TextBlock Text="Copy this now — it is not shown again."
+                                                                   FontSize="11"
+                                                                   Foreground="{ThemeResource AstridTextMuted}" />
+                                                        <TextBox Text="{x:Bind Shell.Settings.McpToken, Mode=OneWay}"
+                                                                 AutomationProperties.Name="MCP token"
+                                                                 IsReadOnly="True"
+                                                                 Background="Transparent"
+                                                                 BorderThickness="0"
+                                                                 Padding="0"
+                                                                 FontFamily="Consolas"
+                                                                 TextWrapping="Wrap" />
+                                                        <Button Content="Copy" Click="OnCopyMcpToken" />
+                                                    </StackPanel>
+                                                </Border>
+
+                                                <TextBlock Text="Client credentials" Style="{StaticResource DetailSection}" />
+                                                <TextBlock TextWrapping="Wrap"
+                                                           FontSize="12"
+                                                           Foreground="{ThemeResource AstridTextMuted}"
+                                                           Text="A pair for a machine that is not this one — CI, a script, a runner. Read and write on tasks and lists." />
+                                                <ItemsControl ItemsSource="{x:Bind Shell.Settings.ApiClients, Mode=OneWay}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="bindings:OAuthClientRow">
+                                                            <Grid ColumnSpacing="8" Padding="0,4">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <StackPanel Grid.Column="0" Spacing="2">
+                                                                    <TextBlock Text="{x:Bind Name}"
+                                                                               TextTrimming="CharacterEllipsis"
+                                                                               Foreground="{ThemeResource AstridTextPrimary}" />
+                                                                    <TextBlock Text="{x:Bind ClientId}"
+                                                                               FontSize="11"
+                                                                               FontFamily="Consolas"
+                                                                               TextTrimming="CharacterEllipsis"
+                                                                               Foreground="{ThemeResource AstridTextMuted}" />
+                                                                    <TextBlock Text="{x:Bind ScopeLabel}"
+                                                                               FontSize="11"
+                                                                               TextTrimming="CharacterEllipsis"
+                                                                               Foreground="{ThemeResource AstridTextMuted}"
+                                                                               Visibility="{x:Bind ScopeLabel, Converter={StaticResource Visible}}" />
+                                                                </StackPanel>
+                                                                <Button Grid.Column="1" Content="Revoke"
+                                                                        VerticalAlignment="Top"
+                                                                        Tag="{x:Bind ClientId}"
+                                                                        Click="OnDeleteOAuthClient" />
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <TextBox AutomationProperties.Name="New client name"
+                                                             PlaceholderText="what it is for"
+                                                             Width="200"
+                                                             Text="{x:Bind Shell.Settings.NewClientName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                    <Button Content="Register"
+                                                            IsEnabled="{x:Bind Shell.Settings.CanCreateClient, Mode=OneWay}"
+                                                            Click="OnCreateOAuthClient" />
+                                                </StackPanel>
+                                                <Border CornerRadius="8"
+                                                        Padding="10,8"
+                                                        Background="{ThemeResource AstridSurfaceHover}"
+                                                        Visibility="{x:Bind Shell.Settings.HasMintedClient, Mode=OneWay, Converter={StaticResource Visible}}">
+                                                    <StackPanel Spacing="6">
+                                                        <TextBlock Text="Copy the secret now — it is not shown again."
+                                                                   FontSize="11"
+                                                                   Foreground="{ThemeResource AstridTextMuted}" />
+                                                        <TextBox Text="{x:Bind Shell.Settings.MintedClient.ClientId, Mode=OneWay}"
+                                                                 AutomationProperties.Name="Client id"
+                                                                 Header="Client id"
+                                                                 IsReadOnly="True"
+                                                                 Background="Transparent"
+                                                                 BorderThickness="0"
+                                                                 Padding="0"
+                                                                 FontFamily="Consolas"
+                                                                 TextWrapping="Wrap" />
+                                                        <TextBox Text="{x:Bind Shell.Settings.MintedClient.ClientSecret, Mode=OneWay}"
+                                                                 AutomationProperties.Name="Client secret"
+                                                                 Header="Client secret"
+                                                                 IsReadOnly="True"
+                                                                 Background="Transparent"
+                                                                 BorderThickness="0"
+                                                                 Padding="0"
+                                                                 FontFamily="Consolas"
+                                                                 TextWrapping="Wrap" />
+                                                        <Button Content="Copy the pair" Click="OnCopyMintedClient" />
+                                                    </StackPanel>
+                                                </Border>
                                             </StackPanel>
 
                                             <StackPanel x:Name="IntegrationsSection" Spacing="10"

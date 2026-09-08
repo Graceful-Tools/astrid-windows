@@ -561,12 +561,82 @@ public sealed partial class ShellPage : UserControl
         }
     }
 
-    private void OnSettingsSectionChosen(object sender, SelectionChangedEventArgs args)
+    /// <summary>
+    /// The panel is gone, so the plaintexts it was holding go with it.
+    /// </summary>
+    /// <remarks>
+    /// A minted token lives for as long as the screen showing it and no longer. That is the whole
+    /// of its storage policy, and it only holds if something actually forgets.
+    /// </remarks>
+    private void OnAccountClosed(object sender, object args) =>
+        Shell.Settings.ForgetMintedCredentials();
+
+    private async void OnSettingsSectionChosen(object sender, SelectionChangedEventArgs args)
     {
-        if (SettingsSections.SelectedItem is FrameworkElement { Tag: string section })
+        if (SettingsSections.SelectedItem is not FrameworkElement { Tag: string section })
         {
-            ShowSettingsSection(section);
+            return;
         }
+        ShowSettingsSection(section);
+
+        // Loaded when its page is opened rather than when the flyout is: it is a network round
+        // trip for a page most opens never reach, and the account flyout already makes four.
+        if (section == "ApiAccess")
+        {
+            await Shell.Settings.LoadApiAccessAsync();
+        }
+    }
+
+    // ── API access ───────────────────────────────────────────────────────────────────────────
+
+    private async void OnCreateMcpToken(object sender, RoutedEventArgs args) =>
+        await Shell.Settings.CreateMcpTokenAsync();
+
+    private async void OnRevokeMcpTokens(object sender, RoutedEventArgs args) =>
+        await Shell.Settings.RevokeMcpTokensAsync();
+
+    private async void OnCreateOAuthClient(object sender, RoutedEventArgs args) =>
+        await Shell.Settings.CreateOAuthClientAsync();
+
+    private async void OnDeleteOAuthClient(object sender, RoutedEventArgs args)
+    {
+        if (sender is FrameworkElement { Tag: string clientId })
+        {
+            await Shell.Settings.DeleteOAuthClientAsync(clientId);
+        }
+    }
+
+    /// <summary>
+    /// Put the token on the clipboard.
+    /// </summary>
+    /// <remarks>
+    /// The only reason it is on screen. Selecting a credential by hand out of a wrapped read-only
+    /// box is how somebody copies half of one and spends an afternoon on the 401 it causes.
+    /// </remarks>
+    private void OnCopyMcpToken(object sender, RoutedEventArgs args) =>
+        CopyToClipboard(Shell.Settings.McpToken);
+
+    /// <summary>Both halves at once, labelled, because the pair is useless one at a time.</summary>
+    private void OnCopyMintedClient(object sender, RoutedEventArgs args)
+    {
+        if (Shell.Settings.MintedClient is not { } minted)
+        {
+            return;
+        }
+        CopyToClipboard(
+            $"ASTRID_OAUTH_CLIENT_ID={minted.ClientId}{Environment.NewLine}"
+            + $"ASTRID_OAUTH_CLIENT_SECRET={minted.ClientSecret}");
+    }
+
+    private static void CopyToClipboard(string? text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return;
+        }
+        var package = new DataPackage();
+        package.SetText(text);
+        Clipboard.SetContent(package);
     }
 
     /// <summary>
@@ -585,6 +655,7 @@ public sealed partial class ShellPage : UserControl
             "Reminders" => "Reminders",
             "Appearance" => "Appearance",
             "Agents" => "AI agents",
+            "ApiAccess" => "API access",
             "Integrations" => "Integrations",
             "Data" => "Your data",
             _ => "Account",
@@ -594,6 +665,7 @@ public sealed partial class ShellPage : UserControl
         RemindersSection.Visibility = Visible("Reminders");
         AppearanceSection.Visibility = Visible("Appearance");
         AgentsSection.Visibility = Visible("Agents");
+        ApiAccessSection.Visibility = Visible("ApiAccess");
         IntegrationsSection.Visibility = Visible("Integrations");
         DataSection.Visibility = Visible("Data");
 
