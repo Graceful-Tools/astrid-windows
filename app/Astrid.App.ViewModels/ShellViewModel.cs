@@ -32,6 +32,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private bool _isBoardView;
     private bool _isChatOpen;
     private bool _isPaletteOpen;
+    private bool _isTourOpen;
 
     /// <param name="post">
     /// Runs work on the UI thread. Given by the shell; a test passes something that runs it inline.
@@ -82,6 +83,38 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     /// <summary>The account, and how it wants to be reminded.</summary>
     public SettingsViewModel Settings { get; }
+
+    /// <summary>
+    /// Whether to show the first-run tour.
+    /// </summary>
+    /// <remarks>
+    /// Three things somebody cannot discover by looking: the global hotkey, the palette, and that
+    /// the bare keys do anything at all. Everything else in this app is on screen.
+    /// </remarks>
+    public bool IsTourOpen
+    {
+        get => _isTourOpen;
+        private set => Set(ref _isTourOpen, value);
+    }
+
+    /// <summary>Show the tour if this machine has not seen it.</summary>
+    public async Task MaybeShowTourAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.HasSeenTour(), cancellationToken);
+        if (response.Ok
+            && response.Value.TryGetProperty("seen", out var seen)
+            && !seen.GetBoolean())
+        {
+            IsTourOpen = true;
+        }
+    }
+
+    /// <summary>Close the tour, and do not show it again on this machine.</summary>
+    public async Task DismissTourAsync(CancellationToken cancellationToken = default)
+    {
+        IsTourOpen = false;
+        await _core.CallAsync(Commands.TourSeen(), cancellationToken);
+    }
 
     /// <summary>
     /// What the palette found.

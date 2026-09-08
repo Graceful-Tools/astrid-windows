@@ -34,6 +34,37 @@ public sealed class ShellViewModelTests
             .AnswerOk("outboxStats", new { pending = 0, running = 0, failed = 0, hasUnsentWork = false })
             .AnswerOk("sync", new { fetched = false });
 
+    /// <summary>
+    /// Once, and then never again on this machine. A tour that came back every launch would be
+    /// the first thing anybody turned off.
+    /// </summary>
+    [Fact]
+    public async Task The_tour_is_shown_once_and_remembered()
+    {
+        var core = StartedCore()
+            .AnswerOk("hasSeenTour", new { seen = false })
+            .AnswerOk("tourSeen");
+        using var shell = new ShellViewModel(core, RunInline);
+
+        await shell.MaybeShowTourAsync();
+        Assert.True(shell.IsTourOpen);
+
+        await shell.DismissTourAsync();
+        Assert.False(shell.IsTourOpen);
+        Assert.Contains("tourSeen", core.SentKinds());
+    }
+
+    [Fact]
+    public async Task A_machine_that_has_seen_the_tour_is_not_shown_it()
+    {
+        var core = StartedCore().AnswerOk("hasSeenTour", new { seen = true });
+        using var shell = new ShellViewModel(core, RunInline);
+
+        await shell.MaybeShowTourAsync();
+
+        Assert.False(shell.IsTourOpen);
+    }
+
     private static object PaletteRows() => new
     {
         rows = new object[]

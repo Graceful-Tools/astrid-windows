@@ -39,6 +39,7 @@ milestones; this tracks the *product*.
 | Account screen and reminder settings | ✅ | ✅ | Push, email, default offset, digest, quiet hours |
 | Global quick-add hotkey | ✅ | ✅ | Ctrl+Shift+A; not yet rebindable |
 | Command palette | ✅ | ✅ | Ctrl+K, with the Mac's own fuzzy ranking |
+| First-run tour | ✅ | ✅ | The three things nobody can discover by looking |
 | Profile numbers and data export | ✅ | ✅ | JSON or CSV, written where you choose |
 
 ## Not yet
@@ -47,7 +48,6 @@ milestones; this tracks the *product*.
 |---|---|---|---|
 | An attachment queued offline | ✅ | ❌ | Everything else here writes through the Outbox; an upload needs a connection and says so |
 | My Tasks filters | ✅ | ➖ | The filter sheet covers the virtual lists; the account-wide My Tasks preferences endpoint is not implemented |
-| Onboarding | ✅ | ❌ | |
 | Agent Hub, AI keys | ✅ | ❌ | |
 | External sync (Google Tasks, GitHub) | ✅ | ❌ | M5 |
 | MSIX packaging and updates | n/a | ❌ | M4 |

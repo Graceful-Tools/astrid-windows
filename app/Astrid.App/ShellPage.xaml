@@ -47,6 +47,44 @@
             </Grid.ColumnDefinitions>
 
         <!--
+            The first run, once.
+
+            Three things nobody can discover by looking: the global hotkey, the palette, and that
+            the bare keys do anything. Everything else in this app is on screen, so this says those
+            three and gets out of the way.
+        -->
+        <Grid x:Name="TourLayer"
+              Grid.ColumnSpan="4"
+              Canvas.ZIndex="20"
+              Background="{ThemeResource SmokeFillColorDefaultBrush}"
+              Visibility="{x:Bind Shell.IsTourOpen, Mode=OneWay, Converter={StaticResource Visible}}">
+            <Border Width="420"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    CornerRadius="8"
+                    Padding="24"
+                    Background="{ThemeResource LayerFillColorAltBrush}"
+                    BorderThickness="1"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Three things worth knowing"
+                               Style="{ThemeResource SubtitleTextBlockStyle}" />
+                    <TextBlock TextWrapping="Wrap"
+                               Text="Ctrl+Shift+A brings Astrid forward from anywhere, ready for a new task." />
+                    <TextBlock TextWrapping="Wrap"
+                               Text="Ctrl+K finds a list, a task or a command." />
+                    <TextBlock TextWrapping="Wrap"
+                               Text="? lists every keyboard shortcut. They work without a modifier: n for a new task, x to finish one." />
+                    <Button Content="Got it"
+                            HorizontalAlignment="Right"
+                            AutomationProperties.Name="Got it"
+                            Click="OnDismissTour"
+                            Style="{ThemeResource AccentButtonStyle}" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!--
             The command palette, over everything.
 
             Ctrl+K, which is what every other app with one uses. It spans the columns rather than

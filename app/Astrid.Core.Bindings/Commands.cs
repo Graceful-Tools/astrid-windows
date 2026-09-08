@@ -72,6 +72,17 @@ public static class Commands
     /// board could not offer an AI agent at all. Assigning is an ordinary update carrying an
     /// <c>assigneeId</c>; this is only the question of who may be offered.
     /// </remarks>
+    /// <summary>Whether the first-run tour has been seen on this machine.</summary>
+    /// <remarks>
+    /// Per installation rather than per account: it is about where this app's hotkey is and what
+    /// its palette does, and somebody who has used Astrid for a year on a laptop still wants to be
+    /// told that the first time they open it on a desktop.
+    /// </remarks>
+    public static object HasSeenTour() => new KindOnly("hasSeenTour");
+
+    /// <summary>Remember that the tour has been seen.</summary>
+    public static object TourSeen() => new KindOnly("tourSeen");
+
     /// <summary>Everything one box can find: commands, lists, tasks, ranked.</summary>
     /// <remarks>
     /// The matcher is the Mac's, character for character. The ranking is what a palette is, and

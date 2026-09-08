@@ -99,6 +99,7 @@ public sealed partial class ShellPage : UserControl
         _hotkey.Start();
         await Shell.StartAsync();
         await Shell.RaiseRemindersAsync();
+        await Shell.MaybeShowTourAsync();
         SyncSelectionFromViewModel();
     }
 
@@ -406,6 +407,11 @@ public sealed partial class ShellPage : UserControl
     private async void OnToggleTimer(object sender, RoutedEventArgs args)
     {
         await Shell.Detail.SetTimingAsync(!Shell.Detail.IsTiming);
+    }
+
+    private async void OnDismissTour(object sender, RoutedEventArgs args)
+    {
+        await Shell.DismissTourAsync();
     }
 
     // ── The command palette ──────────────────────────────────────────────────────────────────

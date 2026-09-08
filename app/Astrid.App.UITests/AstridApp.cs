@@ -62,7 +62,16 @@ public sealed class AstridApp : IDisposable
             ?? throw new InvalidOperationException("the app started but never showed a window");
         // The first paint is a cache read, but the window appears before it lands.
         Thread.Sleep(1500);
-        return new AstridApp(process, directory, window);
+        var app = new AstridApp(process, directory, window);
+
+        // Every launch here is a first run in a fresh data directory, so the tour is up. A person
+        // presses "Got it" before doing anything else, and a test that reached past it would be
+        // testing something nobody sees.
+        if (app.Find("Got it", 1500) is not null)
+        {
+            app.Invoke("Got it");
+        }
+        return app;
     }
 
     /// <summary>Find one element by the name a screen reader would read.</summary>
