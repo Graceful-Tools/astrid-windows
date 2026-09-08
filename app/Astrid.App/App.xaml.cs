@@ -22,7 +22,15 @@ namespace Astrid.App;
 public partial class App : Application
 {
     private readonly AppActivationArguments? _launchActivation;
-    private Window? _window;
+    /// <summary>
+    /// The one window.
+    /// </summary>
+    /// <remarks>
+    /// Static because the global hotkey has to reach it from a thread that has no reference to the
+    /// application object, and this app is single-instance by construction — there is never a
+    /// second one to confuse it with.
+    /// </remarks>
+    private static Window? _window;
 
     public App(AppActivationArguments? launchActivation = null)
     {
@@ -59,6 +67,36 @@ public partial class App : Application
 
     /// <summary>The window a file picker should belong to.</summary>
     internal static IntPtr MainWindowHandle { get; private set; }
+
+    /// <summary>
+    /// Put the window in front of whatever the user was doing.
+    /// </summary>
+    /// <remarks>
+    /// `Activate` alone is not enough from a background thread: Windows only lets the foreground
+    /// application steal focus, so a window restored this way can end up flashing in the taskbar
+    /// instead of appearing. Restoring it first, then activating, is what actually brings it up.
+    /// </remarks>
+    internal static void BringToFront()
+    {
+        if (_window is null)
+        {
+            return;
+        }
+        if (_window.AppWindow?.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
+        {
+            presenter.Restore();
+        }
+        _window.Activate();
+        // And the Win32 way as well. `Activate` asks XAML to activate the window; only
+        // `SetForegroundWindow` asks Windows to put it in front of whatever the person was using,
+        // which is the whole point of a global hotkey. It is allowed here because the process that
+        // owns the hotkey is granted foreground rights when it fires.
+        SetForegroundWindow(MainWindowHandle);
+    }
+
+    [System.Runtime.InteropServices.LibraryImport("user32.dll")]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static partial bool SetForegroundWindow(IntPtr window);
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {

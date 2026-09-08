@@ -82,8 +82,29 @@ before M0 is called done; record the result here when it is.
 
 | Spike | Question it answers | Fallback if it fails |
 |---|---|---|
-| Global hotkey | Which default chord is free, and does `RegisterHotKey` behave in a packaged app? | Ship rebindable from day one; detect conflicts at registration |
 | MSIX on ARM64 | Does an x64 + ARM64 bundle install and run on Windows 11 ARM? | Separate per-architecture packages |
+
+### Settled — the global hotkey, 2026-09-07
+
+**Ctrl+Shift+A, and the app really holds it.** Registered with `RegisterHotKey(IntPtr.Zero, …)` on a
+thread of its own: passing a null window posts `WM_HOTKEY` to the *thread's* queue, so this needs a
+thread with a message loop and nothing else — no window class, no subclassing of the WinUI window,
+and no interference with XAML's own message handling.
+
+Proved by trying to register the same chord from a second process while the app runs, which fails,
+and succeeds again once the app exits. So the chord is free on a default install and the
+registration is real rather than silently ignored.
+
+**A taken chord is reported rather than swallowed.** `RegisterHotKey` fails when another app got
+there first and tells nobody; `GlobalHotkey.IsRegistered` carries that, and the failure is logged.
+The fallback in the original plan — ship rebindable from day one — is still worth doing and is not
+done: there is one chord and no way to change it.
+
+**What is still unverified: that it brings the window forward.** The handler runs and calls
+`Restore` + `Activate` + `SetForegroundWindow`, but this session has no foreground window at all
+(`GetForegroundWindow` returns 0, the same reason the toast spike could not see a banner), so
+nothing here can tell a working activation from a refused one. Somebody at a desk pressing
+Ctrl+Shift+A while in another app settles it.
 
 ### Settled — toasts from an unpackaged app, 2026-09-07
 

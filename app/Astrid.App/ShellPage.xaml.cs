@@ -30,6 +30,7 @@ public sealed partial class ShellPage : UserControl
     private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcher;
     private readonly ShortcutDispatcher _shortcuts;
     private readonly Reminders _reminders;
+    private GlobalHotkey? _hotkey;
     /// <summary>
     /// True while the account flyout is being filled in.
     /// </summary>
@@ -62,6 +63,7 @@ public sealed partial class ShellPage : UserControl
         {
             App.UriActivated -= OnUriActivated;
             _reminders.Stop();
+            _hotkey?.Dispose();
             Shell.Dispose();
         };
     }
@@ -69,11 +71,30 @@ public sealed partial class ShellPage : UserControl
     /// <summary>What the window binds to.</summary>
     public ShellViewModel Shell { get; }
 
+    /// <summary>
+    /// Bring the window forward with the quick-add box ready.
+    /// </summary>
+    /// <remarks>
+    /// What the global hotkey is for: the thought arrives while you are in something else, and the
+    /// two seconds it takes to find a window are the two seconds in which it is forgotten.
+    /// </remarks>
+    private void QuickAdd()
+    {
+        Post(() =>
+        {
+            App.BringToFront();
+            QuickAddBox.Focus(FocusState.Programmatic);
+            return Task.CompletedTask;
+        });
+    }
+
     private async void OnLoaded(object sender, RoutedEventArgs args)
     {
         // Banners before the first load: a reminder that came due while the app was closed should
         // arrive as the window opens, not a half-minute later when the loop first ticks.
         _reminders.Start();
+        _hotkey = new GlobalHotkey(QuickAdd);
+        _hotkey.Start();
         await Shell.StartAsync();
         await Shell.RaiseRemindersAsync();
         SyncSelectionFromViewModel();

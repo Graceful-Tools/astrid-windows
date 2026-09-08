@@ -34,6 +34,11 @@
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <!--
+      LibraryImport generates unsafe marshalling code, the same as the bindings project. The app's
+      own code has no unsafe blocks in it.
+    -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!--
       The entry point is hand-written (Program.cs) so the app can be single-instance and receive
       the sign-in callback as a redirected activation. The generated one starts a second copy per
       launch, which for this app means a second copy with none of the flow state the first is

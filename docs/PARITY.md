@@ -37,6 +37,7 @@ milestones; this tracks the *product*.
 | Attachments | ✅ | ✅ | Open, and attach from disk — see below for what is not queued |
 | Timer on a task | ✅ | ✅ | Windows keeps a running timer across a restart; the Mac's is in memory |
 | Account screen and reminder settings | ✅ | ✅ | Push, email, default offset, digest, quiet hours |
+| Global quick-add hotkey | ✅ | ✅ | Ctrl+Shift+A; not yet rebindable |
 
 ## Not yet
 
@@ -49,7 +50,7 @@ milestones; this tracks the *product*.
 | Onboarding | ✅ | ❌ | |
 | Agent Hub, AI keys | ✅ | ❌ | |
 | External sync (Google Tasks, GitHub) | ✅ | ❌ | M5 |
-| Global hotkey / command palette | ✅ | ❌ | An M0 spike is still open on the hotkey |
+| Command palette | ✅ | ❌ | The global hotkey is done; the palette is not |
 | MSIX packaging and updates | n/a | ❌ | M4 |
 
 ## Never — Apple-only by nature
