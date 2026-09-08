@@ -42,6 +42,7 @@ milestones; this tracks the *product*.
 | First-run tour | ✅ | ✅ | The three things nobody can discover by looking |
 | External sync: connect, link a list | ✅ | ✅ | Both providers |
 | External sync: mirroring Google Tasks | ✅ | ✅ | Pull and push, every five minutes and on demand |
+| My Tasks ↔ Google's default list | ✅ | ✅ | Unlisted tasks assigned to you, mirrored against the list Google files stray tasks in |
 | Google auto-link modes (all lists, bidirectional) | ✅ | ✅ | Chosen in the account flyout; the pass makes counterparts on both sides, adopting a same-name list rather than duplicating it (CONTRACTS D9) |
 | Deleting a Google twin when a task is deleted here | ✅ | ✅ | A ledger captures the link at delete time — the server's link row cascades away with the task — and the next pass removes the twin and tombstones the id |
 | Agent Hub: modes, AI keys, Copilot | ✅ | ✅ | Modes, credentials, connecting and disconnecting Copilot; custom agents and webhooks are not here |
