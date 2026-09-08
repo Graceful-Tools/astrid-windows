@@ -165,6 +165,9 @@ internal static class Strings
         ["timer.start"] = "Start timer",
         ["timer.stop"] = "Stop timer",
         ["timer.logged"] = "{0} logged",
+        ["stats.completed"] = "{0} finished",
+        ["stats.inspired"] = "{0} inspired",
+        ["stats.supported"] = "{0} supported",
     };
 
     /// <summary>The fallback table, for the tests that check every key has a string.</summary>

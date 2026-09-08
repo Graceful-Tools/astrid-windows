@@ -38,14 +38,14 @@ milestones; this tracks the *product*.
 | Timer on a task | ✅ | ✅ | Windows keeps a running timer across a restart; the Mac's is in memory |
 | Account screen and reminder settings | ✅ | ✅ | Push, email, default offset, digest, quiet hours |
 | Global quick-add hotkey | ✅ | ✅ | Ctrl+Shift+A; not yet rebindable |
+| Profile numbers and data export | ✅ | ✅ | JSON or CSV, written where you choose |
 
 ## Not yet
 
 | What | Mac | Windows | What it needs |
 |---|---|---|---|
 | An attachment queued offline | ✅ | ❌ | Everything else here writes through the Outbox; an upload needs a connection and says so |
-| My Tasks filters | ✅ | ➖ | The list filters are done; the virtual views take defaults |
-| Profile stats and data export | ✅ | ❌ | The account screen has the profile, not the numbers |
+| My Tasks filters | ✅ | ➖ | The filter sheet covers the virtual lists; the account-wide My Tasks preferences endpoint is not implemented |
 | Onboarding | ✅ | ❌ | |
 | Agent Hub, AI keys | ✅ | ❌ | |
 | External sync (Google Tasks, GitHub) | ✅ | ❌ | M5 |

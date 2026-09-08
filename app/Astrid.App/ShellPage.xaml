@@ -27,6 +27,9 @@
         <local:MessageBylineConverter x:Key="Byline" />
         <local:ColumnHeadingConverter x:Key="ColumnHeading" />
         <local:TimerButtonConverter x:Key="TimerText" />
+        <local:StatConverter x:Key="StatFinished" Key="stats.completed" />
+        <local:StatConverter x:Key="StatInspired" Key="stats.inspired" />
+        <local:StatConverter x:Key="StatSupported" Key="stats.supported" />
         <local:LoggedTimeConverter x:Key="LoggedTime" />
     </UserControl.Resources>
 
@@ -363,6 +366,20 @@
                                                Style="{ThemeResource CaptionTextBlockStyle}"
                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
 
+                                    <!--
+                                        The three numbers, from the server: they are about the
+                                        whole account across every device, so a client counting its
+                                        own cache would answer with whatever it happens to hold.
+                                    -->
+                                    <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,4,0,0">
+                                        <TextBlock Text="{x:Bind Shell.Settings.Stats, Mode=OneWay, Converter={StaticResource StatFinished}}"
+                                                   Style="{ThemeResource CaptionTextBlockStyle}" />
+                                        <TextBlock Text="{x:Bind Shell.Settings.Stats, Mode=OneWay, Converter={StaticResource StatInspired}}"
+                                                   Style="{ThemeResource CaptionTextBlockStyle}" />
+                                        <TextBlock Text="{x:Bind Shell.Settings.Stats, Mode=OneWay, Converter={StaticResource StatSupported}}"
+                                                   Style="{ThemeResource CaptionTextBlockStyle}" />
+                                    </StackPanel>
+
                                     <TextBlock Text="Reminders" Margin="0,8,0,0"
                                                Style="{ThemeResource CaptionTextBlockStyle}" />
                                     <ToggleSwitch x:Name="PushToggle"
@@ -414,6 +431,20 @@
                                                     AutomationProperties.Name="Quiet until"
                                                     SelectedTimeChanged="OnQuietHoursChanged" />
                                     </StackPanel>
+
+                                    <TextBlock Text="Your data" Margin="0,8,0,0"
+                                               Style="{ThemeResource CaptionTextBlockStyle}" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button Content="Export as JSON" Tag="json"
+                                                Click="OnExportAccount" />
+                                        <Button Content="Export as CSV" Tag="csv"
+                                                Click="OnExportAccount" />
+                                    </StackPanel>
+                                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                                               TextWrapping="Wrap"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                               Text="{x:Bind Shell.Settings.LastExportPath, Mode=OneWay}"
+                                               Visibility="{x:Bind Shell.Settings.LastExportPath, Mode=OneWay, Converter={StaticResource Visible}}" />
 
                                     <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                                                TextWrapping="Wrap"

@@ -72,6 +72,18 @@ public static class Commands
     /// board could not offer an AI agent at all. Assigning is an ordinary update carrying an
     /// <c>assigneeId</c>; this is only the question of who may be offered.
     /// </remarks>
+    /// <summary>The three numbers on this account's profile.</summary>
+    public static object ProfileStats() => new KindOnly("profileStats");
+
+    /// <summary>Write everything this account has to a file on this machine.</summary>
+    /// <remarks>
+    /// Straight to a path rather than back across the boundary: an export is somebody's entire
+    /// history, and carrying megabytes through JSON to hand them to a save dialog would be work
+    /// for its own sake.
+    /// </remarks>
+    public static object ExportAccount(string format, string path) =>
+        new ExportRequest("exportAccount", format, path);
+
     /// <summary>The account and its reminder settings, from the cache.</summary>
     public static object Settings() => new KindOnly("settings");
 
@@ -408,6 +420,11 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("content")] string Content);
+
+    private sealed record ExportRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("format")] string Format,
+        [property: JsonPropertyName("path")] string Path);
 
     private sealed record SettingsRequest(
         [property: JsonPropertyName("kind")] string Kind,

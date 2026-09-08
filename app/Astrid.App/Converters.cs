@@ -103,6 +103,34 @@ public sealed partial class BoolToVisibilityConverter : IValueConverter
         throw new NotSupportedException("visibility is read-only in the UI");
 }
 
+/// <summary>One of the three numbers on a profile, with its label.</summary>
+/// <remarks>
+/// One converter with a key rather than three classes: the numbers differ, the sentence does not.
+/// </remarks>
+public sealed partial class StatConverter : IValueConverter
+{
+    /// <summary>Which number this instance shows: <c>stats.completed</c> and its two siblings.</summary>
+    public string Key { get; set; } = "stats.completed";
+
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        if (value is not ProfileStats stats)
+        {
+            return string.Empty;
+        }
+        var count = Key switch
+        {
+            "stats.inspired" => stats.Inspired,
+            "stats.supported" => stats.Supported,
+            _ => stats.Completed,
+        };
+        return Strings.Get(Key, count);
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("statistics are read-only in the UI");
+}
+
 /// <summary>What the timer button says.</summary>
 public sealed partial class TimerButtonConverter : IValueConverter
 {

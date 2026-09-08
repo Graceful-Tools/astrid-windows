@@ -40,16 +40,71 @@ public sealed class SettingsViewModelTests
     {
         var core = new FakeCore()
             .AnswerOk("settings", Account())
-            .AnswerOk("refreshSettings", Account());
+            .AnswerOk("refreshSettings", Account())
+            .AnswerOk("profileStats", new { completed = 1, inspired = 2, supported = 3 });
         var view = new SettingsViewModel(core);
 
         await view.LoadAsync();
 
-        Assert.Equal(["settings", "refreshSettings"], core.SentKinds());
+        // The cache, then the server, then the numbers — which need to know who is signed in, so
+        // they come after the account rather than beside it.
+        Assert.Equal(["settings", "refreshSettings", "profileStats"], core.SentKinds());
         Assert.Equal("Jon", view.DisplayName);
         Assert.Equal("jon@example.test", view.Email);
         Assert.True(view.PushEnabled);
         Assert.Equal(2, view.Offsets.Count);
+    }
+
+    /// <summary>
+    /// The numbers come from the server, and a screen without them is not a broken screen — three
+    /// missing statistics are not worth a message beside somebody's own name.
+    /// </summary>
+    [Fact]
+    public async Task The_profile_numbers_are_loaded_but_never_insisted_on()
+    {
+        var core = new FakeCore()
+            .AnswerOk("settings", Account())
+            .AnswerOk("refreshSettings", Account())
+            .AnswerFailure("profileStats", AstridFailureKind.Offline, "no network");
+        var view = new SettingsViewModel(core);
+
+        await view.LoadAsync();
+
+        Assert.Null(view.ErrorMessage);
+        Assert.Equal(0, view.Stats.Completed);
+    }
+
+    [Fact]
+    public async Task An_export_says_where_it_was_written()
+    {
+        var core = new FakeCore()
+            .AnswerOk("settings", Account())
+            .AnswerOk("refreshSettings", Account())
+            .AnswerOk("profileStats", new { completed = 12, inspired = 3, supported = 5 })
+            .AnswerOk("exportAccount", new { path = "C:/exports/astrid.json", bytes = 2048 });
+        var view = new SettingsViewModel(core);
+        await view.LoadAsync();
+
+        Assert.Equal(12, view.Stats.Completed);
+        Assert.True(await view.ExportAsync("json", "C:/exports/astrid.json"));
+        Assert.Equal("C:/exports/astrid.json", view.LastExportPath);
+    }
+
+    /// <summary>An export is a fetch, so offline it did not happen and says so.</summary>
+    [Fact]
+    public async Task An_export_offline_reports_rather_than_pretending()
+    {
+        var core = new FakeCore()
+            .AnswerOk("settings", Account())
+            .AnswerOk("refreshSettings", Account())
+            .AnswerOk("profileStats", new { completed = 0, inspired = 0, supported = 0 })
+            .AnswerFailure("exportAccount", AstridFailureKind.Offline, "no network");
+        var view = new SettingsViewModel(core);
+        await view.LoadAsync();
+
+        Assert.False(await view.ExportAsync("json", "C:/exports/astrid.json"));
+        Assert.NotNull(view.ErrorMessage);
+        Assert.Null(view.LastExportPath);
     }
 
     /// <summary>

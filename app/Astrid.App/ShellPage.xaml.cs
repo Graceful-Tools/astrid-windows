@@ -497,6 +497,36 @@ public sealed partial class ShellPage : UserControl
         await Shell.Settings.SetAsync("defaultReminderTime", offset.Minutes);
     }
 
+    /// <summary>
+    /// Write everything this account has to a file the person chooses.
+    /// </summary>
+    /// <remarks>
+    /// The save dialog is the shell's job and the writing is the core's: the bytes never cross the
+    /// boundary, because an export is somebody's entire history and a JSON round trip of it would
+    /// be work for its own sake.
+    /// </remarks>
+    private async void OnExportAccount(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is not string format)
+        {
+            return;
+        }
+        var picker = new Windows.Storage.Pickers.FileSavePicker
+        {
+            SuggestedFileName = $"astrid-export-{DateTime.Now:yyyy-MM-dd}",
+        };
+        picker.FileTypeChoices.Add(
+            format == "csv" ? "Comma-separated values" : "JSON",
+            new List<string> { format == "csv" ? ".csv" : ".json" });
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, App.MainWindowHandle);
+
+        var file = await picker.PickSaveFileAsync();
+        if (file is not null)
+        {
+            await Shell.Settings.ExportAsync(format, file.Path);
+        }
+    }
+
     /// <summary>An <c>HH:MM</c> string, which is what the server stores.</summary>
     private static string Clock(TimeSpan time) => $"{time.Hours:D2}:{time.Minutes:D2}";
 

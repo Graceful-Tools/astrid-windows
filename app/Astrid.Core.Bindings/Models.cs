@@ -226,6 +226,16 @@ public sealed record ReminderSettings
     [JsonPropertyName("quietHoursEnd")] public string? QuietHoursEnd { get; init; }
 }
 
+/// <summary>The three numbers on a profile.</summary>
+public sealed record ProfileStats
+{
+    [JsonPropertyName("completed")] public int Completed { get; init; }
+
+    [JsonPropertyName("inspired")] public int Inspired { get; init; }
+
+    [JsonPropertyName("supported")] public int Supported { get; init; }
+}
+
 /// <summary>One choice for the default reminder offset.</summary>
 public sealed record ReminderOffset
 {

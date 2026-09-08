@@ -295,4 +295,13 @@
   <data name="timer_logged" xml:space="preserve">
     <value>{0} logged</value>
   </data>
+  <data name="stats_completed" xml:space="preserve">
+    <value>{0} finished</value>
+  </data>
+  <data name="stats_inspired" xml:space="preserve">
+    <value>{0} inspired</value>
+  </data>
+  <data name="stats_supported" xml:space="preserve">
+    <value>{0} supported</value>
+  </data>
 </root>

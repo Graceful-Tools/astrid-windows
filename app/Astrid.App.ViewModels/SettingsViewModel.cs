@@ -27,6 +27,8 @@ public sealed class SettingsViewModel : ObservableObject
     private bool _isLoading;
     private string? _errorMessage;
     private bool _needsSignIn;
+    private ProfileStats _stats = new();
+    private string? _lastExportPath;
 
     public SettingsViewModel(IAstridCore core)
     {
@@ -103,6 +105,42 @@ public sealed class SettingsViewModel : ObservableObject
         private set => Set(ref _needsSignIn, value);
     }
 
+    /// <summary>What this account has finished, inspired and supported.</summary>
+    /// <remarks>
+    /// Fetched rather than counted here: they are about the whole account across every device, and
+    /// a client counting its own cache would answer with whatever it happens to have synced.
+    /// </remarks>
+    public ProfileStats Stats
+    {
+        get => _stats;
+        private set => Set(ref _stats, value);
+    }
+
+    /// <summary>Where the last export was written, once one has been.</summary>
+    public string? LastExportPath
+    {
+        get => _lastExportPath;
+        private set => Set(ref _lastExportPath, value);
+    }
+
+    /// <summary>Write everything this account has to a file.</summary>
+    public async Task<bool> ExportAsync(string format, string path,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(
+            Commands.ExportAccount(format, path), cancellationToken);
+        if (!response.Ok)
+        {
+            ErrorMessage = response.IsStillPending
+                ? "An export needs a connection."
+                : response.Error?.Message;
+            return false;
+        }
+        ErrorMessage = null;
+        LastExportPath = path;
+        return true;
+    }
+
     /// <summary>Read the account from the cache, then catch it up.</summary>
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
@@ -111,6 +149,13 @@ public sealed class SettingsViewModel : ObservableObject
         try
         {
             await ReadAsync(Commands.RefreshSettings(), cancellationToken);
+            // After the account, because it needs to know who is signed in — and quietly, because
+            // three numbers missing is not worth a message beside somebody's own name.
+            var stats = await _core.CallAsync(Commands.ProfileStats(), cancellationToken);
+            if (stats.Ok && stats.Read<ProfileStats>() is { } read)
+            {
+                Stats = read;
+            }
         }
         finally
         {
