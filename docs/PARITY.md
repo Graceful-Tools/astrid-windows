@@ -26,7 +26,7 @@ milestones; this tracks the *product*.
 | Assignee picker | ✅ | ✅ | Windows offers agents; the Mac's picker predates them (CONTRACTS D8) |
 | Comments | ✅ | ✅ | |
 | Search | ✅ | ✅ | Over the cache on both — there is no server search |
-| Board view | ✅ | ✅ | Windows moves cards from a menu; the Mac drags |
+| Board view | ✅ | ✅ | Drag a card, or move it from its menu — which a keyboard can also do |
 | Filters and sort | ✅ | ✅ | All seven filters, fixture-checked values |
 | Chat | ✅ | ✅ | |
 | List settings, sharing, members | ✅ | ✅ | |
@@ -44,7 +44,6 @@ milestones; this tracks the *product*.
 | What | Mac | Windows | What it needs |
 |---|---|---|---|
 | An attachment queued offline | ✅ | ❌ | Everything else here writes through the Outbox; an upload needs a connection and says so |
-| Board drag and drop | ✅ | ➖ | Windows moves from a menu, which a keyboard can also do |
 | My Tasks filters | ✅ | ➖ | The list filters are done; the virtual views take defaults |
 | Profile stats and data export | ✅ | ❌ | The account screen has the profile, not the numbers |
 | Onboarding | ✅ | ❌ | |

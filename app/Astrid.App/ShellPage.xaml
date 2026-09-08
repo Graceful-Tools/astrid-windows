@@ -451,9 +451,18 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="bindings:BoardColumn">
+                                <!--
+                                    A column takes a dropped card. The menu on each card does the
+                                    same thing and is what a keyboard can reach; the drag is what
+                                    everybody expects from a board.
+                                -->
                                 <Border Width="280"
                                         Padding="12"
                                         CornerRadius="8"
+                                        AllowDrop="True"
+                                        Tag="{x:Bind Id}"
+                                        DragOver="OnCardDragOver"
+                                        Drop="OnCardDropped"
                                         Background="{ThemeResource LayerFillColorDefaultBrush}">
                                     <StackPanel Spacing="8">
                                         <TextBlock Text="{x:Bind Converter={StaticResource ColumnHeading}}"
@@ -469,6 +478,9 @@
                                                             HorizontalContentAlignment="Left"
                                                             Margin="0,4,0,0"
                                                             Tag="{x:Bind Id}"
+                                                            AutomationProperties.Name="{x:Bind Title}"
+                                                            CanDrag="True"
+                                                            DragStarting="OnCardDragStarting"
                                                             Click="OnCardOpened"
                                                             RightTapped="OnCardRightTapped">
                                                         <StackPanel Spacing="2">

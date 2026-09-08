@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 
 namespace Astrid.App;
@@ -668,6 +669,65 @@ public sealed partial class ShellPage : UserControl
     private async void OnToggleBoard(object sender, RoutedEventArgs args)
     {
         await Shell.ShowBoardAsync(BoardToggle.IsChecked == true);
+    }
+
+    /// <summary>
+    /// Start dragging a card.
+    /// </summary>
+    /// <remarks>
+    /// The task id travels as text on the clipboard package, which is how WinUI carries a drag. It
+    /// is also what makes a card draggable out of the app into a text field — harmless, and better
+    /// than a private format nothing else can read.
+    /// </remarks>
+    private void OnCardDragStarting(UIElement sender, DragStartingEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is not string taskId)
+        {
+            args.Cancel = true;
+            return;
+        }
+        args.Data.SetText(taskId);
+        args.Data.RequestedOperation = DataPackageOperation.Move;
+    }
+
+    /// <summary>A column will take a card.</summary>
+    private void OnCardDragOver(object sender, DragEventArgs args)
+    {
+        args.AcceptedOperation = args.DataView.Contains(StandardDataFormats.Text)
+            ? DataPackageOperation.Move
+            : DataPackageOperation.None;
+    }
+
+    /// <summary>
+    /// A card was dropped on a column.
+    /// </summary>
+    /// <remarks>
+    /// What the move writes is the core's decision — a role, a completion, or neither — so this
+    /// hands over two ids and nothing else. Dropping a card back where it came from is a no-op
+    /// there rather than a write nobody asked for.
+    /// </remarks>
+    private async void OnCardDropped(object sender, DragEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is not string columnId
+            || !args.DataView.Contains(StandardDataFormats.Text))
+        {
+            return;
+        }
+        // Taken before the await: the deferral keeps the package alive, and without it the view is
+        // closed by the time the id comes back.
+        var deferral = args.GetDeferral();
+        try
+        {
+            var taskId = await args.DataView.GetTextAsync();
+            if (!string.IsNullOrEmpty(taskId))
+            {
+                await Shell.Board.MoveAsync(taskId, columnId);
+            }
+        }
+        finally
+        {
+            deferral.Complete();
+        }
     }
 
     private async void OnCardOpened(object sender, RoutedEventArgs args)
