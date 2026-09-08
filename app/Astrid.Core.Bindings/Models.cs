@@ -280,6 +280,48 @@ public sealed record AgentHub
     [JsonPropertyName("copilot")] public CopilotStatus Copilot { get; init; } = new();
 }
 
+/// <summary>Where an account's own agent is told about work.</summary>
+public sealed record WebhookSettings
+{
+    [JsonPropertyName("configured")] public bool Configured { get; init; }
+
+    [JsonPropertyName("enabled")] public bool Enabled { get; init; }
+
+    [JsonPropertyName("webhookUrl")] public string WebhookUrl { get; init; } = string.Empty;
+
+    /// <summary>Whether a signing secret exists. Never the secret.</summary>
+    /// <remarks>
+    /// It signs every delivery, so a server that echoed it would let any reader forge events into
+    /// somebody's agent. Reporting that it exists is all a screen needs.
+    /// </remarks>
+    [JsonPropertyName("hasSecret")] public bool HasSecret { get; init; }
+
+    [JsonPropertyName("events")] public IReadOnlyList<string> Events { get; init; } = [];
+
+    [JsonPropertyName("agents")] public IReadOnlyList<string> Agents { get; init; } = [];
+
+    /// <summary>What a picker is built from, whether or not anything is configured.</summary>
+    [JsonPropertyName("availableEvents")]
+    public IReadOnlyList<string> AvailableEvents { get; init; } = [];
+
+    [JsonPropertyName("availableAgents")]
+    public IReadOnlyList<string> AvailableAgents { get; init; } = [];
+
+    [JsonPropertyName("failureCount")] public int FailureCount { get; init; }
+}
+
+/// <summary>One agent this account registered of its own.</summary>
+public sealed record CustomAgent
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
+
+    [JsonPropertyName("email")] public string Email { get; init; } = string.Empty;
+
+    public override string ToString() => Name.Length > 0 ? Name : Email;
+}
+
 /// <summary>Whether the account's Copilot integration is connected.</summary>
 public sealed record CopilotStatus
 {

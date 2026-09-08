@@ -79,6 +79,33 @@ public static class Commands
     /// </remarks>
     public static object Agents() => new KindOnly("agents");
 
+    /// <summary>Where an account's own agent is told about work.</summary>
+    public static object WebhookSettings() => new KindOnly("webhookSettings");
+
+    /// <summary>Save where deliveries go, and what is delivered.</summary>
+    /// <remarks>
+    /// <paramref name="regenerateSecret"/> asks for a new signing secret. The server answers with
+    /// it once and never again, so whatever shows it has one chance to.
+    /// </remarks>
+    public static object SaveWebhook(string url, bool enabled, IReadOnlyList<string> events,
+        IReadOnlyList<string> agents, bool regenerateSecret = false) =>
+        new WebhookRequest("saveWebhook", url, enabled, events, agents, regenerateSecret);
+
+    public static object DeleteWebhook() => new KindOnly("deleteWebhook");
+
+    /// <summary>Fire a test delivery, which is the only way to know the wiring works.</summary>
+    public static object TestWebhook() => new KindOnly("testWebhook");
+
+    /// <summary>The agents this account has registered of its own.</summary>
+    public static object CustomAgents() => new KindOnly("customAgents");
+
+    /// <summary>Register one. Answers with credentials shown only this once.</summary>
+    public static object RegisterCustomAgent(string name, IReadOnlyList<string>? listIds = null) =>
+        new RegisterAgentRequest("registerCustomAgent", name, listIds);
+
+    public static object DeleteCustomAgent(string agentId) =>
+        new AgentIdRequest("deleteCustomAgent", agentId);
+
     /// <summary>Start connecting Copilot. Answers with the URL a browser should open.</summary>
     public static object ConnectCopilot() => new KindOnly("connectCopilot");
 
@@ -525,6 +552,27 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("content")] string Content);
+
+    private sealed record WebhookRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("url")] string Url,
+        [property: JsonPropertyName("enabled")] bool Enabled,
+        [property: JsonPropertyName("events")] IReadOnlyList<string> Events,
+        [property: JsonPropertyName("agents")] IReadOnlyList<string> Agents,
+        [property: JsonPropertyName("regenerateSecret")] bool RegenerateSecret);
+
+    private sealed record RegisterAgentRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("name")] string Name,
+        // Absent rather than empty when nothing is chosen: absent means the account's lists, and
+        // an empty array would mean none of them.
+        [property: JsonPropertyName("listIds"),
+                   JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        IReadOnlyList<string>? ListIds);
+
+    private sealed record AgentIdRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("agentId")] string AgentId);
 
     private sealed record AgentModeRequest(
         [property: JsonPropertyName("kind")] string Kind,

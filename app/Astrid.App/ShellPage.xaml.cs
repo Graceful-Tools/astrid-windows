@@ -508,6 +508,7 @@ public sealed partial class ShellPage : UserControl
             await Shell.LoadSettingsAsync();
             await Shell.Settings.LoadAgentsAsync();
             await Shell.Settings.LoadGoogleSyncModeAsync();
+            await Shell.Settings.LoadWebhookAsync();
             var reminders = Shell.Settings.Reminders;
             DigestTimeBox.SelectedTime = ParseTime(reminders.DailyDigestTime);
             QuietStartBox.SelectedTime = ParseTime(reminders.QuietHoursStart);
@@ -635,6 +636,57 @@ public sealed partial class ShellPage : UserControl
             return;
         }
         await Shell.Settings.SetGoogleSyncModeAsync(mode);
+    }
+
+    private async void OnSaveWebhook(object sender, RoutedEventArgs args)
+    {
+        await Shell.Settings.SaveWebhookAsync();
+    }
+
+    /// <summary>Save, and ask for a new signing secret while doing it.</summary>
+    /// <remarks>
+    /// Its own button rather than a checkbox beside Save: rotating the secret stops every delivery
+    /// until the other end is updated, which is not something to do by leaving a box ticked.
+    /// </remarks>
+    private async void OnRegenerateWebhookSecret(object sender, RoutedEventArgs args)
+    {
+        await Shell.Settings.SaveWebhookAsync(regenerateSecret: true);
+    }
+
+    private async void OnTestWebhook(object sender, RoutedEventArgs args)
+    {
+        await Shell.Settings.TestWebhookAsync();
+    }
+
+    private async void OnDeleteWebhook(object sender, RoutedEventArgs args)
+    {
+        await Shell.Settings.DeleteWebhookAsync();
+    }
+
+    /// <summary>Register an agent, and show the credentials the server returns once.</summary>
+    private async void OnRegisterCustomAgent(object sender, RoutedEventArgs args)
+    {
+        var secret = await Shell.Settings.RegisterAgentAsync(NewAgentNameBox.Text);
+        NewAgentNameBox.Text = string.Empty;
+        if (string.IsNullOrEmpty(secret))
+        {
+            return;
+        }
+        await new ContentDialog
+        {
+            XamlRoot = Content.XamlRoot,
+            Title = Strings.Get("agents.secret_title"),
+            Content = secret,
+            CloseButtonText = Strings.Get("dialog.close"),
+        }.ShowAsync();
+    }
+
+    private async void OnDeleteCustomAgent(object sender, RoutedEventArgs args)
+    {
+        if (sender is Button { Tag: string agentId })
+        {
+            await Shell.Settings.DeleteAgentAsync(agentId);
+        }
     }
 
     private async void OnConnectCopilot(object sender, RoutedEventArgs args)

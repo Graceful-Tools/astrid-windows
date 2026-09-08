@@ -46,15 +46,16 @@ milestones; this tracks the *product*.
 | My Tasks ↔ Google's default list | ✅ | ✅ | Unlisted tasks assigned to you, mirrored against the list Google files stray tasks in |
 | Google auto-link modes (all lists, bidirectional) | ✅ | ✅ | Chosen in the account flyout; the pass makes counterparts on both sides, adopting a same-name list rather than duplicating it (CONTRACTS D9) |
 | Deleting a Google twin when a task is deleted here | ✅ | ✅ | A ledger captures the link at delete time — the server's link row cascades away with the task — and the next pass removes the twin and tombstones the id |
-| Agent Hub: modes, AI keys, Copilot | ✅ | ✅ | Modes, credentials, connecting and disconnecting Copilot; custom agents and webhooks are not here |
+| Agent Hub | ✅ | ✅ | Modes, credentials, Copilot, the webhook editor and the agents an account registers of its own |
 | Profile numbers and data export | ✅ | ✅ | JSON or CSV, written where you choose |
 
 ## Not yet
 
 | What | Mac | Windows | What it needs |
 |---|---|---|---|
-| Custom agents and webhook settings | ✅ | ➖ | Copilot connects and disconnects; editing custom agents and their webhooks is not here |
-| MSIX packaging and updates | n/a | ❌ | M4 |
+| Signing the MSIX bundle | n/a | ➖ | The bundle builds for x64 and ARM64 and is unsigned. Installing one needs a certificate trusted on the machine — a decision, not a task |
+| The Store listing | n/a | ❌ | Needs a signed package and a publisher account |
+| The update feed (`.appinstaller`) | n/a | ❌ | Needs somewhere signed to publish to |
 
 ## Never — Apple-only by nature
 

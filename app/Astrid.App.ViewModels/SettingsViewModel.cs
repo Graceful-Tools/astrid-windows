@@ -30,6 +30,10 @@ public sealed class SettingsViewModel : ObservableObject
     private ProfileStats _stats = new();
     private bool _copilotConnected;
     private string _googleSyncMode = "manual";
+    private WebhookSettings _webhook = new();
+    private string? _webhookUrl;
+    private string? _newWebhookSecret;
+    private string? _webhookTestResult;
     private string? _lastExportPath;
 
     public SettingsViewModel(IAstridCore core)
@@ -189,6 +193,165 @@ public sealed class SettingsViewModel : ObservableObject
             return false;
         }
         await LoadGoogleSyncModeAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>Where this account's own agent is told about work.</summary>
+    public WebhookSettings Webhook
+    {
+        get => _webhook;
+        private set
+        {
+            Set(ref _webhook, value);
+            Raise(nameof(WebhookUrl));
+        }
+    }
+
+    /// <summary>The URL as it stands, edited before it is saved.</summary>
+    public string WebhookUrl
+    {
+        get => _webhookUrl ?? Webhook.WebhookUrl;
+        set => Set(ref _webhookUrl, value);
+    }
+
+    /// <summary>
+    /// The signing secret, the once the server shows it.
+    /// </summary>
+    /// <remarks>
+    /// It signs every delivery and is never readable again, so it is held here until the screen
+    /// that shows it is closed — and never written to the cache, which is a file on disk.
+    /// </remarks>
+    public string? NewWebhookSecret
+    {
+        get => _newWebhookSecret;
+        private set
+        {
+            Set(ref _newWebhookSecret, value);
+            Raise(nameof(HasNewWebhookSecret));
+        }
+    }
+
+    /// <summary>Whether there is a secret on screen to be copied.</summary>
+    public bool HasNewWebhookSecret => !string.IsNullOrEmpty(NewWebhookSecret);
+
+    /// <summary>What a test delivery did, in the server's own words.</summary>
+    public string? WebhookTestResult
+    {
+        get => _webhookTestResult;
+        private set => Set(ref _webhookTestResult, value);
+    }
+
+    /// <summary>The agents this account has registered of its own.</summary>
+    public ObservableCollection<CustomAgent> CustomAgents { get; } = [];
+
+    /// <summary>Load the webhook settings and the registered agents.</summary>
+    /// <remarks>
+    /// Both are things a deployment can be without, so a failure here leaves the rest of the hub
+    /// drawn rather than turning the screen into an error.
+    /// </remarks>
+    public async Task LoadWebhookAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.WebhookSettings(), cancellationToken);
+        if (response.Ok && response.Read<WebhookSettings>() is { } settings)
+        {
+            _webhookUrl = null;
+            Webhook = settings;
+        }
+
+        var agents = await _core.CallAsync(Commands.CustomAgents(), cancellationToken);
+        if (agents.Ok)
+        {
+            CustomAgents.Clear();
+            foreach (var agent in agents.ReadArray<CustomAgent>())
+            {
+                CustomAgents.Add(agent);
+            }
+        }
+    }
+
+    /// <summary>Save where deliveries go.</summary>
+    public async Task<bool> SaveWebhookAsync(bool regenerateSecret = false,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(WebhookUrl))
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(
+            Commands.SaveWebhook(WebhookUrl.Trim(), Webhook.Enabled, Webhook.Events,
+                Webhook.Agents, regenerateSecret),
+            cancellationToken);
+        if (!response.Ok)
+        {
+            ErrorMessage = response.IsStillPending
+                ? "Configuring a webhook needs a connection."
+                : response.Error?.Message;
+            return false;
+        }
+        // Shown once. Kept in memory only, and only until the screen goes.
+        NewWebhookSecret = response.Value.TryGetProperty("secret", out var secret)
+            ? secret.GetString()
+            : null;
+        await LoadWebhookAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> DeleteWebhookAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.DeleteWebhook(), cancellationToken);
+        if (!response.Ok)
+        {
+            ErrorMessage = response.Error?.Message;
+            return false;
+        }
+        NewWebhookSecret = null;
+        await LoadWebhookAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>Fire a test delivery.</summary>
+    public async Task TestWebhookAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.TestWebhook(), cancellationToken);
+        WebhookTestResult = response.Ok
+            ? "Sent."
+            : response.Error?.Message ?? "It did not go.";
+    }
+
+    /// <summary>Register an agent of this account's own.</summary>
+    public async Task<string?> RegisterAgentAsync(string name,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+        var response = await _core.CallAsync(
+            Commands.RegisterCustomAgent(name.Trim()), cancellationToken);
+        if (!response.Ok)
+        {
+            ErrorMessage = response.Error?.Message;
+            return null;
+        }
+        await LoadWebhookAsync(cancellationToken);
+        // The credentials come back once. Handing them straight back is the only chance anything
+        // has to show them.
+        return response.Value.TryGetProperty("clientSecret", out var secret)
+            ? secret.GetString()
+            : null;
+    }
+
+    public async Task<bool> DeleteAgentAsync(string agentId,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(
+            Commands.DeleteCustomAgent(agentId), cancellationToken);
+        if (!response.Ok)
+        {
+            ErrorMessage = response.Error?.Message;
+            return false;
+        }
+        await LoadWebhookAsync(cancellationToken);
         return true;
     }
 

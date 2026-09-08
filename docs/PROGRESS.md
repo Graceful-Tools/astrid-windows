@@ -106,6 +106,7 @@ as seconds rather than as a percentage.
 | Task links written back after a pull or push | `astrid_core::services::external` | done — what stops a twin being remade on every pass |
 | Deleting a Google twin on a local delete | `astrid_core::external::ledger` | done — captured at delete time, executed and tombstoned on the next pass |
 | The server's tombstones (web and other devices) | `astrid_core::services::external` | done — merged from the integration metadata into their own store |
+| The webhook, and an account's own agents | `astrid_core::services::agents` → shell | done — configure, test, register, remove |
 | The auto-link modes | `astrid_core::external::auto_link` → `services::external` | done — chosen in the account flyout, carried out at the top of each pass |
 | My Tasks ↔ Google's default list | `astrid_core::services::external` | done — runs beside the links in the all-lists modes |
 | Saying no to a remote list whose Astrid list was deleted | `astrid_core::external::ledger` | done — recorded locally, shared with the account |

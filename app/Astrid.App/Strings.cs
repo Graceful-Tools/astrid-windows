@@ -169,6 +169,8 @@ internal static class Strings
         ["stats.inspired"] = "{0} inspired",
         ["stats.supported"] = "{0} supported",
         ["agents.key_set"] = "Set up",
+        ["agents.secret_title"] = "Copy this now — it is not shown again",
+        ["dialog.close"] = "Close",
         ["agents.no_key"] = "No key",
     };
 

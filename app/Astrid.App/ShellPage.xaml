@@ -656,6 +656,66 @@
                                     </ItemsControl>
 
                                     <!--
+                                        The webhook: where an account's own agent is told about
+                                        work. Beside the modes, because "webhook" is one of them
+                                        and a mode with nowhere to deliver to does nothing.
+                                    -->
+                                    <TextBlock Text="Webhook" Margin="0,8,0,0"
+                                               Style="{ThemeResource CaptionTextBlockStyle}" />
+                                    <TextBox x:Name="WebhookUrlBox"
+                                             AutomationProperties.Name="Webhook URL"
+                                             PlaceholderText="https://your-server.com/webhook"
+                                             Text="{x:Bind Shell.Settings.WebhookUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button Content="Save" Click="OnSaveWebhook" />
+                                        <Button Content="New secret" Click="OnRegenerateWebhookSecret" />
+                                        <Button Content="Send a test" Click="OnTestWebhook"
+                                                IsEnabled="{x:Bind Shell.Settings.Webhook.Configured, Mode=OneWay}" />
+                                        <Button Content="Remove" Click="OnDeleteWebhook"
+                                                IsEnabled="{x:Bind Shell.Settings.Webhook.Configured, Mode=OneWay}" />
+                                    </StackPanel>
+                                    <!--
+                                        The secret signs every delivery and the server shows it
+                                        once. It is on screen until this panel closes and is never
+                                        written down here.
+                                    -->
+                                    <InfoBar IsOpen="{x:Bind Shell.Settings.HasNewWebhookSecret, Mode=OneWay}"
+                                             Severity="Warning"
+                                             IsClosable="False"
+                                             Title="Copy this now"
+                                             Message="{x:Bind Shell.Settings.NewWebhookSecret, Mode=OneWay}" />
+                                    <TextBlock Text="{x:Bind Shell.Settings.WebhookTestResult, Mode=OneWay}"
+                                               Style="{ThemeResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+
+                                    <TextBlock Text="Your own agents" Margin="0,8,0,0"
+                                               Style="{ThemeResource CaptionTextBlockStyle}" />
+                                    <ItemsControl ItemsSource="{x:Bind Shell.Settings.CustomAgents, Mode=OneWay}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="bindings:CustomAgent">
+                                                <Grid ColumnSpacing="8" Padding="0,2">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0" Text="{x:Bind Name}"
+                                                               VerticalAlignment="Center" />
+                                                    <Button Grid.Column="1" Content="Remove"
+                                                            Tag="{x:Bind Id}"
+                                                            Click="OnDeleteCustomAgent" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBox x:Name="NewAgentNameBox"
+                                                 AutomationProperties.Name="New agent name"
+                                                 PlaceholderText="a name, lowercase"
+                                                 Width="180" />
+                                        <Button Content="Register" Click="OnRegisterCustomAgent" />
+                                    </StackPanel>
+
+                                    <!--
                                         Account-wide, not per list: the modes make counterparts for
                                         every list on both sides, so the choice lives beside the
                                         account rather than in one list's settings.
