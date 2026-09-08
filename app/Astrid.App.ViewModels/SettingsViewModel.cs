@@ -28,6 +28,7 @@ public sealed class SettingsViewModel : ObservableObject
     private string? _errorMessage;
     private bool _needsSignIn;
     private ProfileStats _stats = new();
+    private bool _copilotConnected;
     private string? _lastExportPath;
 
     public SettingsViewModel(IAstridCore core)
@@ -138,11 +139,42 @@ public sealed class SettingsViewModel : ObservableObject
                 Mode = hub.Modes.TryGetValue(agent.Id, out var mode) ? mode : "off",
             });
         }
+        CopilotConnected = hub.Copilot.Connected;
         Credentials.Clear();
         foreach (var credential in hub.Credentials)
         {
             Credentials.Add(credential);
         }
+    }
+
+    /// <summary>Whether Copilot is connected.</summary>
+    public bool CopilotConnected
+    {
+        get => _copilotConnected;
+        private set => Set(ref _copilotConnected, value);
+    }
+
+    /// <summary>Start connecting Copilot, or disconnect it.</summary>
+    /// <remarks>
+    /// Connecting answers with a URL for the browser — the same hand-off as signing in, and for
+    /// the same reason. Disconnecting happens here and now.
+    /// </remarks>
+    public async Task<string?> SetCopilotAsync(bool connect,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(
+            connect ? Commands.ConnectCopilot() : Commands.DisconnectCopilot(), cancellationToken);
+        if (!response.Ok)
+        {
+            ErrorMessage = response.Error?.Message;
+            return null;
+        }
+        if (!connect)
+        {
+            await LoadAgentsAsync(cancellationToken);
+            return null;
+        }
+        return response.Value.TryGetProperty("authorizeUrl", out var url) ? url.GetString() : null;
     }
 
     /// <summary>Change how one agent runs.</summary>

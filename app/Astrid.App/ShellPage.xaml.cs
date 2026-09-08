@@ -620,6 +620,20 @@ public sealed partial class ShellPage : UserControl
         }
     }
 
+    private async void OnConnectCopilot(object sender, RoutedEventArgs args)
+    {
+        var url = await Shell.Settings.SetCopilotAsync(connect: true);
+        if (!string.IsNullOrEmpty(url))
+        {
+            await Windows.System.Launcher.LaunchUriAsync(new Uri(url));
+        }
+    }
+
+    private async void OnDisconnectCopilot(object sender, RoutedEventArgs args)
+    {
+        await Shell.Settings.SetCopilotAsync(connect: false);
+    }
+
     private async void OnAgentModeChosen(object sender, SelectionChangedEventArgs args)
     {
         if (_settingsLoading

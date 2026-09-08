@@ -636,6 +636,15 @@
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
 
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button Content="Connect Copilot"
+                                                Click="OnConnectCopilot"
+                                                Visibility="{x:Bind Shell.Settings.CopilotConnected, Mode=OneWay, Converter={StaticResource NotVisible}}" />
+                                        <Button Content="Disconnect Copilot"
+                                                Click="OnDisconnectCopilot"
+                                                Visibility="{x:Bind Shell.Settings.CopilotConnected, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                    </StackPanel>
+
                                     <TextBlock Text="Your data" Margin="0,8,0,0"
                                                Style="{ThemeResource CaptionTextBlockStyle}" />
                                     <StackPanel Orientation="Horizontal" Spacing="8">

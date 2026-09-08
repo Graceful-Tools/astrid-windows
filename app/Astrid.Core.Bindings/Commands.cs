@@ -79,6 +79,11 @@ public static class Commands
     /// </remarks>
     public static object Agents() => new KindOnly("agents");
 
+    /// <summary>Start connecting Copilot. Answers with the URL a browser should open.</summary>
+    public static object ConnectCopilot() => new KindOnly("connectCopilot");
+
+    public static object DisconnectCopilot() => new KindOnly("disconnectCopilot");
+
     /// <summary>Change how one agent runs.</summary>
     public static object SetAgentMode(string agent, string mode) =>
         new AgentModeRequest("setAgentMode", agent, mode);

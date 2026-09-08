@@ -275,6 +275,15 @@ public sealed record AgentHub
 
     [JsonPropertyName("credentials")]
     public IReadOnlyList<AgentCredential> Credentials { get; init; } = [];
+
+    /// <summary>Copilot's status, which a deployment can be without entirely.</summary>
+    [JsonPropertyName("copilot")] public CopilotStatus Copilot { get; init; } = new();
+}
+
+/// <summary>Whether the account's Copilot integration is connected.</summary>
+public sealed record CopilotStatus
+{
+    [JsonPropertyName("connected")] public bool Connected { get; init; }
 }
 
 /// <summary>A container on the other side: a Google task list, or a repository.</summary>
