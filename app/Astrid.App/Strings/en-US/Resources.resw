@@ -271,9 +271,6 @@
   <data name="chat_sending" xml:space="preserve">
     <value>{0} · sending</value>
   </data>
-  <data name="board_column_heading" xml:space="preserve">
-    <value>{0} ({1})</value>
-  </data>
   <data name="role_owner" xml:space="preserve">
     <value>Owner</value>
   </data>

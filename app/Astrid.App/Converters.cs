@@ -183,11 +183,18 @@ public sealed partial class FilterTintConverter : IValueConverter
 /// <remarks>
 /// A badge reading "0" beside every empty list is noise on a sidebar that exists to be scanned,
 /// and a list with no count at all has nothing to say.
+///
+/// Pass <c>empty</c> as the parameter to ask the opposite question — whether there is nothing —
+/// which is what an empty-state placeholder is bound to.
 /// </remarks>
 public sealed partial class CountVisibleConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, string language) =>
-        value is int count && count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        var any = value is int count && count > 0;
+        var wanted = parameter as string != "empty";
+        return any == wanted ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("a count is not a visibility to read back");
@@ -304,22 +311,6 @@ public sealed partial class MessageBylineConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("a byline is read-only in the UI");
-}
-
-/// <summary>A board column's header: its name and how many cards it holds.</summary>
-/// <remarks>
-/// The count is of every card in the column, not of the ones that crossed the boundary — the same
-/// distinction the task list's total makes.
-/// </remarks>
-public sealed partial class ColumnHeadingConverter : IValueConverter
-{
-    public object Convert(object value, Type targetType, object parameter, string language) =>
-        value is BoardColumn column
-            ? Strings.Get("board.column_heading", column.Name, column.Total)
-            : string.Empty;
-
-    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
-        throw new NotSupportedException("a heading is read-only in the UI");
 }
 
 /// <summary>What the filter button says: whether anything is being hidden.</summary>

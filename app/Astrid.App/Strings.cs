@@ -157,7 +157,6 @@ internal static class Strings
         ["sort.created"] = "When it was added",
         ["sort.manual"] = "The order I arranged",
         ["chat.sending"] = "{0} · sending",
-        ["board.column_heading"] = "{0} ({1})",
         ["role.owner"] = "Owner",
         ["role.admin"] = "Admin",
         ["role.member"] = "Member",

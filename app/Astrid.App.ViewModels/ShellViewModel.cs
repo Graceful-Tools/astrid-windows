@@ -280,8 +280,25 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public bool IsBoardView
     {
         get => _isBoardView;
-        private set => Set(ref _isBoardView, value);
+        private set
+        {
+            if (Set(ref _isBoardView, value))
+            {
+                Raise(nameof(ShowsNoBoardNotice));
+            }
+        }
     }
+
+    /// <summary>
+    /// Whether to say that this list has no board.
+    /// </summary>
+    /// <remarks>
+    /// The board toggle is offered for every list, because whether a list belongs to a board is
+    /// something only the answer to <c>board</c> tells us. Switching to it on a list that has none
+    /// left a blank white pane, which reads as a board that failed to load rather than one that
+    /// was never there.
+    /// </remarks>
+    public bool ShowsNoBoardNotice => IsBoardView && !Board.HasBoard;
 
     /// <summary>Swap between the list and its board.</summary>
     public async Task ShowBoardAsync(bool board, CancellationToken cancellationToken = default)
@@ -291,6 +308,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         {
             await Board.LoadAsync(Tasks.ListId, cancellationToken);
         }
+        Raise(nameof(ShowsNoBoardNotice));
     }
 
     /// <summary>True while anything is waiting in the Outbox.</summary>

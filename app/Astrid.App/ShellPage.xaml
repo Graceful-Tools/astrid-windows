@@ -25,7 +25,6 @@
         <local:NotVisibleConverter x:Key="NotVisible" />
         <local:FilterStateConverter x:Key="FilterText" />
         <local:MessageBylineConverter x:Key="Byline" />
-        <local:ColumnHeadingConverter x:Key="ColumnHeading" />
         <local:TimerButtonConverter x:Key="TimerText" />
         <local:StatConverter x:Key="StatFinished" Key="stats.completed" />
         <local:StatConverter x:Key="StatInspired" Key="stats.inspired" />
@@ -1213,6 +1212,35 @@
                     move it — a drag is the gesture people expect, and it will come, but a card that
                     can only be dragged is a card a keyboard cannot move at all.
                 -->
+                <!--
+                    A list that belongs to no board. Whether it does is only known once the board
+                    has been asked for, so the toggle is offered everywhere — and a blank pane
+                    behind it reads as a board that failed to load rather than one that was never
+                    there.
+                -->
+                <StackPanel Grid.Row="1"
+                            Spacing="6"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Visibility="{x:Bind Shell.ShowsNoBoardNotice, Mode=OneWay, Converter={StaticResource Visible}}">
+                    <TextBlock Text="&#xE80A;"
+                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                               FontSize="28"
+                               HorizontalAlignment="Center"
+                               Foreground="{ThemeResource AstridTextMuted}" />
+                    <TextBlock Text="This list has no board"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               HorizontalAlignment="Center"
+                               Foreground="{ThemeResource AstridTextSecondary}" />
+                    <TextBlock Text="Turn one on for this list in astrid.app, and its columns show up here."
+                               FontSize="12"
+                               MaxWidth="320"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap"
+                               Foreground="{ThemeResource AstridTextMuted}" />
+                </StackPanel>
+
                 <ScrollViewer Grid.Row="1"
                               HorizontalScrollBarVisibility="Auto"
                               HorizontalScrollMode="Enabled"
@@ -1233,42 +1261,112 @@
                                     everybody expects from a board.
                                 -->
                                 <Border Width="280"
-                                        Padding="12"
                                         CornerRadius="8"
                                         AllowDrop="True"
                                         Tag="{x:Bind Id}"
                                         DragOver="OnCardDragOver"
                                         Drop="OnCardDropped"
-                                        Background="{ThemeResource LayerFillColorDefaultBrush}">
-                                    <StackPanel Spacing="8">
-                                        <TextBlock Text="{x:Bind Converter={StaticResource ColumnHeading}}"
-                                                   Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                                        <TextBlock Text="{x:Bind Description}"
-                                                   TextWrapping="Wrap"
-                                                   Style="{ThemeResource CaptionTextBlockStyle}"
-                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                        <ItemsControl ItemsSource="{x:Bind Cards}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate x:DataType="bindings:TaskRow">
-                                                    <Button HorizontalAlignment="Stretch"
-                                                            HorizontalContentAlignment="Left"
-                                                            Margin="0,4,0,0"
-                                                            Tag="{x:Bind Id}"
-                                                            AutomationProperties.Name="{x:Bind Title}"
-                                                            CanDrag="True"
-                                                            DragStarting="OnCardDragStarting"
-                                                            Click="OnCardOpened"
-                                                            RightTapped="OnCardRightTapped">
-                                                        <StackPanel Spacing="2">
-                                                            <TextBlock Text="{x:Bind Title}" TextWrapping="Wrap" />
-                                                            <TextBlock Text="{x:Bind Due, Converter={StaticResource DueText}}"
-                                                                       Style="{ThemeResource CaptionTextBlockStyle}"
-                                                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                                        </StackPanel>
-                                                    </Button>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
+                                        BorderThickness="1"
+                                        BorderBrush="{ThemeResource AstridBorder}"
+                                        Background="{ThemeResource AstridSurfaceHover}">
+                                    <StackPanel>
+                                        <!--
+                                            The column head, as astrid-web draws it: the name, the
+                                            number in it as a pill on the right, the description
+                                            under both, and a rule below the lot.
+                                        -->
+                                        <Border Padding="12,8"
+                                                BorderThickness="0,0,0,1"
+                                                BorderBrush="{ThemeResource AstridBorder}">
+                                            <Grid ColumnSpacing="8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" Spacing="2">
+                                                    <!-- The name alone: the count is the pill
+                                                         beside it, and saying it twice is how a
+                                                         column comes to read "Inbox (15) 15". -->
+                                                    <TextBlock Text="{x:Bind Name}"
+                                                               FontSize="13"
+                                                               FontWeight="SemiBold"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Foreground="{ThemeResource AstridTextPrimary}" />
+                                                    <TextBlock Text="{x:Bind Description}"
+                                                               TextWrapping="Wrap"
+                                                               FontSize="11"
+                                                               Foreground="{ThemeResource AstridTextMuted}"
+                                                               Visibility="{x:Bind Description, Converter={StaticResource Visible}}" />
+                                                </StackPanel>
+                                                <Border Grid.Column="1"
+                                                        CornerRadius="10"
+                                                        Padding="8,1"
+                                                        VerticalAlignment="Top"
+                                                        Background="{ThemeResource AstridSurface}">
+                                                    <!-- Every card in the column, not just the
+                                                         ones loaded — the same distinction the
+                                                         list's own total makes. -->
+                                                    <TextBlock Text="{x:Bind Total}"
+                                                               FontSize="11"
+                                                               Foreground="{ThemeResource AstridTextSecondary}" />
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+
+                                        <StackPanel Padding="8">
+                                            <!--
+                                                An empty column says so. A column that is simply
+                                                blank looks the same as one whose cards did not
+                                                arrive.
+                                            -->
+                                            <Border MinHeight="72"
+                                                    CornerRadius="6"
+                                                    BorderThickness="1"
+                                                    BorderBrush="{ThemeResource AstridBorder}"
+                                                    Visibility="{x:Bind Cards.Count, Converter={StaticResource CountVisible}, ConverterParameter=empty}">
+                                                <TextBlock Text="Nothing here yet"
+                                                           FontSize="11"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{ThemeResource AstridTextMuted}" />
+                                            </Border>
+
+                                            <ItemsControl ItemsSource="{x:Bind Cards}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="bindings:TaskRow">
+                                                        <!--
+                                                            The same card the list draws, because it
+                                                            is the same task: 10px radius, a
+                                                            hairline border, and the surface the
+                                                            rows sit on.
+                                                        -->
+                                                        <Button HorizontalAlignment="Stretch"
+                                                                HorizontalContentAlignment="Left"
+                                                                Margin="0,0,0,6"
+                                                                Padding="10,8"
+                                                                CornerRadius="10"
+                                                                BorderThickness="1"
+                                                                BorderBrush="{ThemeResource AstridBorder}"
+                                                                Background="{ThemeResource AstridSurface}"
+                                                                Tag="{x:Bind Id}"
+                                                                AutomationProperties.Name="{x:Bind Title}"
+                                                                CanDrag="True"
+                                                                DragStarting="OnCardDragStarting"
+                                                                Click="OnCardOpened"
+                                                                RightTapped="OnCardRightTapped">
+                                                            <StackPanel Spacing="3">
+                                                                <TextBlock Text="{x:Bind Title}"
+                                                                           TextWrapping="Wrap"
+                                                                           Foreground="{ThemeResource AstridTextPrimary}" />
+                                                                <TextBlock Text="{x:Bind Due, Converter={StaticResource DueText}}"
+                                                                           FontSize="11"
+                                                                           Foreground="{ThemeResource AstridTextMuted}" />
+                                                            </StackPanel>
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
@@ -1287,6 +1385,8 @@
                     "Add" beside a text box is the one thing on the screen that never needed saying.
                 -->
                 <Border Grid.Row="1" Margin="20,0,20,8"
+                        VerticalAlignment="Top"
+                        Visibility="{x:Bind Shell.IsBoardView, Mode=OneWay, Converter={StaticResource NotVisible}}"
                         Padding="12,10"
                         CornerRadius="12"
                         Background="{ThemeResource AstridSurface}"
