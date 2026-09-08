@@ -468,13 +468,31 @@
                     </StackPanel>
                 </ScrollViewer>
     
-                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="12">
+                <!-- The same shape as quick add, because it is the same gesture one column over. -->
+                <Grid Grid.Row="2" Margin="12" ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
                     <TextBox x:Name="NewListBox"
+                             Grid.Column="0"
                              PlaceholderText="New list"
-                             Width="150"
+                             Background="{ThemeResource AstridSurface}"
+                             BorderThickness="1"
+                             BorderBrush="{ThemeResource AstridBorder}"
+                             CornerRadius="8"
+                             Padding="10,6"
                              KeyDown="OnNewListKeyDown" />
-                    <Button Content="Add" Click="OnAddList" />
-                </StackPanel>
+                    <Button Grid.Column="1"
+                            Width="32" Height="32"
+                            Padding="0"
+                            CornerRadius="8"
+                            AutomationProperties.Name="Add"
+                            ToolTipService.ToolTip="New list"
+                            Click="OnAddList">
+                        <FontIcon FontSize="14" Glyph="&#xE710;" />
+                    </Button>
+                </Grid>
             </Grid>
     
             <!-- The list itself. Collapsed while signed out, for the reason above. -->
@@ -1263,17 +1281,42 @@
                     keyboard rises from there; on a desktop the place you add to a list is the top,
                     where you are already looking when you open it.
                 -->
-                <Grid Grid.Row="1" Margin="20,0,20,8" ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBox x:Name="QuickAddBox"
-                             Grid.Column="0"
-                             PlaceholderText="Add a task"
-                             KeyDown="OnQuickAddKeyDown" />
-                    <Button Grid.Column="1" Content="Add" Click="OnQuickAdd" Style="{ThemeResource AccentButtonStyle}" />
-                </Grid>
+                <!--
+                    Drawn as astrid-web's `quick-add` is: a card of its own, a borderless box on a
+                    tinted ground inside it, and a square accent button carrying a plus. The word
+                    "Add" beside a text box is the one thing on the screen that never needed saying.
+                -->
+                <Border Grid.Row="1" Margin="20,0,20,8"
+                        Padding="12,10"
+                        CornerRadius="12"
+                        Background="{ThemeResource AstridSurface}"
+                        BorderThickness="1"
+                        BorderBrush="{ThemeResource AstridBorder}">
+                    <Grid ColumnSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="QuickAddBox"
+                                 Grid.Column="0"
+                                 PlaceholderText="Add a task"
+                                 Background="{ThemeResource AstridSurfaceHover}"
+                                 BorderThickness="0"
+                                 CornerRadius="8"
+                                 Padding="12,7"
+                                 KeyDown="OnQuickAddKeyDown" />
+                        <Button Grid.Column="1"
+                                Width="36" Height="36"
+                                Padding="0"
+                                CornerRadius="8"
+                                AutomationProperties.Name="Add"
+                                ToolTipService.ToolTip="Add a task"
+                                Click="OnQuickAdd"
+                                Style="{ThemeResource AccentButtonStyle}">
+                            <FontIcon FontSize="16" Glyph="&#xE710;" />
+                        </Button>
+                    </Grid>
+                </Border>
 
                 <!--
                     The rows, as astrid-web draws them.
@@ -1496,21 +1539,24 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <StackPanel Grid.Row="0">
-                <!--
-                    The header, as astrid-web's `TaskHeader` draws it: the mark the row already
-                    wears, the title beside it, the action menu at the far right, and a rule under
-                    the lot.
+            <!--
+                The header, as astrid-web's `TaskHeader` draws it: the mark the row already wears,
+                the title beside it, the action menu at the far right, and a rule under the lot.
 
-                    The 16px padding and the 32px mark are the alignment invariant that file states
-                    in its own words — content starts at 16 + 32 + 8 = 56px on the header row and on
-                    every field row under it, so the icons land under the mark and the values under
-                    the title. Changing one without the other is what made the web's own panel drift
-                    before somebody wrote the sum down.
-                -->
-                <Border Padding="16"
-                        BorderThickness="0,0,0,1"
-                        BorderBrush="{ThemeResource AstridBorder}">
+                It is pinned and the body scrolls under it, which is what astrid-web does: the
+                title of the thing you are reading should not scroll away from the thread you are
+                reading about it.
+
+                The 16px padding and the 32px mark are the alignment invariant that file states in
+                its own words — content starts at 16 + 32 + 8 = 56px on the header row and on every
+                field row under it, so the icons land under the mark and the values under the title.
+                Changing one without the other is what made the web's own panel drift before
+                somebody wrote the sum down.
+            -->
+            <Border Grid.Row="0"
+                    Padding="16"
+                    BorderThickness="0,0,0,1"
+                    BorderBrush="{ThemeResource AstridBorder}">
                     <Grid ColumnSpacing="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="32" />
@@ -1553,9 +1599,16 @@
                             </Button.Flyout>
                         </Button>
                     </Grid>
-                </Border>
+            </Border>
 
-                <StackPanel Spacing="2" Margin="16,12,16,0">
+            <!--
+                The body: the fields, then the activity, then the thread, in one scroll. astrid-web
+                puts them in one `overflow-y-auto` for the same reason — with the fields pinned
+                above it, a short window left the conversation a couple of lines to live in.
+            -->
+            <ScrollViewer Grid.Row="1" Padding="16,12,16,0">
+                <StackPanel>
+                <StackPanel Spacing="2">
 
                 <!--
                     Who holds the task. First, because the field order — Who, Date, Priority,
@@ -1884,10 +1937,6 @@
                              LostFocus="OnDetailDescriptionCommitted" />
                 </Grid>
                 </StackPanel>
-            </StackPanel>
-
-            <ScrollViewer Grid.Row="1" Margin="16,4,16,0">
-                <StackPanel>
                     <TextBlock Text="Subtasks" Style="{StaticResource DetailSection}" />
                     <ItemsControl ItemsSource="{x:Bind Shell.Detail.Subtasks, Mode=OneWay}">
                         <ItemsControl.ItemTemplate>
