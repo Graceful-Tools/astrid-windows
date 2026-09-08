@@ -55,6 +55,7 @@ public sealed partial class ShellPage : UserControl
         Shell = new ShellViewModel(core, Post);
         _reminders = new Reminders(Shell, Post);
         _shortcuts = new ShortcutDispatcher(core, Shell);
+        Shell.PaletteCommandRequested += OnPaletteCommand;
         _shortcuts.ShellActionRequested += OnShellAction;
         Loaded += OnLoaded;
         // Every protocol activation, launch or redirected, arrives here. The core decides which
@@ -285,6 +286,14 @@ public sealed partial class ShellPage : UserControl
                     args.Handled = true;
                     await Shell.SyncAsync();
                     return;
+                case VirtualKey.K:
+                    // The palette. Ctrl+K is what every other app with one uses, so it is the
+                    // chord people try first.
+                    args.Handled = true;
+                    await Shell.ShowPaletteAsync(true);
+                    PaletteBox.Text = string.Empty;
+                    PaletteBox.Focus(FocusState.Programmatic);
+                    return;
                 default:
                     // Any other chord belongs to Windows or to a control. Not ours to swallow.
                     return;
@@ -397,6 +406,83 @@ public sealed partial class ShellPage : UserControl
     private async void OnToggleTimer(object sender, RoutedEventArgs args)
     {
         await Shell.Detail.SetTimingAsync(!Shell.Detail.IsTiming);
+    }
+
+    // ── The command palette ──────────────────────────────────────────────────────────────────
+
+    private async void OnPaletteChanged(object sender, TextChangedEventArgs args)
+    {
+        await Shell.SearchPaletteAsync(PaletteBox.Text);
+    }
+
+    /// <summary>
+    /// Enter runs the first row; Escape closes.
+    /// </summary>
+    /// <remarks>
+    /// The first row rather than the selected one when nothing is selected, because typing three
+    /// letters and pressing Enter is the whole gesture — reaching for the arrow keys first would
+    /// make it slower than the sidebar it replaces.
+    /// </remarks>
+    private async void OnPaletteKeyDown(object sender, KeyRoutedEventArgs args)
+    {
+        switch (args.Key)
+        {
+            case VirtualKey.Escape:
+                args.Handled = true;
+                await Shell.ShowPaletteAsync(false);
+                break;
+            case VirtualKey.Enter:
+                args.Handled = true;
+                var row = PaletteList.SelectedItem as PaletteRow ?? Shell.PaletteRows.FirstOrDefault();
+                if (row is not null)
+                {
+                    await Shell.RunPaletteRowAsync(row);
+                    SyncSelectionFromViewModel();
+                }
+                break;
+            case VirtualKey.Down:
+                args.Handled = true;
+                Step(1);
+                break;
+            case VirtualKey.Up:
+                args.Handled = true;
+                Step(-1);
+                break;
+        }
+    }
+
+    /// <summary>Move the highlight without leaving the box, so typing can continue.</summary>
+    private void Step(int by)
+    {
+        if (Shell.PaletteRows.Count == 0)
+        {
+            return;
+        }
+        var next = PaletteList.SelectedIndex + by;
+        PaletteList.SelectedIndex = Math.Clamp(next, 0, Shell.PaletteRows.Count - 1);
+        PaletteList.ScrollIntoView(PaletteList.SelectedItem);
+    }
+
+    private async void OnPaletteRowChosen(object sender, ItemClickEventArgs args)
+    {
+        if (args.ClickedItem is PaletteRow row)
+        {
+            await Shell.RunPaletteRowAsync(row);
+            SyncSelectionFromViewModel();
+        }
+    }
+
+    /// <summary>
+    /// A command chosen in the palette, carried out where the keyboard's are.
+    /// </summary>
+    /// <remarks>
+    /// The palette answers with the action name the shared keyboard table uses, which is the same
+    /// name the shortcut dispatcher already handles — so there is one implementation of "new task"
+    /// rather than two that drift.
+    /// </remarks>
+    private async void OnPaletteCommand(string action)
+    {
+        await _shortcuts.RunAsync(action);
     }
 
     // ── The account ──────────────────────────────────────────────────────────────────────────

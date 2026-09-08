@@ -58,7 +58,19 @@ public sealed class ShortcutDispatcher
         {
             return false;
         }
+        return await RunAsync(action, cancellationToken);
+    }
 
+    /// <summary>
+    /// Carry out one action by name.
+    /// </summary>
+    /// <remarks>
+    /// The names are the shared keyboard table's, and the command palette answers with the same
+    /// ones — so choosing "New task" from the palette and pressing <c>n</c> run the same code
+    /// rather than two implementations that drift.
+    /// </remarks>
+    public async Task<bool> RunAsync(string action, CancellationToken cancellationToken = default)
+    {
         var selected = _shell.Tasks.Selected;
         switch (action)
         {

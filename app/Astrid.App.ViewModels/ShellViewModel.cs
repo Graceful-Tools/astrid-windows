@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Astrid.Core.Bindings;
 
 namespace Astrid.App.ViewModels;
@@ -30,6 +31,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private bool _disposed;
     private bool _isBoardView;
     private bool _isChatOpen;
+    private bool _isPaletteOpen;
 
     /// <param name="post">
     /// Runs work on the UI thread. Given by the shell; a test passes something that runs it inline.
@@ -80,6 +82,89 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     /// <summary>The account, and how it wants to be reminded.</summary>
     public SettingsViewModel Settings { get; }
+
+    /// <summary>
+    /// What the palette found.
+    /// </summary>
+    /// <remarks>
+    /// Ranked in the core with the Mac's matcher. This class asks and shows; it does not decide
+    /// which row is the best answer, because that ranking is the difference between a palette and
+    /// a list of everything.
+    /// </remarks>
+    public ObservableCollection<PaletteRow> PaletteRows { get; } = [];
+
+    public bool IsPaletteOpen
+    {
+        get => _isPaletteOpen;
+        private set => Set(ref _isPaletteOpen, value);
+    }
+
+    /// <summary>Open or close the palette. Opening fills it, so it teaches what it can do.</summary>
+    public async Task ShowPaletteAsync(bool open, CancellationToken cancellationToken = default)
+    {
+        IsPaletteOpen = open;
+        if (open)
+        {
+            await SearchPaletteAsync(string.Empty, cancellationToken);
+        }
+        else
+        {
+            PaletteRows.Clear();
+        }
+    }
+
+    public async Task SearchPaletteAsync(string query, CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.Palette(query), cancellationToken);
+        if (!response.Ok)
+        {
+            return;
+        }
+        var palette = response.Read<Palette>();
+        PaletteRows.Clear();
+        foreach (var row in palette?.Rows ?? [])
+        {
+            PaletteRows.Add(row);
+        }
+    }
+
+    /// <summary>
+    /// Do what a palette row says.
+    /// </summary>
+    /// <remarks>
+    /// A list opens it, a task opens it, and a command is dispatched by the action name the shared
+    /// keyboard table carries — the same names web uses, so one action is not described two ways.
+    /// </remarks>
+    public async Task RunPaletteRowAsync(PaletteRow row, CancellationToken cancellationToken = default)
+    {
+        IsPaletteOpen = false;
+        switch (row.Kind)
+        {
+            case "list":
+                await Tasks.OpenAsync(row.Id, row.Title, cancellationToken);
+                // And the sidebar follows, so the app is not showing one list with another
+                // highlighted.
+                Sidebar.Selected = Sidebar.Favorites.Concat(Sidebar.Lists)
+                    .FirstOrDefault(list => list.Id == row.Id) ?? Sidebar.Selected;
+                break;
+            case "task":
+                await OpenTaskAsync(row.Id, cancellationToken);
+                break;
+            default:
+                PaletteCommandRequested?.Invoke(row.Id);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// A command was chosen in the palette.
+    /// </summary>
+    /// <remarks>
+    /// Raised rather than run here: the actions are the keyboard scheme's, and the shell already
+    /// has one place that carries them out. Two implementations of "new task" is how they come to
+    /// differ.
+    /// </remarks>
+    public event Action<string>? PaletteCommandRequested;
 
     /// <summary>Load the account screen.</summary>
     public async Task LoadSettingsAsync(CancellationToken cancellationToken = default)

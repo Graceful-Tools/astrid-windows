@@ -226,6 +226,43 @@ public sealed record ReminderSettings
     [JsonPropertyName("quietHoursEnd")] public string? QuietHoursEnd { get; init; }
 }
 
+/// <summary>One row of the command palette.</summary>
+public sealed record PaletteRow
+{
+    /// <summary><c>command</c>, <c>list</c> or <c>task</c> — what pressing it does.</summary>
+    [JsonPropertyName("kind")] public string Kind { get; init; } = string.Empty;
+
+    /// <summary>A list id, a task id, or the action name a command dispatches under.</summary>
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("title")] public string Title { get; init; } = string.Empty;
+
+    /// <summary>The key that would do it, for a command.</summary>
+    [JsonPropertyName("keys")] public string? Keys { get; init; }
+
+    /// <summary>Which list a task is in, so two of the same name are told apart.</summary>
+    [JsonPropertyName("subtitle")] public string? Subtitle { get; init; }
+
+    /// <summary>What the row shows on its right: the key, or the list.</summary>
+    public string Trailing => Keys ?? Subtitle ?? string.Empty;
+
+    /// <summary>
+    /// What a screen reader reads.
+    /// </summary>
+    /// <remarks>
+    /// A record's generated ToString prints every field — "PaletteRow { Kind = command, Id = … }" —
+    /// and that is exactly what a list item announces when nothing else names it.
+    /// </remarks>
+    public override string ToString() =>
+        Trailing.Length > 0 ? $"{Title}, {Trailing}" : Title;
+}
+
+/// <summary>What the palette found.</summary>
+public sealed record Palette
+{
+    [JsonPropertyName("rows")] public IReadOnlyList<PaletteRow> Rows { get; init; } = [];
+}
+
 /// <summary>The three numbers on a profile.</summary>
 public sealed record ProfileStats
 {

@@ -34,6 +34,70 @@ public sealed class ShellViewModelTests
             .AnswerOk("outboxStats", new { pending = 0, running = 0, failed = 0, hasUnsentWork = false })
             .AnswerOk("sync", new { fetched = false });
 
+    private static object PaletteRows() => new
+    {
+        rows = new object[]
+        {
+            new { kind = "command", id = "newTask", title = "New task", keys = "n" },
+            new { kind = "list", id = "l1", title = "Home" },
+            new { kind = "task", id = "t1", title = "Buy milk", subtitle = "Home" },
+        },
+    };
+
+    /// <summary>
+    /// Opening the palette fills it, because a blank box teaches nobody what it can do.
+    /// </summary>
+    [Fact]
+    public async Task Opening_the_palette_shows_something_before_anything_is_typed()
+    {
+        var core = StartedCore(("l1", "Home", false)).AnswerOk("palette", PaletteRows());
+        using var shell = new ShellViewModel(core, RunInline);
+
+        await shell.ShowPaletteAsync(true);
+
+        Assert.True(shell.IsPaletteOpen);
+        Assert.Equal(3, shell.PaletteRows.Count);
+        Assert.Contains("\"query\":\"\"", core.Sent.First(sent => sent.Contains("palette")));
+    }
+
+    /// <summary>
+    /// A command row is handed to whoever carries out the keyboard's actions rather than run here:
+    /// two implementations of "new task" is how they come to differ.
+    /// </summary>
+    [Fact]
+    public async Task Choosing_a_command_is_handed_to_the_shortcut_dispatcher()
+    {
+        var core = StartedCore().AnswerOk("palette", PaletteRows());
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.ShowPaletteAsync(true);
+        string? requested = null;
+        shell.PaletteCommandRequested += action => requested = action;
+
+        await shell.RunPaletteRowAsync(shell.PaletteRows[0]);
+
+        Assert.Equal("newTask", requested);
+        Assert.False(shell.IsPaletteOpen);
+    }
+
+    [Fact]
+    public async Task Choosing_a_list_opens_it_and_the_sidebar_follows()
+    {
+        var core = StartedCore(("l1", "Home", false), ("l2", "Work", false))
+            .AnswerOk("palette", new
+            {
+                rows = new object[] { new { kind = "list", id = "l2", title = "Work" } },
+            })
+            .AnswerOk("rowsForList", EmptyWindow());
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        await shell.ShowPaletteAsync(true);
+
+        await shell.RunPaletteRowAsync(shell.PaletteRows[0]);
+
+        Assert.Equal("l2", shell.Tasks.ListId);
+        Assert.Equal("l2", shell.Sidebar.Selected?.Id);
+    }
+
     /// <summary>
     /// A reminder reaches whoever draws banners, and nothing marks itself shown on the way — a
     /// banner that failed to appear is still owed.

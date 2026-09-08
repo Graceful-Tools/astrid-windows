@@ -38,6 +38,7 @@ milestones; this tracks the *product*.
 | Timer on a task | ✅ | ✅ | Windows keeps a running timer across a restart; the Mac's is in memory |
 | Account screen and reminder settings | ✅ | ✅ | Push, email, default offset, digest, quiet hours |
 | Global quick-add hotkey | ✅ | ✅ | Ctrl+Shift+A; not yet rebindable |
+| Command palette | ✅ | ✅ | Ctrl+K, with the Mac's own fuzzy ranking |
 | Profile numbers and data export | ✅ | ✅ | JSON or CSV, written where you choose |
 
 ## Not yet
@@ -49,7 +50,6 @@ milestones; this tracks the *product*.
 | Onboarding | ✅ | ❌ | |
 | Agent Hub, AI keys | ✅ | ❌ | |
 | External sync (Google Tasks, GitHub) | ✅ | ❌ | M5 |
-| Command palette | ✅ | ❌ | The global hotkey is done; the palette is not |
 | MSIX packaging and updates | n/a | ❌ | M4 |
 
 ## Never — Apple-only by nature

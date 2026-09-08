@@ -46,6 +46,68 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
+        <!--
+            The command palette, over everything.
+
+            Ctrl+K, which is what every other app with one uses. It spans the columns rather than
+            sitting in one: it is not part of the layout, it is a thing that appears over it, and a
+            palette that pushed the list sideways would be a panel.
+
+            After the column definitions, not before them: a property element cannot follow a
+            content child, and the XAML compiler answers that with exit code 1 and no message.
+        -->
+        <Grid x:Name="PaletteLayer"
+              Grid.ColumnSpan="4"
+              Canvas.ZIndex="10"
+              Background="{ThemeResource SmokeFillColorDefaultBrush}"
+              Visibility="{x:Bind Shell.IsPaletteOpen, Mode=OneWay, Converter={StaticResource Visible}}">
+            <Border Width="560"
+                    MaxHeight="440"
+                    Margin="0,80,0,0"
+                    VerticalAlignment="Top"
+                    HorizontalAlignment="Center"
+                    CornerRadius="8"
+                    Padding="12"
+                    Background="{ThemeResource LayerFillColorAltBrush}"
+                    BorderThickness="1"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                <Grid RowSpacing="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBox x:Name="PaletteBox"
+                             Grid.Row="0"
+                             PlaceholderText="Go to a list, open a task, run a command"
+                             AutomationProperties.Name="Command palette"
+                             TextChanged="OnPaletteChanged"
+                             KeyDown="OnPaletteKeyDown" />
+                    <ListView x:Name="PaletteList"
+                              Grid.Row="1"
+                              SelectionMode="Single"
+                              IsItemClickEnabled="True"
+                              ItemClick="OnPaletteRowChosen"
+                              ItemsSource="{x:Bind Shell.PaletteRows, Mode=OneWay}">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="bindings:PaletteRow">
+                                <Grid ColumnSpacing="12" Padding="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{x:Bind Title}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="1" Text="{x:Bind Trailing}"
+                                               Style="{ThemeResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
+            </Border>
+        </Grid>
+
             <!--
                 The sign-in screen. It covers the app rather than replacing it, so the window does
                 not have to tear down and rebuild the whole tree on the way in and out — and so

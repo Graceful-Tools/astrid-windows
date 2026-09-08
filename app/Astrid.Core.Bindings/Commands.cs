@@ -72,6 +72,14 @@ public static class Commands
     /// board could not offer an AI agent at all. Assigning is an ordinary update carrying an
     /// <c>assigneeId</c>; this is only the question of who may be offered.
     /// </remarks>
+    /// <summary>Everything one box can find: commands, lists, tasks, ranked.</summary>
+    /// <remarks>
+    /// The matcher is the Mac's, character for character. The ranking is what a palette is, and
+    /// two clients that rank differently are two products — typing the same three letters has to
+    /// put the same row first.
+    /// </remarks>
+    public static object Palette(string query) => new PaletteRequest("palette", query);
+
     /// <summary>The three numbers on this account's profile.</summary>
     public static object ProfileStats() => new KindOnly("profileStats");
 
@@ -420,6 +428,10 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("content")] string Content);
+
+    private sealed record PaletteRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("query")] string Query);
 
     private sealed record ExportRequest(
         [property: JsonPropertyName("kind")] string Kind,
