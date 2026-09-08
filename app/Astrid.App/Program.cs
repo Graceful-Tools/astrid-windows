@@ -98,19 +98,21 @@ public static class Program
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Written by hand rather than through <c>ActivationRegistrationManager</c>. That call left
-    /// the scheme key behind carrying <c>URL Protocol</c> and no <c>shell\open\command</c> under
-    /// it, so the browser finished a sign-in and Windows had nowhere to send the callback: the app
-    /// sat waiting for something that could never arrive. A half-registered scheme is worse than
-    /// an unregistered one, because it looks registered from every angle except the one that
-    /// matters — and the failure was swallowed, so nothing said so.
+    /// Both ways round, because Windows has two and prefers the one that is easy to miss. The
+    /// App SDK call writes a generated ProgId — <c>App.&lt;hash of the path&gt;.Protocol</c> — and
+    /// points the user's URL association at it; that association is what the shell actually
+    /// resolves. The plain <c>Classes\astrid\shell\open\command</c> underneath is the fallback for
+    /// when there is no association at all.
     /// </para>
     /// <para>
-    /// The layout is the documented one for an unpackaged app, under HKCU so it needs no
-    /// elevation. A packaged build declares the scheme in its manifest and this is redundant
-    /// there, which is why it stays best-effort: an app that will not start because it could not
-    /// claim a URL scheme is worse than one whose sign-in has to be retried. But it now says when
-    /// it failed, rather than leaving a sign-in that hangs with nothing in the log.
+    /// Registering on every start rather than at install time is deliberate: an unpackaged app can
+    /// be moved, and the ProgId is derived from the path, so a registration pointing at where the
+    /// executable used to be silently stops the sign-in callback from arriving.
+    /// </para>
+    /// <para>
+    /// It stays best-effort — an app that will not start because it could not claim a URL scheme
+    /// is worse than one whose sign-in has to be retried — but it now says so in the log instead of
+    /// leaving a sign-in that hangs with no explanation anywhere.
     /// </para>
     /// </remarks>
     private static void RegisterProtocol()
@@ -123,10 +125,25 @@ public static class Program
 
         try
         {
+            ActivationRegistrationManager.RegisterForProtocolActivation(
+                scheme: "astrid",
+                logo: $"{executable},1",
+                displayName: "Astrid",
+                exePath: executable);
+        }
+        catch (Exception error)
+        {
+            App.Log($"could not register astrid:// through the App SDK: {error.Message}");
+        }
+
+        try
+        {
+            // The direct registration, under HKCU so it needs no elevation. Harmless beside the
+            // ProgId — the shell prefers the association when there is one — and the only thing
+            // there is to resolve when there is not.
             using var scheme = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(
                 @"Software\Classes\astrid");
             scheme.SetValue(null, "URL:Astrid");
-            // The marker that makes Windows treat this as a launchable scheme at all.
             scheme.SetValue("URL Protocol", string.Empty);
 
             using var icon = scheme.CreateSubKey("DefaultIcon");

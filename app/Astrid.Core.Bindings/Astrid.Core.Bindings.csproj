@@ -36,6 +36,16 @@
     talking to the previous core — where a new command comes back as an unknown one and the screen
     that needed it is simply empty. After changing the core, run `cargo build -p astrid-ffi` before
     running the app. `npm run predeploy` builds the Rust first and never sees this.
+
+    A MISMATCHED one is the worst of the three, and it shipped. The candidates used to vary only by
+    cargo profile, never by architecture, so an x86 or x64 build of the app was handed whichever
+    core the host happened to have built — on an ARM64 machine, an ARM64 one. The app then died at
+    startup with `BadImageFormatException` before it drew anything. That is how a sign-in callback
+    came to launch a build that could not start: the browser opened the app, the app crashed, and
+    the only evidence was a stack trace in a log nobody was looking at.
+
+    So the architecture decides the candidate list, and a build with no matching core is an ERROR
+    rather than a warning. A build that cannot produce a runnable app should not produce one.
   -->
   <Target Name="ResolveAstridCoreLibrary" BeforeTargets="AssignTargetPaths">
     <PropertyGroup>
@@ -43,11 +53,43 @@
       <_RustProfile Condition="'$(_RustProfile)' == ''">debug</_RustProfile>
       <_OtherRustProfile Condition="'$(_RustProfile)' == 'release'">debug</_OtherRustProfile>
       <_OtherRustProfile Condition="'$(_RustProfile)' == 'debug'">release</_OtherRustProfile>
+
+      <!--
+        What this build will actually run as. The RID wins when there is one, because that is what
+        `dotnet build -r win-arm64` means; otherwise the platform the app project was built for;
+        otherwise the SDK's own, which is the right answer for the test projects since they run as
+        the host.
+      -->
+      <_AstridArch Condition="$(RuntimeIdentifier.EndsWith('-arm64'))">arm64</_AstridArch>
+      <_AstridArch Condition="'$(_AstridArch)' == '' and $(RuntimeIdentifier.EndsWith('-x64'))">x64</_AstridArch>
+      <_AstridArch Condition="'$(_AstridArch)' == '' and $(RuntimeIdentifier.EndsWith('-x86'))">x86</_AstridArch>
+      <_AstridArch Condition="'$(_AstridArch)' == '' and '$(PlatformTarget)' != '' and '$(PlatformTarget)' != 'AnyCPU'">$(PlatformTarget.ToLowerInvariant())</_AstridArch>
+      <_AstridArch Condition="'$(_AstridArch)' == '' and '$(Platform)' != '' and '$(Platform)' != 'AnyCPU' and '$(Platform)' != 'Any CPU'">$(Platform.ToLowerInvariant())</_AstridArch>
+      <_AstridArch Condition="'$(_AstridArch)' == ''">$(NETCoreSdkRuntimeIdentifier.Replace('win-', ''))</_AstridArch>
+
+      <_AstridTriple Condition="'$(_AstridArch)' == 'arm64'">aarch64-pc-windows-msvc</_AstridTriple>
+      <_AstridTriple Condition="'$(_AstridArch)' == 'x64'">x86_64-pc-windows-msvc</_AstridTriple>
+      <_AstridTriple Condition="'$(_AstridArch)' == 'x86'">i686-pc-windows-msvc</_AstridTriple>
+
+      <!--
+        `target/<profile>/` is cargo's HOST output, so it is only the right core when this build
+        runs as the host. Taking it otherwise is exactly the mismatch described above.
+      -->
+      <_AstridHostArch>$(NETCoreSdkRuntimeIdentifier.Replace('win-', ''))</_AstridHostArch>
+      <_AstridHostIsTarget Condition="'$(_AstridArch)' == '$(_AstridHostArch)'">true</_AstridHostIsTarget>
     </PropertyGroup>
 
     <ItemGroup>
-      <_AstridCoreCandidate Include="$(RustTargetRoot)$(_RustProfile)\astrid_ffi.dll" />
-      <_AstridCoreCandidate Include="$(RustTargetRoot)$(_OtherRustProfile)\astrid_ffi.dll" />
+      <!-- The matching triple first, in either profile: a Release shell against a debug core is an
+           ordinary thing to want, and the gate does exactly that. -->
+      <_AstridCoreCandidate Condition="'$(_AstridTriple)' != ''"
+                            Include="$(RustTargetRoot)$(_AstridTriple)\$(_RustProfile)\astrid_ffi.dll" />
+      <_AstridCoreCandidate Condition="'$(_AstridTriple)' != ''"
+                            Include="$(RustTargetRoot)$(_AstridTriple)\$(_OtherRustProfile)\astrid_ffi.dll" />
+      <_AstridCoreCandidate Condition="'$(_AstridHostIsTarget)' == 'true'"
+                            Include="$(RustTargetRoot)$(_RustProfile)\astrid_ffi.dll" />
+      <_AstridCoreCandidate Condition="'$(_AstridHostIsTarget)' == 'true'"
+                            Include="$(RustTargetRoot)$(_OtherRustProfile)\astrid_ffi.dll" />
     </ItemGroup>
 
     <ItemGroup>
@@ -67,9 +109,13 @@
       </None>
     </ItemGroup>
 
-    <Warning Condition="'$(_AstridCoreLibrary)' == ''"
-             Code="ASTRID001"
-             Text="astrid_ffi.dll was not found under $(RustTargetRoot). Run `cargo build -p astrid-ffi` first; the app will fail to start without it." />
+    <Error Condition="'$(_AstridCoreLibrary)' == '' and '$(_AstridTriple)' != ''"
+           Code="ASTRID001"
+           Text="No astrid_ffi.dll for $(_AstridArch). Run: cargo build -p astrid-ffi --target $(_AstridTriple)  (or, when building for the host, plain `cargo build -p astrid-ffi`). Copying a core of another architecture would build an app that cannot start." />
+
+    <Error Condition="'$(_AstridTriple)' == ''"
+           Code="ASTRID002"
+           Text="Unknown target architecture '$(_AstridArch)'. astrid_ffi.dll is native, so this build has no way to know which one to carry." />
   </Target>
 
 </Project>

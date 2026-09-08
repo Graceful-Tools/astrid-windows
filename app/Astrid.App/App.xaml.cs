@@ -105,12 +105,19 @@ public partial class App : Application
             Core = AstridClient.Start(CachePath());
             Core.Subscribe();
         }
-        catch (AstridStartupException error)
+        catch (Exception error) when (error is AstridStartupException or BadImageFormatException
+            or DllNotFoundException)
         {
             // A window that says what went wrong is far better than a process that exits silently,
             // which is what an unhandled exception here would look like to somebody double-clicking
             // an icon.
+            //
+            // The two loader failures are caught for the same reason. They were escaping as
+            // unhandled — the app died before it drew anything, and the only trace was a stack in
+            // the log — and they are the two that happen when the native core beside the
+            // executable does not match the process that is trying to load it.
             StartupError = error.Message;
+            Log($"the core did not load: {error}{Environment.NewLine}{Environment.NewLine}{Where()}");
         }
 
         // Every later activation — the browser coming back with a sign-in code, a deep link —
@@ -151,6 +158,26 @@ public partial class App : Application
             UriActivated?.Invoke(protocol.Uri);
         }
     }
+
+    /// <summary>
+    /// Where this process is, and what it is.
+    /// </summary>
+    /// <remarks>
+    /// Written beside a startup failure because "the core did not load" has one interesting cause
+    /// — the process and the native library disagreeing about the architecture — and none of that
+    /// is visible in a managed stack trace. It matters most for a launch nobody watched: the
+    /// sign-in callback starts the app from the browser, and the environment there is not the one
+    /// anybody tested by double-clicking.
+    /// </remarks>
+    private static string Where() =>
+        string.Join(Environment.NewLine, [
+            $"process:     {Environment.ProcessPath}",
+            $"process arch:{System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture}",
+            $"os arch:     {System.Runtime.InteropServices.RuntimeInformation.OSArchitecture}",
+            $"base dir:    {AppContext.BaseDirectory}",
+            $"working dir: {Environment.CurrentDirectory}",
+            $"command line:{Environment.CommandLine}",
+        ]);
 
     private static void Log(Exception exception) => Log(exception.ToString());
 

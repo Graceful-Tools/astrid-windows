@@ -26,40 +26,98 @@ namespace Astrid.App.UITests;
 public sealed class ShellSmokeTests
 {
     /// <summary>
-    /// The sign-in callback can find the app.
+    /// The sign-in callback can find the app, and finds one that can start.
     /// </summary>
     /// <remarks>
     /// <para>
     /// Signing in hands off to the browser and comes back as <c>astrid://auth/callback?…</c>.
-    /// Windows resolves that through <c>HKCU\Software\Classes\astrid\shell\open\command</c>,
-    /// and if that command is missing the browser completes the sign-in and nothing happens — the
-    /// app waits for a callback that Windows had nowhere to send.
+    /// Whatever Windows has registered for that scheme is what gets launched — and on a machine
+    /// with several build flavours that is simply whichever ran last, because the registration is
+    /// derived from the executable's path.
     /// </para>
     /// <para>
-    /// That is exactly what shipped: the scheme key existed, carrying <c>URL Protocol</c>, with no
-    /// command under it. A half-registered scheme is worse than an unregistered one, because it
-    /// looks registered from every angle except the one that matters. So this asserts the command,
-    /// not the key.
+    /// That is how this broke: an x86 build had claimed the scheme, and an x86 build could not
+    /// start, because the shell was carrying a core of the host's architecture. The browser
+    /// completed the sign-in, Windows launched the app, and the app died loading its own core
+    /// before drawing anything. From the outside it looked like the sign-in simply did nothing.
+    /// </para>
+    /// <para>
+    /// So the assertion is not "a key exists" — the key existed the whole time. It is that the
+    /// command Windows will run names a real executable, carries the URL, and is the same
+    /// architecture as the process that will host it.
     /// </para>
     /// </remarks>
     [Fact]
-    public void The_sign_in_callback_has_somewhere_to_go()
+    public void The_sign_in_callback_reaches_an_app_that_can_start()
     {
         using var app = AstridApp.Launch(signedIn: false);
 
-        using var command = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
-            @"Software\Classes\astrid\shell\open\command");
-        Assert.NotNull(command);
+        var command = RegisteredProtocolCommand();
+        Assert.False(string.IsNullOrWhiteSpace(command), "astrid:// resolves to nothing");
 
-        var line = command!.GetValue(null) as string;
-        Assert.False(string.IsNullOrWhiteSpace(line), "astrid:// resolves to an empty command");
-        Assert.Contains(
-            AstridApp.ExecutableUnderTest(),
-            line!,
-            System.StringComparison.OrdinalIgnoreCase);
         // Without a placeholder the app is launched with no URL, so the callback arrives empty and
         // the sign-in it was carrying is lost.
-        Assert.Contains("%1", line!, System.StringComparison.Ordinal);
+        Assert.Contains("%1", command!, System.StringComparison.Ordinal);
+
+        var executable = FirstQuoted(command!);
+        Assert.True(File.Exists(executable), $"astrid:// points at a missing file: {executable}");
+        Assert.Equal(
+            System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture,
+            ArchitectureOf(executable));
+    }
+
+    /// <summary>The command Windows will actually run for <c>astrid://</c>.</summary>
+    /// <remarks>
+    /// Resolved the way the shell resolves it: the user's URL association names a generated ProgId
+    /// and that ProgId carries the command; the scheme's own key is the fallback when no
+    /// association exists. Reading only the second is what let a stale association go unnoticed.
+    /// </remarks>
+    private static string? RegisteredProtocolCommand()
+    {
+        var progId = Microsoft.Win32.Registry.CurrentUser
+            .OpenSubKey(@"SOFTWARE\Microsoft\Windows\Shell\Associations\UrlAssociations\astrid\UserChoiceLatest\ProgId")
+            ?.GetValue("ProgId") as string;
+
+        if (!string.IsNullOrEmpty(progId))
+        {
+            var viaProgId = Microsoft.Win32.Registry.CurrentUser
+                .OpenSubKey($@"Software\Classes\{progId}\shell\open\command")
+                ?.GetValue(null) as string;
+            if (!string.IsNullOrWhiteSpace(viaProgId))
+            {
+                return viaProgId;
+            }
+        }
+
+        return Microsoft.Win32.Registry.CurrentUser
+            .OpenSubKey(@"Software\Classes\astrid\shell\open\command")
+            ?.GetValue(null) as string;
+    }
+
+    /// <summary>The executable out of a <c>"path" args</c> command line.</summary>
+    private static string FirstQuoted(string command)
+    {
+        var opening = command.IndexOf('"');
+        if (opening < 0)
+        {
+            return command.Split(' ')[0];
+        }
+        var closing = command.IndexOf('"', opening + 1);
+        return closing < 0 ? command : command[(opening + 1)..closing];
+    }
+
+    /// <summary>What a PE file was built for, read out of its COFF header.</summary>
+    private static System.Runtime.InteropServices.Architecture ArchitectureOf(string path)
+    {
+        var bytes = File.ReadAllBytes(path);
+        var header = System.BitConverter.ToInt32(bytes, 0x3C);
+        return System.BitConverter.ToUInt16(bytes, header + 4) switch
+        {
+            0xAA64 => System.Runtime.InteropServices.Architecture.Arm64,
+            0x8664 => System.Runtime.InteropServices.Architecture.X64,
+            0x014C => System.Runtime.InteropServices.Architecture.X86,
+            var other => throw new System.InvalidOperationException($"unknown machine 0x{other:X4}"),
+        };
     }
 
     /// <summary>With no session, the first thing on screen is the way to get one.</summary>
