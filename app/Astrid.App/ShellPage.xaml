@@ -247,22 +247,36 @@
                     Margin="0,80,0,0"
                     VerticalAlignment="Top"
                     HorizontalAlignment="Center"
-                    CornerRadius="8"
+                    CornerRadius="12"
                     Padding="12"
-                    Background="{ThemeResource LayerFillColorAltBrush}"
+                    Background="{ThemeResource AstridSurface}"
                     BorderThickness="1"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                    BorderBrush="{ThemeResource AstridBorder}">
                 <Grid RowSpacing="8">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <TextBox x:Name="PaletteBox"
-                             Grid.Row="0"
-                             PlaceholderText="Go to a list, open a task, run a command"
-                             AutomationProperties.Name="Command palette"
-                             TextChanged="OnPaletteChanged"
-                             KeyDown="OnPaletteKeyDown" />
+                    <!-- A magnifier beside the box, as astrid-web's palette wears one. -->
+                    <Grid Grid.Row="0" ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Grid.Column="0" Glyph="&#xE721;" FontSize="15"
+                                  Margin="4,0,0,0"
+                                  Foreground="{ThemeResource AstridTextMuted}" />
+                        <TextBox x:Name="PaletteBox"
+                                 Grid.Column="1"
+                                 PlaceholderText="Go to a list, open a task, run a command"
+                                 AutomationProperties.Name="Command palette"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 FontSize="15"
+                                 Padding="4,6"
+                                 TextChanged="OnPaletteChanged"
+                                 KeyDown="OnPaletteKeyDown" />
+                    </Grid>
                     <ListView x:Name="PaletteList"
                               Grid.Row="1"
                               SelectionMode="Single"
@@ -277,10 +291,11 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="{x:Bind Title}"
-                                               TextTrimming="CharacterEllipsis" />
+                                               TextTrimming="CharacterEllipsis"
+                                               Foreground="{ThemeResource AstridTextPrimary}" />
                                     <TextBlock Grid.Column="1" Text="{x:Bind Trailing}"
-                                               Style="{ThemeResource CaptionTextBlockStyle}"
-                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                               FontSize="11"
+                                               Foreground="{ThemeResource AstridTextMuted}" />
                                 </Grid>
                             </DataTemplate>
                         </ListView.ItemTemplate>
@@ -1780,7 +1795,19 @@
                                        FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                        FontSize="16" />
                             <Button.Flyout>
+                                <!--
+                                    astrid-web's `TaskActionMenu` in the two entries this client
+                                    has behaviour for. Delete was reachable only by right-clicking
+                                    a row, so a task opened from search or a deep link could be
+                                    read and edited but not thrown away.
+                                -->
                                 <MenuFlyout>
+                                    <MenuFlyoutItem Text="Delete" Click="OnDeleteOpenTask">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE74D;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutSeparator />
                                     <MenuFlyoutItem Text="Close" Click="OnCloseDetail" />
                                 </MenuFlyout>
                             </Button.Flyout>

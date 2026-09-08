@@ -383,6 +383,25 @@ public sealed partial class ShellPage : UserControl
     private void OnCloseDetail(object sender, RoutedEventArgs args) => Shell.Detail.Close();
 
     /// <summary>
+    /// Throw away the task the panel is showing.
+    /// </summary>
+    /// <remarks>
+    /// The panel closes first: the task is about to stop existing, and a pane still describing it
+    /// while the row underneath disappears is the worse of the two orders. Deleting goes through
+    /// the list, which is the one that owns the rows on screen.
+    /// </remarks>
+    private async void OnDeleteOpenTask(object sender, RoutedEventArgs args)
+    {
+        var taskId = Shell.Detail.TaskId;
+        if (string.IsNullOrEmpty(taskId))
+        {
+            return;
+        }
+        Shell.Detail.Close();
+        await Shell.Tasks.DeleteTaskAsync(taskId);
+    }
+
+    /// <summary>
     /// Somebody chose a quick due-date option.
     /// </summary>
     /// <remarks>

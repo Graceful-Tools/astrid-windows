@@ -116,14 +116,6 @@ public sealed class AstridApp : IDisposable
         Thread.Sleep(200);
     }
 
-    /// <summary>Tick or untick a checkbox.</summary>
-    public void Toggle(string name)
-    {
-        var pattern = (TogglePattern)Require(name).GetCurrentPattern(TogglePattern.Pattern);
-        pattern.Toggle();
-        Thread.Sleep(600);
-    }
-
     /// <summary>Every name on screen. What a failure message should show.</summary>
     public IReadOnlyList<string> Names() =>
         Window.FindAll(TreeScope.Descendants, Condition.TrueCondition)

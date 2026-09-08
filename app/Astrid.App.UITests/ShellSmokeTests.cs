@@ -157,8 +157,11 @@ public sealed class ShellSmokeTests
             app.Sees("Buy oat milk"),
             $"the new task never appeared; saw: {string.Join(", ", app.Names())}");
 
-        // The checkbox is named for the task it finishes, which is what a screen reader reads.
-        app.Toggle("Complete Buy oat milk");
+        // The mark is a button carrying the checkbox image, not a CheckBox: it draws the state the
+        // core reported and asks for the opposite, because a repeating task rolls forward rather
+        // than finishing and a two-state control cannot say that. It is named for the task it
+        // finishes, which is what a screen reader reads.
+        app.Invoke("Complete Buy oat milk");
 
         // The list hides finished tasks after a moment; what matters is that nothing fell over.
         Assert.False(File.Exists(app.CrashLogPath), Crash(app));
