@@ -188,6 +188,9 @@ public sealed class AstridApp : IDisposable
     /// binary, so the tests run the same from a solution build, a single-project build and the
     /// gate.
     /// </remarks>
+    /// <summary>The executable these tests launch, for a test that needs to name it.</summary>
+    public static string ExecutableUnderTest() => ExecutablePath();
+
     private static string ExecutablePath()
     {
         var overridden = Environment.GetEnvironmentVariable("ASTRID_APP_EXE");

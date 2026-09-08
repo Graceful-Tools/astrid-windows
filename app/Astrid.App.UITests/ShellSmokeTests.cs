@@ -25,6 +25,43 @@ namespace Astrid.App.UITests;
 [Collection("ui")]
 public sealed class ShellSmokeTests
 {
+    /// <summary>
+    /// The sign-in callback can find the app.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Signing in hands off to the browser and comes back as <c>astrid://auth/callback?…</c>.
+    /// Windows resolves that through <c>HKCU\Software\Classes\astrid\shell\open\command</c>,
+    /// and if that command is missing the browser completes the sign-in and nothing happens — the
+    /// app waits for a callback that Windows had nowhere to send.
+    /// </para>
+    /// <para>
+    /// That is exactly what shipped: the scheme key existed, carrying <c>URL Protocol</c>, with no
+    /// command under it. A half-registered scheme is worse than an unregistered one, because it
+    /// looks registered from every angle except the one that matters. So this asserts the command,
+    /// not the key.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void The_sign_in_callback_has_somewhere_to_go()
+    {
+        using var app = AstridApp.Launch(signedIn: false);
+
+        using var command = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+            @"Software\Classes\astrid\shell\open\command");
+        Assert.NotNull(command);
+
+        var line = command!.GetValue(null) as string;
+        Assert.False(string.IsNullOrWhiteSpace(line), "astrid:// resolves to an empty command");
+        Assert.Contains(
+            AstridApp.ExecutableUnderTest(),
+            line!,
+            System.StringComparison.OrdinalIgnoreCase);
+        // Without a placeholder the app is launched with no URL, so the callback arrives empty and
+        // the sign-in it was carrying is lost.
+        Assert.Contains("%1", line!, System.StringComparison.Ordinal);
+    }
+
     /// <summary>With no session, the first thing on screen is the way to get one.</summary>
     [Fact]
     public void Signed_out_it_offers_the_browser_sign_in()

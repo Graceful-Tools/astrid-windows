@@ -97,29 +97,49 @@ public static class Program
     /// Register <c>astrid://</c> so Windows knows which executable to launch for it.
     /// </summary>
     /// <remarks>
-    /// Writes under HKCU, so it needs no elevation. A packaged build declares the scheme in its
-    /// manifest instead and this becomes a no-op — which is why the failure is swallowed rather
-    /// than fatal: an app that will not start because it could not claim a URL scheme is worse
-    /// than one whose sign-in has to be retried.
+    /// <para>
+    /// Written by hand rather than through <c>ActivationRegistrationManager</c>. That call left
+    /// the scheme key behind carrying <c>URL Protocol</c> and no <c>shell\open\command</c> under
+    /// it, so the browser finished a sign-in and Windows had nowhere to send the callback: the app
+    /// sat waiting for something that could never arrive. A half-registered scheme is worse than
+    /// an unregistered one, because it looks registered from every angle except the one that
+    /// matters — and the failure was swallowed, so nothing said so.
+    /// </para>
+    /// <para>
+    /// The layout is the documented one for an unpackaged app, under HKCU so it needs no
+    /// elevation. A packaged build declares the scheme in its manifest and this is redundant
+    /// there, which is why it stays best-effort: an app that will not start because it could not
+    /// claim a URL scheme is worse than one whose sign-in has to be retried. But it now says when
+    /// it failed, rather than leaving a sign-in that hangs with nothing in the log.
+    /// </para>
     /// </remarks>
     private static void RegisterProtocol()
     {
+        var executable = Environment.ProcessPath;
+        if (string.IsNullOrEmpty(executable))
+        {
+            return;
+        }
+
         try
         {
-            var executable = Environment.ProcessPath;
-            if (string.IsNullOrEmpty(executable))
-            {
-                return;
-            }
-            ActivationRegistrationManager.RegisterForProtocolActivation(
-                scheme: "astrid",
-                logo: $"{executable},1",
-                displayName: "Astrid",
-                exePath: executable);
+            using var scheme = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(
+                @"Software\Classes\astrid");
+            scheme.SetValue(null, "URL:Astrid");
+            // The marker that makes Windows treat this as a launchable scheme at all.
+            scheme.SetValue("URL Protocol", string.Empty);
+
+            using var icon = scheme.CreateSubKey("DefaultIcon");
+            icon.SetValue(null, $"{executable},1");
+
+            // "%1" is the callback URL. Without it the app is launched with no arguments, the
+            // activation carries nothing, and the sign-in it was holding is lost.
+            using var command = scheme.CreateSubKey(@"shell\open\command");
+            command.SetValue(null, $"\"{executable}\" \"%1\"");
         }
-        catch (Exception)
+        catch (Exception error)
         {
-            // See the remarks: not being able to register is a degraded sign-in, not a dead app.
+            App.Log($"could not register astrid:// — sign-in will not come back: {error.Message}");
         }
     }
 }
