@@ -545,6 +545,7 @@
                                    Text="{x:Bind Shell.Tasks.ListName, Mode=OneWay}"
                                    Style="{ThemeResource TitleTextBlockStyle}"
                                    TextTrimming="CharacterEllipsis"
+                                   TextWrapping="NoWrap"
                                    VerticalAlignment="Center" />
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
                                     VerticalAlignment="Center">
@@ -1583,42 +1584,122 @@
             The conversation. Beside the list, and collapsed rather than narrow when it is shut, so
             it is out of the tab order as well as out of the way.
         -->
-        <Grid Grid.Column="2" Width="320" Padding="12"
-              Background="{ThemeResource LayerFillColorDefaultBrush}"
+        <Grid Grid.Column="2" Width="320"
+              Background="{ThemeResource AstridSurface}"
+              BorderThickness="1,0,0,0"
+              BorderBrush="{ThemeResource AstridBorder}"
               Visibility="{x:Bind Shell.IsChatOpen, Mode=OneWay, Converter={StaticResource Visible}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-            <TextBlock Grid.Row="0" Text="Chat" Style="{ThemeResource BodyStrongTextBlockStyle}" />
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,8">
-                <ItemsControl ItemsSource="{x:Bind Shell.Chat.Messages, Mode=OneWay}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="bindings:MessageRow">
-                            <StackPanel Margin="0,0,0,10">
-                                <TextBlock Text="{x:Bind Converter={StaticResource Byline}}"
-                                           Style="{ThemeResource CaptionTextBlockStyle}"
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                           Visibility="{x:Bind IsSystem, Converter={StaticResource NotVisible}}" />
-                                <TextBlock Text="{x:Bind Content}" TextWrapping="Wrap" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+
+            <!-- The same header the task detail wears, so the two side panels are one thing. -->
+            <Border Grid.Row="0"
+                    Padding="16,14"
+                    BorderThickness="0,0,0,1"
+                    BorderBrush="{ThemeResource AstridBorder}">
+                <TextBlock Text="Chat"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           Foreground="{ThemeResource AstridTextPrimary}" />
+            </Border>
+
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="16,12">
+                <StackPanel>
+                    <!--
+                        A list with nowhere to talk. Saying so beats an empty panel with a box that
+                        will not take anything typed into it.
+                    -->
+                    <TextBlock Text="This list has no conversation yet."
+                               FontSize="12"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               Margin="0,24,0,0"
+                               Foreground="{ThemeResource AstridTextMuted}"
+                               Visibility="{x:Bind Shell.Chat.HasChannel, Mode=OneWay, Converter={StaticResource NotVisible}}" />
+
+                    <!--
+                        Bubbles, sided by who wrote each one, exactly as the task thread draws them
+                        — the core already says whose a message is, and the panel was drawing a flat
+                        list of lines that never used it.
+                    -->
+                    <ItemsControl ItemsSource="{x:Bind Shell.Chat.Messages, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="bindings:MessageRow">
+                                <StackPanel Margin="0,4"
+                                            HorizontalAlignment="{x:Bind IsMine, Converter={StaticResource BubbleAlign}}">
+                                    <!-- "Dana joined the list" is nobody's voice, so it takes no side. -->
+                                    <TextBlock Text="{x:Bind Content}"
+                                               FontSize="11"
+                                               TextWrapping="Wrap"
+                                               TextAlignment="Center"
+                                               Foreground="{ThemeResource AstridTextMuted}"
+                                               Visibility="{x:Bind IsSystem, Converter={StaticResource Visible}}" />
+
+                                    <Border CornerRadius="10"
+                                            Padding="12"
+                                            MaxWidth="240"
+                                            Background="{x:Bind IsMine, Converter={StaticResource BubbleBrush}}"
+                                            Visibility="{x:Bind IsSystem, Converter={StaticResource NotVisible}}">
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="{x:Bind Converter={StaticResource Byline}}"
+                                                       FontSize="11"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{ThemeResource AstridTextMuted}" />
+                                            <TextBlock Text="{x:Bind Content}"
+                                                       TextWrapping="Wrap"
+                                                       Foreground="{ThemeResource AstridTextPrimary}" />
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
             </ScrollViewer>
-            <TextBlock Grid.Row="2"
-                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                       TextWrapping="Wrap"
-                       Text="{x:Bind Shell.Chat.ErrorMessage, Mode=OneWay}"
-                       Visibility="{x:Bind Shell.Chat.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
-            <TextBox Grid.Row="3"
-                     x:Name="ChatBox"
-                     PlaceholderText="Say something"
-                     AutomationProperties.Name="Message"
-                     IsEnabled="{x:Bind Shell.Chat.HasChannel, Mode=OneWay}"
-                     KeyDown="OnChatKeyDown" />
+
+            <!-- The same bar as the task thread's, minus the paperclip: a list chat takes no files. -->
+            <Border Grid.Row="2"
+                    Padding="12"
+                    BorderThickness="0,1,0,0"
+                    BorderBrush="{ThemeResource AstridBorder}">
+                <StackPanel Spacing="8">
+                    <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                               TextWrapping="Wrap"
+                               Text="{x:Bind Shell.Chat.ErrorMessage, Mode=OneWay}"
+                               Visibility="{x:Bind Shell.Chat.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
+                    <Grid ColumnSpacing="6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0"
+                                 x:Name="ChatBox"
+                                 PlaceholderText="Say something"
+                                 AutomationProperties.Name="Message"
+                                 Background="{ThemeResource AstridSurfaceHover}"
+                                 BorderThickness="0"
+                                 CornerRadius="12"
+                                 Padding="12,7"
+                                 IsEnabled="{x:Bind Shell.Chat.HasChannel, Mode=OneWay}"
+                                 KeyDown="OnChatKeyDown" />
+                        <!--
+                            Return sent a message and nothing else did, so the affordance for the
+                            only action in the panel was a keystroke you had to already know about.
+                        -->
+                        <Button Grid.Column="1"
+                                AutomationProperties.Name="Send"
+                                Style="{StaticResource CommentBarButton}"
+                                Background="{ThemeResource AstridAccentBrush}"
+                                IsEnabled="{x:Bind Shell.Chat.HasChannel, Mode=OneWay}"
+                                Click="OnSendChat">
+                            <FontIcon FontSize="14" Glyph="&#xE724;" Foreground="White" />
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </Border>
         </Grid>
 
         <!--

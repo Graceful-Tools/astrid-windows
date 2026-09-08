@@ -984,6 +984,20 @@ public sealed partial class ShellPage : UserControl
             return;
         }
         args.Handled = true;
+        await SendChat();
+    }
+
+    private async void OnSendChat(object sender, RoutedEventArgs args) => await SendChat();
+
+    /// <summary>
+    /// Post what is in the box.
+    /// </summary>
+    /// <remarks>
+    /// The key and the button run the same path. Return used to be the only way to send, which
+    /// made the one action the panel has a keystroke you had to already know about.
+    /// </remarks>
+    private async Task SendChat()
+    {
         if (await Shell.Chat.SendAsync(ChatBox.Text))
         {
             ChatBox.Text = string.Empty;
