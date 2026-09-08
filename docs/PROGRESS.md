@@ -65,6 +65,7 @@ spike was worried about. On this machine (ARM64 laptop, release build):
 | `board` — grouping every card into columns | 26 ms | **22 ms** |
 | `searchTasks` over the whole account | 18 ms | **17 ms** |
 | `completeTask` — one write | 0.24 ms | **0.18 ms** |
+| My Tasks — one window of 50, over the whole account | — | **31 ms** |
 
 Where the remaining 30 ms goes: about 18 ms is SQLite plus the JSON decode of ten thousand cached
 rows, and the rest is filtering, splicing and building fifty rows. The pipeline no longer copies the
