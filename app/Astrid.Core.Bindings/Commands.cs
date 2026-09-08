@@ -231,10 +231,10 @@ public static class Commands
     public static object DownloadAttachment(string taskId, string fileId) =>
         new DownloadRequest("downloadAttachment", taskId, fileId);
 
-    /// <summary>Upload a file from this machine and post the comment that carries it.</summary>
+    /// <summary>Attach a file from this machine, and post the comment that carries it.</summary>
     /// <remarks>
-    /// Needs a connection, unlike every other write here: the Outbox journal holds JSON, and a
-    /// queued photo would be megabytes in the write journal that still nobody else could see.
+    /// Works offline, like every other write here: the bytes are copied into a pending directory
+    /// and the journal row names the copy, so the file survives the original being moved away.
     /// </remarks>
     public static object AttachFile(string taskId, string path, string? content = null) =>
         new AttachRequest("attachFile", taskId, path, content);

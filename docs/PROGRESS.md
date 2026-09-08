@@ -81,7 +81,7 @@ as seconds rather than as a percentage.
 |---|---|---|
 | List settings, sharing and members | `astrid_core::services::list` → shell | done |
 | Chat | `astrid_core::services::chat`, `rows::chat` → shell | done |
-| Attachments | `astrid_core::services::attachment` → shell | done |
+| Attachments | `astrid_core::services::attachment` → shell | done — queued through the Outbox, bytes on disk |
 | Filters and saved views | `astrid_core::filters`, `rows::filter_picks` → shell | done |
 | My Tasks, and its account-wide filters | `astrid_core::filters::my_tasks` → shell | done |
 | Account and settings screens | `astrid_core::services::account` → shell | done |

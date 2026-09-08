@@ -35,7 +35,7 @@ milestones; this tracks the *product*.
 | Offline-first with an Outbox | ✅ | ✅ | |
 | Sign-in through the browser | ✅ | ✅ | |
 | Localisation | ✅ (12 languages) | ✅ (English) | Windows has the mechanism and one language |
-| Attachments | ✅ | ✅ | Open, and attach from disk — see below for what is not queued |
+| Attachments | ✅ | ✅ | Open, and attach from disk — queued offline, with the bytes copied so the original can move away |
 | Timer on a task | ✅ | ✅ | Windows keeps a running timer across a restart; the Mac's is in memory |
 | Account screen and reminder settings | ✅ | ✅ | Push, email, default offset, digest, quiet hours |
 | Global quick-add hotkey | ✅ | ✅ | Ctrl+Shift+A; not yet rebindable |
@@ -53,7 +53,6 @@ milestones; this tracks the *product*.
 
 | What | Mac | Windows | What it needs |
 |---|---|---|---|
-| An attachment queued offline | ✅ | ❌ | Everything else here writes through the Outbox; an upload needs a connection and says so |
 | Custom agents and webhook settings | ✅ | ➖ | Copilot connects and disconnects; editing custom agents and their webhooks is not here |
 | MSIX packaging and updates | n/a | ❌ | M4 |
 
