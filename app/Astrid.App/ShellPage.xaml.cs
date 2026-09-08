@@ -97,6 +97,10 @@ public sealed partial class ShellPage : UserControl
         _reminders.Start();
         _hotkey = new GlobalHotkey(QuickAdd);
         _hotkey.Start();
+        // The look before the first paint, so the window does not flash the wrong one on the way
+        // in. It comes from the cache, so this does not wait for a network.
+        Shell.Settings.ThemeChanged += ApplyTheme;
+        await Shell.Settings.LoadThemeAsync();
         await Shell.StartAsync();
         await Shell.RaiseRemindersAsync();
         await Shell.MaybeShowTourAsync();
@@ -636,6 +640,67 @@ public sealed partial class ShellPage : UserControl
             return;
         }
         await Shell.Settings.SetGoogleSyncModeAsync(mode);
+    }
+
+    /// <summary>
+    /// Wear the look this installation is set to.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Two things, because a look is two things. The <b>appearance</b> is WinUI's own: setting
+    /// RequestedTheme on the root makes every ThemeResource in the tree resolve light or dark, so
+    /// the whole app follows without a single brush being restated. Leaving it Default is what
+    /// "auto" means — Windows decides, and keeps deciding when the system changes.
+    /// </para>
+    /// <para>
+    /// The <b>surface</b> is ours. Ocean is a light appearance behind a cyan chrome, which is the
+    /// brand look and the default; the other three leave the surface to the appearance. That is
+    /// the whole difference between ocean and light, and it is why the core answers with an
+    /// appearance and a name rather than one enum the shell has to interpret twice.
+    /// </para>
+    /// </remarks>
+    private void ApplyTheme()
+    {
+        var settings = Shell.Settings;
+        if (Content is not FrameworkElement root)
+        {
+            return;
+        }
+
+        root.RequestedTheme = settings.ThemeIsDark switch
+        {
+            true => ElementTheme.Dark,
+            false => ElementTheme.Light,
+            // "auto": Windows decides, and goes on deciding.
+            null => ElementTheme.Default,
+        };
+
+        var ocean = settings.Theme == "ocean";
+        OceanSurface.Visibility = ocean ? Visibility.Visible : Visibility.Collapsed;
+
+        // The sign-in screen covers everything, including the surface, so it wears the wash itself
+        // rather than showing a plain panel on the one screen a first-time user actually sees.
+        SignInLayer.Background = ocean
+            ? (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AstridOceanBrush"]
+            : (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources[
+                "SolidBackgroundFillColorBaseBrush"];
+    }
+
+    /// <summary>Choose a look, and wear it immediately.</summary>
+    /// <remarks>
+    /// Guarded against the load that fills the box in, like the other pickers here: without it,
+    /// opening the flyout would write back the theme the app is already wearing.
+    /// </remarks>
+    private async void OnThemeChosen(object sender, SelectionChangedEventArgs args)
+    {
+        if (_settingsLoading
+            || sender is not ComboBox box
+            || box.SelectedItem is not string theme
+            || theme == Shell.Settings.Theme)
+        {
+            return;
+        }
+        await Shell.Settings.SetThemeAsync(theme);
     }
 
     private async void OnSaveWebhook(object sender, RoutedEventArgs args)

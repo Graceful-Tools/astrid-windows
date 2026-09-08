@@ -35,7 +35,17 @@
         <local:FileGlyphConverter x:Key="FileGlyph" />
     </UserControl.Resources>
 
-    <Grid x:Name="RootGrid" KeyDown="OnKeyDown">
+    <!--
+        An opaque base under everything.
+
+        The sidebar is a translucent layer, so whatever sits behind it is what it tints. Without a
+        themed base here that was the window's own backdrop, which does not follow RequestedTheme —
+        so dark mode drew a light grey sidebar beside a dark list. The Ocean wash is a child of
+        this, above the base and below the chrome, which is what lets one surface serve all four
+        looks.
+    -->
+    <Grid x:Name="RootGrid" KeyDown="OnKeyDown"
+          Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
 
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="260" />
@@ -47,6 +57,23 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
+
+        <!--
+            The Ocean surface: the brand look is a light appearance behind a cyan wash, so it is a
+            layer under the chrome rather than a fourth set of brushes. Collapsed for every other
+            theme, which is the whole difference between "ocean" and "light".
+
+            Under everything and hit-test invisible: it is a surface, not a control, and a
+            transparent rectangle that swallowed clicks would break the sidebar it sits behind.
+        -->
+        <Rectangle x:Name="OceanSurface"
+                   Grid.ColumnSpan="3"
+                   IsHitTestVisible="False"
+                   Visibility="Collapsed">
+            <Rectangle.Fill>
+                <StaticResource ResourceKey="AstridOceanBrush" />
+            </Rectangle.Fill>
+        </Rectangle>
 
         <!--
             The first run, once.
@@ -162,30 +189,70 @@
                   Canvas.ZIndex="10"
                   Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
                   Visibility="{x:Bind Shell.SignIn.NeedsSignIn, Mode=OneWay, Converter={StaticResource Visible}}">
-                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
-                            Spacing="12" MaxWidth="360">
-                    <TextBlock Text="Astrid" Style="{ThemeResource TitleLargeTextBlockStyle}"
-                               HorizontalAlignment="Center" />
-                    <TextBlock TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               Text="Sign in with your browser. Passkeys, Google and magic links all work there, and you stay signed in here afterwards." />
-                    <Button x:Name="SignInButton"
-                            Content="Sign in with your browser"
-                            HorizontalAlignment="Center"
-                            Style="{ThemeResource AccentButtonStyle}"
-                            Click="OnSignIn" />
-                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center"
-                                Visibility="{x:Bind Shell.SignIn.IsWaitingForBrowser, Mode=OneWay, Converter={StaticResource Visible}}">
-                        <ProgressRing IsActive="True" Width="16" Height="16" />
-                        <TextBlock Text="Waiting for your browser…"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        <HyperlinkButton Content="Cancel" Click="OnCancelSignIn" />
+                <!--
+                    A card rather than text floating in the middle of a window. This is the first
+                    screen anybody sees and it was three centred paragraphs; giving it an edge, a
+                    mark and some air makes it look like a product rather than a dialog that lost
+                    its dialog.
+                -->
+                <Border VerticalAlignment="Center" HorizontalAlignment="Center"
+                        MaxWidth="420"
+                        Padding="40,36"
+                        CornerRadius="12"
+                        Background="{ThemeResource LayerFillColorDefaultBrush}"
+                        BorderThickness="1"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                    <StackPanel Spacing="20">
+                        <StackPanel Spacing="10" HorizontalAlignment="Center">
+                            <!-- The mark. The accent is the brand's, so it comes from the theme. -->
+                            <Border Width="52" Height="52" CornerRadius="26"
+                                    HorizontalAlignment="Center"
+                                    Background="{ThemeResource AccentFillColorDefaultBrush}">
+                                <TextBlock Text="&#xE930;"
+                                           FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                           FontSize="24"
+                                           Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                            <TextBlock Text="Astrid"
+                                       Style="{ThemeResource TitleLargeTextBlockStyle}"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Text="Your tasks, on this machine and everywhere else."
+                                       Style="{ThemeResource BodyTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center" />
+                        </StackPanel>
+
+                        <Button x:Name="SignInButton"
+                                Content="Sign in with your browser"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                Padding="16,10"
+                                Style="{ThemeResource AccentButtonStyle}"
+                                Click="OnSignIn" />
+
+                        <TextBlock TextWrapping="Wrap" TextAlignment="Center"
+                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                   Text="Passkeys, Google and magic links all work there. You stay signed in here afterwards." />
+
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center"
+                                    Visibility="{x:Bind Shell.SignIn.IsWaitingForBrowser, Mode=OneWay, Converter={StaticResource Visible}}">
+                            <ProgressRing IsActive="True" Width="16" Height="16" />
+                            <TextBlock Text="Waiting for your browser…"
+                                       VerticalAlignment="Center"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <HyperlinkButton Content="Cancel" Click="OnCancelSignIn" Padding="4,0" />
+                        </StackPanel>
+
+                        <TextBlock TextWrapping="Wrap" TextAlignment="Center"
+                                   Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                   Text="{x:Bind Shell.SignIn.ErrorMessage, Mode=OneWay}"
+                                   Visibility="{x:Bind Shell.SignIn.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
                     </StackPanel>
-                    <TextBlock TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center"
-                               Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                               Text="{x:Bind Shell.SignIn.ErrorMessage, Mode=OneWay}"
-                               Visibility="{x:Bind Shell.SignIn.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
-                </StackPanel>
+                </Border>
             </Grid>
     
             <!--
@@ -281,7 +348,16 @@
             </Grid>
     
             <!-- The list itself. Collapsed while signed out, for the reason above. -->
+            <!--
+                The tasks sit on a sheet, not on the wash.
+
+                Ocean is a cyan SURFACE with the work on a near-white page over it — that is how the
+                Mac reads, and a gradient running behind the rows makes them look grey rather than
+                brand-coloured. Opaque on purpose: a translucent layer here let the wash back
+                through and undid the point of it.
+            -->
             <Grid Grid.Column="1" Margin="0"
+                  Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
                   Visibility="{x:Bind Shell.SignIn.IsSignedIn, Mode=OneWay, Converter={StaticResource Visible}}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -289,6 +365,12 @@
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
+
+                <Rectangle Grid.RowSpan="4"
+                           Width="1"
+                           HorizontalAlignment="Left"
+                           IsHitTestVisible="False"
+                           Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
     
                 <Grid Grid.Row="0" Margin="20,16,20,8" ColumnSpacing="12">
                     <Grid.ColumnDefinitions>
@@ -511,13 +593,22 @@
                                Style="{ThemeResource CaptionTextBlockStyle}"
                                Visibility="{x:Bind Shell.HasUnsentWork, Mode=OneWay, Converter={StaticResource Visible}}" />
                     <!--
-                        The account. A flyout rather than a page: it is four toggles and a name,
+                        Account, Sync and Sign out, in one row.
+
+                        They used to share a grid cell — two of them in column 2, one right-aligned
+                        and one not — so they drew on top of each other and "Account" came out as
+                        "Acco" with "Sync" over it. A row of buttons is a row, not three overlapping
+                        claims on the same space.
+
+                        The account is a flyout rather than a page: it is a name and some toggles,
                         and a screen you have to navigate back out of is a screen people avoid.
                     -->
-                    <Button Grid.Column="2"
-                            Content="Account"
-                            AutomationProperties.Name="Account"
-                            Margin="0,0,8,0">
+                    <StackPanel Grid.Column="2" Grid.ColumnSpan="2"
+                                Orientation="Horizontal"
+                                Spacing="8"
+                                VerticalAlignment="Center">
+                    <Button Content="Account"
+                            AutomationProperties.Name="Account">
                         <Button.Flyout>
                             <Flyout Opening="OnAccountOpening">
                                 <StackPanel Spacing="8" MinWidth="300">
@@ -657,6 +748,21 @@
                                     </ItemsControl>
 
                                     <!--
+                                        The look. Ocean is the brand default — a light appearance
+                                        behind a cyan wash — and lives on this machine rather than
+                                        on the account, because a laptop in the evening and a desk
+                                        under an office light are different questions.
+                                    -->
+                                    <TextBlock Text="Appearance"
+                                               Style="{ThemeResource CaptionTextBlockStyle}" />
+                                    <ComboBox x:Name="ThemeBox"
+                                              AutomationProperties.Name="Appearance"
+                                              HorizontalAlignment="Stretch"
+                                              ItemsSource="{x:Bind Shell.Settings.ThemeChoices, Mode=OneWay}"
+                                              SelectedItem="{x:Bind Shell.Settings.Theme, Mode=OneWay}"
+                                              SelectionChanged="OnThemeChosen" />
+
+                                    <!--
                                         The webhook: where an account's own agent is told about
                                         work. Beside the modes, because "webhook" is one of them
                                         and a mode with nowhere to deliver to does nothing.
@@ -765,8 +871,9 @@
                             </Flyout>
                         </Button.Flyout>
                     </Button>
-                    <Button Grid.Column="2" Content="Sync" Click="OnSync" HorizontalAlignment="Right" />
-                <Button Grid.Column="3" Content="Sign out" Click="OnSignOut" />
+                    <Button Content="Sync" Click="OnSync" />
+                    <Button Content="Sign out" Click="OnSignOut" />
+                    </StackPanel>
                 </Grid>
     
                 <!--

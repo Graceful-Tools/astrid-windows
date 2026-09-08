@@ -160,6 +160,12 @@ public static class Commands
     public static object UnlinkList(string provider, string linkId) =>
         new UnlinkRequest("unlinkList", provider, linkId);
 
+    /// <summary>Which look the app wears, and the ones it could.</summary>
+    public static object Theme() => new KindOnly("theme");
+
+    /// <summary>Choose a look. Per installation, not per account.</summary>
+    public static object SetTheme(string theme) => new ThemeRequest("setTheme", theme);
+
     /// <summary>The My Tasks entry for the sidebar: the view the app opens on.</summary>
     public static object MyTasksList() => new KindOnly("myTasksList");
 
@@ -561,6 +567,10 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("content")] string Content);
+
+    private sealed record ThemeRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("theme")] string Theme);
 
     private sealed record PasteRequest(
         [property: JsonPropertyName("kind")] string Kind,

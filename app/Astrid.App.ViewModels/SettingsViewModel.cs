@@ -30,6 +30,8 @@ public sealed class SettingsViewModel : ObservableObject
     private ProfileStats _stats = new();
     private bool _copilotConnected;
     private string _googleSyncMode = "manual";
+    private string _theme = "ocean";
+    private bool? _themeIsDark = false;
     private WebhookSettings _webhook = new();
     private string? _webhookUrl;
     private string? _newWebhookSecret;
@@ -353,6 +355,106 @@ public sealed class SettingsViewModel : ObservableObject
         }
         await LoadWebhookAsync(cancellationToken);
         return true;
+    }
+
+    /// <summary>
+    /// Which look the app wears: <c>ocean</c>, <c>light</c>, <c>dark</c> or <c>auto</c>.
+    /// </summary>
+    /// <remarks>
+    /// Ocean is the brand look and the default — a light appearance with a cyan surface — so an
+    /// app that has never been configured is wearing it. See <c>astrid_core::theme</c>.
+    /// </remarks>
+    public string Theme
+    {
+        get => _theme;
+        private set
+        {
+            Set(ref _theme, value);
+            Raise(nameof(ThemeChoice));
+        }
+    }
+
+    /// <summary>What the picker shows. The same list on every client, in the core's order.</summary>
+    public ObservableCollection<string> ThemeChoices { get; } = [];
+
+    /// <summary>The chosen entry, for a two-way picker.</summary>
+    public string ThemeChoice
+    {
+        get => Theme;
+        set
+        {
+            if (!string.IsNullOrEmpty(value) && value != Theme)
+            {
+                _ = SetThemeAsync(value);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Whether this look draws dark, or leaves it to the system.
+    /// </summary>
+    /// <remarks>
+    /// Null for <c>auto</c>. The window uses it to decide between an explicit appearance and
+    /// following Windows — a shell that guessed would pick one and be wrong half the time.
+    /// </remarks>
+    public bool? ThemeIsDark
+    {
+        get => _themeIsDark;
+        private set => Set(ref _themeIsDark, value);
+    }
+
+    /// <summary>Raised when the look changes, so the window can repaint itself.</summary>
+    public event Action? ThemeChanged;
+
+    /// <summary>Read back which look this installation is set to.</summary>
+    public async Task LoadThemeAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.Theme(), cancellationToken);
+        if (!response.Ok)
+        {
+            return;
+        }
+        Apply(response);
+        ThemeChoices.Clear();
+        if (response.Value.TryGetProperty("choices", out var choices))
+        {
+            foreach (var choice in choices.EnumerateArray())
+            {
+                if (choice.GetString() is { } name)
+                {
+                    ThemeChoices.Add(name);
+                }
+            }
+        }
+        ThemeChanged?.Invoke();
+    }
+
+    /// <summary>Choose a look.</summary>
+    public async Task<bool> SetThemeAsync(string theme,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.SetTheme(theme), cancellationToken);
+        if (!response.Ok)
+        {
+            ErrorMessage = response.Error?.Message;
+            return false;
+        }
+        Apply(response);
+        ThemeChanged?.Invoke();
+        return true;
+    }
+
+    private void Apply(AstridResponse response)
+    {
+        if (response.Value.TryGetProperty("theme", out var theme) && theme.GetString() is { } name)
+        {
+            Theme = name;
+        }
+        ThemeIsDark = response.Value.TryGetProperty("isDark", out var dark)
+            && dark.ValueKind is System.Text.Json.JsonValueKind.True
+                or System.Text.Json.JsonValueKind.False
+            ? dark.GetBoolean()
+            : null;
     }
 
     /// <summary>Whether Copilot is connected.</summary>

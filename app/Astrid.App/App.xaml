@@ -10,11 +10,53 @@
             </ResourceDictionary.MergedDictionaries>
 
             <!--
+                The accent is the BRAND's, not the machine's.
+
+                WinUI derives every accent brush from SystemAccentColor, which follows whatever
+                colour the person has chosen in Windows personalisation. That makes a well-behaved
+                Windows app and a badly-behaved Astrid one: the accent carries priority, selection
+                and the primary action, and on a machine set to orange none of those read as this
+                product. The Apple clients take the accent from Brand for the same reason — "Theme
+                abstracts light vs dark; it must also abstract *whose* blue".
+
+                Overriding the colour rather than the brushes is what makes it reach all of them:
+                the light and dark variants below are the shades WinUI expects to derive from.
+            -->
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Default">
+                    <Color x:Key="SystemAccentColor">#3B82F6</Color>
+                    <Color x:Key="SystemAccentColorLight1">#60A5FA</Color>
+                    <Color x:Key="SystemAccentColorLight2">#93C5FD</Color>
+                    <Color x:Key="SystemAccentColorLight3">#BFDBFE</Color>
+                    <Color x:Key="SystemAccentColorDark1">#2563EB</Color>
+                    <Color x:Key="SystemAccentColorDark2">#1D4ED8</Color>
+                    <Color x:Key="SystemAccentColorDark3">#1E40AF</Color>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <Color x:Key="SystemAccentColor">#3B82F6</Color>
+                    <Color x:Key="SystemAccentColorLight1">#60A5FA</Color>
+                    <Color x:Key="SystemAccentColorLight2">#93C5FD</Color>
+                    <Color x:Key="SystemAccentColorLight3">#BFDBFE</Color>
+                    <Color x:Key="SystemAccentColorDark1">#2563EB</Color>
+                    <Color x:Key="SystemAccentColorDark2">#1D4ED8</Color>
+                    <Color x:Key="SystemAccentColorDark3">#1E40AF</Color>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast" />
+            </ResourceDictionary.ThemeDictionaries>
+
+            <!--
                 Astrid's blue, matching the default list colour the core hands back
                 (`TaskList::display_color`). Stated once so a control that needs the brand colour
                 does not spell the hex again and drift from it.
             -->
             <SolidColorBrush x:Key="AstridAccentBrush" Color="#3B82F6" />
+
+            <!-- The Ocean surface, so the wash is stated once rather than per screen. -->
+            <LinearGradientBrush x:Key="AstridOceanBrush" StartPoint="0,0" EndPoint="0.35,1">
+                <GradientStop Color="#88DCF8" Offset="0" />
+                <GradientStop Color="#C7EEFB" Offset="0.55" />
+                <GradientStop Color="#F9FAFB" Offset="1" />
+            </LinearGradientBrush>
 
             <!-- Priority, in the colours every client uses. Mirrors `Task.Priority.color`. -->
             <SolidColorBrush x:Key="PriorityHighBrush" Color="#EF4444" />
