@@ -5,6 +5,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 
@@ -529,11 +531,55 @@ public sealed partial class ShellPage : UserControl
             QuietStartBox.SelectedTime = ParseTime(reminders.QuietHoursStart);
             QuietEndBox.SelectedTime = ParseTime(reminders.QuietHoursEnd);
             DefaultOffsetBox.SelectedIndex = IndexOfOffset(reminders.DefaultReminderTime);
+            // Opens on the first section every time. A panel that reopens three pages deep in
+            // whatever was last poked at is a panel you have to navigate out of before you can use.
+            SettingsSections.SelectedIndex = 0;
+            ShowSettingsSection("Account");
         }
         finally
         {
             _settingsLoading = false;
         }
+    }
+
+    private void OnSettingsSectionChosen(object sender, SelectionChangedEventArgs args)
+    {
+        if (SettingsSections.SelectedItem is FrameworkElement { Tag: string section })
+        {
+            ShowSettingsSection(section);
+        }
+    }
+
+    /// <summary>
+    /// Show one settings page and hide the rest.
+    /// </summary>
+    /// <remarks>
+    /// astrid-web navigates between pages behind its hub; a flyout has nowhere to navigate to, so
+    /// the pages are all here and one is visible. The rail's tag names the page, so adding one is
+    /// a <c>ListViewItem</c> and a panel with the same name rather than an entry in a table
+    /// somewhere else.
+    /// </remarks>
+    private void ShowSettingsSection(string section)
+    {
+        SettingsSectionTitle.Text = section switch
+        {
+            "Reminders" => "Reminders",
+            "Appearance" => "Appearance",
+            "Agents" => "AI agents",
+            "Integrations" => "Integrations",
+            "Data" => "Your data",
+            _ => "Account",
+        };
+
+        AccountSection.Visibility = Visible("Account");
+        RemindersSection.Visibility = Visible("Reminders");
+        AppearanceSection.Visibility = Visible("Appearance");
+        AgentsSection.Visibility = Visible("Agents");
+        IntegrationsSection.Visibility = Visible("Integrations");
+        DataSection.Visibility = Visible("Data");
+
+        Visibility Visible(string name) =>
+            name == section ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private async void OnPushToggled(object sender, RoutedEventArgs args)
@@ -1217,16 +1263,17 @@ public sealed partial class ShellPage : UserControl
     private async void OnDetailDescriptionCommitted(object sender, RoutedEventArgs args) =>
         await Shell.Detail.SaveDescriptionAsync(DetailDescriptionBox.Text);
 
-    private async void OnDetailPriorityChanged(object sender, SelectionChangedEventArgs args)
+    private async void OnDetailPriorityPicked(object sender, RoutedEventArgs args)
     {
-        // The combo raises this while the pane is being filled in as well as when somebody picks
-        // something, and saving then would write the value back that was just read.
-        if (!Shell.Detail.IsOpen || DetailPriority.SelectedIndex < 0
-            || DetailPriority.SelectedIndex == Shell.Detail.Priority)
+        if (sender is not FrameworkElement { Tag: string tag }
+            || !int.TryParse(tag, out var priority)
+            || !Shell.Detail.IsOpen
+            || priority == Shell.Detail.Priority)
         {
             return;
         }
-        await Shell.Detail.SetPriorityAsync(DetailPriority.SelectedIndex);
+        await Shell.Detail.SetPriorityAsync(priority);
+        SyncDetailPriority();
     }
 
     private async void OnSubtaskKeyDown(object sender, KeyRoutedEventArgs args)
@@ -1375,7 +1422,45 @@ public sealed partial class ShellPage : UserControl
     /// selection is set once when a task is opened. The guard in the changed handler is what stops
     /// this from being read back as an edit.
     /// </remarks>
-    private void SyncDetailPriority() => DetailPriority.SelectedIndex = Shell.Detail.Priority;
+    /// <summary>
+    /// Paint the four priority squares against the value the task actually has.
+    /// </summary>
+    /// <remarks>
+    /// astrid-web fills the chosen square with its colour and outlines the other three in theirs,
+    /// so the field reads at a glance without being opened. Done here rather than as four bindings
+    /// because "which of the four is on" is one comparison, and four copies of it drift.
+    /// </remarks>
+    private void SyncDetailPriority()
+    {
+        var chosen = Shell.Detail.Priority;
+        Paint(PriorityNone, 0);
+        Paint(PriorityLow, 1);
+        Paint(PriorityMedium, 2);
+        Paint(PriorityHigh, 3);
+
+        void Paint(Button button, int level)
+        {
+            // Same colours as the row stripe and every other client, read from the one converter
+            // that owns them rather than restated here.
+            var colour = (Brush)PriorityColours.Convert(level, typeof(Brush), null!, string.Empty);
+            // No-priority has no colour of its own — the stripe deliberately draws nothing for it —
+            // so its square borrows the muted text colour to stay visible.
+            if (level == 0)
+            {
+                colour = (Brush)Application.Current.Resources["AstridTextMuted"];
+            }
+
+            button.BorderBrush = colour;
+            var on = level == chosen;
+            button.Background = on ? colour : new SolidColorBrush(Colors.Transparent);
+            button.Foreground = on
+                ? new SolidColorBrush(Colors.White)
+                : colour;
+        }
+    }
+
+    /// <summary>The one place the priority colours are decided, borrowed for the squares.</summary>
+    private static readonly PriorityBrushConverter PriorityColours = new();
 
     /// <summary>Put the highlight where the view model says the selection is.</summary>
     private void SyncSelectionFromViewModel()

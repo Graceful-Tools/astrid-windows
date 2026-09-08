@@ -875,6 +875,23 @@ public sealed record CommentSummary
     [System.Text.Json.Serialization.JsonPropertyName("files")]
     public IReadOnlyList<CommentFile> Files { get; init; } = [];
 
+    /// <summary>
+    /// Which side of the thread this bubble sits on.
+    /// </summary>
+    /// <remarks>
+    /// The core decides it against the signed-in user — see <c>astrid_core::rows::comment</c>. A
+    /// thread drawn all on one side says the other person never replied.
+    /// </remarks>
+    [System.Text.Json.Serialization.JsonPropertyName("isMine")]
+    public bool IsMine { get; init; }
+
+    /// <summary>Nobody wrote it; the server did. A centred note rather than either voice.</summary>
+    [System.Text.Json.Serialization.JsonPropertyName("isSystem")]
+    public bool IsSystem { get; init; }
+
+    /// <summary>A bubble is anything that is not a system note.</summary>
+    public bool IsBubble => !IsSystem;
+
     public bool HasFiles => Files.Count > 0;
 
     public override string ToString() => Content;

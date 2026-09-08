@@ -34,6 +34,9 @@
         <local:CredentialStateConverter x:Key="CredentialState" />
         <local:FileGlyphConverter x:Key="FileGlyph" />
         <local:ChipTintConverter x:Key="ChipTint" />
+        <local:ChipColourConverter x:Key="ChipColour" />
+        <local:BubbleAlignConverter x:Key="BubbleAlign" />
+        <local:BubbleBrushConverter x:Key="BubbleBrush" />
 
         <!--
             One sidebar row, shared by My Tasks, the favourites and the lists.
@@ -48,6 +51,43 @@
             every row's content starting at the same x, which is what the label was really for, in
             32px rather than 80.
         -->
+        <!--
+            One of the four priority squares. astrid-web draws them at 40px with the chosen one
+            filled and the rest outlined in the same colour; the colours themselves are set in
+            code-behind against the current value, because "which of the four is on" is one fact
+            and four bindings that each re-derive it is four places to get it wrong.
+        -->
+        <Style x:Key="PriorityChoice" TargetType="Button">
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <!-- A section heading inside the detail pane: small, quiet, and above its content. -->
+        <Style x:Key="DetailSection" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{ThemeResource AstridTextMuted}" />
+            <Setter Property="Margin" Value="0,14,0,4" />
+        </Style>
+
+        <!-- The round buttons either side of the comment box, as the web's input bar wears them. -->
+        <Style x:Key="CommentBarButton" TargetType="Button">
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="18" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
         <Style x:Key="DetailField" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
@@ -743,276 +783,401 @@
                             Content="&#xE77B;"
                             FontFamily="{ThemeResource SymbolThemeFontFamily}">
                         <Button.Flyout>
-                            <Flyout Opening="OnAccountOpening">
-                                <StackPanel Spacing="8" MinWidth="300">
-                                    <TextBlock Text="{x:Bind Shell.Settings.DisplayName, Mode=OneWay}"
-                                               Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                                    <TextBlock Text="{x:Bind Shell.Settings.Email, Mode=OneWay}"
-                                               Style="{ThemeResource CaptionTextBlockStyle}"
-                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <!--
+                                Settings, as astrid-web lays them out: a rail of categories and one
+                                page of controls at a time.
 
-                                    <!--
-                                        The three numbers, from the server: they are about the
-                                        whole account across every device, so a client counting its
-                                        own cache would answer with whatever it happens to hold.
-                                    -->
-                                    <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,4,0,0">
-                                        <TextBlock Text="{x:Bind Shell.Settings.Stats, Mode=OneWay, Converter={StaticResource StatFinished}}"
-                                                   Style="{ThemeResource CaptionTextBlockStyle}" />
-                                        <TextBlock Text="{x:Bind Shell.Settings.Stats, Mode=OneWay, Converter={StaticResource StatInspired}}"
-                                                   Style="{ThemeResource CaptionTextBlockStyle}" />
-                                        <TextBlock Text="{x:Bind Shell.Settings.Stats, Mode=OneWay, Converter={StaticResource StatSupported}}"
-                                                   Style="{ThemeResource CaptionTextBlockStyle}" />
-                                    </StackPanel>
+                                It used to be one column with every control in the app stacked in
+                                it - reminders, agents, the webhook, Google, appearance, export -
+                                which meant finding the theme picker was a scroll past a webhook
+                                secret. The web splits the same controls into pages behind a hub
+                                (components/Settings/SettingsHub.tsx) for the same reason, and the
+                                sections here are its pages.
+                            -->
+                            <Flyout Opening="OnAccountOpening"
+                                    Placement="BottomEdgeAlignedRight"
+                                    ShouldConstrainToRootBounds="False">
+                                <Grid Width="720" Height="540">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="248" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
 
-                                    <TextBlock Text="Reminders" Margin="0,8,0,0"
-                                               Style="{ThemeResource CaptionTextBlockStyle}" />
-                                    <ToggleSwitch x:Name="PushToggle"
-                                                  Header="Push reminders"
-                                                  AutomationProperties.Name="Push reminders"
-                                                  IsOn="{x:Bind Shell.Settings.PushEnabled, Mode=OneWay}"
-                                                  Toggled="OnPushToggled" />
-                                    <ToggleSwitch x:Name="EmailToggle"
-                                                  Header="Email reminders"
-                                                  AutomationProperties.Name="Email reminders"
-                                                  IsOn="{x:Bind Shell.Settings.EmailEnabled, Mode=OneWay}"
-                                                  Toggled="OnEmailToggled" />
-                                    <ComboBox x:Name="DefaultOffsetBox"
-                                              Header="Remind me by default"
-                                              AutomationProperties.Name="Default reminder"
-                                              ItemsSource="{x:Bind Shell.Settings.Offsets, Mode=OneWay}"
-                                              SelectionChanged="OnDefaultOffsetChanged">
-                                        <ComboBox.ItemTemplate>
-                                            <DataTemplate x:DataType="bindings:ReminderOffset">
-                                                <TextBlock Text="{x:Bind TitleKey, Converter={StaticResource PickTitle}}" />
-                                            </DataTemplate>
-                                        </ComboBox.ItemTemplate>
-                                    </ComboBox>
+                                    <Grid Grid.Column="0"
+                                          Padding="4,0,12,0"
+                                          BorderThickness="0,0,1,0"
+                                          BorderBrush="{ThemeResource AstridBorder}">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
 
-                                    <TextBlock Text="Daily digest" Margin="0,8,0,0"
-                                               Style="{ThemeResource CaptionTextBlockStyle}" />
-                                    <ToggleSwitch x:Name="DigestToggle"
-                                                  Header="Send a daily digest"
-                                                  AutomationProperties.Name="Daily digest"
-                                                  IsOn="{x:Bind Shell.Settings.DigestEnabled, Mode=OneWay}"
-                                                  Toggled="OnDigestToggled" />
-                                    <TimePicker x:Name="DigestTimeBox"
-                                                Header="At"
-                                                AutomationProperties.Name="Digest time"
-                                                SelectedTimeChanged="OnDigestTimeChanged" />
+                                        <StackPanel Grid.Row="0" Spacing="2" Margin="8,4,8,12">
+                                            <TextBlock Text="{x:Bind Shell.Settings.DisplayName, Mode=OneWay}"
+                                                       FontSize="16"
+                                                       FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Foreground="{ThemeResource AstridTextPrimary}" />
+                                            <TextBlock Text="{x:Bind Shell.Settings.Email, Mode=OneWay}"
+                                                       FontSize="11"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Foreground="{ThemeResource AstridTextMuted}" />
+                                            <!--
+                                                The three numbers, from the server: they are about
+                                                the whole account across every device, so a client
+                                                counting its own cache would answer with whatever it
+                                                happens to hold.
+                                            -->
+                                            <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,6,0,0">
+                                                <TextBlock Text="{x:Bind Shell.Settings.Stats, Mode=OneWay, Converter={StaticResource StatFinished}}"
+                                                           FontSize="11"
+                                                           Foreground="{ThemeResource AstridTextMuted}" />
+                                                <TextBlock Text="{x:Bind Shell.Settings.Stats, Mode=OneWay, Converter={StaticResource StatInspired}}"
+                                                           FontSize="11"
+                                                           Foreground="{ThemeResource AstridTextMuted}" />
+                                                <TextBlock Text="{x:Bind Shell.Settings.Stats, Mode=OneWay, Converter={StaticResource StatSupported}}"
+                                                           FontSize="11"
+                                                           Foreground="{ThemeResource AstridTextMuted}" />
+                                            </StackPanel>
+                                        </StackPanel>
 
-                                    <TextBlock Text="Quiet hours" Margin="0,8,0,0"
-                                               Style="{ThemeResource CaptionTextBlockStyle}" />
-                                    <ToggleSwitch x:Name="QuietToggle"
-                                                  Header="No reminders overnight"
-                                                  AutomationProperties.Name="Quiet hours"
-                                                  IsOn="{x:Bind Shell.Settings.QuietHoursEnabled, Mode=OneWay}"
-                                                  Toggled="OnQuietHoursToggled" />
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <TimePicker x:Name="QuietStartBox" Header="From"
-                                                    AutomationProperties.Name="Quiet from"
-                                                    SelectedTimeChanged="OnQuietHoursChanged" />
-                                        <TimePicker x:Name="QuietEndBox" Header="Until"
-                                                    AutomationProperties.Name="Quiet until"
-                                                    SelectedTimeChanged="OnQuietHoursChanged" />
-                                    </StackPanel>
-
-                                    <!--
-                                        The agents. "api" is Astrid running them and needs nothing
-                                        set up; "polling" and "webhook" are the account's own agent
-                                        and need a key, which is why the two are drawn together.
-                                    -->
-                                    <TextBlock Text="Agents" Margin="0,8,0,0"
-                                               Style="{ThemeResource CaptionTextBlockStyle}" />
-                                    <ItemsControl ItemsSource="{x:Bind Shell.Settings.Agents, Mode=OneWay}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="bindings:AgentSummary">
-                                                <Grid ColumnSpacing="8" Padding="0,2">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0" Text="{x:Bind Name}"
-                                                               VerticalAlignment="Center" />
-                                                    <ComboBox Grid.Column="1"
-                                                              AutomationProperties.Name="{x:Bind Name}"
-                                                              Tag="{x:Bind Id}"
-                                                              SelectedItem="{x:Bind Mode}"
-                                                              SelectionChanged="OnAgentModeChosen">
-                                                        <x:String>api</x:String>
-                                                        <x:String>polling</x:String>
-                                                        <x:String>webhook</x:String>
-                                                        <x:String>off</x:String>
-                                                    </ComboBox>
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    <ItemsControl ItemsSource="{x:Bind Shell.Settings.Credentials, Mode=OneWay}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="bindings:AgentCredential">
-                                                <Grid ColumnSpacing="8" Padding="0,2">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto" />
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0" Text="{x:Bind Name}"
-                                                               VerticalAlignment="Center" />
-                                                    <!--
-                                                        Empty even when a key is stored: the server
-                                                        answers with which services are set up and
-                                                        never with the key, so there is nothing to
-                                                        put in it.
-                                                    -->
-                                                    <PasswordBox Grid.Column="1"
-                                                                 PlaceholderText="Paste a key, then Enter"
-                                                                 AutomationProperties.Name="{x:Bind Name}"
-                                                                 Tag="{x:Bind ServiceId}"
-                                                                 KeyDown="OnCredentialKeyDown" />
-                                                    <TextBlock Grid.Column="2"
-                                                               Text="{x:Bind Configured, Converter={StaticResource CredentialState}}"
+                                        <ListView Grid.Row="1"
+                                                  x:Name="SettingsSections"
+                                                  AutomationProperties.Name="Settings sections"
+                                                  SelectionMode="Single"
+                                                  ItemContainerStyle="{StaticResource SidebarRowStyle}"
+                                                  SelectionChanged="OnSettingsSectionChosen">
+                                            <ListViewItem Tag="Account" AutomationProperties.Name="Account">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="&#xE77B;"
+                                                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                               FontSize="15" Width="20"
                                                                VerticalAlignment="Center"
-                                                               Style="{ThemeResource CaptionTextBlockStyle}"
-                                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
+                                                               Foreground="{ThemeResource AstridTextMuted}" />
+                                                    <TextBlock Text="Account" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </ListViewItem>
+                                            <ListViewItem Tag="Reminders" AutomationProperties.Name="Reminders">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="&#xEA8F;"
+                                                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                               FontSize="15" Width="20"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{ThemeResource AstridTextMuted}" />
+                                                    <TextBlock Text="Reminders" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </ListViewItem>
+                                            <ListViewItem Tag="Appearance" AutomationProperties.Name="Appearance">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="&#xE790;"
+                                                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                               FontSize="15" Width="20"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{ThemeResource AstridTextMuted}" />
+                                                    <TextBlock Text="Appearance" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </ListViewItem>
+                                            <ListViewItem Tag="Agents" AutomationProperties.Name="AI agents">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="&#xE99A;"
+                                                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                               FontSize="15" Width="20"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{ThemeResource AstridTextMuted}" />
+                                                    <TextBlock Text="AI agents" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </ListViewItem>
+                                            <ListViewItem Tag="Integrations" AutomationProperties.Name="Integrations">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="&#xE704;"
+                                                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                               FontSize="15" Width="20"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{ThemeResource AstridTextMuted}" />
+                                                    <TextBlock Text="Integrations" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </ListViewItem>
+                                            <ListViewItem Tag="Data" AutomationProperties.Name="Your data">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="&#xE8B7;"
+                                                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                               FontSize="15" Width="20"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{ThemeResource AstridTextMuted}" />
+                                                    <TextBlock Text="Your data" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </ListViewItem>
+                                        </ListView>
+                                    </Grid>
 
-                                    <!--
-                                        The look. Ocean is the brand default — a light appearance
-                                        behind a cyan wash — and lives on this machine rather than
-                                        on the account, because a laptop in the evening and a desk
-                                        under an office light are different questions.
-                                    -->
-                                    <TextBlock Text="Appearance"
-                                               Style="{ThemeResource CaptionTextBlockStyle}" />
-                                    <ComboBox x:Name="ThemeBox"
-                                              AutomationProperties.Name="Appearance"
-                                              HorizontalAlignment="Stretch"
-                                              ItemsSource="{x:Bind Shell.Settings.ThemeChoices, Mode=OneWay}"
-                                              SelectedItem="{x:Bind Shell.Settings.Theme, Mode=OneWay}"
-                                              SelectionChanged="OnThemeChosen" />
+                                    <ScrollViewer Grid.Column="1" Padding="20,0,4,0">
+                                        <StackPanel Spacing="10">
+                                            <TextBlock x:Name="SettingsSectionTitle"
+                                                       Text="Account"
+                                                       FontSize="18"
+                                                       FontWeight="SemiBold"
+                                                       Margin="0,2,0,6"
+                                                       Foreground="{ThemeResource AstridTextPrimary}" />
 
-                                    <!--
-                                        The webhook: where an account's own agent is told about
-                                        work. Beside the modes, because "webhook" is one of them
-                                        and a mode with nowhere to deliver to does nothing.
-                                    -->
-                                    <TextBlock Text="Webhook" Margin="0,8,0,0"
-                                               Style="{ThemeResource CaptionTextBlockStyle}" />
-                                    <TextBox x:Name="WebhookUrlBox"
-                                             AutomationProperties.Name="Webhook URL"
-                                             PlaceholderText="https://your-server.com/webhook"
-                                             Text="{x:Bind Shell.Settings.WebhookUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <Button Content="Save" Click="OnSaveWebhook" />
-                                        <Button Content="New secret" Click="OnRegenerateWebhookSecret" />
-                                        <Button Content="Send a test" Click="OnTestWebhook"
-                                                IsEnabled="{x:Bind Shell.Settings.Webhook.Configured, Mode=OneWay}" />
-                                        <Button Content="Remove" Click="OnDeleteWebhook"
-                                                IsEnabled="{x:Bind Shell.Settings.Webhook.Configured, Mode=OneWay}" />
-                                    </StackPanel>
-                                    <!--
-                                        The secret signs every delivery and the server shows it
-                                        once. It is on screen until this panel closes and is never
-                                        written down here.
-                                    -->
-                                    <InfoBar IsOpen="{x:Bind Shell.Settings.HasNewWebhookSecret, Mode=OneWay}"
-                                             Severity="Warning"
-                                             IsClosable="False"
-                                             Title="Copy this now"
-                                             Message="{x:Bind Shell.Settings.NewWebhookSecret, Mode=OneWay}" />
-                                    <TextBlock Text="{x:Bind Shell.Settings.WebhookTestResult, Mode=OneWay}"
-                                               Style="{ThemeResource CaptionTextBlockStyle}"
-                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            <StackPanel x:Name="AccountSection" Spacing="10">
+                                                <!--
+                                                    Sync and sign out belong to the account, and
+                                                    putting them here is what leaves the list's own
+                                                    toolbar room to exist. astrid-web has one
+                                                    control up there too.
+                                                -->
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <Button Content="Sync now" Click="OnSync" />
+                                                    <Button Content="Sign out" Click="OnSignOut" />
+                                                </StackPanel>
+                                            </StackPanel>
 
-                                    <TextBlock Text="Your own agents" Margin="0,8,0,0"
-                                               Style="{ThemeResource CaptionTextBlockStyle}" />
-                                    <ItemsControl ItemsSource="{x:Bind Shell.Settings.CustomAgents, Mode=OneWay}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="bindings:CustomAgent">
-                                                <Grid ColumnSpacing="8" Padding="0,2">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0" Text="{x:Bind Name}"
-                                                               VerticalAlignment="Center" />
-                                                    <Button Grid.Column="1" Content="Remove"
-                                                            Tag="{x:Bind Id}"
-                                                            Click="OnDeleteCustomAgent" />
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <TextBox x:Name="NewAgentNameBox"
-                                                 AutomationProperties.Name="New agent name"
-                                                 PlaceholderText="a name, lowercase"
-                                                 Width="180" />
-                                        <Button Content="Register" Click="OnRegisterCustomAgent" />
-                                    </StackPanel>
+                                            <StackPanel x:Name="RemindersSection" Spacing="10"
+                                                        Visibility="Collapsed">
+                                                <ToggleSwitch x:Name="PushToggle"
+                                                              Header="Push reminders"
+                                                              AutomationProperties.Name="Push reminders"
+                                                              IsOn="{x:Bind Shell.Settings.PushEnabled, Mode=OneWay}"
+                                                              Toggled="OnPushToggled" />
+                                                <ToggleSwitch x:Name="EmailToggle"
+                                                              Header="Email reminders"
+                                                              AutomationProperties.Name="Email reminders"
+                                                              IsOn="{x:Bind Shell.Settings.EmailEnabled, Mode=OneWay}"
+                                                              Toggled="OnEmailToggled" />
+                                                <ComboBox x:Name="DefaultOffsetBox"
+                                                          Header="Remind me by default"
+                                                          AutomationProperties.Name="Default reminder"
+                                                          ItemsSource="{x:Bind Shell.Settings.Offsets, Mode=OneWay}"
+                                                          SelectionChanged="OnDefaultOffsetChanged">
+                                                    <ComboBox.ItemTemplate>
+                                                        <DataTemplate x:DataType="bindings:ReminderOffset">
+                                                            <TextBlock Text="{x:Bind TitleKey, Converter={StaticResource PickTitle}}" />
+                                                        </DataTemplate>
+                                                    </ComboBox.ItemTemplate>
+                                                </ComboBox>
 
-                                    <!--
-                                        Account-wide, not per list: the modes make counterparts for
-                                        every list on both sides, so the choice lives beside the
-                                        account rather than in one list's settings.
-                                    -->
-                                    <TextBlock Text="Google lists" Margin="0,8,0,0"
-                                               Style="{ThemeResource CaptionTextBlockStyle}" />
-                                    <ComboBox x:Name="GoogleSyncModeBox"
-                                              AutomationProperties.Name="Google list linking"
-                                              HorizontalAlignment="Stretch"
-                                              SelectedItem="{x:Bind Shell.Settings.GoogleSyncMode, Mode=OneWay}"
-                                              SelectionChanged="OnGoogleSyncModeChosen">
-                                        <x:String>manual</x:String>
-                                        <x:String>all_google_to_astrid</x:String>
-                                        <x:String>all_astrid_to_google</x:String>
-                                        <x:String>all_bidirectional</x:String>
-                                    </ComboBox>
+                                                <TextBlock Text="Daily digest" Style="{StaticResource DetailSection}" />
+                                                <ToggleSwitch x:Name="DigestToggle"
+                                                              Header="Send a daily digest"
+                                                              AutomationProperties.Name="Daily digest"
+                                                              IsOn="{x:Bind Shell.Settings.DigestEnabled, Mode=OneWay}"
+                                                              Toggled="OnDigestToggled" />
+                                                <TimePicker x:Name="DigestTimeBox"
+                                                            Header="At"
+                                                            AutomationProperties.Name="Digest time"
+                                                            SelectedTimeChanged="OnDigestTimeChanged" />
 
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <Button Content="Connect Copilot"
-                                                Click="OnConnectCopilot"
-                                                Visibility="{x:Bind Shell.Settings.CopilotConnected, Mode=OneWay, Converter={StaticResource NotVisible}}" />
-                                        <Button Content="Disconnect Copilot"
-                                                Click="OnDisconnectCopilot"
-                                                Visibility="{x:Bind Shell.Settings.CopilotConnected, Mode=OneWay, Converter={StaticResource Visible}}" />
-                                    </StackPanel>
+                                                <TextBlock Text="Quiet hours" Style="{StaticResource DetailSection}" />
+                                                <ToggleSwitch x:Name="QuietToggle"
+                                                              Header="No reminders overnight"
+                                                              AutomationProperties.Name="Quiet hours"
+                                                              IsOn="{x:Bind Shell.Settings.QuietHoursEnabled, Mode=OneWay}"
+                                                              Toggled="OnQuietHoursToggled" />
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <TimePicker x:Name="QuietStartBox" Header="From"
+                                                                AutomationProperties.Name="Quiet from"
+                                                                SelectedTimeChanged="OnQuietHoursChanged" />
+                                                    <TimePicker x:Name="QuietEndBox" Header="Until"
+                                                                AutomationProperties.Name="Quiet until"
+                                                                SelectedTimeChanged="OnQuietHoursChanged" />
+                                                </StackPanel>
+                                            </StackPanel>
 
-                                    <!--
-                                        Sync and sign out belong to the account, and putting them
-                                        here is what leaves the list's own toolbar room to exist.
-                                        astrid-web has one control up there too.
-                                    -->
-                                    <Border Height="1" Margin="0,8"
-                                            Background="{ThemeResource AstridBorder}" />
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <Button Content="Sync now" Click="OnSync" />
-                                        <Button Content="Sign out" Click="OnSignOut" />
-                                    </StackPanel>
+                                            <!--
+                                                The look. Ocean is the brand default - a light
+                                                appearance behind a cyan wash - and lives on this
+                                                machine rather than on the account, because a laptop
+                                                in the evening and a desk under an office light are
+                                                different questions.
+                                            -->
+                                            <StackPanel x:Name="AppearanceSection" Spacing="10"
+                                                        Visibility="Collapsed">
+                                                <ComboBox x:Name="ThemeBox"
+                                                          Header="Theme"
+                                                          AutomationProperties.Name="Appearance"
+                                                          HorizontalAlignment="Stretch"
+                                                          ItemsSource="{x:Bind Shell.Settings.ThemeChoices, Mode=OneWay}"
+                                                          SelectedItem="{x:Bind Shell.Settings.Theme, Mode=OneWay}"
+                                                          SelectionChanged="OnThemeChosen" />
+                                            </StackPanel>
 
-                                    <TextBlock Text="Your data" Margin="0,8,0,0"
-                                               Style="{ThemeResource CaptionTextBlockStyle}" />
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <Button Content="Export as JSON" Tag="json"
-                                                Click="OnExportAccount" />
-                                        <Button Content="Export as CSV" Tag="csv"
-                                                Click="OnExportAccount" />
-                                    </StackPanel>
-                                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                                               TextWrapping="Wrap"
-                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                               Text="{x:Bind Shell.Settings.LastExportPath, Mode=OneWay}"
-                                               Visibility="{x:Bind Shell.Settings.LastExportPath, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                            <StackPanel x:Name="AgentsSection" Spacing="10"
+                                                        Visibility="Collapsed">
+                                                <!--
+                                                    "api" is Astrid running them and needs nothing
+                                                    set up; "polling" and "webhook" are the
+                                                    account's own agent and need a key, which is why
+                                                    the two are drawn together.
+                                                -->
+                                                <ItemsControl ItemsSource="{x:Bind Shell.Settings.Agents, Mode=OneWay}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="bindings:AgentSummary">
+                                                            <Grid ColumnSpacing="8" Padding="0,2">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock Grid.Column="0" Text="{x:Bind Name}"
+                                                                           VerticalAlignment="Center" />
+                                                                <ComboBox Grid.Column="1"
+                                                                          AutomationProperties.Name="{x:Bind Name}"
+                                                                          Tag="{x:Bind Id}"
+                                                                          SelectedItem="{x:Bind Mode}"
+                                                                          SelectionChanged="OnAgentModeChosen">
+                                                                    <x:String>api</x:String>
+                                                                    <x:String>polling</x:String>
+                                                                    <x:String>webhook</x:String>
+                                                                    <x:String>off</x:String>
+                                                                </ComboBox>
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <ItemsControl ItemsSource="{x:Bind Shell.Settings.Credentials, Mode=OneWay}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="bindings:AgentCredential">
+                                                            <Grid ColumnSpacing="8" Padding="0,2">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock Grid.Column="0" Text="{x:Bind Name}"
+                                                                           VerticalAlignment="Center" />
+                                                                <!--
+                                                                    Empty even when a key is stored:
+                                                                    the server answers with which
+                                                                    services are set up and never
+                                                                    with the key, so there is
+                                                                    nothing to put in it.
+                                                                -->
+                                                                <PasswordBox Grid.Column="1"
+                                                                             PlaceholderText="Paste a key, then Enter"
+                                                                             AutomationProperties.Name="{x:Bind Name}"
+                                                                             Tag="{x:Bind ServiceId}"
+                                                                             KeyDown="OnCredentialKeyDown" />
+                                                                <TextBlock Grid.Column="2"
+                                                                           Text="{x:Bind Configured, Converter={StaticResource CredentialState}}"
+                                                                           VerticalAlignment="Center"
+                                                                           FontSize="11"
+                                                                           Foreground="{ThemeResource AstridTextMuted}" />
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
 
-                                    <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                                               TextWrapping="Wrap"
-                                               Text="{x:Bind Shell.Settings.ErrorMessage, Mode=OneWay}"
-                                               Visibility="{x:Bind Shell.Settings.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
-                                </StackPanel>
+                                                <!--
+                                                    The webhook: where an account's own agent is
+                                                    told about work. Beside the modes, because
+                                                    "webhook" is one of them and a mode with nowhere
+                                                    to deliver to does nothing.
+                                                -->
+                                                <TextBlock Text="Webhook" Style="{StaticResource DetailSection}" />
+                                                <TextBox x:Name="WebhookUrlBox"
+                                                         AutomationProperties.Name="Webhook URL"
+                                                         PlaceholderText="https://your-server.com/webhook"
+                                                         Text="{x:Bind Shell.Settings.WebhookUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <Button Content="Save" Click="OnSaveWebhook" />
+                                                    <Button Content="New secret" Click="OnRegenerateWebhookSecret" />
+                                                    <Button Content="Send a test" Click="OnTestWebhook"
+                                                            IsEnabled="{x:Bind Shell.Settings.Webhook.Configured, Mode=OneWay}" />
+                                                    <Button Content="Remove" Click="OnDeleteWebhook"
+                                                            IsEnabled="{x:Bind Shell.Settings.Webhook.Configured, Mode=OneWay}" />
+                                                </StackPanel>
+                                                <!--
+                                                    The secret signs every delivery and the server
+                                                    shows it once. It is on screen until this panel
+                                                    closes and is never written down here.
+                                                -->
+                                                <InfoBar IsOpen="{x:Bind Shell.Settings.HasNewWebhookSecret, Mode=OneWay}"
+                                                         Severity="Warning"
+                                                         IsClosable="False"
+                                                         Title="Copy this now"
+                                                         Message="{x:Bind Shell.Settings.NewWebhookSecret, Mode=OneWay}" />
+                                                <TextBlock Text="{x:Bind Shell.Settings.WebhookTestResult, Mode=OneWay}"
+                                                           FontSize="11"
+                                                           Foreground="{ThemeResource AstridTextMuted}" />
+
+                                                <TextBlock Text="Your own agents" Style="{StaticResource DetailSection}" />
+                                                <ItemsControl ItemsSource="{x:Bind Shell.Settings.CustomAgents, Mode=OneWay}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="bindings:CustomAgent">
+                                                            <Grid ColumnSpacing="8" Padding="0,2">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock Grid.Column="0" Text="{x:Bind Name}"
+                                                                           VerticalAlignment="Center" />
+                                                                <Button Grid.Column="1" Content="Remove"
+                                                                        Tag="{x:Bind Id}"
+                                                                        Click="OnDeleteCustomAgent" />
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <TextBox x:Name="NewAgentNameBox"
+                                                             AutomationProperties.Name="New agent name"
+                                                             PlaceholderText="a name, lowercase"
+                                                             Width="180" />
+                                                    <Button Content="Register" Click="OnRegisterCustomAgent" />
+                                                </StackPanel>
+                                            </StackPanel>
+
+                                            <StackPanel x:Name="IntegrationsSection" Spacing="10"
+                                                        Visibility="Collapsed">
+                                                <!--
+                                                    Account-wide, not per list: the modes make
+                                                    counterparts for every list on both sides, so
+                                                    the choice lives beside the account rather than
+                                                    in one list's settings.
+                                                -->
+                                                <ComboBox x:Name="GoogleSyncModeBox"
+                                                          Header="Google lists"
+                                                          AutomationProperties.Name="Google list linking"
+                                                          HorizontalAlignment="Stretch"
+                                                          SelectedItem="{x:Bind Shell.Settings.GoogleSyncMode, Mode=OneWay}"
+                                                          SelectionChanged="OnGoogleSyncModeChosen">
+                                                    <x:String>manual</x:String>
+                                                    <x:String>all_google_to_astrid</x:String>
+                                                    <x:String>all_astrid_to_google</x:String>
+                                                    <x:String>all_bidirectional</x:String>
+                                                </ComboBox>
+
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <Button Content="Connect Copilot"
+                                                            Click="OnConnectCopilot"
+                                                            Visibility="{x:Bind Shell.Settings.CopilotConnected, Mode=OneWay, Converter={StaticResource NotVisible}}" />
+                                                    <Button Content="Disconnect Copilot"
+                                                            Click="OnDisconnectCopilot"
+                                                            Visibility="{x:Bind Shell.Settings.CopilotConnected, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                                </StackPanel>
+                                            </StackPanel>
+
+                                            <StackPanel x:Name="DataSection" Spacing="10"
+                                                        Visibility="Collapsed">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <Button Content="Export as JSON" Tag="json"
+                                                            Click="OnExportAccount" />
+                                                    <Button Content="Export as CSV" Tag="csv"
+                                                            Click="OnExportAccount" />
+                                                </StackPanel>
+                                                <TextBlock FontSize="11"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="{ThemeResource AstridTextMuted}"
+                                                           Text="{x:Bind Shell.Settings.LastExportPath, Mode=OneWay}"
+                                                           Visibility="{x:Bind Shell.Settings.LastExportPath, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                            </StackPanel>
+
+                                            <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                                       TextWrapping="Wrap"
+                                                       Text="{x:Bind Shell.Settings.ErrorMessage, Mode=OneWay}"
+                                                       Visibility="{x:Bind Shell.Settings.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                        </StackPanel>
+                                    </ScrollViewer>
+                                </Grid>
                             </Flyout>
                         </Button.Flyout>
                     </Button>
@@ -1396,9 +1561,23 @@
                     Who holds the task. First, because the field order — Who, Date, Priority,
                     Lists — is a product decision shared with web and both Apple clients.
                 -->
-                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                <Button Style="{StaticResource DetailField}"
                         AutomationProperties.Name="Assignee">
-                    <TextBlock Text="{x:Bind Shell.Detail.Assignee, Mode=OneWay, Converter={StaticResource AssigneeText}}" />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="32" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="&#xE77B;"
+                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                   FontSize="15"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource AstridTextMuted}" />
+                        <ContentPresenter Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind Shell.Detail.Assignee, Mode=OneWay, Converter={StaticResource AssigneeText}}" />
+                        </ContentPresenter>
+                    </Grid>
                     <Button.Flyout>
                         <Flyout Opening="OnAssigneeFlyoutOpening">
                             <ItemsControl ItemsSource="{x:Bind Shell.Detail.Assignees, Mode=OneWay}"
@@ -1427,9 +1606,23 @@
                     task app is most often opened to change, and the quick choices behind it come
                     from the core with the instant each one means already worked out.
                 -->
-                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                <Button Style="{StaticResource DetailField}"
                         AutomationProperties.Name="Due date">
-                    <TextBlock Text="{x:Bind Shell.Detail.Due, Mode=OneWay, Converter={StaticResource DueText}}" />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="32" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="&#xE787;"
+                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                   FontSize="15"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource AstridTextMuted}" />
+                        <ContentPresenter Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind Shell.Detail.Due, Mode=OneWay, Converter={StaticResource DueText}}" />
+                        </ContentPresenter>
+                    </Grid>
                     <Button.Flyout>
                         <Flyout>
                             <StackPanel Spacing="4" MinWidth="200">
@@ -1467,9 +1660,23 @@
                     When to be reminded. The instants come from the core with the choices, so the
                     shell never subtracts an hour from a date itself.
                 -->
-                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                <Button Style="{StaticResource DetailField}"
                         AutomationProperties.Name="Reminder">
-                    <TextBlock Text="{x:Bind Shell.Detail.HasReminder, Mode=OneWay, Converter={StaticResource ReminderText}}" />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="32" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="&#xE91C;"
+                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                   FontSize="15"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource AstridTextMuted}" />
+                        <ContentPresenter Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind Shell.Detail.HasReminder, Mode=OneWay, Converter={StaticResource ReminderText}}" />
+                        </ContentPresenter>
+                    </Grid>
                     <Button.Flyout>
                         <Flyout Opening="OnReminderFlyoutOpening">
                             <ItemsControl ItemsSource="{x:Bind Shell.Detail.ReminderPicks, Mode=OneWay}"
@@ -1492,9 +1699,23 @@
                     How the task repeats. The summary is the picker's own sentence rather than a
                     chip saying "Custom", which says nothing about when the task comes back.
                 -->
-                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                <Button Style="{StaticResource DetailField}"
                         AutomationProperties.Name="Repeat">
-                    <TextBlock Text="{x:Bind Shell.Detail.RepeatSummary, Mode=OneWay, Converter={StaticResource RepeatText}}" />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="32" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="&#xE895;"
+                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                   FontSize="15"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource AstridTextMuted}" />
+                        <ContentPresenter Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind Shell.Detail.RepeatSummary, Mode=OneWay, Converter={StaticResource RepeatText}}" />
+                        </ContentPresenter>
+                    </Grid>
                     <Button.Flyout>
                         <Flyout Opening="OnRepeatFlyoutOpening">
                             <StackPanel Spacing="4" MinWidth="260">
@@ -1554,177 +1775,346 @@
                     </Button.Flyout>
                 </Button>
 
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="{x:Bind Shell.Detail.PriorityGlyph, Mode=OneWay}"
-                               VerticalAlignment="Center"
+                <!--
+                    Priority. astrid-web draws four squares - none, !, !!, !!! - with the chosen
+                    one filled in its own colour and the rest outlined in it. A four-value field
+                    hidden behind a dropdown made the reader click to find out what it was set to.
+
+                    Which square is on is set in code-behind rather than by four bindings that each
+                    re-derive the same comparison; see SyncDetailPriority.
+                -->
+                <Grid ColumnSpacing="8" Margin="0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="32" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="{x:Bind Shell.Detail.PriorityGlyph, Mode=OneWay}"
+                               FontSize="13"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
                                Foreground="{x:Bind Shell.Detail.Priority, Mode=OneWay, Converter={StaticResource PriorityBrush}}" />
-                    <ComboBox x:Name="DetailPriority"
-                              AutomationProperties.Name="Priority"
-                              SelectionChanged="OnDetailPriorityChanged">
-                        <ComboBoxItem Content="No priority" />
-                        <ComboBoxItem Content="Low" />
-                        <ComboBoxItem Content="Medium" />
-                        <ComboBoxItem Content="High" />
-                    </ComboBox>
-                </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"
+                                AutomationProperties.Name="Priority">
+                        <Button x:Name="PriorityNone" Tag="0" Content="&#x25CB;"
+                                Style="{StaticResource PriorityChoice}"
+                                AutomationProperties.Name="No priority"
+                                Click="OnDetailPriorityPicked" />
+                        <Button x:Name="PriorityLow" Tag="1" Content="!"
+                                Style="{StaticResource PriorityChoice}"
+                                AutomationProperties.Name="Low"
+                                Click="OnDetailPriorityPicked" />
+                        <Button x:Name="PriorityMedium" Tag="2" Content="!!"
+                                Style="{StaticResource PriorityChoice}"
+                                AutomationProperties.Name="Medium"
+                                Click="OnDetailPriorityPicked" />
+                        <Button x:Name="PriorityHigh" Tag="3" Content="!!!"
+                                Style="{StaticResource PriorityChoice}"
+                                AutomationProperties.Name="High"
+                                Click="OnDetailPriorityPicked" />
+                    </StackPanel>
+                </Grid>
 
-                <ItemsControl ItemsSource="{x:Bind Shell.Detail.ListChips, Mode=OneWay}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="bindings:ListChip">
-                            <Border CornerRadius="4" Padding="6,2" Margin="0,2,4,2"
-                                    Background="{ThemeResource ControlFillColorSecondaryBrush}">
-                                <TextBlock Text="{x:Bind Name}" Style="{ThemeResource CaptionTextBlockStyle}" />
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <!--
+                    Which lists hold the task, as chips in each list's own colour with white on
+                    top - the same chip the web draws from list.color. The row scrolls sideways
+                    rather than wrapping: WinUI has no wrapping panel in the box, and a chip that
+                    scrolls off is better than a chip that stretches the pane.
+                -->
+                <Grid ColumnSpacing="8" Margin="0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="32" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="&#xE8FD;"
+                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                               FontSize="15"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="{ThemeResource AstridTextMuted}" />
+                    <ScrollViewer Grid.Column="1"
+                                  HorizontalScrollMode="Auto"
+                                  HorizontalScrollBarVisibility="Hidden"
+                                  VerticalScrollMode="Disabled"
+                                  VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{x:Bind Shell.Detail.ListChips, Mode=OneWay}"
+                                      AutomationProperties.Name="Lists">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="bindings:ListChip">
+                                    <Border CornerRadius="6" Padding="8,3" Margin="0,0,6,0"
+                                            Background="{x:Bind Color, Converter={StaticResource ChipColour}}">
+                                        <TextBlock Text="{x:Bind Name}"
+                                                   FontSize="12"
+                                                   Foreground="White" />
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
 
-                <TextBox x:Name="DetailDescriptionBox"
-                         AutomationProperties.Name="Description"
-                         PlaceholderText="Notes"
-                         AcceptsReturn="True" TextWrapping="Wrap" Height="90"
-                         Text="{x:Bind Shell.Detail.Description, Mode=TwoWay}"
-                         LostFocus="OnDetailDescriptionCommitted" />
+                <!--
+                    The description, on the same 32px icon column as everything above it. Borderless
+                    on a tinted ground, which is how the web draws its textarea - a boxed control
+                    here read as a form field rather than as the task's own notes.
+                -->
+                <Grid ColumnSpacing="8" Margin="0,4,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="32" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="&#xE8A5;"
+                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                               FontSize="15"
+                               HorizontalAlignment="Center" VerticalAlignment="Top"
+                               Margin="0,8,0,0"
+                               Foreground="{ThemeResource AstridTextMuted}" />
+                    <TextBox Grid.Column="1" x:Name="DetailDescriptionBox"
+                             AutomationProperties.Name="Description"
+                             PlaceholderText="Add a description..."
+                             AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72"
+                             Background="{ThemeResource AstridSurfaceHover}"
+                             BorderThickness="0"
+                             CornerRadius="8"
+                             Padding="10,8"
+                             Text="{x:Bind Shell.Detail.Description, Mode=TwoWay}"
+                             LostFocus="OnDetailDescriptionCommitted" />
+                </Grid>
                 </StackPanel>
             </StackPanel>
 
-            <ScrollViewer Grid.Row="1" Margin="16,12,16,0">
-                <StackPanel Spacing="8">
-                    <TextBlock Text="Subtasks" Style="{ThemeResource CaptionTextBlockStyle}" />
+            <ScrollViewer Grid.Row="1" Margin="16,4,16,0">
+                <StackPanel>
+                    <TextBlock Text="Subtasks" Style="{StaticResource DetailSection}" />
                     <ItemsControl ItemsSource="{x:Bind Shell.Detail.Subtasks, Mode=OneWay}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="viewmodels:SubtaskSummary">
-                                <TextBlock Text="{x:Bind Title}" Margin="0,2" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <TextBox x:Name="SubtaskBox" PlaceholderText="Add a subtask"
-                             KeyDown="OnSubtaskKeyDown" />
-
-                    <!--
-                        The timer. Visible while it runs, and a caption once it has recorded
-                        something, so hiding the section never hides the data.
-                    -->
-                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
-                        <Button x:Name="TimerButton"
-                                Content="{x:Bind Shell.Detail.IsTiming, Mode=OneWay, Converter={StaticResource TimerText}}"
-                                AutomationProperties.Name="Timer"
-                                Click="OnToggleTimer" />
-                        <TextBlock VerticalAlignment="Center"
-                                   Style="{ThemeResource CaptionTextBlockStyle}"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                   Text="{x:Bind Shell.Detail.Timer, Mode=OneWay, Converter={StaticResource LoggedTime}}"
-                                   Visibility="{x:Bind Shell.Detail.HasLoggedTime, Mode=OneWay, Converter={StaticResource Visible}}" />
-                    </StackPanel>
-
-                    <TextBlock Text="Attachments" Style="{ThemeResource CaptionTextBlockStyle}"
-                               Margin="0,12,0,4" />
-                    <ItemsControl ItemsSource="{x:Bind Shell.Detail.Attachments, Mode=OneWay}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="bindings:AttachmentSummary">
-                                <Grid ColumnSpacing="8" Padding="0,2">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="{x:Bind Name}"
-                                               TextTrimming="CharacterEllipsis"
-                                               VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="1" Text="{x:Bind SizeLabel}"
+                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,3">
+                                    <TextBlock Text="&#xECCA;"
+                                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                               FontSize="13"
                                                VerticalAlignment="Center"
-                                               Style="{ThemeResource CaptionTextBlockStyle}"
-                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    <Button Grid.Column="2"
-                                            Content="Open"
-                                            Tag="{x:Bind Id}"
-                                            Click="OnOpenAttachment" />
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <Button Content="Attach a file" Click="OnAttachFile" Margin="0,4,0,0" />
-
-                    <TextBlock Text="Comments" Style="{ThemeResource CaptionTextBlockStyle}"
-                               Margin="0,8,0,0" />
-                    <ItemsControl ItemsSource="{x:Bind Shell.Detail.Comments, Mode=OneWay}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="viewmodels:CommentSummary">
-                                <StackPanel Margin="0,4" Spacing="4">
-                                    <!--
-                                        A file posted without a caption draws no text bubble: an
-                                        empty bubble beside a picture is what "it did not attach"
-                                        looks like. The core decides it.
-                                    -->
-                                    <TextBlock Text="{x:Bind Content}" TextWrapping="Wrap"
-                                               Visibility="{x:Bind ShowsText, Converter={StaticResource Visible}}" />
-                                    <!--
-                                        The comment's own files. Attachments reach a task through
-                                        comments, so a file hangs off the comment rather than off
-                                        the task, and the Attachments section above cannot show it
-                                        in the conversation it belongs to.
-                                    -->
-                                    <ItemsControl ItemsSource="{x:Bind Files}"
-                                                  Visibility="{x:Bind HasFiles, Converter={StaticResource Visible}}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="viewmodels:CommentFile">
-                                                <Button Padding="8,4" Margin="0,2"
-                                                        HorizontalAlignment="Left"
-                                                        Tag="{x:Bind Id}"
-                                                        Click="OnOpenCommentFile">
-                                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                                        <FontIcon FontSize="12"
-                                                                  Glyph="{x:Bind RendersInline, Converter={StaticResource FileGlyph}}" />
-                                                        <TextBlock Text="{x:Bind Name}"
-                                                                   TextTrimming="CharacterEllipsis"
-                                                                   MaxWidth="200" />
-                                                        <TextBlock Text="{x:Bind SizeLabel}"
-                                                                   Style="{ThemeResource CaptionTextBlockStyle}"
-                                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                                    </StackPanel>
-                                                </Button>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    <TextBlock Text="Not synced yet"
-                                               Style="{ThemeResource CaptionTextBlockStyle}"
-                                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                               Visibility="{x:Bind IsPending, Converter={StaticResource Visible}}" />
+                                               Foreground="{ThemeResource AstridTextMuted}" />
+                                    <TextBlock Text="{x:Bind Title}"
+                                               TextTrimming="CharacterEllipsis"
+                                               Foreground="{ThemeResource AstridTextSecondary}" />
                                 </StackPanel>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    <TextBox x:Name="SubtaskBox" PlaceholderText="Add a subtask"
+                             Margin="0,4,0,0"
+                             Background="{ThemeResource AstridSurfaceHover}"
+                             BorderThickness="0"
+                             CornerRadius="8"
+                             Padding="10,7"
+                             KeyDown="OnSubtaskKeyDown" />
+
+                    <!--
+                        Attachments. The section appears only when the task has files: the web
+                        draws no heading over an empty row, and a permanent "Attachments" over
+                        nothing reads as a section that failed to load. Attaching is done from the
+                        paperclip in the comment bar, where the file actually goes - a file reaches
+                        a task by riding a comment.
+                    -->
+                    <StackPanel Visibility="{x:Bind Shell.Detail.Attachments.Count, Mode=OneWay, Converter={StaticResource CountVisible}}">
+                        <TextBlock Text="Attachments" Style="{StaticResource DetailSection}" />
+                        <ItemsControl ItemsSource="{x:Bind Shell.Detail.Attachments, Mode=OneWay}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="bindings:AttachmentSummary">
+                                    <Button HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Left"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Padding="0,4"
+                                            Tag="{x:Bind Id}"
+                                            Click="OnOpenAttachment">
+                                        <Grid ColumnSpacing="8" HorizontalAlignment="Stretch">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="&#xE723;"
+                                                       FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                       FontSize="13"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="{ThemeResource AstridTextMuted}" />
+                                            <TextBlock Grid.Column="1" Text="{x:Bind Name}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="{x:Bind SizeLabel}"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="11"
+                                                       Foreground="{ThemeResource AstridTextMuted}" />
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!--
+                        The thread. Chat bubbles, sided by who wrote each one, as the web draws
+                        them: mine on the right on the selected tint, theirs on the left a shade
+                        deeper, and anything the server authored as a centred note. A thread drawn
+                        as a flat list of lines says nobody replied to anybody.
+                    -->
+                    <TextBlock Text="Comments" Style="{StaticResource DetailSection}"
+                               Visibility="{x:Bind Shell.Detail.Comments.Count, Mode=OneWay, Converter={StaticResource CountVisible}}" />
+                    <ItemsControl ItemsSource="{x:Bind Shell.Detail.Comments, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="viewmodels:CommentSummary">
+                                <StackPanel Margin="0,4"
+                                            HorizontalAlignment="{x:Bind IsMine, Converter={StaticResource BubbleAlign}}">
+                                    <!-- A system note is nobody's voice, so it takes neither side. -->
+                                    <TextBlock Text="{x:Bind Content}"
+                                               FontSize="11"
+                                               TextWrapping="Wrap"
+                                               TextAlignment="Center"
+                                               Foreground="{ThemeResource AstridTextMuted}"
+                                               Visibility="{x:Bind IsSystem, Converter={StaticResource Visible}}" />
+
+                                    <Border CornerRadius="10"
+                                            Padding="12"
+                                            MaxWidth="260"
+                                            Background="{x:Bind IsMine, Converter={StaticResource BubbleBrush}}"
+                                            Visibility="{x:Bind IsBubble, Converter={StaticResource Visible}}">
+                                        <StackPanel Spacing="6">
+                                            <TextBlock Text="{x:Bind AuthorName}"
+                                                       FontSize="11"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{ThemeResource AstridTextMuted}"
+                                                       Visibility="{x:Bind AuthorName, Converter={StaticResource Visible}}" />
+                                            <!--
+                                                A file posted without a caption draws no text
+                                                bubble: an empty bubble beside a picture is what
+                                                "it did not attach" looks like. The core decides it.
+                                            -->
+                                            <TextBlock Text="{x:Bind Content}" TextWrapping="Wrap"
+                                                       Foreground="{ThemeResource AstridTextPrimary}"
+                                                       Visibility="{x:Bind ShowsText, Converter={StaticResource Visible}}" />
+                                            <!--
+                                                The comment's own files. Attachments reach a task
+                                                through comments, so a file hangs off the comment
+                                                rather than off the task, and the Attachments
+                                                section above cannot show it in the conversation it
+                                                belongs to.
+                                            -->
+                                            <ItemsControl ItemsSource="{x:Bind Files}"
+                                                          Visibility="{x:Bind HasFiles, Converter={StaticResource Visible}}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="viewmodels:CommentFile">
+                                                        <Button Padding="8,4" Margin="0,2"
+                                                                HorizontalAlignment="Left"
+                                                                CornerRadius="6"
+                                                                Tag="{x:Bind Id}"
+                                                                Click="OnOpenCommentFile">
+                                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                <FontIcon FontSize="12"
+                                                                          Glyph="{x:Bind RendersInline, Converter={StaticResource FileGlyph}}" />
+                                                                <TextBlock Text="{x:Bind Name}"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           MaxWidth="160" />
+                                                                <TextBlock Text="{x:Bind SizeLabel}"
+                                                                           FontSize="11"
+                                                                           Foreground="{ThemeResource AstridTextMuted}" />
+                                                            </StackPanel>
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <TextBlock Text="Not synced yet"
+                                                       FontSize="11"
+                                                       Foreground="{ThemeResource AstridTextMuted}"
+                                                       Visibility="{x:Bind IsPending, Converter={StaticResource Visible}}" />
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- What the last timed run came to. The button is in the bar below. -->
+                    <TextBlock Margin="0,10,0,0"
+                               TextAlignment="Center"
+                               FontSize="11"
+                               Foreground="{ThemeResource AstridTextMuted}"
+                               Text="{x:Bind Shell.Detail.Timer, Mode=OneWay, Converter={StaticResource LoggedTime}}"
+                               Visibility="{x:Bind Shell.Detail.HasLoggedTime, Mode=OneWay, Converter={StaticResource Visible}}" />
                 </StackPanel>
             </ScrollViewer>
 
-            <StackPanel Grid.Row="2" Spacing="8" Margin="16,8,16,0">
-                <!--
-                    Return posted a comment and nothing else did, so the affordance for the most
-                    common action in the panel was a keystroke you had to already know about. The
-                    button and the key run the same path and agree on the same predicate.
-                -->
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBox x:Name="CommentBox" Grid.Column="0"
-                             PlaceholderText="Add a comment"
-                             Text="{x:Bind Shell.Detail.CommentDraft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             KeyDown="OnCommentKeyDown" />
-                    <Button Grid.Column="1"
-                            AutomationProperties.Name="Send"
-                            Style="{ThemeResource AccentButtonStyle}"
-                            IsEnabled="{x:Bind Shell.Detail.CanSendComment, Mode=OneWay}"
-                            Click="OnSendComment">
-                        <FontIcon FontSize="14" Glyph="&#xE724;" />
-                    </Button>
-                </Grid>
-                <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                           TextWrapping="Wrap"
-                           Text="{x:Bind Shell.Detail.ErrorMessage, Mode=OneWay}"
-                           Visibility="{x:Bind Shell.Detail.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
-            </StackPanel>
+            <!--
+                The input bar, as astrid-web's is built: a paperclip, a rounded box on a tinted
+                ground, and one round button on the right that is the timer while there is nothing
+                to send and the send button once there is. Two buttons competing for that slot is
+                what the web avoided by swapping them, and the swap is why the timer is reachable
+                at all now that it has left the body.
+            -->
+            <Border Grid.Row="2"
+                    Padding="12"
+                    BorderThickness="0,1,0,0"
+                    BorderBrush="{ThemeResource AstridBorder}">
+                <StackPanel Spacing="8">
+                    <Grid ColumnSpacing="6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0"
+                                Style="{StaticResource CommentBarButton}"
+                                AutomationProperties.Name="Attach a file"
+                                ToolTipService.ToolTip="Attach a file"
+                                Click="OnAttachFile">
+                            <FontIcon FontSize="16" Glyph="&#xE723;"
+                                      Foreground="{ThemeResource AstridTextMuted}" />
+                        </Button>
+                        <TextBox x:Name="CommentBox" Grid.Column="1"
+                                 PlaceholderText="Add a comment..."
+                                 Background="{ThemeResource AstridSurfaceHover}"
+                                 BorderThickness="0"
+                                 CornerRadius="12"
+                                 Padding="12,7"
+                                 Text="{x:Bind Shell.Detail.CommentDraft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 KeyDown="OnCommentKeyDown" />
+                        <!--
+                            Return posted a comment and nothing else did, so the affordance for the
+                            most common action in the panel was a keystroke you had to already know
+                            about. The button and the key run the same path and agree on the same
+                            predicate.
+                        -->
+                        <Button Grid.Column="2"
+                                x:Name="TimerButton"
+                                Style="{StaticResource CommentBarButton}"
+                                AutomationProperties.Name="Timer"
+                                ToolTipService.ToolTip="Timer"
+                                BorderThickness="1"
+                                BorderBrush="{ThemeResource AstridBorder}"
+                                Visibility="{x:Bind Shell.Detail.CanSendComment, Mode=OneWay, Converter={StaticResource NotVisible}}"
+                                Click="OnToggleTimer">
+                            <FontIcon FontSize="15" Glyph="&#xE916;"
+                                      Foreground="{ThemeResource AstridTextSecondary}" />
+                        </Button>
+                        <Button Grid.Column="2"
+                                AutomationProperties.Name="Send"
+                                Style="{StaticResource CommentBarButton}"
+                                Background="{ThemeResource AstridAccentBrush}"
+                                Visibility="{x:Bind Shell.Detail.CanSendComment, Mode=OneWay, Converter={StaticResource Visible}}"
+                                Click="OnSendComment">
+                            <FontIcon FontSize="14" Glyph="&#xE724;" Foreground="White" />
+                        </Button>
+                    </Grid>
+                    <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                               TextWrapping="Wrap"
+                               Text="{x:Bind Shell.Detail.ErrorMessage, Mode=OneWay}"
+                               Visibility="{x:Bind Shell.Detail.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
+                </StackPanel>
+            </Border>
         </Grid>
         </Grid>
 </UserControl>

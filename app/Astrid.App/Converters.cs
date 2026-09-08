@@ -569,3 +569,48 @@ public sealed partial class PickTitleConverter : IValueConverter
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("titles are read-only in the UI");
 }
+
+/// <summary>
+/// Which side of the thread a comment bubble sits on.
+/// </summary>
+/// <remarks>
+/// astrid-web reverses the bubble row for its own messages (<c>.chat-bubble-row-mine</c>). The
+/// core decides whose a comment is; this only turns that into an alignment.
+/// </remarks>
+public sealed partial class BubbleAlignConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is true ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("an alignment is not a value to read back");
+}
+
+/// <summary>The bubble's own ground: mine on the surface tint, theirs a shade deeper.</summary>
+/// <remarks>
+/// astrid-web's <c>.chat-bubble-mine</c> / <c>.chat-bubble-other</c>. Two shades rather than a
+/// colour, because a coloured bubble competes with the list colours the panel is full of.
+/// </remarks>
+public sealed partial class BubbleBrushConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        Application.Current.Resources[value is true ? "AstridBgSelected" : "AstridSurfaceHover"];
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a bubble's ground is not a value to read back");
+}
+
+/// <summary>A list's colour at full strength, for a chip that carries white text.</summary>
+/// <remarks>
+/// The task-detail chips are the list's own colour with white on top — astrid-web draws them from
+/// <c>list.color</c> directly. <see cref="ChipTintConverter"/> is the row's quieter version.
+/// </remarks>
+public sealed partial class ChipColourConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        new SolidColorBrush(
+            Colours.Parse(value as string) ?? Windows.UI.Color.FromArgb(255, 59, 130, 246));
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a chip's colour is not a value to read back");
+}
