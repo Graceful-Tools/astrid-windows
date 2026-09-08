@@ -35,12 +35,12 @@ milestones; this tracks the *product*.
 | Sign-in through the browser | ✅ | ✅ | |
 | Localisation | ✅ (12 languages) | ✅ (English) | Windows has the mechanism and one language |
 | Attachments | ✅ | ✅ | Open, and attach from disk — see below for what is not queued |
+| Timer on a task | ✅ | ✅ | Windows keeps a running timer across a restart; the Mac's is in memory |
 
 ## Not yet
 
 | What | Mac | Windows | What it needs |
 |---|---|---|---|
-| Timer on a task | ✅ | ❌ | The fields exist in the core (`timerDuration`) |
 | An attachment queued offline | ✅ | ❌ | Everything else here writes through the Outbox; an upload needs a connection and says so |
 | Account and profile screens | ✅ | ❌ | Profile, stats, data export |
 | Reminder settings (digest, quiet hours) | ✅ | ❌ | `/user/settings` — the per-task reminder is done |
@@ -70,6 +70,8 @@ milestones; this tracks the *product*.
 - **Selection opens a task.** The Mac and web both do this; Windows briefly required a double-tap,
   which is fixed, and the fix is what made the detail pane reachable from a keyboard.
 - **An assignee picker that offers agents from every surface**, which on the Mac is detail-only.
+- **A timer that survives a restart.** The start time is in the cache rather than in memory, so
+  quitting the app does not lose a session somebody started an hour ago and never noticed.
 - **A reminder that says what it is for.** Windows offers offsets from the due time per task; the
   Mac has offsets only as a global default.
 

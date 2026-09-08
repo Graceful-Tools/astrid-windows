@@ -103,6 +103,41 @@ public sealed partial class BoolToVisibilityConverter : IValueConverter
         throw new NotSupportedException("visibility is read-only in the UI");
 }
 
+/// <summary>What the timer button says.</summary>
+public sealed partial class TimerButtonConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        Strings.Get(value is true ? "timer.stop" : "timer.start");
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("the timer is a button, not a field");
+}
+
+/// <summary>How long a task has been worked on.</summary>
+/// <remarks>
+/// The caption the Mac keeps once the timer is stopped, so hiding the section never hides the data.
+/// The words are the core's <c>lastValue</c> when there is one, because that string is stored on
+/// the task and read by every client — a Mac showing "1h 5m" beside a Windows "65 minutes" for the
+/// same session is a difference nobody can explain.
+/// </remarks>
+public sealed partial class LoggedTimeConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        if (value is not TimerState timer || timer.LoggedMinutes <= 0)
+        {
+            return string.Empty;
+        }
+        var hours = timer.LoggedMinutes / 60;
+        var minutes = timer.LoggedMinutes % 60;
+        var total = hours > 0 ? $"{hours}h {minutes}m" : $"{minutes}m";
+        return Strings.Get("timer.logged", total);
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("logged time is read-only in the UI");
+}
+
 /// <summary>What goes above a chat bubble: who said it, and whether it has landed.</summary>
 /// <remarks>
 /// In the shell rather than on the model, because "· sending" is a word in a language. A message

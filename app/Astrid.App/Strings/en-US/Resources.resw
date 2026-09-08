@@ -286,4 +286,13 @@
   <data name="role_viewer" xml:space="preserve">
     <value>Viewer</value>
   </data>
+  <data name="timer_start" xml:space="preserve">
+    <value>Start timer</value>
+  </data>
+  <data name="timer_stop" xml:space="preserve">
+    <value>Stop timer</value>
+  </data>
+  <data name="timer_logged" xml:space="preserve">
+    <value>{0} logged</value>
+  </data>
 </root>

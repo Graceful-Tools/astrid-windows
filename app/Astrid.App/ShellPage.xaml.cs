@@ -363,6 +363,11 @@ public sealed partial class ShellPage : UserControl
     private async void OnDetailTitleCommitted(object sender, RoutedEventArgs args) =>
         await Shell.Detail.SaveTitleAsync(DetailTitleBox.Text);
 
+    private async void OnToggleTimer(object sender, RoutedEventArgs args)
+    {
+        await Shell.Detail.SetTimingAsync(!Shell.Detail.IsTiming);
+    }
+
     // ── Attachments ──────────────────────────────────────────────────────────────────────────
 
     /// <summary>

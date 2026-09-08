@@ -72,6 +72,16 @@ public static class Commands
     /// board could not offer an AI agent at all. Assigning is an ordinary update carrying an
     /// <c>assigneeId</c>; this is only the question of who may be offered.
     /// </remarks>
+    /// <summary>Start timing a task.</summary>
+    /// <remarks>
+    /// The start time is kept in the cache rather than in memory, so a timer survives a restart —
+    /// on Apple it does not, and a timer left running an hour ago is simply lost.
+    /// </remarks>
+    public static object StartTimer(string taskId) => new WithTaskId("startTimer", taskId);
+
+    /// <summary>Stop timing, and record what the session was worth.</summary>
+    public static object StopTimer(string taskId) => new WithTaskId("stopTimer", taskId);
+
     /// <summary>
     /// The files on a task: its own, and its comments'.
     /// </summary>

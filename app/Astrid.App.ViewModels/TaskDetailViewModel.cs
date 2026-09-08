@@ -37,6 +37,7 @@ public sealed class TaskDetailViewModel : ObservableObject
     private UserSummary? _assignee;
     private bool _repeatsFromDueDate;
     private bool _hasReminder;
+    private TimerState _timer = new();
 
     public TaskDetailViewModel(IAstridCore core)
     {
@@ -53,6 +54,52 @@ public sealed class TaskDetailViewModel : ObservableObject
     public ObservableCollection<string> FieldOrder { get; } = [];
 
     public ObservableCollection<ListChip> ListChips { get; } = [];
+
+    /// <summary>
+    /// What the timer is doing.
+    /// </summary>
+    /// <remarks>
+    /// The section shows while a timer runs and a task with recorded time keeps its caption, so
+    /// hiding the section never hides the data — the rule the Mac settled on.
+    /// </remarks>
+    public TimerState Timer
+    {
+        get => _timer;
+        private set
+        {
+            if (Set(ref _timer, value))
+            {
+                Raise(nameof(IsTiming));
+                Raise(nameof(HasLoggedTime));
+            }
+        }
+    }
+
+    public bool IsTiming => Timer.IsRunning;
+
+    public bool HasLoggedTime => !Timer.IsRunning && Timer.LoggedMinutes > 0;
+
+    /// <summary>Start or stop timing the open task.</summary>
+    public async Task<bool> SetTimingAsync(bool running,
+        CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(
+            running ? Commands.StartTimer(TaskId) : Commands.StopTimer(TaskId), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        var state = response.Read<TimerState>();
+        if (state is not null)
+        {
+            Timer = state;
+        }
+        return true;
+    }
 
     /// <summary>The files on this task — its own, and its comments'.</summary>
     public ObservableCollection<AttachmentSummary> Attachments { get; } = [];
@@ -646,6 +693,9 @@ public sealed class TaskDetailViewModel : ObservableObject
         // task repeats before anybody opens anything.
         Replace(RepeatSummary, Read<SummaryPart>(value, "repeatSummary"));
         Raise(nameof(IsRepeating));
+        Timer = value.TryGetProperty("timer", out var timer)
+            ? timer.Deserialize<TimerState>(CommandJson.Options) ?? new TimerState()
+            : new TimerState();
     }
 
     private static List<T> Read<T>(JsonElement value, string name) =>

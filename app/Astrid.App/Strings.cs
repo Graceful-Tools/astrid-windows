@@ -162,6 +162,9 @@ internal static class Strings
         ["role.admin"] = "Admin",
         ["role.member"] = "Member",
         ["role.viewer"] = "Viewer",
+        ["timer.start"] = "Start timer",
+        ["timer.stop"] = "Stop timer",
+        ["timer.logged"] = "{0} logged",
     };
 
     /// <summary>The fallback table, for the tests that check every key has a string.</summary>

@@ -26,6 +26,8 @@
         <local:FilterStateConverter x:Key="FilterText" />
         <local:MessageBylineConverter x:Key="Byline" />
         <local:ColumnHeadingConverter x:Key="ColumnHeading" />
+        <local:TimerButtonConverter x:Key="TimerText" />
+        <local:LoggedTimeConverter x:Key="LoggedTime" />
     </UserControl.Resources>
 
     <Grid x:Name="RootGrid" KeyDown="OnKeyDown">
@@ -771,6 +773,22 @@
                     </ItemsControl>
                     <TextBox x:Name="SubtaskBox" PlaceholderText="Add a subtask"
                              KeyDown="OnSubtaskKeyDown" />
+
+                    <!--
+                        The timer. Visible while it runs, and a caption once it has recorded
+                        something, so hiding the section never hides the data.
+                    -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+                        <Button x:Name="TimerButton"
+                                Content="{x:Bind Shell.Detail.IsTiming, Mode=OneWay, Converter={StaticResource TimerText}}"
+                                AutomationProperties.Name="Timer"
+                                Click="OnToggleTimer" />
+                        <TextBlock VerticalAlignment="Center"
+                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   Text="{x:Bind Shell.Detail.Timer, Mode=OneWay, Converter={StaticResource LoggedTime}}"
+                                   Visibility="{x:Bind Shell.Detail.HasLoggedTime, Mode=OneWay, Converter={StaticResource Visible}}" />
+                    </StackPanel>
 
                     <TextBlock Text="Attachments" Style="{ThemeResource CaptionTextBlockStyle}"
                                Margin="0,12,0,4" />

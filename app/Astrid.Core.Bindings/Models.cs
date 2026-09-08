@@ -203,6 +203,27 @@ public sealed record DueDateOptions
     [JsonPropertyName("times")] public IReadOnlyList<DuePick> Times { get; init; } = [];
 }
 
+/// <summary>What a task's timer is doing.</summary>
+public sealed record TimerState
+{
+    [JsonPropertyName("isRunning")] public bool IsRunning { get; init; }
+
+    /// <summary>
+    /// When the running session started.
+    /// </summary>
+    /// <remarks>
+    /// The start rather than the elapsed time, so a screen counting up does the counting and the
+    /// core is not asked for a number that is stale the moment it is answered.
+    /// </remarks>
+    [JsonPropertyName("startedAt")] public string? StartedAt { get; init; }
+
+    /// <summary>Minutes recorded on the task before this session.</summary>
+    [JsonPropertyName("loggedMinutes")] public long LoggedMinutes { get; init; }
+
+    /// <summary>What the last session recorded — the caption a task keeps.</summary>
+    [JsonPropertyName("lastValue")] public string? LastValue { get; init; }
+}
+
 /// <summary>A file on a task.</summary>
 public sealed record AttachmentSummary
 {

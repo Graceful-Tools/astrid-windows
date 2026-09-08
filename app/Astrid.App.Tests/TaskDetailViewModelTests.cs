@@ -40,6 +40,29 @@ public sealed class TaskDetailViewModelTests
         .AnswerOk("refreshComments");
 
     /// <summary>
+    /// A timer that is running keeps the section on screen; one that has recorded something keeps
+    /// a caption, so hiding the section never hides the data.
+    /// </summary>
+    [Fact]
+    public async Task The_timer_says_whether_it_is_running_and_what_it_has_recorded()
+    {
+        var core = OpenedTask()
+            .AnswerOk("startTimer", new { isRunning = true, startedAt = "2026-09-07T09:00:00Z", loggedMinutes = 0 })
+            .AnswerOk("stopTimer", new { isRunning = false, loggedMinutes = 65, lastValue = "1h 5m" });
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.SetTimingAsync(true);
+        Assert.True(view.IsTiming);
+        Assert.False(view.HasLoggedTime);
+
+        await view.SetTimingAsync(false);
+        Assert.False(view.IsTiming);
+        Assert.True(view.HasLoggedTime);
+        Assert.Equal(65, view.Timer.LoggedMinutes);
+    }
+
+    /// <summary>
     /// The files on a task come from the core, which gathers the task's own and its comments' —
     /// there is no attach-to-task endpoint anywhere.
     /// </summary>
