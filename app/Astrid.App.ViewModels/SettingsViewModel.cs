@@ -105,6 +105,86 @@ public sealed class SettingsViewModel : ObservableObject
         private set => Set(ref _needsSignIn, value);
     }
 
+    /// <summary>The AI agents, and the mode each is set to.</summary>
+    public ObservableCollection<AgentSummary> Agents { get; } = [];
+
+    /// <summary>Which services have a key stored. Never the keys.</summary>
+    public ObservableCollection<AgentCredential> Credentials { get; } = [];
+
+    /// <summary>Load the Agent Hub.</summary>
+    /// <remarks>
+    /// Separately from the account, because a deployment can be without agents entirely and a
+    /// settings screen that failed for that reason would be a screen nobody could use.
+    /// </remarks>
+    public async Task LoadAgentsAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.Agents(), cancellationToken);
+        if (!response.Ok)
+        {
+            return;
+        }
+        var hub = response.Read<AgentHub>();
+        if (hub is null)
+        {
+            return;
+        }
+        Agents.Clear();
+        foreach (var agent in hub.Agents)
+        {
+            // The mode arrives in a map beside the agents rather than on them, so it is joined
+            // here — one place, rather than in every control that shows an agent.
+            Agents.Add(agent with
+            {
+                Mode = hub.Modes.TryGetValue(agent.Id, out var mode) ? mode : "off",
+            });
+        }
+        Credentials.Clear();
+        foreach (var credential in hub.Credentials)
+        {
+            Credentials.Add(credential);
+        }
+    }
+
+    /// <summary>Change how one agent runs.</summary>
+    public async Task<bool> SetAgentModeAsync(string agent, string mode,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(
+            Commands.SetAgentMode(agent, mode), cancellationToken);
+        if (!response.Ok)
+        {
+            ErrorMessage = response.Error?.Message;
+            return false;
+        }
+        await LoadAgentsAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>Store a key for one service.</summary>
+    /// <remarks>
+    /// Needs a connection, like everything else that is not a task: a key queued on this machine
+    /// would be a secret sitting in a write journal for no good reason.
+    /// </remarks>
+    public async Task<bool> SaveCredentialAsync(string serviceId, string key,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(
+            Commands.SaveAgentCredential(serviceId, key.Trim()), cancellationToken);
+        if (!response.Ok)
+        {
+            ErrorMessage = response.IsStillPending
+                ? "Saving a key needs a connection."
+                : response.Error?.Message;
+            return false;
+        }
+        await LoadAgentsAsync(cancellationToken);
+        return true;
+    }
+
     /// <summary>What this account has finished, inspired and supported.</summary>
     /// <remarks>
     /// Fetched rather than counted here: they are about the whole account across every device, and

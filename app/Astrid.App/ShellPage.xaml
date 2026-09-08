@@ -31,6 +31,7 @@
         <local:StatConverter x:Key="StatInspired" Key="stats.inspired" />
         <local:StatConverter x:Key="StatSupported" Key="stats.supported" />
         <local:LoggedTimeConverter x:Key="LoggedTime" />
+        <local:CredentialStateConverter x:Key="CredentialState" />
     </UserControl.Resources>
 
     <Grid x:Name="RootGrid" KeyDown="OnKeyDown">
@@ -571,6 +572,69 @@
                                                     AutomationProperties.Name="Quiet until"
                                                     SelectedTimeChanged="OnQuietHoursChanged" />
                                     </StackPanel>
+
+                                    <!--
+                                        The agents. "api" is Astrid running them and needs nothing
+                                        set up; "polling" and "webhook" are the account's own agent
+                                        and need a key, which is why the two are drawn together.
+                                    -->
+                                    <TextBlock Text="Agents" Margin="0,8,0,0"
+                                               Style="{ThemeResource CaptionTextBlockStyle}" />
+                                    <ItemsControl ItemsSource="{x:Bind Shell.Settings.Agents, Mode=OneWay}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="bindings:AgentSummary">
+                                                <Grid ColumnSpacing="8" Padding="0,2">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0" Text="{x:Bind Name}"
+                                                               VerticalAlignment="Center" />
+                                                    <ComboBox Grid.Column="1"
+                                                              AutomationProperties.Name="{x:Bind Name}"
+                                                              Tag="{x:Bind Id}"
+                                                              SelectedItem="{x:Bind Mode}"
+                                                              SelectionChanged="OnAgentModeChosen">
+                                                        <x:String>api</x:String>
+                                                        <x:String>polling</x:String>
+                                                        <x:String>webhook</x:String>
+                                                        <x:String>off</x:String>
+                                                    </ComboBox>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <ItemsControl ItemsSource="{x:Bind Shell.Settings.Credentials, Mode=OneWay}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="bindings:AgentCredential">
+                                                <Grid ColumnSpacing="8" Padding="0,2">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0" Text="{x:Bind Name}"
+                                                               VerticalAlignment="Center" />
+                                                    <!--
+                                                        Empty even when a key is stored: the server
+                                                        answers with which services are set up and
+                                                        never with the key, so there is nothing to
+                                                        put in it.
+                                                    -->
+                                                    <PasswordBox Grid.Column="1"
+                                                                 PlaceholderText="Paste a key, then Enter"
+                                                                 AutomationProperties.Name="{x:Bind Name}"
+                                                                 Tag="{x:Bind ServiceId}"
+                                                                 KeyDown="OnCredentialKeyDown" />
+                                                    <TextBlock Grid.Column="2"
+                                                               Text="{x:Bind Configured, Converter={StaticResource CredentialState}}"
+                                                               VerticalAlignment="Center"
+                                                               Style="{ThemeResource CaptionTextBlockStyle}"
+                                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
 
                                     <TextBlock Text="Your data" Margin="0,8,0,0"
                                                Style="{ThemeResource CaptionTextBlockStyle}" />

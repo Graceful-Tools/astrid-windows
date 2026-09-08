@@ -226,6 +226,57 @@ public sealed record ReminderSettings
     [JsonPropertyName("quietHoursEnd")] public string? QuietHoursEnd { get; init; }
 }
 
+/// <summary>One AI agent, and how it is set to run.</summary>
+public sealed record AgentSummary
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
+
+    [JsonPropertyName("description")] public string? Description { get; init; }
+
+    /// <summary>
+    /// Filled in from the modes map, which the server sends separately.
+    /// </summary>
+    /// <remarks>
+    /// <c>api</c> means Astrid runs it; <c>polling</c> and <c>webhook</c> mean the account's own
+    /// agent does and needs a credential; <c>off</c> means it does not run.
+    /// </remarks>
+    public string Mode { get; init; } = "off";
+
+    /// <summary>Whether this mode needs a credential of the account's own.</summary>
+    public bool NeedsOwnCredential => Mode is "polling" or "webhook";
+
+    public override string ToString() => Name;
+}
+
+/// <summary>A service whose credential the account can hold. Never the credential itself.</summary>
+public sealed record AgentCredential
+{
+    [JsonPropertyName("serviceId")] public string ServiceId { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
+
+    /// <summary>Whether a key is stored. The server does not answer with the key.</summary>
+    [JsonPropertyName("configured")] public bool Configured { get; init; }
+
+    public override string ToString() => Name.Length > 0 ? Name : ServiceId;
+}
+
+/// <summary>The Agent Hub.</summary>
+public sealed record AgentHub
+{
+    [JsonPropertyName("agents")] public IReadOnlyList<AgentSummary> Agents { get; init; } = [];
+
+    /// <summary>Agent id to mode, which the server sends beside the agents rather than on them.</summary>
+    [JsonPropertyName("modes")]
+    public IReadOnlyDictionary<string, string> Modes { get; init; } =
+        new Dictionary<string, string>();
+
+    [JsonPropertyName("credentials")]
+    public IReadOnlyList<AgentCredential> Credentials { get; init; } = [];
+}
+
 /// <summary>A container on the other side: a Google task list, or a repository.</summary>
 public sealed record ExternalContainer
 {

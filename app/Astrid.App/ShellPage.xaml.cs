@@ -507,6 +507,7 @@ public sealed partial class ShellPage : UserControl
         try
         {
             await Shell.LoadSettingsAsync();
+            await Shell.Settings.LoadAgentsAsync();
             var reminders = Shell.Settings.Reminders;
             DigestTimeBox.SelectedTime = ParseTime(reminders.DailyDigestTime);
             QuietStartBox.SelectedTime = ParseTime(reminders.QuietHoursStart);
@@ -616,6 +617,48 @@ public sealed partial class ShellPage : UserControl
         if (file is not null)
         {
             await Shell.Settings.ExportAsync(format, file.Path);
+        }
+    }
+
+    private async void OnAgentModeChosen(object sender, SelectionChangedEventArgs args)
+    {
+        if (_settingsLoading
+            || sender is not ComboBox box
+            || box.Tag is not string agentId
+            || box.SelectedItem is not string mode)
+        {
+            return;
+        }
+        var current = Shell.Settings.Agents.FirstOrDefault(agent => agent.Id == agentId);
+        if (current?.Mode == mode)
+        {
+            // The box is set from what was loaded; writing then would send the mode back to the
+            // server on every open.
+            return;
+        }
+        await Shell.Settings.SetAgentModeAsync(agentId, mode);
+    }
+
+    /// <summary>
+    /// A key, saved on Enter.
+    /// </summary>
+    /// <remarks>
+    /// On Enter rather than on every keystroke, which would send a dozen half-typed keys to the
+    /// server and put one of them in a log somewhere. Cleared straight afterwards: the box shows
+    /// nothing for a stored key, and leaving one on screen is a secret sitting in a window.
+    /// </remarks>
+    private async void OnCredentialKeyDown(object sender, KeyRoutedEventArgs args)
+    {
+        if (args.Key != VirtualKey.Enter
+            || sender is not PasswordBox box
+            || box.Tag is not string serviceId)
+        {
+            return;
+        }
+        args.Handled = true;
+        if (await Shell.Settings.SaveCredentialAsync(serviceId, box.Password))
+        {
+            box.Password = string.Empty;
         }
     }
 

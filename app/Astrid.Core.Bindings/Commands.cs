@@ -72,6 +72,28 @@ public static class Commands
     /// board could not offer an AI agent at all. Assigning is an ordinary update carrying an
     /// <c>assigneeId</c>; this is only the question of who may be offered.
     /// </remarks>
+    /// <summary>The Agent Hub: the agents, their modes, the credentials, and Copilot.</summary>
+    /// <remarks>
+    /// One command, like the external-sync panel: a screen that drew the agents before it knew
+    /// which had a credential would show "needs setup" on all of them and then correct itself.
+    /// </remarks>
+    public static object Agents() => new KindOnly("agents");
+
+    /// <summary>Change how one agent runs.</summary>
+    public static object SetAgentMode(string agent, string mode) =>
+        new AgentModeRequest("setAgentMode", agent, mode);
+
+    /// <summary>Store a key for one service. Straight to the server; never cached here.</summary>
+    public static object SaveAgentCredential(string serviceId, string key) =>
+        new CredentialRequest("saveAgentCredential", serviceId, key);
+
+    /// <summary>Ask the server whether a stored key works.</summary>
+    public static object TestAgentCredential(string serviceId) =>
+        new ServiceRequest("testAgentCredential", serviceId);
+
+    public static object DeleteAgentCredential(string serviceId) =>
+        new ServiceRequest("deleteAgentCredential", serviceId);
+
     /// <summary>
     /// What a list's external sync looks like: what is connected, what it could be linked to, and
     /// what it is linked to.
@@ -473,6 +495,20 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("content")] string Content);
+
+    private sealed record AgentModeRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("agent")] string Agent,
+        [property: JsonPropertyName("mode")] string Mode);
+
+    private sealed record CredentialRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("serviceId")] string ServiceId,
+        [property: JsonPropertyName("key")] string Key);
+
+    private sealed record ServiceRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("serviceId")] string ServiceId);
 
     private sealed record ProviderRequest(
         [property: JsonPropertyName("kind")] string Kind,

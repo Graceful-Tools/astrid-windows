@@ -131,6 +131,20 @@ public sealed partial class StatConverter : IValueConverter
         throw new NotSupportedException("statistics are read-only in the UI");
 }
 
+/// <summary>Whether a service has a key stored.</summary>
+/// <remarks>
+/// "Set up" rather than the key itself, because the server never answers with a key — which is the
+/// right shape, and the reason the box beside this is empty even when a key exists.
+/// </remarks>
+public sealed partial class CredentialStateConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        Strings.Get(value is true ? "agents.key_set" : "agents.no_key");
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a key's state is read-only in the UI");
+}
+
 /// <summary>What the timer button says.</summary>
 public sealed partial class TimerButtonConverter : IValueConverter
 {

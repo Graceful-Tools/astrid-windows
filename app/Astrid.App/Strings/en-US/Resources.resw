@@ -304,4 +304,10 @@
   <data name="stats_supported" xml:space="preserve">
     <value>{0} supported</value>
   </data>
+  <data name="agents_key_set" xml:space="preserve">
+    <value>Set up</value>
+  </data>
+  <data name="agents_no_key" xml:space="preserve">
+    <value>No key</value>
+  </data>
 </root>
