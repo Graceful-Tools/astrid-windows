@@ -45,6 +45,7 @@ public sealed class ShellViewModelTests
             .AnswerOk("hasSeenTour", new { seen = false })
             .AnswerOk("tourSeen");
         using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
 
         await shell.MaybeShowTourAsync();
         Assert.True(shell.IsTourOpen);
@@ -59,10 +60,45 @@ public sealed class ShellViewModelTests
     {
         var core = StartedCore().AnswerOk("hasSeenTour", new { seen = true });
         using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
 
         await shell.MaybeShowTourAsync();
 
         Assert.False(shell.IsTourOpen);
+    }
+
+    /// <summary>
+    /// It landed on top of the sign-in card on a fresh machine — telling somebody about a hotkey
+    /// for a window with nothing in it — and marks itself seen when dismissed, so the one moment it
+    /// was written for was the one moment it was spent on.
+    /// </summary>
+    [Fact]
+    public async Task The_tour_does_not_open_over_the_sign_in_screen()
+    {
+        var core = new FakeCore()
+            .AnswerOk("isSignedIn", new { signedIn = false, waitingForCallback = false })
+            .AnswerOk("hasSeenTour", new { seen = false });
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        await shell.MaybeShowTourAsync();
+
+        Assert.False(shell.IsTourOpen);
+        Assert.DoesNotContain("hasSeenTour", core.SentKinds());
+    }
+
+    /// <summary>Which is when it is worth showing: there is finally something to use it on.</summary>
+    [Fact]
+    public async Task Signing_in_shows_the_tour_a_fresh_machine_has_not_seen()
+    {
+        var core = StartedCore(("l1", "Home", false))
+            .AnswerOk("completeSignIn", new { signedIn = true })
+            .AnswerOk("hasSeenTour", new { seen = false });
+        using var shell = new ShellViewModel(core, RunInline);
+
+        await shell.HandleActivationAsync("astrid://auth/callback?token=t");
+
+        Assert.True(shell.IsTourOpen);
     }
 
     private static object PaletteRows() => new

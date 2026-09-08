@@ -97,9 +97,21 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         private set => Set(ref _isTourOpen, value);
     }
 
-    /// <summary>Show the tour if this machine has not seen it.</summary>
+    /// <summary>
+    /// Show the tour if this machine has not seen it.
+    /// </summary>
+    /// <remarks>
+    /// Not while signed out. It landed on top of the sign-in card on a fresh machine, telling
+    /// somebody about a hotkey for a window with nothing in it and a palette that can find nothing
+    /// — and it marks itself seen when dismissed, so the one moment it was written for was the one
+    /// moment it was spent on.
+    /// </remarks>
     public async Task MaybeShowTourAsync(CancellationToken cancellationToken = default)
     {
+        if (SignIn.NeedsSignIn)
+        {
+            return;
+        }
         var response = await _core.CallAsync(Commands.HasSeenTour(), cancellationToken);
         if (response.Ok
             && response.Value.TryGetProperty("seen", out var seen)
@@ -444,6 +456,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         {
             NeedsSignIn = false;
             await StartAsync(cancellationToken);
+            // Here rather than at launch on a fresh machine: the tour is about a hotkey, a palette
+            // and the bare keys, none of which do anything until there is a list to use them on.
+            await MaybeShowTourAsync(cancellationToken);
         }
     }
 

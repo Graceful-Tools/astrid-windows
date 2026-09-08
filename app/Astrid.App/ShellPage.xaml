@@ -294,6 +294,11 @@
                 not have to tear down and rebuild the whole tree on the way in and out — and so
                 signing out leaves an empty list behind it rather than a blank window.
 
+                Its own ground is transparent so the Ocean wash reaches it: the sidebar and the list
+                are collapsed while signed out, so there is nothing behind this to hide, and an
+                opaque layer would make the first screen anybody sees the one screen the brand
+                colour never touches.
+
                 It sits AFTER the column definitions on purpose: in XAML a property element cannot
                 follow a content child, and putting this first made the XAML compiler fail with no
                 message at all — an hour of bisecting to find one ordering rule.
@@ -301,7 +306,7 @@
             <Grid x:Name="SignInLayer"
                   Grid.Column="0" Grid.ColumnSpan="3"
                   Canvas.ZIndex="10"
-                  Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                  Background="Transparent"
                   Visibility="{x:Bind Shell.SignIn.NeedsSignIn, Mode=OneWay, Converter={StaticResource Visible}}">
                 <!--
                     A card rather than text floating in the middle of a window. This is the first
@@ -313,15 +318,16 @@
                         MaxWidth="420"
                         Padding="40,36"
                         CornerRadius="12"
-                        Background="{ThemeResource LayerFillColorDefaultBrush}"
+                        Background="{ThemeResource AstridSurface}"
                         BorderThickness="1"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                        BorderBrush="{ThemeResource AstridBorder}">
                     <StackPanel Spacing="20">
                         <StackPanel Spacing="10" HorizontalAlignment="Center">
                             <!-- The mark. The accent is the brand's, so it comes from the theme. -->
-                            <Border Width="52" Height="52" CornerRadius="26"
+                            <!-- The same rounded square the sidebar wears, at twice the size. -->
+                            <Border Width="52" Height="52" CornerRadius="12"
                                     HorizontalAlignment="Center"
-                                    Background="{ThemeResource AccentFillColorDefaultBrush}">
+                                    Background="{ThemeResource AstridAccentBrush}">
                                 <TextBlock Text="&#xE930;"
                                            FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                            FontSize="24"
@@ -331,10 +337,11 @@
                             </Border>
                             <TextBlock Text="Astrid"
                                        Style="{ThemeResource TitleLargeTextBlockStyle}"
+                                       Foreground="{ThemeResource AstridTextPrimary}"
                                        HorizontalAlignment="Center" />
                             <TextBlock Text="Your tasks, on this machine and everywhere else."
                                        Style="{ThemeResource BodyTextBlockStyle}"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Foreground="{ThemeResource AstridTextSecondary}"
                                        TextWrapping="Wrap"
                                        TextAlignment="Center" />
                         </StackPanel>
@@ -349,7 +356,7 @@
 
                         <TextBlock TextWrapping="Wrap" TextAlignment="Center"
                                    Style="{ThemeResource CaptionTextBlockStyle}"
-                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                   Foreground="{ThemeResource AstridTextMuted}"
                                    Text="Passkeys, Google and magic links all work there. You stay signed in here afterwards." />
 
                         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center"
@@ -357,7 +364,7 @@
                             <ProgressRing IsActive="True" Width="16" Height="16" />
                             <TextBlock Text="Waiting for your browser…"
                                        VerticalAlignment="Center"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                       Foreground="{ThemeResource AstridTextSecondary}" />
                             <HyperlinkButton Content="Cancel" Click="OnCancelSignIn" Padding="4,0" />
                         </StackPanel>
 
