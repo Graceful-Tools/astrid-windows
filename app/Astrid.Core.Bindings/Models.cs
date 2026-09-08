@@ -203,6 +203,45 @@ public sealed record DueDateOptions
     [JsonPropertyName("times")] public IReadOnlyList<DuePick> Times { get; init; } = [];
 }
 
+/// <summary>A file on a task.</summary>
+public sealed record AttachmentSummary
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
+
+    [JsonPropertyName("size")] public long Size { get; init; }
+
+    [JsonPropertyName("mimeType")] public string MimeType { get; init; } = string.Empty;
+
+    /// <summary>Whether the bytes are already on this machine.</summary>
+    [JsonPropertyName("isCached")] public bool IsCached { get; init; }
+
+    /// <summary>Where the bytes are, or would be.</summary>
+    [JsonPropertyName("path")] public string Path { get; init; } = string.Empty;
+
+    /// <summary>The size, in the units somebody reads.</summary>
+    public string SizeLabel => Size switch
+    {
+        < 1024 => $"{Size} B",
+        < 1024 * 1024 => $"{Size / 1024} KB",
+        _ => $"{Size / (1024 * 1024)} MB",
+    };
+}
+
+/// <summary>The files on a task.</summary>
+public sealed record Attachments
+{
+    [JsonPropertyName("files")]
+    public IReadOnlyList<AttachmentSummary> Files { get; init; } = [];
+}
+
+/// <summary>Where a downloaded file landed.</summary>
+public sealed record DownloadedFile
+{
+    [JsonPropertyName("path")] public string Path { get; init; } = string.Empty;
+}
+
 /// <summary>One choice in a filter group.</summary>
 public sealed record FilterPick
 {

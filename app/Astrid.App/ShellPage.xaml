@@ -772,6 +772,34 @@
                     <TextBox x:Name="SubtaskBox" PlaceholderText="Add a subtask"
                              KeyDown="OnSubtaskKeyDown" />
 
+                    <TextBlock Text="Attachments" Style="{ThemeResource CaptionTextBlockStyle}"
+                               Margin="0,12,0,4" />
+                    <ItemsControl ItemsSource="{x:Bind Shell.Detail.Attachments, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="bindings:AttachmentSummary">
+                                <Grid ColumnSpacing="8" Padding="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{x:Bind Name}"
+                                               TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="{x:Bind SizeLabel}"
+                                               VerticalAlignment="Center"
+                                               Style="{ThemeResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <Button Grid.Column="2"
+                                            Content="Open"
+                                            Tag="{x:Bind Id}"
+                                            Click="OnOpenAttachment" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Content="Attach a file" Click="OnAttachFile" Margin="0,4,0,0" />
+
                     <TextBlock Text="Comments" Style="{ThemeResource CaptionTextBlockStyle}"
                                Margin="0,8,0,0" />
                     <ItemsControl ItemsSource="{x:Bind Shell.Detail.Comments, Mode=OneWay}">

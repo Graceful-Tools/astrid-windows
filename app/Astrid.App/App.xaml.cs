@@ -57,6 +57,9 @@ public partial class App : Application
     /// <summary>Where the last crash was written.</summary>
     internal static string CrashLogPath => Path.Combine(DataDirectory(), "crash.log");
 
+    /// <summary>The window a file picker should belong to.</summary>
+    internal static IntPtr MainWindowHandle { get; private set; }
+
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         try
@@ -78,6 +81,10 @@ public partial class App : Application
         AppInstance.GetCurrent().Activated += (_, activation) => Deliver(activation);
 
         _window = new MainWindow();
+        // Kept because the WinRT pickers need it: an unpackaged app has to tell a picker which
+        // window it belongs to, and without that it throws rather than opening — a failure that
+        // looks like the button doing nothing at all.
+        MainWindowHandle = WinRT.Interop.WindowNative.GetWindowHandle(_window);
         _window.Closed += (_, _) =>
         {
             Core?.Dispose();

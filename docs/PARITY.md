@@ -34,13 +34,14 @@ milestones; this tracks the *product*.
 | Offline-first with an Outbox | ✅ | ✅ | |
 | Sign-in through the browser | ✅ | ✅ | |
 | Localisation | ✅ (12 languages) | ✅ (English) | Windows has the mechanism and one language |
+| Attachments | ✅ | ✅ | Open, and attach from disk — see below for what is not queued |
 
 ## Not yet
 
 | What | Mac | Windows | What it needs |
 |---|---|---|---|
-| Attachments | ✅ | ❌ | Upload, download and the secure-file endpoints |
 | Timer on a task | ✅ | ❌ | The fields exist in the core (`timerDuration`) |
+| An attachment queued offline | ✅ | ❌ | Everything else here writes through the Outbox; an upload needs a connection and says so |
 | Account and profile screens | ✅ | ❌ | Profile, stats, data export |
 | Reminder settings (digest, quiet hours) | ✅ | ❌ | `/user/settings` — the per-task reminder is done |
 | Board drag and drop | ✅ | ➖ | Windows moves from a menu, which a keyboard can also do |

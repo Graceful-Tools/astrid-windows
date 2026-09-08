@@ -73,6 +73,29 @@ public static class Commands
     /// <c>assigneeId</c>; this is only the question of who may be offered.
     /// </remarks>
     /// <summary>
+    /// The files on a task: its own, and its comments'.
+    /// </summary>
+    /// <remarks>
+    /// There is no attach-to-task endpoint anywhere. A file reaches a task by being uploaded and
+    /// then named by a comment, which is why the Mac's attachments section was empty on nearly
+    /// every task until it started gathering both.
+    /// </remarks>
+    public static object Attachments(string taskId) =>
+        new WithTaskId("attachments", taskId);
+
+    /// <summary>Fetch a file's bytes; answers with the path they were written to.</summary>
+    public static object DownloadAttachment(string taskId, string fileId) =>
+        new DownloadRequest("downloadAttachment", taskId, fileId);
+
+    /// <summary>Upload a file from this machine and post the comment that carries it.</summary>
+    /// <remarks>
+    /// Needs a connection, unlike every other write here: the Outbox journal holds JSON, and a
+    /// queued photo would be megabytes in the write journal that still nobody else could see.
+    /// </remarks>
+    public static object AttachFile(string taskId, string path, string? content = null) =>
+        new AttachRequest("attachFile", taskId, path, content);
+
+    /// <summary>
     /// What a list is filtered and sorted by, and what else it could be.
     /// </summary>
     /// <remarks>
@@ -358,6 +381,17 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("content")] string Content);
+
+    private sealed record DownloadRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("taskId")] string TaskId,
+        [property: JsonPropertyName("fileId")] string FileId);
+
+    private sealed record AttachRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("taskId")] string TaskId,
+        [property: JsonPropertyName("path")] string Path,
+        [property: JsonPropertyName("content")] string? Content);
 
     private sealed record SendMessageRequest(
         [property: JsonPropertyName("kind")] string Kind,

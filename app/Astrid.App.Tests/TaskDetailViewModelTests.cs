@@ -40,6 +40,72 @@ public sealed class TaskDetailViewModelTests
         .AnswerOk("refreshComments");
 
     /// <summary>
+    /// The files on a task come from the core, which gathers the task's own and its comments' —
+    /// there is no attach-to-task endpoint anywhere.
+    /// </summary>
+    [Fact]
+    public async Task The_files_on_a_task_are_listed_with_their_sizes()
+    {
+        var core = OpenedTask().AnswerOk("attachments", new
+        {
+            files = new[]
+            {
+                new
+                {
+                    id = "f1",
+                    name = "itinerary.pdf",
+                    size = 2048,
+                    mimeType = "application/pdf",
+                    isCached = false,
+                    path = "C:/cache/f1.pdf",
+                },
+            },
+        });
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.LoadAttachmentsAsync();
+
+        Assert.Single(view.Attachments);
+        Assert.Equal("itinerary.pdf", view.Attachments[0].Name);
+        Assert.Equal("2 KB", view.Attachments[0].SizeLabel);
+        Assert.False(view.Attachments[0].IsCached);
+    }
+
+    /// <summary>
+    /// A download answers with a path, not with bytes: what somebody does with an attachment is
+    /// open it in the program that reads that kind of file.
+    /// </summary>
+    [Fact]
+    public async Task Downloading_answers_with_where_the_file_landed()
+    {
+        var core = OpenedTask()
+            .AnswerOk("downloadAttachment", new { path = "C:/cache/f1.pdf" })
+            .AnswerOk("attachments", new { files = Array.Empty<object>() });
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        var path = await view.DownloadAsync("f1");
+
+        Assert.Equal("C:/cache/f1.pdf", path);
+    }
+
+    /// <summary>
+    /// Attaching needs a connection, unlike every other write here — the journal holds JSON, and a
+    /// queued photo would be megabytes nobody else could see. So it reports rather than pretends.
+    /// </summary>
+    [Fact]
+    public async Task An_attachment_that_could_not_be_uploaded_is_reported()
+    {
+        var core = OpenedTask()
+            .AnswerFailure("attachFile", AstridFailureKind.Offline, "no network");
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.False(await view.AttachAsync("C:/photos/map.png"));
+    }
+
+    /// <summary>
     /// The choices carry the instant each one means, so the shell never subtracts an hour from a
     /// date — the arithmetic that goes wrong across a daylight-saving boundary.
     /// </summary>

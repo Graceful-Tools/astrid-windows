@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Astrid.App.ViewModels;
 using Astrid.Core.Bindings;
 using Microsoft.UI.Xaml;
@@ -361,6 +362,59 @@ public sealed partial class ShellPage : UserControl
     /// </remarks>
     private async void OnDetailTitleCommitted(object sender, RoutedEventArgs args) =>
         await Shell.Detail.SaveTitleAsync(DetailTitleBox.Text);
+
+    // ── Attachments ──────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Open an attachment, fetching it first if this machine does not have it.
+    /// </summary>
+    /// <remarks>
+    /// Opened with whatever program reads that kind of file, which is the point of downloading it
+    /// to a path rather than carrying the bytes across the boundary.
+    /// </remarks>
+    private async void OnOpenAttachment(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is not string fileId)
+        {
+            return;
+        }
+        var path = await Shell.Detail.DownloadAsync(fileId);
+        if (path is null)
+        {
+            return;
+        }
+        try
+        {
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception error)
+        {
+            // No program registered for that kind of file, or the shell refused. The file is still
+            // downloaded and the path is still right; saying so beats a silent nothing.
+            App.Log($"could not open an attachment: {error.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Attach a file from this machine.
+    /// </summary>
+    /// <remarks>
+    /// The picker is a WinRT one, and an unpackaged app has to tell it which window it belongs to —
+    /// without that it throws rather than opening, which is the kind of failure that looks like the
+    /// button doing nothing.
+    /// </remarks>
+    private async void OnAttachFile(object sender, RoutedEventArgs args)
+    {
+        var picker = new Windows.Storage.Pickers.FileOpenPicker();
+        picker.FileTypeFilter.Add("*");
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, App.MainWindowHandle);
+
+        var file = await picker.PickSingleFileAsync();
+        if (file is not null)
+        {
+            await Shell.Detail.AttachAsync(file.Path);
+        }
+    }
 
     // ── What the list shows ──────────────────────────────────────────────────────────
 

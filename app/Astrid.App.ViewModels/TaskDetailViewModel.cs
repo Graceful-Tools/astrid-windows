@@ -54,6 +54,9 @@ public sealed class TaskDetailViewModel : ObservableObject
 
     public ObservableCollection<ListChip> ListChips { get; } = [];
 
+    /// <summary>The files on this task — its own, and its comments'.</summary>
+    public ObservableCollection<AttachmentSummary> Attachments { get; } = [];
+
     /// <summary>When to be reminded, loaded when the picker opens.</summary>
     public ObservableCollection<ReminderPick> ReminderPicks { get; } = [];
 
@@ -303,6 +306,69 @@ public sealed class TaskDetailViewModel : ObservableObject
 
     /// <summary>Whether the open task repeats at all. What draws the glyph on the row.</summary>
     public bool IsRepeating => RepeatSummary.Count > 0;
+
+    /// <summary>Fetch the files on the open task.</summary>
+    public async Task LoadAttachmentsAsync(CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return;
+        }
+        var response = await _core.CallAsync(Commands.Attachments(TaskId), cancellationToken);
+        if (!Handle(response))
+        {
+            return;
+        }
+        var files = response.Read<Astrid.Core.Bindings.Attachments>();
+        if (files is not null)
+        {
+            Replace(Attachments, files.Files);
+        }
+    }
+
+    /// <summary>
+    /// Fetch a file and answer with where it landed.
+    /// </summary>
+    /// <remarks>
+    /// The path rather than the bytes: what somebody wants to do with an attachment is open it in
+    /// the program that reads that kind of file, and carrying a photo across the boundary as JSON
+    /// to hand it back again would be work nobody asked for.
+    /// </remarks>
+    public async Task<string?> DownloadAsync(string fileId,
+        CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return null;
+        }
+        var response = await _core.CallAsync(
+            Commands.DownloadAttachment(TaskId, fileId), cancellationToken);
+        if (!Handle(response))
+        {
+            return null;
+        }
+        await LoadAttachmentsAsync(cancellationToken);
+        return response.Read<DownloadedFile>()?.Path;
+    }
+
+    /// <summary>Attach a file from this machine.</summary>
+    public async Task<bool> AttachAsync(string path, string? content = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null || string.IsNullOrWhiteSpace(path))
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(
+            Commands.AttachFile(TaskId, path, content), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        await ReloadAsync(cancellationToken);
+        await LoadAttachmentsAsync(cancellationToken);
+        return true;
+    }
 
     /// <summary>Whether the open task has a reminder set.</summary>
     public bool HasReminder
