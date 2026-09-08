@@ -178,17 +178,47 @@ public sealed class TaskListViewModel : ObservableObject
         ListName = listName;
         Rows.Clear();
         Total = 0;
-        await LoadMoreAsync(cancellationToken);
+        // A new list is a new question, so it gets a new generation. Anything still in flight for
+        // the previous one will find its generation stale and drop its answer rather than filling
+        // the rows that have just been cleared for this one.
+        await LoadWindowAsync(++_generation, cancellationToken);
     }
 
-    /// <summary>Fetch the next window of rows.</summary>
-    public async Task LoadMoreAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Fetch the next window of rows.
+    /// </summary>
+    /// <remarks>
+    /// Scrolling past the last loaded row asks for the next page, and asking twice at once would
+    /// fetch the same window twice — hence the in-flight guard. Choosing a LIST is not that, and
+    /// used to be turned away by the same guard: the rows were cleared for the new list, the fetch
+    /// was refused because one was already running, and then the old list's answer arrived and
+    /// filled them. See <see cref="LoadWindowAsync"/>.
+    /// </remarks>
+    public Task LoadMoreAsync(CancellationToken cancellationToken = default)
     {
-        if (IsLoading || string.IsNullOrEmpty(ListId))
+        if (IsLoading)
         {
-            return;
+            return Task.CompletedTask;
         }
         if (Rows.Count > 0 && Rows.Count >= Total)
+        {
+            return Task.CompletedTask;
+        }
+        return LoadWindowAsync(_generation, cancellationToken);
+    }
+
+    /// <summary>
+    /// One window, for one generation of the question.
+    /// </summary>
+    /// <remarks>
+    /// The generation is what makes a late answer harmless. A response is applied only if the list
+    /// it was asked for is still the list on screen; otherwise it is dropped, because rows from a
+    /// list nobody is looking at are worse than no rows at all — they look exactly like the filter
+    /// being broken.
+    /// </remarks>
+    private async Task LoadWindowAsync(int generation, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(ListId))
         {
             return;
         }
@@ -198,6 +228,10 @@ public sealed class TaskListViewModel : ObservableObject
         {
             var response = await _core
                 .CallAsync(Commands.RowsForList(ListId, Rows.Count, PageSize), cancellationToken);
+            if (generation != _generation)
+            {
+                return;
+            }
             if (!Handle(response))
             {
                 return;
@@ -217,10 +251,18 @@ public sealed class TaskListViewModel : ObservableObject
         }
         finally
         {
-            IsLoading = false;
-            Raise(nameof(IsEmpty));
+            // Only the current generation owns the flag. A stale load clearing it would let the
+            // pager fire again underneath the load that replaced it.
+            if (generation == _generation)
+            {
+                IsLoading = false;
+                Raise(nameof(IsEmpty));
+            }
         }
     }
+
+    /// <summary>Which question the rows on screen are the answer to.</summary>
+    private int _generation;
 
     /// <summary>
     /// Search, or go back to the list when the query is emptied.

@@ -57,6 +57,39 @@ public sealed record TaskRow
     /// <summary>What a screen reader should call the checkbox on this row.</summary>
     public string CompleteActionName => $"Complete {Title}";
 
+    /// <summary>
+    /// The mark this row wears, as an image path.
+    /// </summary>
+    /// <remarks>
+    /// The same PNGs astrid-web draws (its <c>TaskCheckbox</c>), carried into this repo so a
+    /// priority reads identically on both. One image says three things at once — the colour is the
+    /// priority, the ring is whether it repeats, the tick is whether it is done — which is why this
+    /// is a file name rather than three overlaid controls.
+    ///
+    /// The priority is clamped rather than trusted: it arrives from the server, and a value this
+    /// build has not seen would otherwise ask for an image that does not exist and draw nothing at
+    /// all, losing the control a person taps to finish the task.
+    /// </remarks>
+    public string CheckboxAsset
+    {
+        get
+        {
+            var priority = Priority is >= 0 and <= 3 ? Priority : 0;
+            var repeat = IsRepeating ? "_repeat" : string.Empty;
+            var done = Completed ? "_checked" : string.Empty;
+            return $"ms-appx:///Assets/Checkboxes/check_box{repeat}{done}_{priority}.png";
+        }
+    }
+
+    /// <summary>
+    /// Whether there is a second line to draw at all.
+    /// </summary>
+    /// <remarks>
+    /// The web only draws it when there is a due date, a list or a label. An empty second line
+    /// still takes its gap, which is what turns a tidy list into a loose one.
+    /// </remarks>
+    public bool HasSecondLine => Due.HasDate || ListChips.Count > 0 || IsPending;
+
     /// <summary>What a screen reader should call the delete button on this row.</summary>
     public string DeleteActionName => $"Delete {Title}";
 

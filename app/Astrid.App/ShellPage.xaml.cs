@@ -152,11 +152,24 @@ public sealed partial class ShellPage : UserControl
         QuickAddBox.Focus(FocusState.Programmatic);
     }
 
-    private async void OnRowChecked(object sender, RoutedEventArgs args) =>
-        await SetCompleted(sender, completed: true);
-
-    private async void OnRowUnchecked(object sender, RoutedEventArgs args) =>
-        await SetCompleted(sender, completed: false);
+    /// <summary>
+    /// The mark on a row, tapped.
+    /// </summary>
+    /// <remarks>
+    /// One handler rather than the checked/unchecked pair a CheckBox gives, because the control is
+    /// now an image: it draws the state the core reported and asks for the opposite. A repeating
+    /// task does not finish here either way — it rolls forward — which is why this always goes
+    /// through the complete command rather than writing a flag.
+    /// </remarks>
+    private async void OnRowMarkClicked(object sender, RoutedEventArgs args)
+    {
+        if (sender is not FrameworkElement { Tag: string taskId })
+        {
+            return;
+        }
+        var row = Shell.Tasks.Rows.FirstOrDefault(candidate => candidate.Id == taskId);
+        await Shell.Tasks.SetCompletedAsync(taskId, completed: row is null || !row.Completed);
+    }
 
     private async Task SetCompleted(object sender, bool completed)
     {

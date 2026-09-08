@@ -52,6 +52,20 @@
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
   </ItemGroup>
 
+  <!--
+    The checkbox marks, copied from astrid-web's public/icons.
+
+    The same PNGs the web draws, so a priority reads identically on both. Drawing an equivalent in
+    XAML was the alternative and it is the wrong one: the mark carries priority, repetition and
+    completion in one image, and a hand-drawn copy would drift from the web the first time either
+    changed.
+  -->
+  <ItemGroup>
+    <Content Include="Assets\Checkboxes\*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Astrid.Core.Bindings\Astrid.Core.Bindings.csproj" />
     <ProjectReference Include="..\Astrid.App.ViewModels\Astrid.App.ViewModels.csproj" />

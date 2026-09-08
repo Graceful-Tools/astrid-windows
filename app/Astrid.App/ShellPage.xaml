@@ -33,6 +33,9 @@
         <local:LoggedTimeConverter x:Key="LoggedTime" />
         <local:CredentialStateConverter x:Key="CredentialState" />
         <local:FileGlyphConverter x:Key="FileGlyph" />
+        <local:ChipTintConverter x:Key="ChipTint" />
+        <local:CompletedOpacityConverter x:Key="CompletedOpacity" />
+        <local:CompletedStrikeConverter x:Key="CompletedStrike" />
     </UserControl.Resources>
 
     <!--
@@ -966,59 +969,150 @@
                     <Button Grid.Column="1" Content="Add" Click="OnQuickAdd" Style="{ThemeResource AccentButtonStyle}" />
                 </Grid>
 
+                <!--
+                    The rows, as astrid-web draws them.
+
+                    Each is a CARD, not a line: 12px radius, a hairline border, a 1px shadow and a
+                    64px floor, with the mark and the text 12px apart. Those numbers are
+                    `.task-row` and `.task-card` in astrid-web/styles/components.css rather than
+                    anything chosen here, so the two clients can be compared side by side and
+                    corrected against one file.
+
+                    The card is the ITEM CONTAINER rather than a Border inside the template. A
+                    ListViewItem already owns selection, hover and focus; wrapping a card inside one
+                    leaves WinUI painting its own rectangle behind the web's, which is what made
+                    these rows look like a list box rather than Astrid.
+                -->
                 <ListView Grid.Row="2"
                           Visibility="{x:Bind Shell.IsBoardView, Mode=OneWay, Converter={StaticResource NotVisible}}"
                           x:Name="TaskRows"
-                          Margin="8,0,8,0"
+                          Margin="12,4,12,0"
+                          Padding="0,0,0,12"
                           ItemsSource="{x:Bind Shell.Tasks.Rows, Mode=OneWay}"
                           SelectedItem="{x:Bind Shell.Tasks.Selected, Mode=TwoWay}"
                           SelectionMode="Single"
                           SelectionChanged="OnRowSelected"
                           ShowsScrollingPlaceholders="True">
+                    <ListView.Resources>
+                        <!--
+                            The web tints the whole card on selection and hover and keeps the same
+                            thin border — "no blue glow ring, no heavier shadow", as its CSS says.
+                            These are the brushes the default ListViewItem template reaches for, so
+                            pointing them at the tokens is what makes the container wear the web's
+                            states instead of Windows's.
+                        -->
+                        <StaticResource x:Key="ListViewItemBackgroundSelected" ResourceKey="AstridBgSelected" />
+                        <StaticResource x:Key="ListViewItemBackgroundSelectedPointerOver" ResourceKey="AstridBgSelected" />
+                        <StaticResource x:Key="ListViewItemBackgroundSelectedPressed" ResourceKey="AstridBgSelected" />
+                        <StaticResource x:Key="ListViewItemBackgroundPointerOver" ResourceKey="AstridSurfaceHover" />
+                        <StaticResource x:Key="ListViewItemBackgroundPressed" ResourceKey="AstridSurfaceHover" />
+                        <StaticResource x:Key="ListViewItemForegroundSelected" ResourceKey="AstridTextPrimary" />
+                        <!-- The accent bar down the left of a selected row is Windows', not ours. -->
+                        <SolidColorBrush x:Key="ListViewItemSelectionIndicatorBrush" Color="Transparent" />
+                    </ListView.Resources>
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="VerticalContentAlignment" Value="Center" />
+                            <Setter Property="Padding" Value="12,8" />
+                            <Setter Property="Margin" Value="0,0,0,6" />
+                            <Setter Property="MinHeight" Value="64" />
+                            <Setter Property="CornerRadius" Value="12" />
+                            <Setter Property="BorderThickness" Value="1" />
+                            <Setter Property="BorderBrush" Value="{ThemeResource AstridBorder}" />
+                            <Setter Property="Background" Value="{ThemeResource AstridSurface}" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="bindings:TaskRow">
-                            <Grid ColumnSpacing="10" Padding="0,4"
-                                  Margin="{x:Bind Depth, Converter={StaticResource DepthIndent}}">
+                            <Grid ColumnSpacing="12"
+                                  Margin="{x:Bind Depth, Converter={StaticResource DepthIndent}}"
+                                  Opacity="{x:Bind Completed, Converter={StaticResource CompletedOpacity}}">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="4" />
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-    
-                                <CheckBox Grid.Column="0"
-                                          MinWidth="0"
-                                          AutomationProperties.Name="{x:Bind CompleteActionName}"
-                                          IsChecked="{x:Bind Completed}"
-                                          Tag="{x:Bind Id}"
-                                          Checked="OnRowChecked"
-                                          Unchecked="OnRowUnchecked" />
-    
-                                <!-- Priority reads as a stripe rather than a word: it is glanceable. -->
-                                <Border Grid.Column="1"
-                                        Width="4"
-                                        CornerRadius="2"
-                                        Background="{x:Bind Priority, Converter={StaticResource PriorityBrush}}" />
-    
-                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                    <TextBlock Text="{x:Bind Title}" TextTrimming="CharacterEllipsis" />
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
+
+                                <!--
+                                    One mark carries three things: priority as its colour, whether
+                                    it repeats, and whether it is done. The same PNGs astrid-web
+                                    uses, so a priority reads identically on both.
+                                -->
+                                <Button Grid.Column="0"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Padding="0"
+                                        Width="32" Height="32"
+                                        VerticalAlignment="Top"
+                                        AutomationProperties.Name="{x:Bind CompleteActionName}"
+                                        Tag="{x:Bind Id}"
+                                        Click="OnRowMarkClicked">
+                                    <Image Source="{x:Bind CheckboxAsset}" Width="32" Height="32" />
+                                </Button>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                                    <TextBlock Text="{x:Bind Title}"
+                                               TextWrapping="Wrap"
+                                               MaxLines="2"
+                                               TextTrimming="CharacterEllipsis"
+                                               Foreground="{ThemeResource AstridTextPrimary}"
+                                               TextDecorations="{x:Bind Completed, Converter={StaticResource CompletedStrike}}" />
+
+                                    <!-- The second line only exists when there is something on it. -->
+                                    <StackPanel Orientation="Horizontal" Spacing="8"
+                                                Visibility="{x:Bind HasSecondLine, Converter={StaticResource Visible}}">
                                         <TextBlock Text="{x:Bind Due, Converter={StaticResource DueText}}"
                                                    Style="{ThemeResource CaptionTextBlockStyle}"
-                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{ThemeResource AstridTextMuted}"
                                                    Visibility="{x:Bind Due.HasDate, Converter={StaticResource Visible}}" />
+                                        <ItemsControl ItemsSource="{x:Bind ListChips}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" Spacing="4" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="bindings:ListChip">
+                                                    <!-- The list's own colour at a tenth strength, as on the web. -->
+                                                    <Border CornerRadius="4"
+                                                            Padding="6,1"
+                                                            Background="{x:Bind Color, Converter={StaticResource ChipTint}}">
+                                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                                            <TextBlock Text="&#xE8EC;"
+                                                                       FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                                       FontSize="10"
+                                                                       VerticalAlignment="Center"
+                                                                       Foreground="{x:Bind Color, Converter={StaticResource PriorityBrush}}" />
+                                                            <TextBlock Text="{x:Bind Name}"
+                                                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                                                       Foreground="{ThemeResource AstridTextSecondary}" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
                                         <TextBlock Text="Not synced yet"
                                                    Style="{ThemeResource CaptionTextBlockStyle}"
-                                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{ThemeResource AstridTextMuted}"
                                                    Visibility="{x:Bind IsPending, Converter={StaticResource Visible}}" />
                                     </StackPanel>
                                 </StackPanel>
-    
-                                <Button Grid.Column="3"
-                                        Content="Delete"
-                                        AutomationProperties.Name="{x:Bind DeleteActionName}"
-                                        Tag="{x:Bind Id}"
-                                        Click="OnDeleteRow" />
+
+                                <!--
+                                    Deleting lives here rather than on a button in every row. The
+                                    web has no per-row delete and it is right not to: a destructive
+                                    action repeated down the page is one mis-click from a task
+                                    somebody wanted.
+                                -->
+                                <Grid.ContextFlyout>
+                                    <MenuFlyout>
+                                        <MenuFlyoutItem Text="Delete"
+                                                        Tag="{x:Bind Id}"
+                                                        Click="OnDeleteRow" />
+                                    </MenuFlyout>
+                                </Grid.ContextFlyout>
                             </Grid>
                         </DataTemplate>
                     </ListView.ItemTemplate>

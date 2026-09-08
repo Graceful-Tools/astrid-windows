@@ -61,6 +61,34 @@ internal sealed class FakeCore : IAstridCore
     public void Notify(string change, string? id = null) =>
         Changed?.Invoke(new ChangeNotification(change, id));
 
+    /// <summary>
+    /// Hold the answer to one kind of command until the test lets it go.
+    /// </summary>
+    /// <remarks>
+    /// A real core answers over a boundary and takes a moment. Without a way to hold one in flight
+    /// every view-model test runs in a world where nothing overlaps — and the bugs worth finding
+    /// here are the ones where two things overlap, like choosing a second list before the first
+    /// has answered.
+    /// </remarks>
+    public FakeCore Hold(string kind)
+    {
+        _held[kind] = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        return this;
+    }
+
+    /// <summary>Let every held answer of this kind through.</summary>
+    public void Release(string kind)
+    {
+        if (_held.Remove(kind, out var gate))
+        {
+            gate.SetResult(true);
+        }
+    }
+
+    private readonly Dictionary<string, TaskCompletionSource<bool>> _held =
+        new(StringComparer.Ordinal);
+
     public Task<AstridResponse> CallAsync(object command, CancellationToken cancellationToken = default)
     {
         var json = JsonSerializer.Serialize(command, CommandJson.Options);
@@ -71,7 +99,12 @@ internal sealed class FakeCore : IAstridCore
 
         if (_answers.TryGetValue(kind, out var queue) && queue.Count > 0)
         {
-            return Task.FromResult(AstridResponse.Parse(queue.Dequeue()));
+            var answer = AstridResponse.Parse(queue.Dequeue());
+            // Held: the answer is decided now, as a real core would, and delivered when the test
+            // says so. Dequeuing here keeps the script in the order it was written.
+            return _held.TryGetValue(kind, out var gate)
+                ? gate.Task.ContinueWith(_ => answer, TaskScheduler.Default)
+                : Task.FromResult(answer);
         }
 
         // An unscripted command is a bug in the test, and it has to read as one. Answering "ok"

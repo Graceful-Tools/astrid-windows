@@ -31,8 +31,68 @@
                     <Color x:Key="SystemAccentColorDark1">#2563EB</Color>
                     <Color x:Key="SystemAccentColorDark2">#1D4ED8</Color>
                     <Color x:Key="SystemAccentColorDark3">#1E40AF</Color>
+
+                    <!--
+                        astrid-web's own tokens, from styles/themes/light-theme.css. Named the same
+                        so a value can be checked against that file rather than guessed at, and
+                        stated as brushes so a control can use one without restating the hex.
+
+                        Ocean is deliberately absent: in the web's CSS it differs from light only in
+                        the app background (cyan) and a selection border, and this shell paints that
+                        as a surface behind the chrome. One set of tokens, two appearances.
+                    -->
+                    <SolidColorBrush x:Key="AstridSurface" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="AstridSurfaceHover" Color="#F3F4F6" />
+                    <SolidColorBrush x:Key="AstridBorder" Color="#EBEDF0" />
+                    <SolidColorBrush x:Key="AstridBorderHover" Color="#D7DAE0" />
+                    <SolidColorBrush x:Key="AstridBgSelected" Color="#F3F8FF" />
+                    <SolidColorBrush x:Key="AstridBgSelectedBorder" Color="#C8E0FF" />
+                    <SolidColorBrush x:Key="AstridBgHover" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="AstridTextPrimary" Color="#111827" />
+                    <SolidColorBrush x:Key="AstridTextSecondary" Color="#4B5563" />
+                    <SolidColorBrush x:Key="AstridTextMuted" Color="#6B7280" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
+                    <Color x:Key="SystemAccentColor">#3B82F6</Color>
+                    <Color x:Key="SystemAccentColorLight1">#60A5FA</Color>
+                    <Color x:Key="SystemAccentColorLight2">#93C5FD</Color>
+                    <Color x:Key="SystemAccentColorLight3">#BFDBFE</Color>
+                    <Color x:Key="SystemAccentColorDark1">#2563EB</Color>
+                    <Color x:Key="SystemAccentColorDark2">#1D4ED8</Color>
+                    <Color x:Key="SystemAccentColorDark3">#1E40AF</Color>
+
+                    <!--
+                        astrid-web's own tokens, from styles/themes/light-theme.css. Named the same
+                        so a value can be checked against that file rather than guessed at, and
+                        stated as brushes so a control can use one without restating the hex.
+
+                        Ocean is deliberately absent: in the web's CSS it differs from light only in
+                        the app background (cyan) and a selection border, and this shell paints that
+                        as a surface behind the chrome. One set of tokens, two appearances.
+                    -->
+                    <SolidColorBrush x:Key="AstridSurface" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="AstridSurfaceHover" Color="#F3F4F6" />
+                    <SolidColorBrush x:Key="AstridBorder" Color="#EBEDF0" />
+                    <SolidColorBrush x:Key="AstridBorderHover" Color="#D7DAE0" />
+                    <SolidColorBrush x:Key="AstridBgSelected" Color="#F3F8FF" />
+                    <SolidColorBrush x:Key="AstridBgSelectedBorder" Color="#C8E0FF" />
+                    <SolidColorBrush x:Key="AstridBgHover" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="AstridTextPrimary" Color="#111827" />
+                    <SolidColorBrush x:Key="AstridTextSecondary" Color="#4B5563" />
+                    <SolidColorBrush x:Key="AstridTextMuted" Color="#6B7280" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <!-- styles/themes/dark-theme.css, the same names. -->
+                    <SolidColorBrush x:Key="AstridSurface" Color="#1F2937" />
+                    <SolidColorBrush x:Key="AstridSurfaceHover" Color="#374151" />
+                    <SolidColorBrush x:Key="AstridBorder" Color="#37414E" />
+                    <SolidColorBrush x:Key="AstridBorderHover" Color="#5A6472" />
+                    <SolidColorBrush x:Key="AstridBgSelected" Color="#1E3A8A" />
+                    <SolidColorBrush x:Key="AstridBgSelectedBorder" Color="#3B82F6" />
+                    <SolidColorBrush x:Key="AstridBgHover" Color="#374151" />
+                    <SolidColorBrush x:Key="AstridTextPrimary" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="AstridTextSecondary" Color="#D1D5DB" />
+                    <SolidColorBrush x:Key="AstridTextMuted" Color="#9CA3AF" />
                     <Color x:Key="SystemAccentColor">#3B82F6</Color>
                     <Color x:Key="SystemAccentColorLight1">#60A5FA</Color>
                     <Color x:Key="SystemAccentColorLight2">#93C5FD</Color>

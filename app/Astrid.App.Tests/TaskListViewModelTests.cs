@@ -351,4 +351,53 @@ public sealed class TaskListViewModelTests
         Assert.Contains("\"offset\":0", core.Sent[^1]);
         Assert.Contains($"\"limit\":{TaskListViewModel.PageSize}", core.Sent[^1]);
     }
+
+    /// <summary>
+    /// Choosing a second list while the first is still loading shows the second.
+    /// </summary>
+    /// <remarks>
+    /// Reported as "it isn't filtering to lists". The load guarded itself with a single IsLoading
+    /// flag, so a second choice made while the first was in flight returned immediately and fetched
+    /// nothing — and then the first list's answer arrived and filled the rows that had just been
+    /// cleared for the second. The header said one list and the rows were another's, which is
+    /// indistinguishable from filtering being broken.
+    /// </remarks>
+    [Fact]
+    public async Task Choosing_a_second_list_while_the_first_is_loading_shows_the_second()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(1, "a task from the first list"))
+            .AnswerOk("rowsForList", Window(1, "a task from the second list"));
+        var view = new TaskListViewModel(core);
+
+        core.Hold("rowsForList");
+        var first = view.OpenAsync("l1", "First");
+        var second = view.OpenAsync("l2", "Second");
+        core.Release("rowsForList");
+        await first;
+        await second;
+
+        Assert.Equal("l2", view.ListId);
+        Assert.Equal("a task from the second list", Assert.Single(view.Rows).Title);
+    }
+
+    /// <summary>An answer for a list nobody is looking at any more is not drawn.</summary>
+    [Fact]
+    public async Task An_answer_for_the_previous_list_is_dropped_rather_than_appended()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(2, "first list one", "first list two"))
+            .AnswerOk("rowsForList", Window(1, "second list only"));
+        var view = new TaskListViewModel(core);
+
+        core.Hold("rowsForList");
+        var first = view.OpenAsync("l1", "First");
+        var second = view.OpenAsync("l2", "Second");
+        core.Release("rowsForList");
+        await first;
+        await second;
+
+        Assert.Single(view.Rows);
+        Assert.DoesNotContain(view.Rows, row => row.Title.StartsWith("first list"));
+    }
 }

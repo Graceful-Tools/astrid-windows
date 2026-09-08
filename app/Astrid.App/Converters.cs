@@ -145,6 +145,67 @@ public sealed partial class CredentialStateConverter : IValueConverter
         throw new NotSupportedException("a key's state is read-only in the UI");
 }
 
+/// <summary>A list's colour at a tenth of its strength, for a chip behind its name.</summary>
+/// <remarks>
+/// astrid-web writes this as <c>{color}15</c> — the colour with an eight-percent alpha — so a chip
+/// carries the list's identity without competing with the task title in front of it.
+/// </remarks>
+public sealed partial class ChipTintConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        var colour = Colours.Parse(value as string) ?? Windows.UI.Color.FromArgb(255, 59, 130, 246);
+        return new SolidColorBrush(
+            Windows.UI.Color.FromArgb(0x15, colour.R, colour.G, colour.B));
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a tint is not a value to read back");
+}
+
+/// <summary>A finished task is quieter, at the three-quarters the web uses.</summary>
+public sealed partial class CompletedOpacityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is true ? 0.75 : 1.0;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("an opacity is not a value to read back");
+}
+
+/// <summary>And struck through, which is how a list says "done" without a word.</summary>
+public sealed partial class CompletedStrikeConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is true
+            ? Windows.UI.Text.TextDecorations.Strikethrough
+            : Windows.UI.Text.TextDecorations.None;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a decoration is not a value to read back");
+}
+
+/// <summary>Reading a `#rrggbb` from the core into a colour.</summary>
+internal static class Colours
+{
+    public static Windows.UI.Color? Parse(string? hex)
+    {
+        if (string.IsNullOrWhiteSpace(hex))
+        {
+            return null;
+        }
+        var text = hex.Trim().TrimStart('#');
+        if (text.Length != 6 || !int.TryParse(
+                text, System.Globalization.NumberStyles.HexNumber,
+                System.Globalization.CultureInfo.InvariantCulture, out var packed))
+        {
+            return null;
+        }
+        return Windows.UI.Color.FromArgb(
+            255, (byte)(packed >> 16), (byte)(packed >> 8), (byte)packed);
+    }
+}
+
 /// <summary>A picture, or something to open.</summary>
 /// <remarks>
 /// Which of the two a file is comes from the core, not from the extension read here — the same
