@@ -294,10 +294,9 @@
                 not have to tear down and rebuild the whole tree on the way in and out — and so
                 signing out leaves an empty list behind it rather than a blank window.
 
-                Its own ground is transparent so the Ocean wash reaches it: the sidebar and the list
-                are collapsed while signed out, so there is nothing behind this to hide, and an
-                opaque layer would make the first screen anybody sees the one screen the brand
-                colour never touches.
+                Its ground is set in `ApplyTheme` rather than here: it covers the Ocean surface, so
+                it wears the wash itself, and the first screen anybody sees would otherwise be the
+                one screen the brand colour never touches.
 
                 It sits AFTER the column definitions on purpose: in XAML a property element cannot
                 follow a content child, and putting this first made the XAML compiler fail with no

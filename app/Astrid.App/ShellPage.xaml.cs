@@ -741,6 +741,22 @@ public sealed partial class ShellPage : UserControl
             ? (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AstridOceanBrush"]
             : (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources[
                 "SolidBackgroundFillColorBaseBrush"];
+
+        // A ThemeResource in a Style SETTER is resolved when the style is applied to a container
+        // and never again, so rows already on screen keep the colours of the theme they were born
+        // in. Switching to dark left white cards carrying white text — unreadable until a restart.
+        // Re-attaching the style makes every live container resolve its setters again.
+        Restyle(TaskRows);
+        Restyle(MyTasksList);
+        Restyle(FavoritesList);
+        Restyle(ListsList);
+
+        static void Restyle(ListView view)
+        {
+            var style = view.ItemContainerStyle;
+            view.ItemContainerStyle = null;
+            view.ItemContainerStyle = style;
+        }
     }
 
     /// <summary>Choose a look, and wear it immediately.</summary>
