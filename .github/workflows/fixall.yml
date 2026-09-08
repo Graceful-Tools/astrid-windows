@@ -1,0 +1,265 @@
+# Work every task the Astrid Windows board has marked Ready.
+#
+# The same loop astrid-web and astrid-ios run, against this repo's own board. The queue, the
+# atomic claim and the trigger all come from astrid-web's task tooling rather than being copied
+# here: a second implementation of "which tasks are ready" drifts, and the drift is silent — a
+# queue that is wrong looks exactly like a quiet day.
+#
+# The gate runs BEFORE any task is handed over. A loop that triggered work on a red main would
+# hand the agent a repository it cannot tell its own breakage from.
+#
+# Needs three repo secrets:
+#   ASTRID_OAUTH_CLIENT_ID / ASTRID_OAUTH_CLIENT_SECRET   read the board
+#   ASTRID_MCP_TOKEN                                      trigger the coding agent
+#   ASTRID_WEB_READ_TOKEN                                 check out the task tooling (already
+#                                                         used by ci.yml for the contracts job)
+
+name: 'Fix All Ready Tasks (Windows)'
+
+# One run at a time for this harness. Two loops claiming from one queue is two agents on one task.
+concurrency:
+  group: fixall-windows-github-copilot
+  cancel-in-progress: false
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run — list ready tasks without working them'
+        required: false
+        default: false
+        type: boolean
+
+  schedule:
+    # Every 30 minutes, offset from astrid-web (:00/:30) and astrid-ios (:15/:45) so the three
+    # loops do not compete for the same quota.
+    - cron: '5,35 * * * *'
+
+env:
+  NODE_VERSION: '20'
+
+# The task tooling is bash, and it is the same script on all three repos. Windows runners default
+# to PowerShell, so the shell is stated once here rather than on every step.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  list-ready-tasks:
+    name: 'List Ready Tasks'
+    runs-on: windows-latest
+    outputs:
+      has_tasks: ${{ steps.list.outputs.has_tasks }}
+      task_count: ${{ steps.list.outputs.task_count }}
+      task_claims: ${{ steps.list.outputs.task_claims }}
+    steps:
+      # The default branch rather than a pinned commit, unlike the iOS loop: the Windows board is
+      # newer than the ref that one pins, and a checkout without it fails with "Unknown board".
+      # Pin a ref here once this repo's loop has a contract of its own worth freezing.
+      - name: Checkout Astrid task tooling
+        uses: actions/checkout@v4
+        with:
+          repository: Graceful-Tools/astrid-web
+          path: astrid-web
+          token: ${{ secrets.ASTRID_WEB_READ_TOKEN }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: astrid-web/package-lock.json
+
+      - name: Install Astrid task-tool dependencies
+        working-directory: astrid-web
+        run: npm ci
+
+      - name: List ready tasks
+        id: list
+        working-directory: astrid-web
+        env:
+          ASTRID_OAUTH_CLIENT_ID: ${{ secrets.ASTRID_OAUTH_CLIENT_ID }}
+          ASTRID_OAUTH_CLIENT_SECRET: ${{ secrets.ASTRID_OAUTH_CLIENT_SECRET }}
+          # Queue, atomic claim and trigger all use the same identity: claiming as one agent and
+          # triggering as another leaves a task marked taken that nobody is working.
+          ASTRID_FIXALL_HARNESS: github-copilot
+          ASTRID_FIXALL_DRY_RUN: ${{ inputs.dry_run || false }}
+        run: |
+          HARNESS="${ASTRID_FIXALL_HARNESS}"
+          echo "Fetching ready Windows tasks for harness: ${HARNESS}"
+
+          DRY_RUN_ARGS=()
+          if [ "${ASTRID_FIXALL_DRY_RUN}" = "true" ]; then
+            DRY_RUN_ARGS+=(--dry-run)
+          fi
+
+          QUEUE_JSON=$(npx tsx scripts/ready-tasks.ts windows --json --harness "${HARNESS}" "${DRY_RUN_ARGS[@]}")
+
+          TASK_CLAIMS=$(
+            printf '%s' "${QUEUE_JSON}" |
+              npx tsx scripts/parse-ready-tasks-output.ts --claims
+          )
+          TASK_COUNT=$(printf '%s\n' "${TASK_CLAIMS}" | sed '/^$/d' | wc -l | tr -d ' ')
+
+          echo "task_count=${TASK_COUNT}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "task_claims<<ASTRID_TASK_CLAIMS"
+            printf '%s\n' "${TASK_CLAIMS}"
+            echo "ASTRID_TASK_CLAIMS"
+          } >> "${GITHUB_OUTPUT}"
+
+          if [ "${TASK_COUNT}" -gt 0 ]; then
+            echo "has_tasks=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "has_tasks=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+  dry-run-report:
+    name: 'Dry Run — Task Report'
+    runs-on: windows-latest
+    needs: list-ready-tasks
+    if: ${{ inputs.dry_run == true }}
+    steps:
+      - name: Report
+        run: |
+          echo "## Ready Windows Tasks (Dry Run)"
+          echo "Harness: github-copilot"
+          echo "Tasks found: ${{ needs.list-ready-tasks.outputs.task_count }}"
+          echo ""
+          echo "Re-run without dry_run to work these tasks."
+
+  work-tasks:
+    name: 'Work Ready Tasks'
+    runs-on: windows-latest
+    needs: list-ready-tasks
+    if: ${{ inputs.dry_run != true && needs.list-ready-tasks.outputs.has_tasks == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Checkout Astrid task tooling
+        uses: actions/checkout@v4
+        with:
+          repository: Graceful-Tools/astrid-web
+          path: astrid-web
+          token: ${{ secrets.ASTRID_WEB_READ_TOKEN }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: astrid-web/package-lock.json
+
+      - name: Install Astrid task-tool dependencies
+        working-directory: astrid-web
+        run: npm ci
+
+      # The toolchain and both targets come from rust-toolchain.toml, the same as the PR gate.
+      - name: Show toolchain
+        run: |
+          rustup show
+          cargo --version
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: fixall
+
+      # The whole gate, not a subset: format, lint, the core tests, the ARM64 cross-build, the
+      # contract fixtures and the shell tests. Handing a task to an agent on a red main wastes the
+      # run and teaches it to distrust the build.
+      - name: Run the standard gate
+        run: npm run predeploy
+
+      - name: Trigger Astrid coding agent for each ready task
+        env:
+          ASTRID_MCP_TOKEN: ${{ secrets.ASTRID_MCP_TOKEN }}
+          ASTRID_OAUTH_CLIENT_ID: ${{ secrets.ASTRID_OAUTH_CLIENT_ID }}
+          ASTRID_OAUTH_CLIENT_SECRET: ${{ secrets.ASTRID_OAUTH_CLIENT_SECRET }}
+          ASTRID_WEBHOOK_URL: ${{ secrets.ASTRID_WEBHOOK_URL || 'https://astrid.cc' }}
+          ASTRID_FIXALL_HARNESS: github-copilot
+          ASTRID_FIXALL_TASK_CLAIMS: ${{ needs.list-ready-tasks.outputs.task_claims }}
+        run: |
+          HARNESS="${ASTRID_FIXALL_HARNESS}"
+          TASK_COUNT="${{ needs.list-ready-tasks.outputs.task_count }}"
+          echo "Working ready Windows tasks for harness: ${HARNESS}"
+          echo "Task count: ${TASK_COUNT}"
+
+          if [ -z "${ASTRID_MCP_TOKEN}" ]; then
+            echo "::error::ASTRID_MCP_TOKEN is not configured"
+            exit 1
+          fi
+
+          TRIGGERED=0
+          SKIPPED=0
+          while IFS=$'\t' read -r TASK_ID TASK_ACTION COMMENT_WATERMARK; do
+            [ -n "${TASK_ID}" ] || continue
+
+            # The claim is atomic and re-checks what the queue saw. A task somebody moved between
+            # the two is skipped rather than overwritten — the person who touched it wins.
+            if (
+              cd astrid-web
+              npx tsx scripts/claim-fixall-task.ts \
+                "${TASK_ID}" "${TASK_ACTION}" "${COMMENT_WATERMARK}"
+            ); then
+              :
+            else
+              CLAIM_STATUS=$?
+              if [ "${CLAIM_STATUS}" -eq 2 ]; then
+                SKIPPED=$((SKIPPED + 1))
+                echo "::warning::Task ${TASK_ID} changed after queue selection; skipped without overwriting it"
+                continue
+              fi
+              echo "::error::Atomic claim failed for task ${TASK_ID}"
+              exit "${CLAIM_STATUS}"
+            fi
+
+            echo "Triggering coding agent for task ${TASK_ID}"
+            PAYLOAD=$(node -e '
+              const [taskId, repository, ref, sha, actor, workflow, runId, runNumber] = process.argv.slice(1)
+              process.stdout.write(JSON.stringify({
+                taskId,
+                githubContext: { repository, ref, sha, actor, workflow, runId, runNumber }
+              }))
+            ' \
+              "${TASK_ID}" \
+              "${{ github.repository }}" \
+              "${{ github.ref }}" \
+              "${{ github.sha }}" \
+              "${{ github.actor }}" \
+              "${{ github.workflow }}" \
+              "${{ github.run_id }}" \
+              "${{ github.run_number }}")
+
+            curl --fail-with-body --silent --show-error \
+              -X POST "${ASTRID_WEBHOOK_URL}/api/coding-agent/github-trigger" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${ASTRID_MCP_TOKEN}" \
+              --data "${PAYLOAD}"
+            echo ""
+            TRIGGERED=$((TRIGGERED + 1))
+          done <<< "${ASTRID_FIXALL_TASK_CLAIMS}"
+
+          {
+            echo "## Fix All Summary (Windows)"
+            echo "- Harness: \`${HARNESS}\`"
+            echo "- Tasks selected: ${TASK_COUNT}"
+            echo "- Tasks triggered: ${TRIGGERED}"
+            echo "- Stale tasks skipped: ${SKIPPED}"
+            echo "- Local predeploy gate: passed"
+            echo ""
+            echo "> Each task is handed to the Astrid coding agent. Merge and deploy separately."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  no-tasks:
+    name: 'Nothing to do'
+    runs-on: windows-latest
+    needs: list-ready-tasks
+    if: ${{ needs.list-ready-tasks.outputs.has_tasks == 'false' }}
+    steps:
+      - name: No ready tasks
+        run: |
+          echo "No ready Windows tasks for github-copilot"
+          echo "Ready list is empty — nothing to do."

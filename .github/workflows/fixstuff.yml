@@ -1,0 +1,160 @@
+# Work one named task, on demand.
+#
+# The single-task half of the pair: `fixall.yml` sweeps whatever the board has marked Ready;
+# this one is run by hand against a task id, and skips the queue entirely.
+#
+# It still runs the gate first. A task handed over on a red main costs the agent a run working
+# out that the breakage was not its own.
+#
+# Needs the same secrets as `fixall.yml`, minus the OAuth pair — this one names its task rather
+# than reading the board:
+#   ASTRID_MCP_TOKEN       trigger the coding agent
+#   ASTRID_WEB_READ_TOKEN  check out the task tooling
+
+name: 'Fix Specific Task (Windows)'
+
+on:
+  workflow_dispatch:
+    inputs:
+      task_id:
+        description: 'Astrid task ID to work on'
+        required: true
+        type: string
+      task_title:
+        description: 'Task title (for readability — does not affect execution)'
+        required: false
+        type: string
+
+env:
+  NODE_VERSION: '20'
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  validate:
+    name: 'Validate Task'
+    runs-on: ubuntu-latest
+    outputs:
+      task_id: ${{ steps.validate.outputs.task_id }}
+    steps:
+      - name: Validate inputs
+        id: validate
+        run: |
+          TASK_ID="${{ inputs.task_id }}"
+          if [ -z "${TASK_ID}" ]; then
+            echo "::error::task_id is required"
+            exit 1
+          fi
+          echo "task_id=${TASK_ID}" >> "${GITHUB_OUTPUT}"
+          echo "Task: ${TASK_ID} — ${{ inputs.task_title }}"
+
+  fix-task:
+    name: 'Fix Task'
+    runs-on: windows-latest
+    needs: validate
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # From astrid-web rather than from here, unlike the iOS workflow: the task scripts live in
+      # that repo, and a step that can only ever print a warning is not worth a step.
+      - name: Checkout Astrid task tooling
+        uses: actions/checkout@v4
+        with:
+          repository: Graceful-Tools/astrid-web
+          path: astrid-web
+          token: ${{ secrets.ASTRID_WEB_READ_TOKEN }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: astrid-web/package-lock.json
+
+      - name: Install Astrid task-tool dependencies
+        working-directory: astrid-web
+        run: npm ci
+
+      - name: Show toolchain
+        run: |
+          rustup show
+          cargo --version
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: fixstuff
+
+      - name: Run the standard gate
+        run: npm run predeploy
+
+      # Best effort: somebody watching the task should be able to reach this run, but a task that
+      # cannot be annotated is still a task worth working.
+      - name: Post session link to task
+        working-directory: astrid-web
+        continue-on-error: true
+        env:
+          ASTRID_MCP_TOKEN: ${{ secrets.ASTRID_MCP_TOKEN }}
+          ASTRID_OAUTH_CLIENT_ID: ${{ secrets.ASTRID_OAUTH_CLIENT_ID }}
+          ASTRID_OAUTH_CLIENT_SECRET: ${{ secrets.ASTRID_OAUTH_CLIENT_SECRET }}
+        run: |
+          TASK_ID="${{ needs.validate.outputs.task_id }}"
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "Posting session link for task ${TASK_ID} → ${RUN_URL}"
+          npx tsx scripts/post-session-link.ts "${TASK_ID}" --url "${RUN_URL}"
+
+      - name: Trigger Astrid coding agent for task
+        env:
+          TASK_ID: ${{ needs.validate.outputs.task_id }}
+          ASTRID_MCP_TOKEN: ${{ secrets.ASTRID_MCP_TOKEN }}
+          ASTRID_WEBHOOK_URL: ${{ secrets.ASTRID_WEBHOOK_URL || 'https://astrid.cc' }}
+        run: |
+          echo "Working task: ${TASK_ID}"
+          echo "Title: ${{ inputs.task_title }}"
+
+          if [ -z "${ASTRID_MCP_TOKEN}" ]; then
+            echo "::error::ASTRID_MCP_TOKEN is not configured"
+            exit 1
+          fi
+
+          PAYLOAD=$(node -e '
+            const [taskId, repository, ref, sha, actor, runId, runUrl] = process.argv.slice(1)
+            process.stdout.write(JSON.stringify({
+              taskId,
+              workflow: "fixstuff",
+              githubContext: { repository, ref, sha, actor, runId, runUrl }
+            }))
+          ' \
+            "${TASK_ID}" \
+            "${{ github.repository }}" \
+            "${{ github.ref }}" \
+            "${{ github.sha }}" \
+            "${{ github.actor }}" \
+            "${{ github.run_id }}" \
+            "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}")
+
+          # --fail-with-body: a refusal has to fail the step AND show what the server said, or the
+          # only evidence is a green run that did nothing.
+          curl --fail-with-body --silent --show-error \
+            -X POST "${ASTRID_WEBHOOK_URL}/api/coding-agent/github-trigger" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${ASTRID_MCP_TOKEN}" \
+            --data "${PAYLOAD}"
+          echo ""
+          echo "Coding agent triggered"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Fix Task Summary (Windows)"
+            echo "- **Task ID:** \`${{ needs.validate.outputs.task_id }}\`"
+            echo "- **Title:** ${{ inputs.task_title }}"
+            echo "- **Status:** ${{ job.status }}"
+            echo "- **Run:** https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo ""
+            echo "> Changes land on a feature branch. No merge or deploy happens here."
+          } >> "${GITHUB_STEP_SUMMARY}"

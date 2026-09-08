@@ -59,6 +59,7 @@ cargo test --workspace  # the inner loop
 | [docs/CONTRACTS.md](./docs/CONTRACTS.md) | Shared rules, and where the clients currently disagree |
 | [docs/context/stack.md](./docs/context/stack.md) | Pinned versions and machine setup |
 | [contracts/README.md](./contracts/README.md) | How the contract fixtures are generated |
+| [docs/AUTOMATION.md](./docs/AUTOMATION.md) | The task loops, and the secrets they need |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | How to contribute |
 
 ## License

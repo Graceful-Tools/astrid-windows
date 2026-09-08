@@ -79,6 +79,10 @@ then here, then astrid-ios.
 strategy comment, RED-GREEN-refactor with a task-id-linked regression test, run the gate, post a
 completion report, then mark the task complete.
 
+Tasks reach this repo from the **Astrid Windows To-do** board through the two loops in
+[docs/AUTOMATION.md](./docs/AUTOMATION.md). The queue itself is astrid-web's, called rather than
+copied: three boards, one implementation of "which tasks are ready".
+
 ---
 
 ## Approvals
@@ -104,6 +108,7 @@ manually triggered act, the same discipline astrid-web follows for production de
 | [docs/PROGRESS.md](./docs/PROGRESS.md) | Where the milestones stand |
 | [docs/context/stack.md](./docs/context/stack.md) | Pinned tool versions, machine setup |
 | [contracts/README.md](./contracts/README.md) | How the fixtures are generated |
+| [docs/AUTOMATION.md](./docs/AUTOMATION.md) | The `fixall` / `fixstuff` loops and the secrets they need |
 | [README.md](./README.md) | Project overview |
 
 ---

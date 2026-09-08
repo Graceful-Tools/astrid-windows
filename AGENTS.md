@@ -104,6 +104,7 @@ manually triggered act, the same discipline astrid-web follows for production de
 | [docs/PROGRESS.md](./docs/PROGRESS.md) | Where the milestones stand |
 | [docs/context/stack.md](./docs/context/stack.md) | Pinned tool versions, machine setup |
 | [contracts/README.md](./contracts/README.md) | How the fixtures are generated |
+| [docs/AUTOMATION.md](./docs/AUTOMATION.md) | The `fixall` / `fixstuff` loops and the secrets they need |
 | [README.md](./README.md) | Project overview |
 
 ---
