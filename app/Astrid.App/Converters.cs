@@ -163,6 +163,22 @@ public sealed partial class ChipTintConverter : IValueConverter
         throw new NotSupportedException("a tint is not a value to read back");
 }
 
+/// <summary>The funnel goes accent-coloured when something is narrowing the list.</summary>
+/// <remarks>
+/// The word "Filtered" used to say it. With an icon-only toolbar the colour has to, or a list
+/// quietly hiding half its tasks looks like a list that lost them.
+/// </remarks>
+public sealed partial class FilterTintConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is true
+            ? Application.Current.Resources["AstridAccentBrush"]
+            : Application.Current.Resources["AstridTextPrimary"];
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a tint is not a value to read back");
+}
+
 /// <summary>A count worth showing: present, and more than none.</summary>
 /// <remarks>
 /// A badge reading "0" beside every empty list is noise on a sidebar that exists to be scanned,

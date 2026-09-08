@@ -107,6 +107,7 @@
         <local:CompletedOpacityConverter x:Key="CompletedOpacity" />
         <local:CompletedStrikeConverter x:Key="CompletedStrike" />
         <local:CountVisibleConverter x:Key="CountVisible" />
+        <local:FilterTintConverter x:Key="FilterTint" />
     </UserControl.Resources>
 
     <!--
@@ -468,11 +469,28 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12"
-                                VerticalAlignment="Center">
-                        <TextBlock Text="{x:Bind Shell.Tasks.ListName, Mode=OneWay}"
+                    <!--
+                        The title yields, the tools do not.
+
+                        This was a horizontal StackPanel, and a StackPanel never shrinks its
+                        children: with the detail pane open the row wanted more width than it had
+                        and the toolbar was clipped off the right — the filter, the chat, the view
+                        toggles, all of them gone with nothing to say they had been there. A Grid
+                        lets the list name truncate, which is the thing on that row that can afford
+                        to.
+                    -->
+                    <Grid Grid.Column="0" ColumnSpacing="12" VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" MinWidth="0" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0"
+                                   Text="{x:Bind Shell.Tasks.ListName, Mode=OneWay}"
                                    Style="{ThemeResource TitleTextBlockStyle}"
+                                   TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
+                                    VerticalAlignment="Center">
                         <!--
                             Search replaces what the list shows rather than opening a screen of its
                             own: the results are rows like any other, and they complete and open the
@@ -487,7 +505,10 @@
                         <Button x:Name="FilterButton"
                                 VerticalAlignment="Center"
                                 AutomationProperties.Name="Filters"
-                                Content="{x:Bind Shell.Tasks.IsFiltered, Mode=OneWay, Converter={StaticResource FilterText}}">
+                                ToolTipService.ToolTip="{x:Bind Shell.Tasks.IsFiltered, Mode=OneWay, Converter={StaticResource FilterText}}"
+                                Content="&#xE71C;"
+                                FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                Foreground="{x:Bind Shell.Tasks.IsFiltered, Mode=OneWay, Converter={StaticResource FilterTint}}">
                             <Button.Flyout>
                                 <Flyout Opening="OnFiltersOpening">
                                     <ScrollViewer MaxHeight="480" VerticalScrollBarVisibility="Auto">
@@ -523,9 +544,11 @@
                             should not mean losing sight of that.
                         -->
                         <ToggleButton x:Name="ChatToggle"
-                                      Content="Chat"
                                       VerticalAlignment="Center"
                                       AutomationProperties.Name="Chat"
+                                      ToolTipService.ToolTip="Chat"
+                                      Content="&#xE8BD;"
+                                      FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                       IsChecked="{x:Bind Shell.IsChatOpen, Mode=OneWay}"
                                       Click="OnToggleChat" />
                         <!--
@@ -534,9 +557,11 @@
                             the thing somebody does once per list and never again.
                         -->
                         <Button x:Name="ListSettingsButton"
-                                Content="List"
                                 VerticalAlignment="Center"
-                                AutomationProperties.Name="List settings">
+                                AutomationProperties.Name="List settings"
+                                ToolTipService.ToolTip="List settings"
+                                Content="&#xE713;"
+                                FontFamily="{ThemeResource SymbolThemeFontFamily}">
                             <Button.Flyout>
                                 <Flyout Opening="OnListSettingsOpening">
                                     <StackPanel Spacing="8" MinWidth="320">
@@ -661,19 +686,36 @@
                             screens: the toggle swaps what is drawn and nothing else moves.
                         -->
                         <ToggleButton x:Name="BoardToggle"
-                                      Content="Board"
                                       VerticalAlignment="Center"
                                       AutomationProperties.Name="Board view"
+                                      ToolTipService.ToolTip="Board view"
+                                      Content="&#xF0E2;"
+                                      FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                       IsChecked="{x:Bind Shell.IsBoardView, Mode=OneWay}"
                                       Click="OnToggleBoard" />
-                        <AutoSuggestBox x:Name="SearchBox"
-                                        Width="220"
-                                        VerticalAlignment="Center"
-                                        QueryIcon="Find"
-                                        PlaceholderText="Search tasks"
-                                        AutomationProperties.Name="Search tasks"
-                                        TextChanged="OnSearchChanged" />
-                    </StackPanel>
+                            <!--
+                                Search collapses to its icon, which is what astrid-web does when the
+                                row is short: a box wide enough to type in does not fit beside a
+                                list name, four tools and an open task, and a box squeezed to a
+                                sliver is worse than a button that opens one.
+                            -->
+                            <Button AutomationProperties.Name="Search tasks"
+                                    ToolTipService.ToolTip="Search tasks"
+                                    Content="&#xE721;"
+                                    FontFamily="{ThemeResource SymbolThemeFontFamily}">
+                                <Button.Flyout>
+                                    <Flyout>
+                                        <AutoSuggestBox x:Name="SearchBox"
+                                                        Width="280"
+                                                        QueryIcon="Find"
+                                                        PlaceholderText="Search tasks"
+                                                        AutomationProperties.Name="Search tasks"
+                                                        TextChanged="OnSearchChanged" />
+                                    </Flyout>
+                                </Button.Flyout>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
                     <!-- Not synced yet. Quiet, because it is a normal state and not a problem. -->
                     <TextBlock Grid.Column="1"
                                Text="Not synced yet"
@@ -696,8 +738,10 @@
                                 Orientation="Horizontal"
                                 Spacing="8"
                                 VerticalAlignment="Center">
-                    <Button Content="Account"
-                            AutomationProperties.Name="Account">
+                    <Button AutomationProperties.Name="Account"
+                            ToolTipService.ToolTip="Account and settings"
+                            Content="&#xE77B;"
+                            FontFamily="{ThemeResource SymbolThemeFontFamily}">
                         <Button.Flyout>
                             <Flyout Opening="OnAccountOpening">
                                 <StackPanel Spacing="8" MinWidth="300">
@@ -938,6 +982,18 @@
                                                 Visibility="{x:Bind Shell.Settings.CopilotConnected, Mode=OneWay, Converter={StaticResource Visible}}" />
                                     </StackPanel>
 
+                                    <!--
+                                        Sync and sign out belong to the account, and putting them
+                                        here is what leaves the list's own toolbar room to exist.
+                                        astrid-web has one control up there too.
+                                    -->
+                                    <Border Height="1" Margin="0,8"
+                                            Background="{ThemeResource AstridBorder}" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button Content="Sync now" Click="OnSync" />
+                                        <Button Content="Sign out" Click="OnSignOut" />
+                                    </StackPanel>
+
                                     <TextBlock Text="Your data" Margin="0,8,0,0"
                                                Style="{ThemeResource CaptionTextBlockStyle}" />
                                     <StackPanel Orientation="Horizontal" Spacing="8">
@@ -960,8 +1016,7 @@
                             </Flyout>
                         </Button.Flyout>
                     </Button>
-                    <Button Content="Sync" Click="OnSync" />
-                    <Button Content="Sign out" Click="OnSignOut" />
+
                     </StackPanel>
                 </Grid>
     
