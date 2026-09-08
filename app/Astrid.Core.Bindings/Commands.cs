@@ -72,6 +72,40 @@ public static class Commands
     /// board could not offer an AI agent at all. Assigning is an ordinary update carrying an
     /// <c>assigneeId</c>; this is only the question of who may be offered.
     /// </remarks>
+    /// <summary>
+    /// What a list's external sync looks like: what is connected, what it could be linked to, and
+    /// what it is linked to.
+    /// </summary>
+    /// <remarks>
+    /// One command rather than three: the panel needs all of it before it can draw a single row,
+    /// and three round trips to fill one panel is three chances to show it half done.
+    /// </remarks>
+    public static object ExternalSync(string listId) =>
+        new WithListId("externalSync", listId);
+
+    /// <summary>The URL to open in a browser to connect a provider.</summary>
+    public static object ConnectProvider(string provider) =>
+        new ProviderRequest("connectProvider", provider);
+
+    public static object DisconnectProvider(string provider) =>
+        new ProviderRequest("disconnectProvider", provider);
+
+    /// <summary>Mirror a list to a container on the other side.</summary>
+    public static object LinkList(string provider, string listId, string containerId) =>
+        new LinkRequest("linkList", provider, listId, containerId);
+
+    public static object UnlinkList(string provider, string linkId) =>
+        new UnlinkRequest("unlinkList", provider, linkId);
+
+    /// <summary>
+    /// Run one Google pass over every linked list.
+    /// </summary>
+    /// <remarks>
+    /// GitHub needs no equivalent: a cron on the server does that one, so a list linked here syncs
+    /// whether or not this app is running.
+    /// </remarks>
+    public static object SyncExternal() => new KindOnly("syncExternal");
+
     /// <summary>Whether the first-run tour has been seen on this machine.</summary>
     /// <remarks>
     /// Per installation rather than per account: it is about where this app's hotkey is and what
@@ -439,6 +473,21 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("content")] string Content);
+
+    private sealed record ProviderRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("provider")] string Provider);
+
+    private sealed record LinkRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("provider")] string Provider,
+        [property: JsonPropertyName("listId")] string ListId,
+        [property: JsonPropertyName("containerId")] string ContainerId);
+
+    private sealed record UnlinkRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("provider")] string Provider,
+        [property: JsonPropertyName("linkId")] string LinkId);
 
     private sealed record PaletteRequest(
         [property: JsonPropertyName("kind")] string Kind,

@@ -115,8 +115,9 @@ pub unsafe extern "C" fn astrid_start(
                 .map_err(|error| error.to_string())?,
         );
 
-        // The three loops that keep the app up to date without being asked: a sixty-second sync
-        // pass, the live stream, and the half-minute look for a reminder that has come due.
+        // The loops that keep the app up to date without being asked: a sixty-second sync pass,
+        // the live stream, a half-minute look for a reminder that has come due, and a five-minute
+        // mirror of the Google-linked lists.
         // Started here rather than by the shell, because "is the app current?" is not a question a
         // window should have to remember to ask.
         let running = Arc::new(std::sync::atomic::AtomicBool::new(true));
@@ -136,6 +137,15 @@ pub unsafe extern "C" fn astrid_start(
                 app,
                 keep_going,
                 background::REMINDER_INTERVAL,
+            ));
+        }
+        {
+            let (app, running) = (app.clone(), running.clone());
+            let keep_going = move || running.load(std::sync::atomic::Ordering::Relaxed);
+            runtime.spawn(background::external_loop(
+                app,
+                keep_going,
+                background::EXTERNAL_INTERVAL,
             ));
         }
         {

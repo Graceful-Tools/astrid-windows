@@ -226,6 +226,58 @@ public sealed record ReminderSettings
     [JsonPropertyName("quietHoursEnd")] public string? QuietHoursEnd { get; init; }
 }
 
+/// <summary>A container on the other side: a Google task list, or a repository.</summary>
+public sealed record ExternalContainer
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
+
+    /// <summary>What a picker shows. See <see cref="TaskRow.ToString"/> for why.</summary>
+    public override string ToString() => Name;
+}
+
+/// <summary>One list mirrored to one container.</summary>
+public sealed record ExternalLink
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("astridListId")] public string AstridListId { get; init; } = string.Empty;
+
+    [JsonPropertyName("remoteContainerId")]
+    public string RemoteContainerId { get; init; } = string.Empty;
+}
+
+/// <summary>One provider's part of a list's external-sync panel.</summary>
+public sealed record ExternalProvider
+{
+    /// <summary><c>google_tasks</c> or <c>git_hub</c>, as the core spells them.</summary>
+    [JsonPropertyName("provider")] public string Provider { get; init; } = string.Empty;
+
+    [JsonPropertyName("connected")] public bool Connected { get; init; }
+
+    /// <summary>Empty until the provider is connected: asking before then can only 401.</summary>
+    [JsonPropertyName("containers")]
+    public IReadOnlyList<ExternalContainer> Containers { get; init; } = [];
+
+    /// <summary>Null when this list is not mirrored anywhere on this provider.</summary>
+    [JsonPropertyName("link")] public ExternalLink? Link { get; init; }
+
+    /// <summary>What to call it on screen.</summary>
+    public string Name => Provider == "git_hub" ? "GitHub" : "Google Tasks";
+
+    public bool IsLinked => Link is not null;
+}
+
+/// <summary>A list's external sync.</summary>
+public sealed record ExternalSync
+{
+    [JsonPropertyName("listId")] public string ListId { get; init; } = string.Empty;
+
+    [JsonPropertyName("providers")]
+    public IReadOnlyList<ExternalProvider> Providers { get; init; } = [];
+}
+
 /// <summary>One row of the command palette.</summary>
 public sealed record PaletteRow
 {

@@ -355,6 +355,46 @@
                                                  AutomationProperties.Name="List name"
                                                  Text="{x:Bind Shell.ListSettings.Name, Mode=OneWay}"
                                                  LostFocus="OnListRenamed" />
+                                        <!--
+                                            Where this list is mirrored. Google and GitHub work
+                                            differently and the rows say so, because "linked" means
+                                            something different for each: GitHub is synced by the
+                                            server whether or not this app runs, Google by this app
+                                            when it does.
+                                        -->
+                                        <TextBlock Text="Mirrored to"
+                                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                                   Margin="0,8,0,0" />
+                                        <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.Providers, Mode=OneWay}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="bindings:ExternalProvider">
+                                                    <Grid ColumnSpacing="8" Padding="0,2">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0"
+                                                                   Text="{x:Bind Name}"
+                                                                   VerticalAlignment="Center" />
+                                                        <ComboBox Grid.Column="1"
+                                                                  HorizontalAlignment="Stretch"
+                                                                  PlaceholderText="Not mirrored"
+                                                                  AutomationProperties.Name="{x:Bind Name}"
+                                                                  Tag="{x:Bind Provider}"
+                                                                  ItemsSource="{x:Bind Containers}"
+                                                                  SelectionChanged="OnMirrorChosen"
+                                                                  Visibility="{x:Bind Connected, Converter={StaticResource Visible}}" />
+                                                        <Button Grid.Column="2"
+                                                                Content="Connect"
+                                                                Tag="{x:Bind Provider}"
+                                                                Click="OnConnectProvider"
+                                                                Visibility="{x:Bind Connected, Converter={StaticResource NotVisible}}" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
                                         <TextBlock Text="Shared with"
                                                    Style="{ThemeResource CaptionTextBlockStyle}"
                                                    Margin="0,8,0,0" />

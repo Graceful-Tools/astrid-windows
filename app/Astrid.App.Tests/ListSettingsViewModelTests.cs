@@ -62,6 +62,87 @@ public sealed class ListSettingsViewModelTests
         Assert.Equal("u1", view.Members[0].DisplayName);
     }
 
+    private static object External(bool googleConnected, string? linkedTo = null) => new
+    {
+        listId = "l1",
+        providers = new object[]
+        {
+            new
+            {
+                provider = "google_tasks",
+                connected = googleConnected,
+                containers = googleConnected
+                    ? new object[] { new { id = "g1", name = "Groceries" } }
+                    : Array.Empty<object>(),
+                link = linkedTo is null
+                    ? null
+                    : (object)new { id = "link-1", astridListId = "l1", remoteContainerId = linkedTo },
+            },
+            new { provider = "git_hub", connected = false, containers = Array.Empty<object>(), link = (object?)null },
+        },
+    };
+
+    /// <summary>
+    /// A provider that is not connected offers nothing to mirror to — asking for somebody's task
+    /// lists before they have said yes can only 401.
+    /// </summary>
+    [Fact]
+    public async Task An_unconnected_provider_offers_no_containers()
+    {
+        var core = new FakeCore()
+            .AnswerOk("listMembers", Settings())
+            .AnswerOk("externalSync", External(googleConnected: false));
+        var view = new ListSettingsViewModel(core);
+        await view.LoadAsync("l1");
+
+        await view.LoadExternalAsync();
+
+        Assert.Equal(2, view.Providers.Count);
+        Assert.False(view.Providers[0].Connected);
+        Assert.Empty(view.Providers[0].Containers);
+        Assert.False(view.Providers[0].IsLinked);
+        Assert.Equal("Google Tasks", view.Providers[0].Name);
+        Assert.Equal("GitHub", view.Providers[1].Name);
+    }
+
+    [Fact]
+    public async Task Mirroring_a_list_links_it_and_reloads()
+    {
+        var core = new FakeCore()
+            .AnswerOk("listMembers", Settings())
+            .AnswerOk("externalSync", External(googleConnected: true))
+            .AnswerOk("linkList")
+            .AnswerOk("externalSync", External(googleConnected: true, linkedTo: "g1"));
+        var view = new ListSettingsViewModel(core);
+        await view.LoadAsync("l1");
+        await view.LoadExternalAsync();
+
+        Assert.True(await view.SetLinkAsync("google_tasks", "g1", null));
+
+        var link = core.Sent.First(sent => sent.Contains("linkList"));
+        Assert.Contains("\"containerId\":\"g1\"", link);
+        Assert.True(view.Providers[0].IsLinked);
+    }
+
+    /// <summary>Choosing nothing unlinks, which is a different command.</summary>
+    [Fact]
+    public async Task Clearing_the_mirror_unlinks()
+    {
+        var core = new FakeCore()
+            .AnswerOk("listMembers", Settings())
+            .AnswerOk("externalSync", External(googleConnected: true, linkedTo: "g1"))
+            .AnswerOk("unlinkList")
+            .AnswerOk("externalSync", External(googleConnected: true));
+        var view = new ListSettingsViewModel(core);
+        await view.LoadAsync("l1");
+        await view.LoadExternalAsync();
+
+        await view.SetLinkAsync("google_tasks", null, "link-1");
+
+        Assert.Contains("unlinkList", core.SentKinds());
+        Assert.False(view.Providers[0].IsLinked);
+    }
+
     [Fact]
     public async Task Inviting_reloads_who_is_on_the_list()
     {

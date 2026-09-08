@@ -104,6 +104,64 @@ public sealed class ListSettingsViewModel : ObservableObject
         private set => Set(ref _errorMessage, value);
     }
 
+    /// <summary>
+    /// Where this list is mirrored, and where it could be.
+    /// </summary>
+    /// <remarks>
+    /// Google and GitHub work differently and the panel says so: a GitHub link is synced by a cron
+    /// on the server whether or not this app is running, and a Google one is synced by this app
+    /// when it runs.
+    /// </remarks>
+    public ObservableCollection<ExternalProvider> Providers { get; } = [];
+
+    /// <summary>Load where this list is mirrored.</summary>
+    public async Task LoadExternalAsync(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(ListId))
+        {
+            return;
+        }
+        var response = await _core.CallAsync(Commands.ExternalSync(ListId), cancellationToken);
+        if (!Handle(response))
+        {
+            return;
+        }
+        var sync = response.Read<ExternalSync>();
+        if (sync is not null)
+        {
+            Replace(Providers, sync.Providers);
+        }
+    }
+
+    /// <summary>Start connecting a provider. Answers with the URL a browser should open.</summary>
+    public async Task<string?> ConnectProviderAsync(string provider,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(
+            Commands.ConnectProvider(provider), cancellationToken);
+        if (!Handle(response))
+        {
+            return null;
+        }
+        return response.Value.TryGetProperty("authorizeUrl", out var url) ? url.GetString() : null;
+    }
+
+    /// <summary>Mirror this list to a container, or stop.</summary>
+    public async Task<bool> SetLinkAsync(string provider, string? containerId, string? linkId,
+        CancellationToken cancellationToken = default)
+    {
+        var response = containerId is null && linkId is not null
+            ? await _core.CallAsync(Commands.UnlinkList(provider, linkId), cancellationToken)
+            : await _core.CallAsync(
+                Commands.LinkList(provider, ListId, containerId ?? string.Empty), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        await LoadExternalAsync(cancellationToken);
+        return true;
+    }
+
     /// <summary>Load one list's settings and members.</summary>
     public async Task LoadAsync(string listId, CancellationToken cancellationToken = default)
     {

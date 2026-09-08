@@ -40,6 +40,8 @@ milestones; this tracks the *product*.
 | Global quick-add hotkey | ✅ | ✅ | Ctrl+Shift+A; not yet rebindable |
 | Command palette | ✅ | ✅ | Ctrl+K, with the Mac's own fuzzy ranking |
 | First-run tour | ✅ | ✅ | The three things nobody can discover by looking |
+| External sync: connect, link a list | ✅ | ✅ | Both providers |
+| External sync: mirroring Google Tasks | ✅ | ✅ | Pull and push, every five minutes and on demand |
 | Profile numbers and data export | ✅ | ✅ | JSON or CSV, written where you choose |
 
 ## Not yet
@@ -47,9 +49,10 @@ milestones; this tracks the *product*.
 | What | Mac | Windows | What it needs |
 |---|---|---|---|
 | An attachment queued offline | ✅ | ❌ | Everything else here writes through the Outbox; an upload needs a connection and says so |
+| Deleting a Google twin when a task is deleted here | ✅ | ❌ | Needs a local ledger: the server's link row cascades away with the task, so the evidence is gone by the next pass. A deleted task simply stops being pushed |
+| Google auto-link modes (all lists, bidirectional) | ✅ | ➖ | The planner is ported and tested; nothing calls it yet — links are made by hand |
 | My Tasks filters | ✅ | ➖ | The filter sheet covers the virtual lists; the account-wide My Tasks preferences endpoint is not implemented |
 | Agent Hub, AI keys | ✅ | ❌ | |
-| External sync (Google Tasks, GitHub) | ✅ | ❌ | M5 |
 | MSIX packaging and updates | n/a | ❌ | M4 |
 
 ## Never — Apple-only by nature

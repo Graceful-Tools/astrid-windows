@@ -739,6 +739,46 @@ public sealed partial class ShellPage : UserControl
     private async void OnListSettingsOpening(object sender, object args)
     {
         await Shell.LoadListSettingsAsync();
+        await Shell.ListSettings.LoadExternalAsync();
+    }
+
+    /// <summary>
+    /// Connect a provider, in the browser.
+    /// </summary>
+    /// <remarks>
+    /// The same hand-off as signing in: somebody's Google password belongs in their browser, and
+    /// an app that asked for it in its own window would be teaching a habit worth not having.
+    /// </remarks>
+    private async void OnConnectProvider(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is not string provider)
+        {
+            return;
+        }
+        var url = await Shell.ListSettings.ConnectProviderAsync(provider);
+        if (!string.IsNullOrEmpty(url))
+        {
+            await Windows.System.Launcher.LaunchUriAsync(new Uri(url));
+        }
+    }
+
+    /// <summary>Mirror this list to the chosen container.</summary>
+    private async void OnMirrorChosen(object sender, SelectionChangedEventArgs args)
+    {
+        if (sender is not ComboBox box
+            || box.Tag is not string provider
+            || box.SelectedItem is not ExternalContainer container)
+        {
+            return;
+        }
+        var linked = Shell.ListSettings.Providers.FirstOrDefault(p => p.Provider == provider);
+        if (linked?.Link?.RemoteContainerId == container.Id)
+        {
+            // Already mirrored there. The box is set from what was loaded, and writing then would
+            // re-link on every open.
+            return;
+        }
+        await Shell.ListSettings.SetLinkAsync(provider, container.Id, linked?.Link?.Id);
     }
 
     private async void OnListRenamed(object sender, RoutedEventArgs args)
