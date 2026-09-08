@@ -35,6 +35,7 @@ public sealed class TaskDetailViewModel : ObservableObject
     private DueLabel _due = new();
     private string _priorityGlyph = "○";
     private UserSummary? _assignee;
+    private string _commentDraft = string.Empty;
     private bool _repeatsFromDueDate;
     private bool _hasReminder;
     private TimerState _timer = new();
@@ -398,6 +399,55 @@ public sealed class TaskDetailViewModel : ObservableObject
         return response.Read<DownloadedFile>()?.Path;
     }
 
+    /// <summary>
+    /// Ask what a paste means.
+    /// </summary>
+    /// <remarks>
+    /// Reading the clipboard is the window's job — it is a platform thing. Which of the things on
+    /// it was meant, and what to call a screenshot that has no name, are rules with tests in
+    /// <c>astrid_core::paste</c>, so they are asked for rather than repeated here.
+    /// </remarks>
+    public async Task<PasteDecision> DecidePasteAsync(IReadOnlyList<string> files, bool hasImage,
+        bool hasText, CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(
+            Commands.ClipboardPaste(files, hasImage ? "png" : null, hasText), cancellationToken);
+        if (!response.Ok || !response.Value.TryGetProperty("action", out var action))
+        {
+            return new PasteDecision("text", [], null);
+        }
+        var chosen = response.Value.TryGetProperty("files", out var listed)
+            ? listed.EnumerateArray()
+                .Select(item => item.GetString() ?? string.Empty)
+                .Where(path => path.Length > 0)
+                .ToList()
+            : [];
+        var name = response.Value.TryGetProperty("name", out var named) ? named.GetString() : null;
+        return new PasteDecision(action.GetString() ?? "text", chosen, name);
+    }
+
+    /// <summary>
+    /// Attach what a paste decided to attach.
+    /// </summary>
+    /// <remarks>
+    /// The decision is the core's — see <c>astrid_core::paste</c> — so this asks first and then
+    /// does what it is told. Every file goes through the same path the Attach button uses: there
+    /// is one pipeline, and paste is a source feeding it.
+    /// </remarks>
+    public async Task<int> AttachPastedAsync(IReadOnlyList<string> paths,
+        CancellationToken cancellationToken = default)
+    {
+        var attached = 0;
+        foreach (var path in paths)
+        {
+            if (await AttachAsync(path, cancellationToken: cancellationToken))
+            {
+                attached++;
+            }
+        }
+        return attached;
+    }
+
     /// <summary>Attach a file from this machine.</summary>
     public async Task<bool> AttachAsync(string path, string? content = null,
         CancellationToken cancellationToken = default)
@@ -601,6 +651,27 @@ public sealed class TaskDetailViewModel : ObservableObject
         return true;
     }
 
+    /// <summary>
+    /// What is typed into the comment box but not yet posted.
+    /// </summary>
+    /// <remarks>
+    /// Held here rather than read off the control at send time so that the Send button and the
+    /// Return key agree about whether there is anything to send — an offered Send that does
+    /// nothing when clicked is worse than no Send at all.
+    /// </remarks>
+    public string CommentDraft
+    {
+        get => _commentDraft;
+        set
+        {
+            Set(ref _commentDraft, value);
+            Raise(nameof(CanSendComment));
+        }
+    }
+
+    /// <summary>Whether there is anything to post. The predicate the send path guards on.</summary>
+    public bool CanSendComment => CommentDraft.Trim().Length > 0;
+
     public async Task<bool> AddCommentAsync(string content, CancellationToken cancellationToken = default)
     {
         var trimmed = content.Trim();
@@ -748,13 +819,72 @@ public sealed record CommentSummary
     [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
     public string? CreatedAt { get; init; }
 
-    [System.Text.Json.Serialization.JsonPropertyName("author")]
-    public UserSummary? Author { get; init; }
+    [System.Text.Json.Serialization.JsonPropertyName("authorName")]
+    public string? AuthorName { get; init; }
 
     /// <summary>True while this comment exists only on this device.</summary>
-    public bool IsPending => Id.StartsWith("temp_", StringComparison.Ordinal);
+    [System.Text.Json.Serialization.JsonPropertyName("isPending")]
+    public bool IsPending { get; init; }
+
+    /// <summary>
+    /// Whether to draw a text bubble at all.
+    /// </summary>
+    /// <remarks>
+    /// A file posted without a caption has no text, and an empty bubble beside a picture reads as
+    /// a failed post. The core decides it — see <c>astrid_core::rows::comment</c>.
+    /// </remarks>
+    [System.Text.Json.Serialization.JsonPropertyName("showsText")]
+    public bool ShowsText { get; init; }
+
+    /// <summary>
+    /// The files this comment carries.
+    /// </summary>
+    /// <remarks>
+    /// Attachments reach a task through comments, so a file somebody attached hangs off the
+    /// comment rather than off the task. Drawing only the text is what made attaching look broken.
+    /// </remarks>
+    [System.Text.Json.Serialization.JsonPropertyName("files")]
+    public IReadOnlyList<CommentFile> Files { get; init; } = [];
+
+    public bool HasFiles => Files.Count > 0;
 
     public override string ToString() => Content;
+}
+
+/// <summary>What a paste should do, as the core decided it.</summary>
+/// <param name="Action"><c>files</c>, <c>image</c>, or <c>text</c> for one to leave alone.</param>
+/// <param name="Files">The files to attach, already capped and in order.</param>
+/// <param name="Name">What to call the clipboard's picture, when there is one.</param>
+public sealed record PasteDecision(string Action, IReadOnlyList<string> Files, string? Name);
+
+/// <summary>One file on a comment.</summary>
+public sealed record CommentFile
+{
+    [System.Text.Json.Serialization.JsonPropertyName("id")]
+    public string Id { get; init; } = string.Empty;
+
+    [System.Text.Json.Serialization.JsonPropertyName("name")]
+    public string Name { get; init; } = string.Empty;
+
+    [System.Text.Json.Serialization.JsonPropertyName("size")]
+    public long Size { get; init; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("mimeType")]
+    public string MimeType { get; init; } = string.Empty;
+
+    /// <summary>Whether it is drawn where it sits, or offered as something to open.</summary>
+    [System.Text.Json.Serialization.JsonPropertyName("rendersInline")]
+    public bool RendersInline { get; init; }
+
+    /// <summary>The size as a person reads it.</summary>
+    public string SizeLabel => Size switch
+    {
+        < 1024 => $"{Size} B",
+        < 1024 * 1024 => $"{Size / 1024} KB",
+        _ => $"{Size / (1024 * 1024)} MB",
+    };
+
+    public override string ToString() => Name;
 }
 
 /// <summary>A subtask, as the detail screen lists it.</summary>

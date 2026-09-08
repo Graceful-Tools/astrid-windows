@@ -35,7 +35,7 @@ milestones; this tracks the *product*.
 | Offline-first with an Outbox | ✅ | ✅ | |
 | Sign-in through the browser | ✅ | ✅ | |
 | Localisation | ✅ (12 languages) | ✅ (English) | Windows has the mechanism and one language |
-| Attachments | ✅ | ✅ | Open, and attach from disk — queued offline, with the bytes copied so the original can move away |
+| Attachments | ✅ | ✅ | Open, attach from disk, paste from the clipboard; drawn in the comment they arrived on. Queued offline, with the bytes copied so the original can move away |
 | Timer on a task | ✅ | ✅ | Windows keeps a running timer across a restart; the Mac's is in memory |
 | Account screen and reminder settings | ✅ | ✅ | Push, email, default offset, digest, quiet hours |
 | Global quick-add hotkey | ✅ | ✅ | Ctrl+Shift+A; not yet rebindable |

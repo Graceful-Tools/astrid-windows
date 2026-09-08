@@ -772,6 +772,14 @@ public sealed partial class ShellPage : UserControl
     /// Opened with whatever program reads that kind of file, which is the point of downloading it
     /// to a path rather than carrying the bytes across the boundary.
     /// </remarks>
+    /// <summary>A file drawn in a comment, opened the same way one on the task is.</summary>
+    /// <remarks>
+    /// The same handler body rather than a second one: a file is a file, and the only difference
+    /// is which list it was drawn in.
+    /// </remarks>
+    private void OnOpenCommentFile(object sender, RoutedEventArgs args) =>
+        OnOpenAttachment(sender, args);
+
     private async void OnOpenAttachment(object sender, RoutedEventArgs args)
     {
         if ((sender as FrameworkElement)?.Tag is not string fileId)
@@ -1160,14 +1168,128 @@ public sealed partial class ShellPage : UserControl
 
     private async void OnCommentKeyDown(object sender, KeyRoutedEventArgs args)
     {
+        if (args.Key == VirtualKey.V && IsControlDown())
+        {
+            // Handled only when the core says there is something to attach: a text paste has to
+            // stay a text paste, which is the trade this whole path is careful about.
+            if (await PasteIntoCommentAsync())
+            {
+                args.Handled = true;
+            }
+            return;
+        }
         if (args.Key != VirtualKey.Enter)
         {
             return;
         }
         args.Handled = true;
-        if (await Shell.Detail.AddCommentAsync(CommentBox.Text))
+        await SendCommentAsync();
+    }
+
+    private static bool IsControlDown() =>
+        Microsoft.UI.Input.InputKeyboardSource
+            .GetKeyStateForCurrentThread(VirtualKey.Control)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
+    /// <summary>
+    /// Ctrl+V with a file or a picture on the clipboard attaches it to the open task.
+    /// </summary>
+    /// <remarks>
+    /// The clipboard is read here and interpreted in the core: which of the things on the board
+    /// was meant, and what to call a screenshot that has no name, are rules with tests rather than
+    /// a guess made in a key handler. Everything downstream is the path the Attach button uses.
+    /// </remarks>
+    /// <returns>Whether this paste was taken as an attachment rather than as text.</returns>
+    private async Task<bool> PasteIntoCommentAsync()
+    {
+        DataPackageView board;
+        try
         {
-            CommentBox.Text = string.Empty;
+            board = Clipboard.GetContent();
+        }
+        catch (Exception error)
+        {
+            // Another process can hold the clipboard open. A paste that cannot read it is a paste
+            // that types, which is the safe half of the trade.
+            App.Log($"could not read the clipboard: {error.Message}");
+            return false;
+        }
+
+        var paths = new List<string>();
+        if (board.Contains(StandardDataFormats.StorageItems))
+        {
+            foreach (var item in await board.GetStorageItemsAsync())
+            {
+                if (item is Windows.Storage.StorageFile file)
+                {
+                    paths.Add(file.Path);
+                }
+            }
+        }
+        // Windows hands a pasted screenshot over as a bitmap with no format named. PNG is what
+        // every modern source puts there and what we write it back out as.
+        var hasImage = board.Contains(StandardDataFormats.Bitmap);
+        var hasText = board.Contains(StandardDataFormats.Text);
+
+        var decided = await Shell.Detail.DecidePasteAsync(paths, hasImage, hasText);
+        return decided.Action switch
+        {
+            "files" => await Shell.Detail.AttachPastedAsync(decided.Files) > 0,
+            "image" => decided.Name is not null
+                && await AttachPastedImageAsync(board, decided.Name),
+            // "text", or a shape a newer core answers with. Either way it types.
+            _ => false,
+        };
+    }
+
+    /// <summary>Write the clipboard's picture to a file under the name the core chose.</summary>
+    /// <remarks>
+    /// To a temporary file rather than across the boundary as bytes: the attachment path takes a
+    /// path, and it copies what it is given into its own pending directory, so this file is a
+    /// hand-off rather than something to keep.
+    /// </remarks>
+    private async Task<bool> AttachPastedImageAsync(DataPackageView board, string name)
+    {
+        try
+        {
+            var reference = await board.GetBitmapAsync();
+            using var source = await reference.OpenReadAsync();
+            var folder = await Windows.Storage.StorageFolder.GetFolderFromPathAsync(
+                System.IO.Path.GetTempPath());
+            var file = await folder.CreateFileAsync(
+                name, Windows.Storage.CreationCollisionOption.ReplaceExisting);
+            using (var destination = await file.OpenAsync(Windows.Storage.FileAccessMode.ReadWrite))
+            {
+                await Windows.Storage.Streams.RandomAccessStream.CopyAsync(source, destination);
+            }
+            var attached = await Shell.Detail.AttachAsync(file.Path);
+            // The attachment path has taken its own copy by now, so this one has done its job.
+            try
+            {
+                await file.DeleteAsync();
+            }
+            catch (Exception)
+            {
+                // A temporary file left behind is untidy, not a failure worth reporting.
+            }
+            return attached;
+        }
+        catch (Exception error)
+        {
+            App.Log($"could not attach a pasted image: {error.Message}");
+            return false;
+        }
+    }
+
+    private async void OnSendComment(object sender, RoutedEventArgs args) =>
+        await SendCommentAsync();
+
+    /// <summary>Post what is in the comment box. What Return and the Send button both do.</summary>
+    private async Task SendCommentAsync()
+    {
+        if (await Shell.Detail.AddCommentAsync(Shell.Detail.CommentDraft))
+        {
+            Shell.Detail.CommentDraft = string.Empty;
         }
     }
 

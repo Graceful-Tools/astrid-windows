@@ -653,4 +653,104 @@ public sealed class TaskDetailViewModelTests
 
         Assert.Equal(before, core.SentKinds().Count(kind => kind == "taskDetail"));
     }
+
+    /// <summary>
+    /// A file posted without a caption used to draw an empty row, and an empty row is what "it did
+    /// not attach" looks like. The core says whether there is text; this is the view model
+    /// carrying its answer.
+    /// </summary>
+    [Fact]
+    public async Task A_comment_carries_its_files_and_says_whether_it_has_text()
+    {
+        var core = new FakeCore().AnswerOk("taskDetail", new
+        {
+            task = new { id = "t1", title = "Plan the trip" },
+            fieldOrder = new[] { "assignee" },
+            comments = new[]
+            {
+                new
+                {
+                    id = "c1",
+                    content = "",
+                    showsText = false,
+                    isPending = false,
+                    files = new[]
+                    {
+                        new
+                        {
+                            id = "f1",
+                            name = "shot.png",
+                            size = 2048L,
+                            mimeType = "image/png",
+                            rendersInline = true,
+                        },
+                    },
+                },
+            },
+            subtasks = Array.Empty<object>(),
+        });
+        var view = new TaskDetailViewModel(core);
+
+        await view.OpenAsync("t1");
+
+        var comment = Assert.Single(view.Comments);
+        Assert.False(comment.ShowsText);
+        Assert.True(comment.HasFiles);
+        Assert.Equal("shot.png", comment.Files[0].Name);
+        Assert.Equal("2 KB", comment.Files[0].SizeLabel);
+        Assert.True(comment.Files[0].RendersInline);
+    }
+
+    /// <summary>
+    /// The Send button and the Return key have to agree about whether there is anything to send —
+    /// an offered Send that does nothing when clicked is worse than no Send at all.
+    /// </summary>
+    [Fact]
+    public async Task Send_is_offered_exactly_when_a_comment_would_post()
+    {
+        var core = new FakeCore().AnswerOk("postComment").AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.False(view.CanSendComment);
+        Assert.False(await view.AddCommentAsync(view.CommentDraft));
+
+        view.CommentDraft = "   ";
+        Assert.False(view.CanSendComment);
+        Assert.False(await view.AddCommentAsync(view.CommentDraft));
+
+        view.CommentDraft = "said something";
+        Assert.True(view.CanSendComment);
+        Assert.True(await view.AddCommentAsync(view.CommentDraft));
+    }
+
+    /// <summary>Reading the clipboard is the window's job; deciding what it meant is not.</summary>
+    [Fact]
+    public async Task A_paste_asks_the_core_what_it_meant()
+    {
+        var core = new FakeCore().AnswerOk("clipboardPaste", new
+        {
+            action = "files",
+            files = new[] { @"C:\shots\one.png" },
+        });
+        var view = new TaskDetailViewModel(core);
+
+        var decided = await view.DecidePasteAsync([@"C:\shots\one.png"], hasImage: true,
+            hasText: false);
+
+        Assert.Equal("files", decided.Action);
+        Assert.Equal(@"C:\shots\one.png", Assert.Single(decided.Files));
+    }
+
+    /// <summary>A core that cannot answer must leave an ordinary paste alone.</summary>
+    [Fact]
+    public async Task A_paste_the_core_cannot_answer_is_left_to_type()
+    {
+        var view = new TaskDetailViewModel(new FakeCore());
+
+        var decided = await view.DecidePasteAsync([], hasImage: false, hasText: true);
+
+        Assert.Equal("text", decided.Action);
+        Assert.Empty(decided.Files);
+    }
 }

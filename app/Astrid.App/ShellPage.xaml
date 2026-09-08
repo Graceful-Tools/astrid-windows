@@ -32,6 +32,7 @@
         <local:StatConverter x:Key="StatSupported" Key="stats.supported" />
         <local:LoggedTimeConverter x:Key="LoggedTime" />
         <local:CredentialStateConverter x:Key="CredentialState" />
+        <local:FileGlyphConverter x:Key="FileGlyph" />
     </UserControl.Resources>
 
     <Grid x:Name="RootGrid" KeyDown="OnKeyDown">
@@ -284,8 +285,8 @@
                   Visibility="{x:Bind Shell.SignIn.IsSignedIn, Mode=OneWay, Converter={StaticResource Visible}}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
     
@@ -841,7 +842,24 @@
                     </ItemsControl>
                 </ScrollViewer>
 
-                <ListView Grid.Row="1"
+                <!--
+                    Quick add, above the rows. The iPhone puts it at the bottom because the
+                    keyboard rises from there; on a desktop the place you add to a list is the top,
+                    where you are already looking when you open it.
+                -->
+                <Grid Grid.Row="1" Margin="20,0,20,8" ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="QuickAddBox"
+                             Grid.Column="0"
+                             PlaceholderText="Add a task"
+                             KeyDown="OnQuickAddKeyDown" />
+                    <Button Grid.Column="1" Content="Add" Click="OnQuickAdd" Style="{ThemeResource AccentButtonStyle}" />
+                </Grid>
+
+                <ListView Grid.Row="2"
                           Visibility="{x:Bind Shell.IsBoardView, Mode=OneWay, Converter={StaticResource NotVisible}}"
                           x:Name="TaskRows"
                           Margin="8,0,8,0"
@@ -899,24 +917,12 @@
                     </ListView.ItemTemplate>
                 </ListView>
     
-                <TextBlock Grid.Row="2"
-                           Margin="20,4"
+                <TextBlock Grid.Row="3"
+                           Margin="20,4,20,12"
                            Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                            Text="{x:Bind Shell.Tasks.ErrorMessage, Mode=OneWay}"
                            Visibility="{x:Bind Shell.Tasks.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
     
-                <!-- Quick add. One control, at the bottom, where the eye ends up after reading a list. -->
-                <Grid Grid.Row="3" Margin="20,8,20,16" ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBox x:Name="QuickAddBox"
-                             Grid.Column="0"
-                             PlaceholderText="Add a task"
-                             KeyDown="OnQuickAddKeyDown" />
-                    <Button Grid.Column="1" Content="Add" Click="OnQuickAdd" Style="{ThemeResource AccentButtonStyle}" />
-                </Grid>
             </Grid>
 
         <!--
@@ -1253,8 +1259,42 @@
                     <ItemsControl ItemsSource="{x:Bind Shell.Detail.Comments, Mode=OneWay}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="viewmodels:CommentSummary">
-                                <StackPanel Margin="0,4">
-                                    <TextBlock Text="{x:Bind Content}" TextWrapping="Wrap" />
+                                <StackPanel Margin="0,4" Spacing="4">
+                                    <!--
+                                        A file posted without a caption draws no text bubble: an
+                                        empty bubble beside a picture is what "it did not attach"
+                                        looks like. The core decides it.
+                                    -->
+                                    <TextBlock Text="{x:Bind Content}" TextWrapping="Wrap"
+                                               Visibility="{x:Bind ShowsText, Converter={StaticResource Visible}}" />
+                                    <!--
+                                        The comment's own files. Attachments reach a task through
+                                        comments, so a file hangs off the comment rather than off
+                                        the task, and the Attachments section above cannot show it
+                                        in the conversation it belongs to.
+                                    -->
+                                    <ItemsControl ItemsSource="{x:Bind Files}"
+                                                  Visibility="{x:Bind HasFiles, Converter={StaticResource Visible}}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="viewmodels:CommentFile">
+                                                <Button Padding="8,4" Margin="0,2"
+                                                        HorizontalAlignment="Left"
+                                                        Tag="{x:Bind Id}"
+                                                        Click="OnOpenCommentFile">
+                                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                                        <FontIcon FontSize="12"
+                                                                  Glyph="{x:Bind RendersInline, Converter={StaticResource FileGlyph}}" />
+                                                        <TextBlock Text="{x:Bind Name}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   MaxWidth="200" />
+                                                        <TextBlock Text="{x:Bind SizeLabel}"
+                                                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                    </StackPanel>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
                                     <TextBlock Text="Not synced yet"
                                                Style="{ThemeResource CaptionTextBlockStyle}"
                                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
@@ -1267,8 +1307,28 @@
             </ScrollViewer>
 
             <StackPanel Grid.Row="2" Spacing="8" Margin="0,8,0,0">
-                <TextBox x:Name="CommentBox" PlaceholderText="Add a comment"
-                         KeyDown="OnCommentKeyDown" />
+                <!--
+                    Return posted a comment and nothing else did, so the affordance for the most
+                    common action in the panel was a keystroke you had to already know about. The
+                    button and the key run the same path and agree on the same predicate.
+                -->
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="CommentBox" Grid.Column="0"
+                             PlaceholderText="Add a comment"
+                             Text="{x:Bind Shell.Detail.CommentDraft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             KeyDown="OnCommentKeyDown" />
+                    <Button Grid.Column="1"
+                            AutomationProperties.Name="Send"
+                            Style="{ThemeResource AccentButtonStyle}"
+                            IsEnabled="{x:Bind Shell.Detail.CanSendComment, Mode=OneWay}"
+                            Click="OnSendComment">
+                        <FontIcon FontSize="14" Glyph="&#xE724;" />
+                    </Button>
+                </Grid>
                 <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                            TextWrapping="Wrap"
                            Text="{x:Bind Shell.Detail.ErrorMessage, Mode=OneWay}"

@@ -79,6 +79,15 @@ public static class Commands
     /// </remarks>
     public static object Agents() => new KindOnly("agents");
 
+    /// <summary>What is on the clipboard, and which of it was meant to be attached.</summary>
+    /// <remarks>
+    /// Reading the clipboard is the shell's job; deciding what it means is not — files beat a
+    /// rendition of them, a screenshot needs a name, and a text-only board is left to type.
+    /// </remarks>
+    public static object ClipboardPaste(IReadOnlyList<string> files, string? imageExtension,
+        bool hasText) =>
+        new PasteRequest("clipboardPaste", files, imageExtension, hasText);
+
     /// <summary>Where an account's own agent is told about work.</summary>
     public static object WebhookSettings() => new KindOnly("webhookSettings");
 
@@ -552,6 +561,14 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("content")] string Content);
+
+    private sealed record PasteRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("files")] IReadOnlyList<string> Files,
+        [property: JsonPropertyName("imageExtension"),
+                   JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        string? ImageExtension,
+        [property: JsonPropertyName("hasText")] bool HasText);
 
     private sealed record WebhookRequest(
         [property: JsonPropertyName("kind")] string Kind,

@@ -145,6 +145,20 @@ public sealed partial class CredentialStateConverter : IValueConverter
         throw new NotSupportedException("a key's state is read-only in the UI");
 }
 
+/// <summary>A picture, or something to open.</summary>
+/// <remarks>
+/// Which of the two a file is comes from the core, not from the extension read here — the same
+/// rule decides it on every surface. See <c>astrid_core::rows::comment::renders_inline</c>.
+/// </remarks>
+public sealed partial class FileGlyphConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is true ? "" : "";
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a glyph is not a value to read back");
+}
+
 /// <summary>What the timer button says.</summary>
 public sealed partial class TimerButtonConverter : IValueConverter
 {
