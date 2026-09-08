@@ -313,7 +313,7 @@ public sealed class TaskListViewModelTests
         var core = new FakeCore()
             .AnswerOk("rowsForList", Window(2, "Buy milk", "Book flights"))
             .AnswerOk("filterOptions", FilterOptions(false, "all"))
-            .AnswerOk("updateList")
+            .AnswerOk("setFilter")
             .AnswerOk("rowsForList", Window(1, "Book flights"))
             .AnswerOk("filterOptions", FilterOptions(true, "today"));
         var view = new TaskListViewModel(core);
@@ -322,7 +322,11 @@ public sealed class TaskListViewModelTests
 
         Assert.True(await view.SetFilterAsync("filterDueDate", "today"));
 
-        Assert.Contains("\"filterDueDate\":\"today\"", core.Sent.First(sent => sent.Contains("updateList")));
+        // Through setFilter rather than updateList: where a filter is written depends on what is
+        // being filtered, and that decision belongs in the core.
+        var sent = core.Sent.First(item => item.Contains("setFilter"));
+        Assert.Contains("\"field\":\"filterDueDate\"", sent);
+        Assert.Contains("\"value\":\"today\"", sent);
         Assert.Single(view.Rows);
         Assert.True(view.IsFiltered);
     }

@@ -210,6 +210,25 @@
     
                 <ScrollViewer Grid.Row="1">
                     <StackPanel Margin="8,0,8,8">
+                        <!--
+                            My Tasks first: it is the view the app opens on, not one of the lists,
+                            which is why it is its own collection rather than a row among them.
+                        -->
+                        <ListView x:Name="MyTasksList"
+                                  ItemsSource="{x:Bind Shell.Sidebar.MyTasks, Mode=OneWay}"
+                                  SelectionChanged="OnListSelected"
+                                  SelectionMode="Single">
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="bindings:ListSummary">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon FontSize="12" Glyph="&#xE77B;"
+                                                  VerticalAlignment="Center" />
+                                        <TextBlock Text="{x:Bind Name}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+
                         <TextBlock Text="Favourites"
                                    Margin="8,8,8,4"
                                    Style="{ThemeResource CaptionTextBlockStyle}"

@@ -110,15 +110,14 @@ public sealed partial class ShellPage : UserControl
             return;
         }
 
-        // Two list views, one selection. Clearing the other keeps the highlight where the user
-        // clicked instead of leaving two rows looking selected.
-        if (ReferenceEquals(view, FavoritesList))
+        // Three list views, one selection. Clearing the others keeps the highlight where the user
+        // clicked instead of leaving several rows looking selected.
+        foreach (var other in new[] { MyTasksList, FavoritesList, ListsList })
         {
-            ListsList.SelectedItem = null;
-        }
-        else
-        {
-            FavoritesList.SelectedItem = null;
+            if (!ReferenceEquals(view, other))
+            {
+                other.SelectedItem = null;
+            }
         }
 
         Shell.Sidebar.Selected = selected;

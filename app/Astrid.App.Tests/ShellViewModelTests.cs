@@ -201,9 +201,45 @@ public sealed class ShellViewModelTests
         var kinds = core.SentKinds().ToList();
         Assert.Equal("isSignedIn", kinds[0]);
         Assert.Equal("lists", kinds[1]);
-        Assert.Equal("rowsForList", kinds[2]);
+        // My Tasks sits above the lists in the sidebar, so the sidebar asks for it while it is
+        // drawing — still before anything reaches the network.
+        Assert.Equal("myTasksList", kinds[2]);
+        Assert.Equal("rowsForList", kinds[3]);
         Assert.Contains("sync", kinds);
         Assert.True(kinds.IndexOf("rowsForList") < kinds.IndexOf("sync"));
+    }
+
+    /// <summary>
+    /// My Tasks is what the app opens on. Falling through to the first list would open somebody's
+    /// alphabetically-first list instead of the thing they are actually holding.
+    /// </summary>
+    [Fact]
+    public async Task My_tasks_is_what_the_app_opens_on()
+    {
+        var core = StartedCore(("l1", "Home", false))
+            .AnswerOk("myTasksList", new { id = "virtual:my-tasks", name = "My Tasks", isVirtual = true });
+        using var shell = new ShellViewModel(core, RunInline);
+
+        await shell.StartAsync();
+
+        Assert.Equal("virtual:my-tasks", shell.Sidebar.Selected?.Id);
+        Assert.Single(shell.Sidebar.MyTasks);
+    }
+
+    /// <summary>
+    /// A deployment whose core does not answer for My Tasks still has a sidebar, and still opens
+    /// something. An empty screen with nothing to explain it is the failure worth avoiding.
+    /// </summary>
+    [Fact]
+    public async Task A_sidebar_without_my_tasks_still_opens_a_list()
+    {
+        var core = StartedCore(("l1", "Home", false));
+        using var shell = new ShellViewModel(core, RunInline);
+
+        await shell.StartAsync();
+
+        Assert.Empty(shell.Sidebar.MyTasks);
+        Assert.Equal("l1", shell.Sidebar.Selected?.Id);
     }
 
     [Fact]

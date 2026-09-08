@@ -317,8 +317,7 @@ public sealed class TaskListViewModel : ObservableObject
             return false;
         }
         var response = await _core.CallAsync(
-            Commands.UpdateList(ListId, new Dictionary<string, object?> { [field] = value }),
-            cancellationToken);
+            Commands.SetFilter(ListId, field, value), cancellationToken);
         if (!Handle(response))
         {
             return false;

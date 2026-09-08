@@ -16,6 +16,7 @@ milestones; this tracks the *product*.
 | What | Mac | Windows | Notes |
 |---|---|---|---|
 | Sidebar: lists, favourites, virtual lists | ✅ | ✅ | Today, Not in a List, I've Assigned |
+| My Tasks | ✅ | ✅ | The view the app opens on — yours and nobody's — with filters that belong to the account and follow you between machines |
 | Task list with subtasks and windowing | ✅ | ✅ | Windows sends a window of rows; the Mac loads the list |
 | Quick add, with `#list` autocomplete | ✅ | ✅ | Same parser, in the core |
 | Task detail: title, description, priority, lists | ✅ | ✅ | Field order comes from the core |
@@ -54,7 +55,6 @@ milestones; this tracks the *product*.
 |---|---|---|---|
 | An attachment queued offline | ✅ | ❌ | Everything else here writes through the Outbox; an upload needs a connection and says so |
 | Custom agents and webhook settings | ✅ | ➖ | Copilot connects and disconnects; editing custom agents and their webhooks is not here |
-| My Tasks filters | ✅ | ➖ | The filter sheet covers the virtual lists; the account-wide My Tasks preferences endpoint is not implemented |
 | MSIX packaging and updates | n/a | ❌ | M4 |
 
 ## Never — Apple-only by nature

@@ -124,6 +124,20 @@ public static class Commands
     public static object UnlinkList(string provider, string linkId) =>
         new UnlinkRequest("unlinkList", provider, linkId);
 
+    /// <summary>The My Tasks entry for the sidebar: the view the app opens on.</summary>
+    public static object MyTasksList() => new KindOnly("myTasksList");
+
+    /// <summary>Fetch My Tasks' filters from the account.</summary>
+    public static object RefreshMyTasks() => new KindOnly("refreshMyTasks");
+
+    /// <summary>Set one filter on one list.</summary>
+    /// <remarks>
+    /// Not an <c>updateList</c> from here: where a filter is written depends on what is being
+    /// filtered — a list's go on the list, My Tasks' go on the account — and that is a decision.
+    /// </remarks>
+    public static object SetFilter(string listId, string field, string value) =>
+        new FilterRequest("setFilter", listId, field, value);
+
     /// <summary>How Google lists get linked, and what a list made here is called.</summary>
     public static object GoogleSyncMode() => new KindOnly("googleSyncMode");
 
@@ -535,6 +549,12 @@ public static class Commands
         [property: JsonPropertyName("provider")] string Provider,
         [property: JsonPropertyName("listId")] string ListId,
         [property: JsonPropertyName("containerId")] string ContainerId);
+
+    private sealed record FilterRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("listId")] string ListId,
+        [property: JsonPropertyName("field")] string Field,
+        [property: JsonPropertyName("value")] string Value);
 
     private sealed record SyncModeRequest(
         [property: JsonPropertyName("kind")] string Kind,

@@ -23,6 +23,16 @@ public sealed class SidebarViewModel : ObservableObject
         _core = core;
     }
 
+    /// <summary>
+    /// My Tasks: what you are holding, wherever it lives. Above the favourites, because it is the
+    /// view the app opens on rather than one of the lists.
+    /// </summary>
+    /// <remarks>
+    /// Its id and name are the core's — it has no row on the server, so nothing else could name
+    /// it, and inventing the id here would be the shell deciding what My Tasks is.
+    /// </remarks>
+    public ObservableCollection<ListSummary> MyTasks { get; } = [];
+
     /// <summary>Favourites, in the order the user arranged them.</summary>
     public ObservableCollection<ListSummary> Favorites { get; } = [];
 
@@ -64,6 +74,10 @@ public sealed class SidebarViewModel : ObservableObject
                 .Where(list => !list.IsStatusList)
                 .ToList();
 
+            var mine = await _core.CallAsync(Commands.MyTasksList(), cancellationToken);
+            var entry = mine.Ok ? mine.Read<ListSummary>() : null;
+            Replace(MyTasks, entry is null ? [] : [entry]);
+
             Replace(Favorites, all
                 .Where(list => list.IsFavorite == true)
                 .OrderBy(list => list.FavoriteOrder ?? int.MaxValue)
@@ -81,7 +95,9 @@ public sealed class SidebarViewModel : ObservableObject
             {
                 Selected = all.FirstOrDefault(list => list.Id == Selected.Id) ?? Selected;
             }
-            Selected ??= Favorites.FirstOrDefault() ?? Lists.FirstOrDefault();
+            Selected ??= MyTasks.FirstOrDefault()
+                ?? Favorites.FirstOrDefault()
+                ?? Lists.FirstOrDefault();
         }
         finally
         {
