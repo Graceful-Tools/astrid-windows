@@ -52,6 +52,29 @@ accessibility tree by `npm run predeploy:full`.
 | Search | `astrid_core::services::search` → shell | done |
 | Reminders and toasts | `astrid_core::reminders`, `rows::reminder_picks` → shell | done |
 
+## Performance
+
+Measured by `cargo test -p astrid-core --release --test performance -- --nocapture`, on an account
+of **ten thousand tasks in one list** — more than any real account, and the size the M0 transport
+spike was worried about. On this machine (ARM64 laptop, release build):
+
+| What | Before the borrow pass | Now |
+|---|---|---|
+| `rowsForList` — one window of 50 | 53 ms | **30 ms** |
+| the same window at offset 5000 | 52 ms | **31 ms** |
+| `board` — grouping every card into columns | 26 ms | **22 ms** |
+| `searchTasks` over the whole account | 18 ms | **17 ms** |
+| `completeTask` — one write | 0.24 ms | **0.18 ms** |
+
+Where the remaining 30 ms goes: about 18 ms is SQLite plus the JSON decode of ten thousand cached
+rows, and the rest is filtering, splicing and building fifty rows. The pipeline no longer copies the
+account: filtering, sorting, splicing and row-building all work on references, which was worth
+nearly half the time and all of the allocation churn.
+
+The tests assert a generous half-second bound rather than these numbers. What they catch is a
+*shape* change — an accidental O(n²), a clone per row, a store read inside a loop — which shows up
+as seconds rather than as a percentage.
+
 ## M3 — collaboration and remaining parity
 
 | Piece | Path | State |
