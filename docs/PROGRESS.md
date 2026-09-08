@@ -88,7 +88,12 @@ as seconds rather than as a percentage.
 
 ## M4 — distribution
 
-Not started.
+| Piece | Path | State |
+|---|---|---|
+| MSIX packages and a bundle over both architectures | `scripts/package.ps1`, `packaging/` | done — unsigned |
+| Signing | — | not started; needs a certificate and a decision |
+| The Store listing | — | not started |
+| The update feed (`.appinstaller`) | — | not started |
 
 ## M5 — external sync providers
 

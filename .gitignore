@@ -14,6 +14,8 @@
 *.msix
 *.msixbundle
 *.appinstaller
+# Where scripts/package.ps1 puts the publish folders and the packages.
+/dist/
 *.pfx
 *.cer
 

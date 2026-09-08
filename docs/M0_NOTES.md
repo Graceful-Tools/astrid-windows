@@ -82,7 +82,29 @@ before M0 is called done; record the result here when it is.
 
 | Spike | Question it answers | Fallback if it fails |
 |---|---|---|
-| MSIX on ARM64 | Does an x64 + ARM64 bundle install and run on Windows 11 ARM? | Separate per-architecture packages |
+
+### Settled — MSIX, half of it, 2026-09-07
+
+**The bundle builds.** `scripts/package.ps1` publishes the app per architecture, lays each folder
+out with a hand-written `AppxManifest.xml`, and calls `makeappx` — the Desktop Bridge shape, which
+is what a Win32 app with no packaged-only APIs needs. The output is
+`dist/Astrid-<version>.msixbundle`, 94 MB over an x64 and an ARM64 package, each carrying its own
+.NET runtime so nobody is told to install one.
+
+No packaging project: the app is one SDK-style csproj, and a `.wapproj` would mean a second build
+and a second place for the version number to be wrong.
+
+Two things the manifest needs that are easy to get wrong, both of which `makeappx` rejects outright
+rather than warning about: `uap:Protocol` takes `DisplayName` as an element, not an attribute; and
+`EntryPoint="Windows.FullTrustApplication"` requires `rescap:runFullTrust`, because a Win32 program
+in a package is a full-trust program and the manifest has to say so.
+
+**What is still unverified: installing it.** Windows will not install an unsigned package, and
+signing is a deliberate act with a real certificate — the approvals section of `CLAUDE.md` puts it
+beside publishing. Doing it locally means creating a self-signed certificate and trusting it on this
+machine, which is a change to somebody's machine rather than to this repository. So the spike's
+second half — does the bundle install and run on ARM — is still open, and needs either that
+permission or the real signing certificate.
 
 ### Settled — the global hotkey, 2026-09-07
 

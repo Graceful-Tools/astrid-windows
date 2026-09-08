@@ -49,7 +49,8 @@ installs. The ARM64 MSVC component is required — `predeploy` cross-builds ARM6
 |---|---|
 | `npm run predeploy:quick` | fmt, clippy, tests, contracts (no ARM64 cross-build) |
 | `npm run predeploy` | the above plus the ARM64 cross-build and, once it exists, the shell build and tests — **the standard gate** |
-| `npm run predeploy:full` | adds the packaged build and UI smoke tests (from M2) |
+| `npm run predeploy:full` | adds the UI smoke tests, which drive the built app |
+| `powershell -File scripts/package.ps1` | the MSIX packages and the bundle — unsigned, see `packaging/README.md` |
 | `npm run contracts` | regenerate `contracts/fixtures` from a local astrid-web checkout |
 
 ## Test locations
