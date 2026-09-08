@@ -101,7 +101,8 @@ as seconds rather than as a percentage.
 |---|---|---|
 | The decisions, with their reasons and tests | `astrid_core::external` | done |
 | Connect, disconnect, link a list | `astrid_core::services::external` → shell | done — both providers |
-| The Google mirroring pass | `astrid_core::services::external` | done — pull, push, cursor commit |
-| Deleting a Google twin on a local delete | — | not started; needs a delete-time ledger |
+| The Google mirroring pass | `astrid_core::services::external` | done — remove, pull, push, cursor commit |
+| Deleting a Google twin on a local delete | `astrid_core::external::ledger` | done — captured at delete time, executed and tombstoned on the next pass |
+| The server's tombstones (web and other devices) | `astrid_core::services::external` | done — merged from the integration metadata into their own store |
 | The auto-link modes | `astrid_core::external::auto_link` | planned and tested; nothing calls it yet |
 | GitHub | n/a | a cron on the server does it — a client only configures it |
