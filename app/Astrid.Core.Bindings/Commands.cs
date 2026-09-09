@@ -496,6 +496,20 @@ public static class Commands
     public static object SetTaskLists(string taskId, IReadOnlyList<string> listIds) =>
         new SetListsRequest("setTaskLists", taskId, listIds);
 
+    /// <summary>The detail's list editor: what a task is in, what it could be added to (task d3f3b111).</summary>
+    public static object ListPicks(string taskId, string query) =>
+        new ListPicksRequest("listPicks", taskId, query);
+
+    public static object AddTaskToList(string taskId, string listId) =>
+        new TaskListRequest("addTaskToList", taskId, listId);
+
+    public static object RemoveTaskFromList(string taskId, string listId) =>
+        new TaskListRequest("removeTaskFromList", taskId, listId);
+
+    /// <summary>Make a list and put the task in it. Colour and privacy are the core's to choose.</summary>
+    public static object CreateListForTask(string taskId, string name) =>
+        new CreateListForTaskRequest("createListForTask", taskId, name);
+
     public static object SetTaskStatusRole(string taskId, string? statusRole) =>
         new StatusRoleRequest("setTaskStatusRole", taskId, statusRole);
 
@@ -589,6 +603,21 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("listIds")] IReadOnlyList<string> ListIds);
+
+    private sealed record ListPicksRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("taskId")] string TaskId,
+        [property: JsonPropertyName("query")] string Query);
+
+    private sealed record TaskListRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("taskId")] string TaskId,
+        [property: JsonPropertyName("listId")] string ListId);
+
+    private sealed record CreateListForTaskRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("taskId")] string TaskId,
+        [property: JsonPropertyName("name")] string Name);
 
     private sealed record StatusRoleRequest(
         [property: JsonPropertyName("kind")] string Kind,

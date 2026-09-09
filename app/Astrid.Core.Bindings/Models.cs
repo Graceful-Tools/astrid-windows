@@ -143,6 +143,32 @@ public sealed record ListChip
     [JsonPropertyName("color")] public string Color { get; init; } = "#3b82f6";
 }
 
+/// <summary>One list as the detail's list editor draws it (task d3f3b111).</summary>
+public sealed record ListPick
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
+
+    [JsonPropertyName("color")] public string Color { get; init; } = "#3b82f6";
+
+    /// <summary>What a screen reader should call the × on this chip.</summary>
+    public string RemoveActionName => $"Remove from {Name}";
+}
+
+/// <summary>What the list editor shows for one task and one search.</summary>
+public sealed record ListPicks
+{
+    /// <summary>The lists the task is in.</summary>
+    [JsonPropertyName("selected")] public IReadOnlyList<ListPick> Selected { get; init; } = [];
+
+    /// <summary>The lists it could be added to that match the search.</summary>
+    [JsonPropertyName("options")] public IReadOnlyList<ListPick> Options { get; init; } = [];
+
+    /// <summary>The name to offer creating, when what was typed is not a list yet.</summary>
+    [JsonPropertyName("createName")] public string? CreateName { get; init; }
+}
+
 /// <summary>Enough of a person to draw them.</summary>
 public sealed record UserSummary
 {

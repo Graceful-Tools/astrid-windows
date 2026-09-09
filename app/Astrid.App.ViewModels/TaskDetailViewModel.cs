@@ -797,6 +797,100 @@ public sealed class TaskDetailViewModel : ObservableObject
         }
     }
 
+    // ── The lists a task is in (task d3f3b111) ──────────────────────────────────────────────
+    //
+    // The web's Lists row is an editor: chips with an × each, a search over the account's lists,
+    // and "Create …" when the typed name is nobody's yet. What is offered, and what a list made
+    // from here looks like, are the core's rules (`rows::list_picks`); this asks and relays.
+
+    /// <summary>The lists the task is in, as the editor draws them.</summary>
+    public ObservableCollection<ListPick> SelectedLists { get; } = [];
+
+    /// <summary>The lists the task could be added to that match <see cref="ListSearch"/>.</summary>
+    public ObservableCollection<ListPick> ListOptions { get; } = [];
+
+    private string _listSearch = string.Empty;
+    private string? _createListName;
+
+    /// <summary>What has been typed into the editor's search box.</summary>
+    public string ListSearch
+    {
+        get => _listSearch;
+        private set => Set(ref _listSearch, value);
+    }
+
+    /// <summary>The name the editor offers to create, when the search matches no list.</summary>
+    public string? CreateListName
+    {
+        get => _createListName;
+        private set
+        {
+            if (Set(ref _createListName, value))
+            {
+                Raise(nameof(CanCreateList));
+            }
+        }
+    }
+
+    public bool CanCreateList => !string.IsNullOrEmpty(CreateListName);
+
+    /// <summary>Fill the editor for what has been typed. Called as the flyout opens and as the box changes.</summary>
+    public async Task LoadListPicksAsync(string query, CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return;
+        }
+        ListSearch = query;
+        var response = await _core.CallAsync(Commands.ListPicks(TaskId, query), cancellationToken);
+        if (!Handle(response))
+        {
+            return;
+        }
+        var picks = response.Read<ListPicks>();
+        if (picks is null)
+        {
+            return;
+        }
+        Replace(SelectedLists, picks.Selected);
+        Replace(ListOptions, picks.Options);
+        CreateListName = picks.CreateName;
+    }
+
+    /// <summary>Put the task in a list it is not in.</summary>
+    public Task<bool> AddToListAsync(string listId, CancellationToken cancellationToken = default) =>
+        ChangeListsAsync(Commands.AddTaskToList(TaskId ?? string.Empty, listId), cancellationToken);
+
+    /// <summary>Take the task out of one of its lists.</summary>
+    public Task<bool> RemoveFromListAsync(string listId, CancellationToken cancellationToken = default) =>
+        ChangeListsAsync(Commands.RemoveTaskFromList(TaskId ?? string.Empty, listId), cancellationToken);
+
+    /// <summary>Create the list the editor offered, and put the task in it.</summary>
+    public Task<bool> CreateListAsync(CancellationToken cancellationToken = default) =>
+        CreateListName is { } name
+            ? ChangeListsAsync(Commands.CreateListForTask(TaskId ?? string.Empty, name), cancellationToken)
+            : Task.FromResult(false);
+
+    /// <summary>
+    /// One list edit, then the pane and the editor are refreshed — the editor stays open with
+    /// fresh chips and options, and its search is cleared as the web clears it after a choice.
+    /// </summary>
+    private async Task<bool> ChangeListsAsync(object command, CancellationToken cancellationToken)
+    {
+        if (TaskId is null)
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(command, cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        await ReloadAsync(cancellationToken);
+        await LoadListPicksAsync(string.Empty, cancellationToken);
+        return true;
+    }
+
     /// <summary>Give the task to someone, or to no one.</summary>
     /// <remarks>
     /// An ordinary update carrying an <c>assigneeId</c> — null clears it, which is why the value is

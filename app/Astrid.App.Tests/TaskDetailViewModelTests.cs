@@ -91,6 +91,69 @@ public sealed class TaskDetailViewModelTests
         Assert.True(view.ShowsRenderedDescription, "saving goes back to the drawing");
     }
 
+    /// <summary>
+    /// The Lists row edits (task d3f3b111): what the task is in, what it could join, and a change
+    /// that goes through the core and comes back reflected in both.
+    /// </summary>
+    [Fact]
+    public async Task The_lists_a_task_is_in_can_be_changed_from_the_detail_task_d3f3b111()
+    {
+        var home = new { id = "l1", name = "Home", color = "#3b82f6" };
+        var work = new { id = "l2", name = "Work", color = "#ef4444" };
+        var core = OpenedTask()
+            .AnswerOk("listPicks", new { selected = new[] { home }, options = new[] { work }, createName = (string?)null })
+            .AnswerOk("addTaskToList")
+            .AnswerOk("taskDetail", Detail())
+            .AnswerOk("dueDateOptions", NoDuePicks())
+            .AnswerOk("listPicks", new { selected = new[] { home, work }, options = Array.Empty<object>(), createName = (string?)null })
+            .AnswerOk("removeTaskFromList")
+            .AnswerOk("taskDetail", Detail())
+            .AnswerOk("dueDateOptions", NoDuePicks())
+            .AnswerOk("listPicks", new { selected = new[] { work }, options = new[] { home }, createName = (string?)null });
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.LoadListPicksAsync(string.Empty);
+        Assert.Equal("Home", Assert.Single(view.SelectedLists).Name);
+        Assert.Equal("Work", Assert.Single(view.ListOptions).Name);
+        Assert.False(view.CanCreateList);
+
+        Assert.True(await view.AddToListAsync("l2"));
+        Assert.Contains("\"kind\":\"addTaskToList\"", core.Sent.First(sent => sent.Contains("addTaskToList")));
+        Assert.Contains("\"listId\":\"l2\"", core.Sent.First(sent => sent.Contains("addTaskToList")));
+        Assert.Equal(2, view.SelectedLists.Count);
+        Assert.Empty(view.ListOptions);
+
+        Assert.True(await view.RemoveFromListAsync("l1"));
+        Assert.Equal("Work", Assert.Single(view.SelectedLists).Name);
+    }
+
+    /// <summary>A typed name no list has is offered for creation, and creating goes through the core.</summary>
+    [Fact]
+    public async Task A_name_no_list_has_can_be_created_from_the_editor()
+    {
+        var core = OpenedTask()
+            .AnswerOk("listPicks", new { selected = Array.Empty<object>(), options = Array.Empty<object>(), createName = "Garden" })
+            .AnswerOk("createListForTask", new { list = new { id = "l9", name = "Garden" } })
+            .AnswerOk("taskDetail", Detail())
+            .AnswerOk("dueDateOptions", NoDuePicks())
+            .AnswerOk("listPicks", new { selected = new[] { new { id = "l9", name = "Garden", color = "#22c55e" } }, options = Array.Empty<object>(), createName = (string?)null });
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.LoadListPicksAsync("Garden");
+        Assert.True(view.CanCreateList);
+        Assert.Equal("Garden", view.CreateListName);
+
+        Assert.True(await view.CreateListAsync());
+
+        var sent = core.Sent.First(command => command.Contains("createListForTask"));
+        Assert.Contains("\"name\":\"Garden\"", sent);
+        Assert.Equal("Garden", Assert.Single(view.SelectedLists).Name);
+        Assert.Equal(string.Empty, view.ListSearch);
+        Assert.False(view.CanCreateList);
+    }
+
     /// <summary>Nothing to draw means the box, with its placeholder, as the web shows its prompt.</summary>
     [Fact]
     public async Task An_empty_description_shows_the_editor()

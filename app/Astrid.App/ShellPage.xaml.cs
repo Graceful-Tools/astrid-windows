@@ -1612,6 +1612,48 @@ public sealed partial class ShellPage : UserControl
         await Shell.Detail.AssignAsync(userId);
     }
 
+    // ── The lists a task is in (task d3f3b111) ──────────────────────────────────────────────
+
+    private async void OnListsFlyoutOpening(object sender, object args) =>
+        await Shell.Detail.LoadListPicksAsync(string.Empty);
+
+    private async void OnListSearchChanged(object sender, TextChangedEventArgs args)
+    {
+        if (sender is TextBox box && box.Text != Shell.Detail.ListSearch)
+        {
+            await Shell.Detail.LoadListPicksAsync(box.Text);
+        }
+    }
+
+    private async void OnAddToList(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is string listId)
+        {
+            await Shell.Detail.AddToListAsync(listId);
+            await Shell.Tasks.RefreshAsync();
+        }
+    }
+
+    private async void OnRemoveFromList(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is string listId)
+        {
+            await Shell.Detail.RemoveFromListAsync(listId);
+            // The open list may have just lost this task.
+            await Shell.Tasks.RefreshAsync();
+        }
+    }
+
+    /// <summary>A new list, and the task in it. The sidebar gains the list too.</summary>
+    private async void OnCreateListForTask(object sender, RoutedEventArgs args)
+    {
+        if (await Shell.Detail.CreateListAsync())
+        {
+            await Shell.Sidebar.LoadAsync();
+            await Shell.Tasks.RefreshAsync();
+        }
+    }
+
     private async void OnDetailTitleKeyDown(object sender, KeyRoutedEventArgs args)
     {
         if (args.Key != VirtualKey.Enter)
