@@ -107,6 +107,16 @@ public sealed partial class ShellPage : UserControl
         await Shell.RaiseRemindersAsync();
         await Shell.MaybeShowTourAsync();
         SyncSelectionFromViewModel();
+
+        // The arrow has to follow the row, and a row moves when the list scrolls as well as when
+        // the selection changes. The ScrollViewer is inside the ListView's template, so it does
+        // not exist until the template is applied — which is why this is here and not in the
+        // constructor.
+        if (ScrollViewerInside(TaskRows) is { } scroller)
+        {
+            scroller.ViewChanged += (_, _) => PointArrowAtSelectedRow();
+        }
+        SizeChanged += (_, _) => PointArrowAtSelectedRow();
     }
 
     private async void OnListSelected(object sender, SelectionChangedEventArgs args)
@@ -403,6 +413,72 @@ public sealed partial class ShellPage : UserControl
         {
             await Shell.OpenTaskAsync(row.Id);
             SyncDetailPriority();
+            PointArrowAtSelectedRow();
+        }
+    }
+
+    /// <summary>The ScrollViewer a ListView's template wraps its items in, if it has one yet.</summary>
+    private static ScrollViewer? ScrollViewerInside(DependencyObject root)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is ScrollViewer found)
+            {
+                return found;
+            }
+            if (ScrollViewerInside(child) is { } deeper)
+            {
+                return deeper;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Point the pane's arrow at the row it is describing.
+    /// </summary>
+    /// <remarks>
+    /// Geometry, so the shell measures it: where a row sits on screen is not something the view
+    /// model can know or should be told. astrid-web does the same thing with an `arrowTop` it
+    /// recomputes as the list moves (task 830e63b9).
+    ///
+    /// Hidden rather than parked at the top when there is no row to point at — a row scrolled out
+    /// of view, or a task opened from search or a deep link with no row on screen at all. An arrow
+    /// aimed at nothing is worse than no arrow.
+    /// </remarks>
+    private void PointArrowAtSelectedRow()
+    {
+        if (!Shell.Detail.IsOpen
+            || Shell.Tasks.Selected is not { } selected
+            || TaskRows.ContainerFromItem(selected) is not FrameworkElement container)
+        {
+            DetailArrow.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        try
+        {
+            var middle = container
+                .TransformToVisual(DetailArrow.Parent as UIElement)
+                .TransformPoint(new Windows.Foundation.Point(0, container.ActualHeight / 2));
+
+            // Off the top or bottom of the pane: the row is scrolled away, so there is nothing to
+            // join to.
+            if (middle.Y < 0 || middle.Y > ((FrameworkElement)DetailArrow.Parent).ActualHeight)
+            {
+                DetailArrow.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            DetailArrowOffset.Y = middle.Y - (DetailArrow.Height / 2);
+            DetailArrow.Visibility = Visibility.Visible;
+        }
+        catch (Exception)
+        {
+            // TransformToVisual throws when either element is not in the tree yet, which happens
+            // on the first layout pass. Nothing to point at yet is not an error.
+            DetailArrow.Visibility = Visibility.Collapsed;
         }
     }
 
@@ -416,6 +492,7 @@ public sealed partial class ShellPage : UserControl
         }
         await Shell.OpenOrCloseTaskAsync(row.Id);
         SyncDetailPriority();
+        PointArrowAtSelectedRow();
     }
 
     private void OnCloseDetail(object sender, RoutedEventArgs args) => Shell.Detail.Close();

@@ -2557,6 +2557,36 @@
                                Visibility="{x:Bind Shell.Detail.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
                 </StackPanel>
             </Border>
+
+            <!--
+                The arrow joining the pane to the row it is about.
+
+                astrid-web's `.task-panel-arrow`: a square rotated 45 degrees, sitting half off the
+                pane's left edge with only its left and bottom borders drawn, so it reads as a
+                notch cut out of the panel rather than a shape stuck on it. Same surface and same
+                border colour, which is what makes the join invisible.
+
+                It spans every row of the pane and is declared last, so it draws over the border it
+                is meant to interrupt. Its Y is set in code from the selected row's position —
+                geometry the shell can measure and the view model has no business knowing.
+            -->
+            <Border x:Name="DetailArrow"
+                    Grid.RowSpan="3"
+                    Width="16" Height="16"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    Margin="-8,0,0,0"
+                    Background="{ThemeResource AstridSurface}"
+                    BorderThickness="1,0,0,1"
+                    BorderBrush="{ThemeResource AstridBorder}"
+                    Visibility="Collapsed">
+                <Border.RenderTransform>
+                    <TransformGroup>
+                        <RotateTransform Angle="45" CenterX="8" CenterY="8" />
+                        <TranslateTransform x:Name="DetailArrowOffset" />
+                    </TransformGroup>
+                </Border.RenderTransform>
+            </Border>
         </Grid>
         </Grid>
 </UserControl>
