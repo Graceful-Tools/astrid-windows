@@ -696,6 +696,24 @@ public sealed partial class ChoiceLabelConverter : IValueConverter
         throw new NotSupportedException("a label is not a value to read back");
 }
 
+/// <summary>
+/// How far a reply steps in, and from which side: the parent author's, as the web's
+/// <c>pl-10</c> / <c>pr-10</c> (task 97c817dd). A top-level comment steps in from neither.
+/// </summary>
+public sealed partial class ReplyIndentConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value switch
+        {
+            "right" => new Thickness(0, 4, 40, 4),
+            "left" => new Thickness(40, 4, 0, 4),
+            _ => new Thickness(0, 4, 0, 4),
+        };
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a margin is not a value to read back");
+}
+
 /// <summary>The ring round the chosen colour swatch: a 2px border when chosen, none otherwise.</summary>
 public sealed partial class SwatchRingConverter : IValueConverter
 {

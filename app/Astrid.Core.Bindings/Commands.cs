@@ -541,8 +541,13 @@ public static class Commands
     public static object SetListFavorite(string listId, bool favorite) =>
         new FavoriteRequest("setListFavorite", listId, favorite);
 
-    public static object PostComment(string taskId, string content) =>
-        new PostCommentRequest("postComment", taskId, content);
+    /// <param name="parentCommentId">The comment this one answers (task 97c817dd); null for a top-level one.</param>
+    public static object PostComment(string taskId, string content, string? parentCommentId = null) =>
+        new PostCommentRequest("postComment", taskId, content, parentCommentId);
+
+    /// <summary>Change what a comment says. Offline through the Outbox, like posting one.</summary>
+    public static object EditComment(string commentId, string content) =>
+        new EditCommentRequest("editComment", commentId, content);
 
     public static object DeleteComment(string commentId) =>
         new CommentIdRequest("deleteComment", commentId);
@@ -661,6 +666,12 @@ public static class Commands
     private sealed record PostCommentRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
+        [property: JsonPropertyName("content")] string Content,
+        [property: JsonPropertyName("parentCommentId"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? ParentCommentId);
+
+    private sealed record EditCommentRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("commentId")] string CommentId,
         [property: JsonPropertyName("content")] string Content);
 
     private sealed record ThemeRequest(

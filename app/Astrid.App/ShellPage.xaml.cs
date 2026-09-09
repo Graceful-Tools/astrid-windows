@@ -2025,6 +2025,140 @@ public sealed partial class ShellPage : UserControl
     private async void OnSendComment(object sender, RoutedEventArgs args) =>
         await SendCommentAsync();
 
+    // ── Reply, edit, delete (task 97c817dd) ─────────────────────────────────────────────────
+    //
+    // The boxes live inside the row template, so a button reaches its box through its Tag —
+    // an ElementName binding inside the template — rather than through a page-level name.
+
+    private void OnReplyToComment(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is string commentId)
+        {
+            Shell.Detail.BeginReply(commentId);
+        }
+    }
+
+    /// <summary>The box beside a button, found by walking its row: a template cannot name it.</summary>
+    private static TextBox? BoxBeside(object sender)
+    {
+        var element = sender as DependencyObject;
+        while (element is not null)
+        {
+            if (element is Panel panel)
+            {
+                foreach (var child in panel.Children)
+                {
+                    if (child is TextBox box)
+                    {
+                        return box;
+                    }
+                }
+            }
+            element = VisualTreeHelper.GetParent(element);
+        }
+        return null;
+    }
+
+    private async void OnReplySent(object sender, RoutedEventArgs args)
+    {
+        if (BoxBeside(sender) is { } box)
+        {
+            await Shell.Detail.SendReplyAsync(box.Text);
+        }
+    }
+
+    private async void OnReplyKeyDown(object sender, KeyRoutedEventArgs args)
+    {
+        if (args.Key == VirtualKey.Enter && sender is TextBox box)
+        {
+            args.Handled = true;
+            await Shell.Detail.SendReplyAsync(box.Text);
+        }
+        else if (args.Key == VirtualKey.Escape)
+        {
+            args.Handled = true;
+            Shell.Detail.CancelReply();
+        }
+    }
+
+    private void OnReplyCancelled(object sender, RoutedEventArgs args) => Shell.Detail.CancelReply();
+
+    private void OnEditComment(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is string commentId)
+        {
+            Shell.Detail.BeginEdit(commentId);
+        }
+    }
+
+    private async void OnCommentEditSaved(object sender, RoutedEventArgs args)
+    {
+        if (BoxBeside(sender) is { } box)
+        {
+            await Shell.Detail.SaveEditAsync(box.Text);
+        }
+    }
+
+    /// <summary>Return saves; Shift+Return is a new line, as in the web's editor; Escape cancels.</summary>
+    private async void OnCommentEditKeyDown(object sender, KeyRoutedEventArgs args)
+    {
+        if (args.Key == VirtualKey.Escape)
+        {
+            args.Handled = true;
+            Shell.Detail.CancelEdit();
+            return;
+        }
+        if (args.Key != VirtualKey.Enter || sender is not TextBox box)
+        {
+            return;
+        }
+        var shift = Microsoft.UI.Input.InputKeyboardSource
+            .GetKeyStateForCurrentThread(VirtualKey.Shift)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        if (shift)
+        {
+            return;
+        }
+        args.Handled = true;
+        await Shell.Detail.SaveEditAsync(box.Text);
+    }
+
+    private void OnCommentEditCancelled(object sender, RoutedEventArgs args) => Shell.Detail.CancelEdit();
+
+    /// <summary>Delete asks first: there is no undo for it on any client.</summary>
+    private void OnDeleteCommentAsked(object sender, RoutedEventArgs args)
+    {
+        if (sender is not FrameworkElement { Tag: string commentId } anchor)
+        {
+            return;
+        }
+        var confirm = new Button
+        {
+            Content = "Delete it",
+            Style = (Style)Application.Current.Resources["AccentButtonStyle"],
+        };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(confirm, "Confirm delete comment");
+        var flyout = new Flyout
+        {
+            Content = new StackPanel
+            {
+                Spacing = 8,
+                MaxWidth = 240,
+                Children =
+                {
+                    new TextBlock { TextWrapping = TextWrapping.Wrap, Text = "Delete this comment?" },
+                    confirm,
+                },
+            },
+        };
+        confirm.Click += async (_, _) =>
+        {
+            flyout.Hide();
+            await Shell.Detail.DeleteCommentAsync(commentId);
+        };
+        flyout.ShowAt(anchor);
+    }
+
     /// <summary>Post what is in the comment box. What Return and the Send button both do.</summary>
     private async Task SendCommentAsync()
     {

@@ -958,6 +958,139 @@ public sealed class TaskDetailViewModel : ObservableObject
         return true;
     }
 
+    // ── Reply, edit, delete (task 97c817dd) ─────────────────────────────────────────────────
+    //
+    // One comment at a time is being replied to, and one edited; the rows carry the flags so the
+    // template can draw the box or the editor in place. The thread is re-read after every write,
+    // which is also what clears the flags.
+
+    private string? _replyingToId;
+    private string? _editingCommentId;
+
+    /// <summary>The comment a reply is being written under, if one is.</summary>
+    public string? ReplyingToId
+    {
+        get => _replyingToId;
+        private set
+        {
+            if (Set(ref _replyingToId, value))
+            {
+                FlagRows();
+            }
+        }
+    }
+
+    /// <summary>The comment whose text is open for typing, if one is.</summary>
+    public string? EditingCommentId
+    {
+        get => _editingCommentId;
+        private set
+        {
+            if (Set(ref _editingCommentId, value))
+            {
+                FlagRows();
+            }
+        }
+    }
+
+    /// <summary>Open a reply box under a comment. Closes any editor: one thing at a time.</summary>
+    public void BeginReply(string commentId)
+    {
+        EditingCommentId = null;
+        ReplyingToId = commentId;
+    }
+
+    public void CancelReply() => ReplyingToId = null;
+
+    /// <summary>Post the reply under the comment the box is open on.</summary>
+    public async Task<bool> SendReplyAsync(string content, CancellationToken cancellationToken = default)
+    {
+        var trimmed = content.Trim();
+        if (TaskId is null || ReplyingToId is not { } parent || trimmed.Length == 0)
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(Commands.PostComment(TaskId, trimmed, parent), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        ReplyingToId = null;
+        await ReloadAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>Open a comment's text for typing, in place of its bubble.</summary>
+    public void BeginEdit(string commentId)
+    {
+        ReplyingToId = null;
+        EditingCommentId = commentId;
+    }
+
+    public void CancelEdit() => EditingCommentId = null;
+
+    /// <summary>Save what was typed into the open editor.</summary>
+    public async Task<bool> SaveEditAsync(string content, CancellationToken cancellationToken = default)
+    {
+        var trimmed = content.Trim();
+        if (EditingCommentId is not { } commentId || trimmed.Length == 0)
+        {
+            return false;
+        }
+        var current = Comments.FirstOrDefault(comment => comment.Id == commentId);
+        if (current is not null && current.Content == trimmed)
+        {
+            EditingCommentId = null;
+            return false;
+        }
+        var response = await _core.CallAsync(Commands.EditComment(commentId, trimmed), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        EditingCommentId = null;
+        await ReloadAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>Take a comment out. Offline, it is gone here and goes from the server when it can.</summary>
+    public async Task<bool> DeleteCommentAsync(string commentId, CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.DeleteComment(commentId), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        if (EditingCommentId == commentId)
+        {
+            EditingCommentId = null;
+        }
+        if (ReplyingToId == commentId)
+        {
+            ReplyingToId = null;
+        }
+        await ReloadAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>Put the reply and edit flags on the rows they belong to, and off the rest.</summary>
+    private void FlagRows()
+    {
+        for (var index = 0; index < Comments.Count; index++)
+        {
+            var row = Comments[index];
+            var flagged = row with
+            {
+                IsEditing = row.Id == EditingCommentId,
+                IsReplying = row.Id == ReplyingToId,
+            };
+            if (!flagged.Equals(row))
+            {
+                Comments[index] = flagged;
+            }
+        }
+    }
+
     public async Task<bool> AddSubtaskAsync(string title, CancellationToken cancellationToken = default)
     {
         var trimmed = title.Trim();
@@ -1029,7 +1162,13 @@ public sealed class TaskDetailViewModel : ObservableObject
 
         ReplaceStrings(FieldOrder, Read<string>(value, "fieldOrder"));
         Replace(ListChips, Read<ListChip>(value, "listChips"));
-        Replace(Comments, Read<CommentSummary>(value, "comments"));
+        Replace(Comments, Read<CommentSummary>(value, "comments")
+            .Select(row => row with
+            {
+                IsEditing = row.Id == EditingCommentId,
+                IsReplying = row.Id == ReplyingToId,
+            })
+            .ToList());
         Replace(Subtasks, Read<SubtaskSummary>(value, "subtasks"));
         // The repeat comes with the screen rather than with the picker: the row has to say how the
         // task repeats before anybody opens anything.
@@ -1132,8 +1271,40 @@ public sealed record CommentSummary
     [System.Text.Json.Serialization.JsonPropertyName("isSystem")]
     public bool IsSystem { get; init; }
 
+    /// <summary>The comment this one answers, when it answers one (task 97c817dd).</summary>
+    [System.Text.Json.Serialization.JsonPropertyName("parentId")]
+    public string? ParentId { get; init; }
+
+    /// <summary>Drawn nested under its parent.</summary>
+    [System.Text.Json.Serialization.JsonPropertyName("isReply")]
+    public bool IsReply { get; init; }
+
+    /// <summary>Which side a reply steps in from: the parent author's, as the web does it.</summary>
+    [System.Text.Json.Serialization.JsonPropertyName("indentRight")]
+    public bool IndentRight { get; init; }
+
+    /// <summary>This comment's text is open for typing. Set by the view model, not the wire.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsEditing { get; init; }
+
+    /// <summary>A reply is being written under this comment. Set by the view model, not the wire.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsReplying { get; init; }
+
+    /// <summary><c>none</c>, <c>left</c> or <c>right</c>: which side a reply steps in from, for the shell's margin.</summary>
+    public string IndentSide => !IsReply ? "none" : IndentRight ? "right" : "left";
+
     /// <summary>A bubble is anything that is not a system note.</summary>
     public bool IsBubble => !IsSystem;
+
+    /// <summary>The bubble is drawn unless the editor has taken its place.</summary>
+    public bool ShowsBubble => IsBubble && !IsEditing;
+
+    /// <summary>Only a top-level comment takes replies, as on the web; a reply to a reply would be a thread nobody can draw.</summary>
+    public bool CanReply => IsBubble && !IsReply;
+
+    /// <summary>Your own words are yours to change or take back; nobody else's.</summary>
+    public bool CanEdit => IsBubble && IsMine;
 
     public bool HasFiles => Files.Count > 0;
 

@@ -32,6 +32,96 @@ public sealed class TaskDetailViewModelTests
         };
 
     /// <summary>
+    /// A reply is posted under the comment its box was opened on, an edit changes the text, and
+    /// a delete removes it — each through the core and each followed by a re-read of the thread
+    /// (task 97c817dd).
+    /// </summary>
+    [Fact]
+    public async Task Comments_can_be_replied_to_edited_and_deleted_task_97c817dd()
+    {
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail(comments: ["Thoughts?", "Another"]))
+            .AnswerOk("dueDateOptions", NoDuePicks())
+            .AnswerOk("refreshComments", CommentRows("Thoughts?", "Another"))
+            .AnswerOk("postComment", new { id = "c9" })
+            .AnswerOk("taskDetail", Detail(comments: ["Thoughts?", "Yes", "Another"]))
+            .AnswerOk("dueDateOptions", NoDuePicks())
+            .AnswerOk("editComment")
+            .AnswerOk("taskDetail", Detail(comments: ["Thoughts!", "Yes", "Another"]))
+            .AnswerOk("dueDateOptions", NoDuePicks())
+            .AnswerOk("deleteComment")
+            .AnswerOk("taskDetail", Detail(comments: ["Thoughts!", "Another"]))
+            .AnswerOk("dueDateOptions", NoDuePicks());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        view.BeginReply("c0");
+        Assert.True(view.Comments[0].IsReplying, "the row says a reply box is open under it");
+        Assert.False(view.Comments[1].IsReplying);
+        Assert.True(await view.SendReplyAsync("Yes"));
+        var reply = core.Sent.First(sent => sent.Contains("postComment"));
+        Assert.Contains("\"parentCommentId\":\"c0\"", reply);
+        Assert.Contains("\"content\":\"Yes\"", reply);
+        Assert.Null(view.ReplyingToId);
+        Assert.Equal(3, view.Comments.Count);
+        Assert.False(view.Comments[0].IsReplying);
+
+        view.BeginEdit("c0");
+        Assert.True(view.Comments[0].IsEditing);
+        Assert.False(view.Comments[0].ShowsBubble, "the editor takes the bubble's place");
+        Assert.True(await view.SaveEditAsync("Thoughts!"));
+        Assert.Contains("\"kind\":\"editComment\"", core.Sent.First(sent => sent.Contains("editComment")));
+        Assert.Equal("Thoughts!", view.Comments[0].Content);
+        Assert.Null(view.EditingCommentId);
+
+        Assert.True(await view.DeleteCommentAsync("c1"));
+        Assert.Contains("\"commentId\":\"c1\"", core.Sent.First(sent => sent.Contains("deleteComment")));
+        Assert.Equal(2, view.Comments.Count);
+    }
+
+    /// <summary>Saving unchanged text is a cancel, not a write; opening one box closes the other.</summary>
+    [Fact]
+    public async Task An_unchanged_edit_writes_nothing_and_one_box_is_open_at_a_time()
+    {
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail(comments: ["Thoughts?"]))
+            .AnswerOk("dueDateOptions", NoDuePicks())
+            .AnswerOk("refreshComments", CommentRows("Thoughts?"));
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        view.BeginEdit("c0");
+        Assert.False(await view.SaveEditAsync("Thoughts?"));
+        Assert.Null(view.EditingCommentId);
+        Assert.DoesNotContain(core.Sent, sent => sent.Contains("editComment"));
+
+        view.BeginEdit("c0");
+        view.BeginReply("c0");
+        Assert.Null(view.EditingCommentId);
+        Assert.Equal("c0", view.ReplyingToId);
+        Assert.False(await view.SendReplyAsync("   "), "nothing to say is nothing to post");
+    }
+
+    /// <summary>Who may do what: replies on top-level comments, edit and delete on your own.</summary>
+    [Fact]
+    public void Reply_is_offered_on_top_level_comments_and_edit_only_on_your_own()
+    {
+        var mine = new CommentSummary { Id = "a", IsMine = true };
+        var theirs = new CommentSummary { Id = "b", IsMine = false };
+        var myReply = new CommentSummary { Id = "c", IsMine = true, IsReply = true };
+        var note = new CommentSummary { Id = "d", IsSystem = true };
+
+        Assert.True(mine.CanReply);
+        Assert.True(mine.CanEdit);
+        Assert.True(theirs.CanReply);
+        Assert.False(theirs.CanEdit);
+        Assert.False(myReply.CanReply);
+        Assert.True(myReply.CanEdit);
+        Assert.False(note.CanReply);
+        Assert.False(note.CanEdit);
+    }
+
+    /// <summary>
     /// The description comes rendered, and is shown rendered until somebody clicks it
     /// (task 11cfaf6d). What the blocks MEAN was decided in the core; the view model only says
     /// which of the two — the drawing or the box — is on screen.
@@ -166,6 +256,11 @@ public sealed class TaskDetailViewModelTests
         Assert.True(view.ShowsDescriptionEditor);
         Assert.False(view.ShowsRenderedDescription);
     }
+
+    /// <summary>The thread as a refresh answers it: the same rows the detail carries.</summary>
+    private static object CommentRows(params string[] contents) => contents
+        .Select((content, index) => new { id = $"c{index}", content, createdAt = "2026-09-07T12:00:00Z" })
+        .ToArray();
 
     private static object NoDuePicks() =>
         new { isAllDay = true, dates = Array.Empty<object>(), times = Array.Empty<object>() };

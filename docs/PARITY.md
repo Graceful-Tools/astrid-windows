@@ -25,7 +25,7 @@ milestones; this tracks the *product*.
 | Reminders | ✅ | ✅ | Windows adds a banner with Complete and Snooze |
 | Repeat editor, presets and custom | ✅ | ✅ | The summary is one function on both |
 | Assignee picker | ✅ | ✅ | Windows offers agents; the Mac's picker predates them (CONTRACTS D8) |
-| Comments | ✅ | ✅ | |
+| Comments | ✅ | ✅ | Replies nest under their parent; your own can be edited and deleted; all of it offline through the Outbox |
 | Search | ✅ | ✅ | Over the cache on both — there is no server search |
 | Board view | ✅ | ✅ | Drag a card, or move it from its menu — which a keyboard can also do. A tapped card opens its task in place, inside the column, as the web's does; the list keeps its side pane. Columns are added, renamed, reordered and removed from list settings, with the web's rules locked by a fixture |
 | Filters and sort | ✅ | ✅ | All seven filters, fixture-checked values |

@@ -199,6 +199,17 @@
         <local:BoardColumnWidthConverter x:Key="ColumnWidth" />
         <local:SwatchRingConverter x:Key="SwatchRing" />
         <local:ChoiceLabelConverter x:Key="ChoiceLabel" />
+        <local:ReplyIndentConverter x:Key="ReplyIndent" />
+        <!-- The small quiet words under a bubble: Reply, Edit, Delete. -->
+        <Style x:Key="BubbleAction" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="2,0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{ThemeResource AstridTextMuted}" />
+        </Style>
         <!-- One row of a defaults combo: the choice, named. -->
         <DataTemplate x:Key="DefaultChoiceTemplate" x:DataType="viewmodels:DefaultChoice">
             <TextBlock Text="{x:Bind Converter={StaticResource ChoiceLabel}}" />
@@ -2797,7 +2808,14 @@
                     <ItemsControl ItemsSource="{x:Bind Shell.Detail.Comments, Mode=OneWay}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="viewmodels:CommentSummary">
-                                <StackPanel Margin="0,4"
+                                <!--
+                                    A reply steps in from its parent author's side (task 97c817dd);
+                                    the margin comes from the row, which knows. Under every bubble
+                                    are its quiet words — Reply on a top-level comment, Edit and
+                                    Delete on your own — and, when asked for, a reply box or an
+                                    editor in the bubble's place.
+                                -->
+                                <StackPanel Margin="{x:Bind IndentSide, Converter={StaticResource ReplyIndent}}"
                                             HorizontalAlignment="{x:Bind IsMine, Converter={StaticResource BubbleAlign}}">
                                     <!-- A system note is nobody's voice, so it takes neither side. -->
                                     <TextBlock Text="{x:Bind Content}"
@@ -2807,11 +2825,31 @@
                                                Foreground="{ThemeResource AstridTextMuted}"
                                                Visibility="{x:Bind IsSystem, Converter={StaticResource Visible}}" />
 
+                                    <!-- The editor, in the bubble's place. -->
+                                    <StackPanel Spacing="4" MinWidth="220" MaxWidth="260"
+                                                Visibility="{x:Bind IsEditing, Converter={StaticResource Visible}}">
+                                        <TextBox Text="{x:Bind Content}"
+                                                 Tag="{x:Bind Id}"
+                                                 AcceptsReturn="True"
+                                                 TextWrapping="Wrap"
+                                                 AutomationProperties.Name="Edit comment"
+                                                 KeyDown="OnCommentEditKeyDown" />
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Button Content="Save"
+                                                    AutomationProperties.Name="Save comment"
+                                                    Style="{ThemeResource AccentButtonStyle}"
+                                                    Click="OnCommentEditSaved" />
+                                            <Button Content="Cancel"
+                                                    AutomationProperties.Name="Cancel edit"
+                                                    Click="OnCommentEditCancelled" />
+                                        </StackPanel>
+                                    </StackPanel>
+
                                     <Border CornerRadius="10"
                                             Padding="12"
                                             MaxWidth="260"
                                             Background="{x:Bind IsMine, Converter={StaticResource BubbleBrush}}"
-                                            Visibility="{x:Bind IsBubble, Converter={StaticResource Visible}}">
+                                            Visibility="{x:Bind ShowsBubble, Converter={StaticResource Visible}}">
                                         <StackPanel Spacing="6">
                                             <TextBlock Text="{x:Bind AuthorName}"
                                                        FontSize="11"
@@ -2891,7 +2929,7 @@
                                                                                Foreground="{ThemeResource AstridTextMuted}" />
                                                                 </StackPanel>
                                                             </Button>
-                                                        </StackPanel>
+                                                                                        </StackPanel>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
@@ -2901,6 +2939,49 @@
                                                        Visibility="{x:Bind IsPending, Converter={StaticResource Visible}}" />
                                         </StackPanel>
                                     </Border>
+                                                                    <!-- The quiet words. Delete asks first: there is no undo for it on any client. -->
+                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="4,2,4,0"
+                                                HorizontalAlignment="{x:Bind IsMine, Converter={StaticResource BubbleAlign}}"
+                                                Visibility="{x:Bind ShowsBubble, Converter={StaticResource Visible}}">
+                                        <Button Content="Reply" Style="{StaticResource BubbleAction}"
+                                                Tag="{x:Bind Id}"
+                                                AutomationProperties.Name="Reply to comment"
+                                                Visibility="{x:Bind CanReply, Converter={StaticResource Visible}}"
+                                                Click="OnReplyToComment" />
+                                        <Button Content="Edit" Style="{StaticResource BubbleAction}"
+                                                Tag="{x:Bind Id}"
+                                                AutomationProperties.Name="Edit comment"
+                                                Visibility="{x:Bind CanEdit, Converter={StaticResource Visible}}"
+                                                Click="OnEditComment" />
+                                        <!-- Asks first, in a flyout built in code: a flyout declared
+                                             inside a row template cannot carry the row's id. -->
+                                        <Button Content="Delete" Style="{StaticResource BubbleAction}"
+                                                Tag="{x:Bind Id}"
+                                                AutomationProperties.Name="Delete comment"
+                                                Visibility="{x:Bind CanEdit, Converter={StaticResource Visible}}"
+                                                Click="OnDeleteCommentAsked" />
+                                    </StackPanel>
+
+                                    <!-- The reply box, under the comment it answers. -->
+                                    <Grid ColumnSpacing="6" Margin="0,4,0,0" MinWidth="240"
+                                          Visibility="{x:Bind IsReplying, Converter={StaticResource Visible}}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0"
+                                                 PlaceholderText="Reply..."
+                                                 AutomationProperties.Name="Reply"
+                                                 KeyDown="OnReplyKeyDown" />
+                                        <Button Grid.Column="1" Content="Send"
+                                                AutomationProperties.Name="Send reply"
+                                                Style="{ThemeResource AccentButtonStyle}"
+                                                Click="OnReplySent" />
+                                        <Button Grid.Column="2" Content="Cancel"
+                                                AutomationProperties.Name="Cancel reply"
+                                                Click="OnReplyCancelled" />
+                                    </Grid>
                                 </StackPanel>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
