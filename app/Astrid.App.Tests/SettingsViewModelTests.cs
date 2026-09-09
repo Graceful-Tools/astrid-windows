@@ -55,6 +55,129 @@ public sealed class SettingsViewModelTests
         Assert.Equal(2, view.Offsets.Count);
     }
 
+    private static object AccountOf(object user) => new
+    {
+        user,
+        reminderSettings = new { enablePushReminders = true, enableEmailReminders = true },
+        offsets = Array.Empty<object>(),
+        timezone = "+00:00",
+    };
+
+    /// <summary>
+    /// The account's own state reads off the user the core answers with: verification as a key
+    /// for the shell to word, the pending address, the dates as days, and the id (task 19fd9289).
+    /// </summary>
+    [Fact]
+    public async Task The_account_page_reads_verification_and_dates_off_the_user_task_19fd9289()
+    {
+        var core = new FakeCore()
+            .AnswerOk("settings", AccountOf(new
+            {
+                id = "me", name = "Jon", email = "jon@x.io", image = "https://blob.test/me.png",
+                verified = false, hasPendingChange = true, pendingEmail = "new@x.io",
+                createdAt = "2026-01-02T03:04:05Z", updatedAt = "2026-09-01T00:00:00Z",
+            }))
+            .AnswerOk("refreshSettings", AccountOf(new
+            {
+                id = "me", name = "Jon", email = "jon@x.io", image = (string?)null,
+                verified = true, verifiedViaOAuth = true, hasPendingChange = false,
+                createdAt = "2026-01-02T03:04:05Z", updatedAt = "2026-09-01T00:00:00Z",
+            }))
+            .AnswerOk("profileStats", new { completed = 1, inspired = 2, supported = 3 });
+        var view = new SettingsViewModel(core);
+
+        // The cache first: not verified, with an address waiting.
+        await view.LoadAsync();
+        // After the refresh: verified through the provider, nothing waiting, no photo.
+        Assert.True(view.IsVerified);
+        Assert.Equal("account.verified_via_provider", view.VerificationKey);
+        Assert.False(view.HasPendingEmail);
+        Assert.Null(view.PhotoUrl);
+        Assert.Equal("me", view.AccountId);
+        Assert.NotEqual(string.Empty, view.CreatedOn);
+        Assert.Equal("Jon", view.NameDraft);
+        Assert.False(view.CanSaveName, "the name on the account is not a change");
+
+        var cached = new SettingsViewModel(new FakeCore().AnswerOk("settings", AccountOf(new
+        {
+            id = "me", name = "Jon", email = "jon@x.io",
+            verified = false, hasPendingChange = true, pendingEmail = "new@x.io",
+        })));
+        await cached.LoadAsync();
+        Assert.False(cached.IsVerified);
+        Assert.Equal("account.not_verified", cached.VerificationKey);
+        Assert.Equal("new@x.io", cached.PendingEmail);
+        Assert.True(cached.HasPendingEmail);
+    }
+
+    /// <summary>
+    /// The profile is saved on the button: a changed name goes as one write and the screen
+    /// redraws from the answer; a photo goes by path for the core to upload (task 19fd9289).
+    /// </summary>
+    [Fact]
+    public async Task Saving_the_name_or_a_photo_goes_through_one_profile_command_task_19fd9289()
+    {
+        var core = new FakeCore()
+            .AnswerOk("settings", AccountOf(new { id = "me", name = "Jon", email = "jon@x.io" }))
+            .AnswerOk("updateProfile", AccountOf(new { id = "me", name = "Jon P", email = "jon@x.io" }))
+            .AnswerOk("updateProfile", AccountOf(new
+            {
+                id = "me", name = "Jon P", email = "jon@x.io", image = "https://blob.test/me.png",
+            }));
+        var view = new SettingsViewModel(core);
+        await view.LoadAsync();
+
+        view.NameDraft = " Jon P ";
+        Assert.True(view.CanSaveName);
+        Assert.True(await view.SaveNameAsync());
+        Assert.Equal("Jon P", view.DisplayName);
+        Assert.False(view.CanSaveName, "saved, so nothing left to save");
+        Assert.Contains(core.Sent, json =>
+            json.Contains("\"kind\":\"updateProfile\"") && json.Contains("\"name\":\"Jon P\"")
+            && !json.Contains("photoPath"));
+
+        Assert.True(await view.SetPhotoAsync(@"C:\Pictures\me.png"));
+        Assert.Equal("https://blob.test/me.png", view.PhotoUrl);
+        Assert.Contains(core.Sent, json =>
+            json.Contains("\"kind\":\"updateProfile\"") && json.Contains("me.png")
+            && !json.Contains("\"name\""));
+    }
+
+    /// <summary>
+    /// Resend says so when it went, and says why when it did not; deleting is gated on the exact
+    /// phrase and reports a refusal rather than pretending (task 19fd9289).
+    /// </summary>
+    [Fact]
+    public async Task Resend_and_delete_report_what_happened_task_19fd9289()
+    {
+        var core = new FakeCore()
+            .AnswerOk("settings", AccountOf(new { id = "me", name = "Jon", email = "jon@x.io", verified = false }))
+            .AnswerOk("resendVerification", new { message = "Verification email sent" })
+            .AnswerFailure("deleteAccount", AstridFailureKind.Refused, "Account authentication method not found")
+            .AnswerOk("deleteAccount");
+        var view = new SettingsViewModel(core);
+        await view.LoadAsync();
+
+        Assert.True(await view.ResendVerificationAsync());
+        Assert.True(view.VerificationSent);
+
+        view.DeleteConfirmation = "delete my account";
+        Assert.False(view.CanDeleteAccount, "the phrase is exact, as the server's is");
+        Assert.False(await view.DeleteAccountAsync());
+        Assert.DoesNotContain(core.SentKinds(), kind => kind == "deleteAccount");
+
+        view.DeleteConfirmation = SettingsViewModel.DeleteConfirmationPhrase;
+        Assert.True(view.CanDeleteAccount);
+        Assert.False(await view.DeleteAccountAsync());
+        Assert.Equal("Account authentication method not found", view.ErrorMessage);
+
+        Assert.True(await view.DeleteAccountAsync());
+        Assert.Null(view.ErrorMessage);
+        Assert.Equal(string.Empty, view.DeleteConfirmation);
+        Assert.Contains(core.Sent, json =>
+            json.Contains("\"kind\":\"deleteAccount\"") && json.Contains("\"confirmation\":\"DELETE MY ACCOUNT\""));
+    }
+
     /// <summary>
     /// The mode arrives in a map beside the agents rather than on them, and joining the two in one
     /// place keeps every control that shows an agent from doing it again.

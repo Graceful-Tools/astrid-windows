@@ -273,6 +273,23 @@ public static class Commands
     public static object ExportAccount(string format, string path) =>
         new ExportRequest("exportAccount", format, path);
 
+    /// <summary>
+    /// Change the signed-in user's name, photo, or both (task 19fd9289). The photo is a file on
+    /// this machine; the core uploads it and puts its address on the profile.
+    /// </summary>
+    public static object UpdateProfile(string? name, string? photoPath) =>
+        new ProfileRequest("updateProfile", name, photoPath);
+
+    /// <summary>Send the verification email again.</summary>
+    public static object ResendVerification() => new KindOnly("resendVerification");
+
+    /// <summary>
+    /// Delete the account for good. The core refuses anything but the exact phrase, as the server
+    /// does, and signs out afterwards.
+    /// </summary>
+    public static object DeleteAccount(string confirmation) =>
+        new DeleteAccountRequest("deleteAccount", confirmation);
+
     /// <summary>The account and its reminder settings, from the cache.</summary>
     public static object Settings() => new KindOnly("settings");
 
@@ -809,6 +826,15 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("format")] string Format,
         [property: JsonPropertyName("path")] string Path);
+
+    private sealed record ProfileRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("name")] string? Name,
+        [property: JsonPropertyName("photoPath")] string? PhotoPath);
+
+    private sealed record DeleteAccountRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("confirmation")] string Confirmation);
 
     private sealed record SettingsRequest(
         [property: JsonPropertyName("kind")] string Kind,

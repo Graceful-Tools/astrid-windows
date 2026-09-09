@@ -63,6 +63,7 @@ public sealed partial class ShellPage : UserControl
         // Where a pill in a comment goes when clicked: the same places a pill in the description
         // goes (task 3271a0c5).
         WontDoChip.Text = Strings.Get("detail.wont_do_chip");
+        WordAccountSection();
         MarkdownView.ReferenceFollowed = reference => _ = FollowReferenceAsync(reference);
         MarkdownView.LinkFollowed = link => _ = FollowLinkAsync(link);
 
@@ -291,6 +292,76 @@ public sealed partial class ShellPage : UserControl
         await Shell.SignIn.CancelAsync();
 
     private async void OnSignOut(object sender, RoutedEventArgs args) => await Shell.SignOutAsync();
+
+    /// <summary>The account page's words, from the strings table (task 19fd9289).</summary>
+    private void WordAccountSection()
+    {
+        ProfileTitle.Text = Strings.Get("account.profile");
+        ChangePhotoButton.Content = Strings.Get("account.change_photo");
+        PhotoHint.Text = Strings.Get("account.photo_hint");
+        DisplayNameBox.Header = Strings.Get("account.display_name");
+        SaveNameButton.Content = Strings.Get("account.save");
+        VerificationTitle.Text = Strings.Get("account.verification");
+        ResendButton.Content = Strings.Get("account.resend");
+        PendingPrefix.Text = Strings.Get("account.waiting_for");
+        VerificationSentLine.Text = Strings.Get("account.verification_sent");
+        InfoTitle.Text = Strings.Get("account.information");
+        InfoCreatedLabel.Text = Strings.Get("account.created");
+        InfoUpdatedLabel.Text = Strings.Get("account.last_updated");
+        InfoIdLabel.Text = Strings.Get("account.account_id");
+        PasskeysTitle.Text = Strings.Get("account.passkeys");
+        PasskeysNote.Text = Strings.Get("account.passkeys_note");
+        ManagePasskeysButton.Content = Strings.Get("account.manage_in_browser");
+        DeleteTitle.Text = Strings.Get("account.delete_title");
+        DeleteWarning.Text = Strings.Get("account.delete_warning");
+        DeleteConfirmationBox.PlaceholderText = Strings.Get("account.type_to_confirm");
+        DeleteAccountButton.Content = Strings.Get("account.delete_button");
+    }
+
+    /// <summary>
+    /// Pick a picture for the profile. The kinds offered are the ones the server accepts for an
+    /// upload; the core uploads the file and puts its address on the account.
+    /// </summary>
+    private async void OnChangePhoto(object sender, RoutedEventArgs args)
+    {
+        var picker = new Windows.Storage.Pickers.FileOpenPicker();
+        foreach (var extension in new[] { ".png", ".jpg", ".jpeg", ".gif", ".webp" })
+        {
+            picker.FileTypeFilter.Add(extension);
+        }
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, App.MainWindowHandle);
+
+        var file = await picker.PickSingleFileAsync();
+        if (file is not null)
+        {
+            await Shell.Settings.SetPhotoAsync(file.Path);
+        }
+    }
+
+    private async void OnSaveName(object sender, RoutedEventArgs args) =>
+        await Shell.Settings.SaveNameAsync();
+
+    private async void OnResendVerification(object sender, RoutedEventArgs args) =>
+        await Shell.Settings.ResendVerificationAsync();
+
+    /// <summary>
+    /// Passkeys live on the web until the server offers them under /api/v1 (web task c4ad9e68);
+    /// registering one needs the browser's WebAuthn ceremony in any case.
+    /// </summary>
+    private async void OnManagePasskeys(object sender, RoutedEventArgs args) =>
+        await Windows.System.Launcher.LaunchUriAsync(new Uri("https://astrid.cc/settings"));
+
+    /// <summary>
+    /// Delete the account. The core has already signed out by the time this returns true; what is
+    /// left is to show the door, which is what signing out from here does.
+    /// </summary>
+    private async void OnDeleteAccount(object sender, RoutedEventArgs args)
+    {
+        if (await Shell.Settings.DeleteAccountAsync())
+        {
+            await Shell.SignOutAsync();
+        }
+    }
 
     /// <summary>
     /// Windows activated the app with a URL — the browser coming back, most likely.

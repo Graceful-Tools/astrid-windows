@@ -194,6 +194,23 @@ public sealed record UserSummary
     [JsonPropertyName("image")] public string? Image { get; init; }
 
     /// <summary>
+    /// The account's own state, present only on the signed-in user (task 19fd9289): verified, and
+    /// whether through a sign-in provider; a change of address waiting, and what it is; when the
+    /// account was made and last touched.
+    /// </summary>
+    [JsonPropertyName("verified")] public bool? Verified { get; init; }
+
+    [JsonPropertyName("verifiedViaOAuth")] public bool? VerifiedViaOAuth { get; init; }
+
+    [JsonPropertyName("hasPendingChange")] public bool? HasPendingChange { get; init; }
+
+    [JsonPropertyName("pendingEmail")] public string? PendingEmail { get; init; }
+
+    [JsonPropertyName("createdAt")] public string? CreatedAt { get; init; }
+
+    [JsonPropertyName("updatedAt")] public string? UpdatedAt { get; init; }
+
+    /// <summary>
     /// What to show where a name goes. Never empty: somebody we hold only an id for still has to
     /// render as something.
     /// </summary>

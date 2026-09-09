@@ -73,6 +73,75 @@
   <data name="detail_share_copied" xml:space="preserve">
     <value>Share link copied</value>
   </data>
+  <data name="account_profile" xml:space="preserve">
+    <value>Profile</value>
+  </data>
+  <data name="account_change_photo" xml:space="preserve">
+    <value>Change photo</value>
+  </data>
+  <data name="account_photo_hint" xml:space="preserve">
+    <value>PNG, JPEG, GIF or WebP, up to 10 MB</value>
+  </data>
+  <data name="account_display_name" xml:space="preserve">
+    <value>Display name</value>
+  </data>
+  <data name="account_save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="account_verification" xml:space="preserve">
+    <value>Email verification</value>
+  </data>
+  <data name="account_verified" xml:space="preserve">
+    <value>Verified</value>
+  </data>
+  <data name="account_verified_via_provider" xml:space="preserve">
+    <value>Verified through your sign-in provider</value>
+  </data>
+  <data name="account_not_verified" xml:space="preserve">
+    <value>Not verified</value>
+  </data>
+  <data name="account_resend" xml:space="preserve">
+    <value>Resend verification email</value>
+  </data>
+  <data name="account_verification_sent" xml:space="preserve">
+    <value>Verification email sent. Check your inbox and click the link.</value>
+  </data>
+  <data name="account_waiting_for" xml:space="preserve">
+    <value>Waiting for verification: </value>
+  </data>
+  <data name="account_information" xml:space="preserve">
+    <value>Account information</value>
+  </data>
+  <data name="account_created" xml:space="preserve">
+    <value>Account created</value>
+  </data>
+  <data name="account_last_updated" xml:space="preserve">
+    <value>Last updated</value>
+  </data>
+  <data name="account_account_id" xml:space="preserve">
+    <value>Account ID</value>
+  </data>
+  <data name="account_passkeys" xml:space="preserve">
+    <value>Passkeys</value>
+  </data>
+  <data name="account_passkeys_note" xml:space="preserve">
+    <value>Passkeys are managed on the web for now: the server's passkey API is not yet available to this app.</value>
+  </data>
+  <data name="account_manage_in_browser" xml:space="preserve">
+    <value>Manage in browser</value>
+  </data>
+  <data name="account_delete_title" xml:space="preserve">
+    <value>Delete account</value>
+  </data>
+  <data name="account_delete_warning" xml:space="preserve">
+    <value>This permanently removes your tasks, lists, comments, files, integrations and settings, and your access to shared lists. It cannot be undone. Consider exporting your data first, under Your data.</value>
+  </data>
+  <data name="account_type_to_confirm" xml:space="preserve">
+    <value>Type DELETE MY ACCOUNT to confirm</value>
+  </data>
+  <data name="account_delete_button" xml:space="preserve">
+    <value>Permanently delete account</value>
+  </data>
   <data name="defaults_all_day" xml:space="preserve">
     <value>All day</value>
   </data>

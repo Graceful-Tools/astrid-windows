@@ -23,6 +23,7 @@
         <local:RepeatSummaryConverter x:Key="RepeatText" />
         <local:ReminderStateConverter x:Key="ReminderText" />
         <local:NotVisibleConverter x:Key="NotVisible" />
+        <local:WordsConverter x:Key="Words" />
         <local:FilterStateConverter x:Key="FilterText" />
         <local:MessageBylineConverter x:Key="Byline" />
         <local:TimerButtonConverter x:Key="TimerText" />
@@ -1301,6 +1302,105 @@
                                                     <Button Content="Sync now" Click="OnSync" />
                                                     <Button Content="Sign out" Click="OnSignOut" />
                                                 </StackPanel>
+
+                                                <!--
+                                                    The web's AccountSettings, section by section
+                                                    (task 19fd9289). The words are set in
+                                                    WordAccountSection so they come from the
+                                                    strings table like everything else new.
+                                                -->
+                                                <TextBlock x:Name="ProfileTitle" Margin="0,10,0,0"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{ThemeResource AstridTextPrimary}" />
+                                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                                    <Border Width="56" Height="56" CornerRadius="28"
+                                                            Background="{ThemeResource AstridBorder}">
+                                                        <Image Source="{x:Bind Shell.Settings.PhotoUrl, Mode=OneWay}"
+                                                               Stretch="UniformToFill"
+                                                               AutomationProperties.Name="Profile photo" />
+                                                    </Border>
+                                                    <StackPanel Spacing="4" VerticalAlignment="Center">
+                                                        <Button x:Name="ChangePhotoButton" Click="OnChangePhoto" />
+                                                        <TextBlock x:Name="PhotoHint" FontSize="11"
+                                                                   Foreground="{ThemeResource AstridTextMuted}" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <TextBox x:Name="DisplayNameBox" Width="260"
+                                                             AutomationProperties.Name="Display name"
+                                                             Text="{x:Bind Shell.Settings.NameDraft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                    <Button x:Name="SaveNameButton" Click="OnSaveName"
+                                                            VerticalAlignment="Bottom"
+                                                            IsEnabled="{x:Bind Shell.Settings.CanSaveName, Mode=OneWay}" />
+                                                </StackPanel>
+                                                <TextBlock Text="{x:Bind Shell.Settings.Email, Mode=OneWay}"
+                                                           Foreground="{ThemeResource AstridTextSecondary}" />
+
+                                                <TextBlock x:Name="VerificationTitle" Margin="0,10,0,0"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{ThemeResource AstridTextPrimary}" />
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock VerticalAlignment="Center"
+                                                               AutomationProperties.Name="Verification state"
+                                                               Text="{x:Bind Shell.Settings.VerificationKey, Mode=OneWay, Converter={StaticResource Words}}" />
+                                                    <Button x:Name="ResendButton" Click="OnResendVerification"
+                                                            Visibility="{x:Bind Shell.Settings.IsVerified, Mode=OneWay, Converter={StaticResource NotVisible}}" />
+                                                </StackPanel>
+                                                <TextBlock Foreground="{ThemeResource AstridTextSecondary}"
+                                                           Visibility="{x:Bind Shell.Settings.HasPendingEmail, Mode=OneWay, Converter={StaticResource Visible}}">
+                                                    <Run x:Name="PendingPrefix" /><Run Text="{x:Bind Shell.Settings.PendingEmail, Mode=OneWay}" />
+                                                </TextBlock>
+                                                <TextBlock x:Name="VerificationSentLine" TextWrapping="Wrap"
+                                                           Foreground="{ThemeResource AstridTextSecondary}"
+                                                           Visibility="{x:Bind Shell.Settings.VerificationSent, Mode=OneWay, Converter={StaticResource Visible}}" />
+
+                                                <TextBlock x:Name="InfoTitle" Margin="0,10,0,0"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{ThemeResource AstridTextPrimary}" />
+                                                <Grid ColumnSpacing="16" RowSpacing="4">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+                                                    <TextBlock x:Name="InfoCreatedLabel" Grid.Row="0" Grid.Column="0"
+                                                               Foreground="{ThemeResource AstridTextMuted}" />
+                                                    <TextBlock Grid.Row="0" Grid.Column="1"
+                                                               Text="{x:Bind Shell.Settings.CreatedOn, Mode=OneWay}" />
+                                                    <TextBlock x:Name="InfoUpdatedLabel" Grid.Row="1" Grid.Column="0"
+                                                               Foreground="{ThemeResource AstridTextMuted}" />
+                                                    <TextBlock Grid.Row="1" Grid.Column="1"
+                                                               Text="{x:Bind Shell.Settings.UpdatedOn, Mode=OneWay}" />
+                                                    <TextBlock x:Name="InfoIdLabel" Grid.Row="2" Grid.Column="0"
+                                                               Foreground="{ThemeResource AstridTextMuted}" />
+                                                    <TextBlock Grid.Row="2" Grid.Column="1" FontSize="11"
+                                                               FontFamily="Consolas" IsTextSelectionEnabled="True"
+                                                               Text="{x:Bind Shell.Settings.AccountId, Mode=OneWay}" />
+                                                </Grid>
+
+                                                <TextBlock x:Name="PasskeysTitle" Margin="0,10,0,0"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{ThemeResource AstridTextPrimary}" />
+                                                <TextBlock x:Name="PasskeysNote" TextWrapping="Wrap"
+                                                           Foreground="{ThemeResource AstridTextSecondary}" />
+                                                <Button x:Name="ManagePasskeysButton" Click="OnManagePasskeys" />
+
+                                                <TextBlock x:Name="DeleteTitle" Margin="0,10,0,0"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                                                <TextBlock x:Name="DeleteWarning" TextWrapping="Wrap"
+                                                           Foreground="{ThemeResource AstridTextSecondary}" />
+                                                <TextBox x:Name="DeleteConfirmationBox" Width="260"
+                                                         HorizontalAlignment="Left"
+                                                         AutomationProperties.Name="Delete confirmation"
+                                                         Text="{x:Bind Shell.Settings.DeleteConfirmation, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                <Button x:Name="DeleteAccountButton" Click="OnDeleteAccount"
+                                                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                                        IsEnabled="{x:Bind Shell.Settings.CanDeleteAccount, Mode=OneWay}" />
                                             </StackPanel>
 
                                             <StackPanel x:Name="RemindersSection" Spacing="10"

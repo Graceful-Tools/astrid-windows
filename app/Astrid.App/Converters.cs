@@ -685,6 +685,19 @@ public sealed partial class BoardItemTemplateSelector : DataTemplateSelector
 /// What a default's choice is called: a member's name when it has one, otherwise the word its
 /// resource key names (task c4102c67).
 /// </summary>
+/// <summary>
+/// A string key to its words, for text a view model answers as a key — the verification state on
+/// the account page, for one (task 19fd9289). Anything that is not a string draws as nothing.
+/// </summary>
+public sealed partial class WordsConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is string key && key.Length > 0 ? Strings.Get(key) : string.Empty;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("words are not a value to read back");
+}
+
 public sealed partial class ChoiceLabelConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language) =>

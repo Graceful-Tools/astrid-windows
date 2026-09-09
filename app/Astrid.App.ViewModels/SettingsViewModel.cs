@@ -37,6 +37,10 @@ public sealed class SettingsViewModel : ObservableObject
     private string? _newWebhookSecret;
     private string? _webhookTestResult;
     private string? _lastExportPath;
+    private string _nameDraft = string.Empty;
+    private string _deleteConfirmation = string.Empty;
+    private bool _verificationSent;
+    private bool _isDeleting;
 
     public SettingsViewModel(IAstridCore core)
     {
@@ -55,6 +59,17 @@ public sealed class SettingsViewModel : ObservableObject
             {
                 Raise(nameof(DisplayName));
                 Raise(nameof(Email));
+                Raise(nameof(PhotoUrl));
+                Raise(nameof(IsVerified));
+                Raise(nameof(VerificationKey));
+                Raise(nameof(PendingEmail));
+                Raise(nameof(HasPendingEmail));
+                Raise(nameof(CreatedOn));
+                Raise(nameof(UpdatedOn));
+                Raise(nameof(AccountId));
+                // The name box follows the account — what is typed there is a draft of this, and
+                // an edit somebody made on another client should show up here, not be fought.
+                NameDraft = value?.Name ?? string.Empty;
             }
         }
     }
@@ -62,6 +77,105 @@ public sealed class SettingsViewModel : ObservableObject
     public string DisplayName => User?.DisplayName ?? string.Empty;
 
     public string Email => User?.Email ?? string.Empty;
+
+    /// <summary>The profile photo's address, when there is one (task 19fd9289).</summary>
+    public string? PhotoUrl => string.IsNullOrEmpty(User?.Image) ? null : User.Image;
+
+    /// <summary>Verified outright, or through the provider that signed the account in.</summary>
+    public bool IsVerified => User?.Verified == true;
+
+    /// <summary>
+    /// The word for the verification state, as a key: verified, verified through a provider, or
+    /// not verified. The shell turns it into text.
+    /// </summary>
+    public string VerificationKey => User?.Verified switch
+    {
+        true when User.VerifiedViaOAuth == true => "account.verified_via_provider",
+        true => "account.verified",
+        _ => "account.not_verified",
+    };
+
+    /// <summary>A change of address waiting to be confirmed, when there is one.</summary>
+    public string? PendingEmail =>
+        User?.HasPendingChange == true && !string.IsNullOrEmpty(User.PendingEmail)
+            ? User.PendingEmail
+            : null;
+
+    public bool HasPendingEmail => PendingEmail is not null;
+
+    /// <summary>When the account was made, as a day in the reader's format.</summary>
+    public string CreatedOn => Day(User?.CreatedAt);
+
+    /// <summary>When the account was last changed, likewise.</summary>
+    public string UpdatedOn => Day(User?.UpdatedAt);
+
+    public string AccountId => User?.Id ?? string.Empty;
+
+    /// <summary>
+    /// The display name as it is being typed. Saved on the button, not on every keystroke: a name
+    /// is one thing, and a server that sees "J", "Jo", "Jon" is a server writing three names.
+    /// </summary>
+    public string NameDraft
+    {
+        get => _nameDraft;
+        set
+        {
+            if (Set(ref _nameDraft, value))
+            {
+                Raise(nameof(CanSaveName));
+            }
+        }
+    }
+
+    /// <summary>There is a name to save, and it is not the one the account already has.</summary>
+    public bool CanSaveName =>
+        !string.IsNullOrWhiteSpace(NameDraft) && NameDraft.Trim() != (User?.Name ?? string.Empty);
+
+    /// <summary>The verification email went out on this visit, so the page can say so.</summary>
+    public bool VerificationSent
+    {
+        get => _verificationSent;
+        private set => Set(ref _verificationSent, value);
+    }
+
+    /// <summary>
+    /// What the server makes somebody type before it deletes their account — the web's phrase,
+    /// character for character. Typing it enables the button; the core checks it again.
+    /// </summary>
+    public const string DeleteConfirmationPhrase = "DELETE MY ACCOUNT";
+
+    /// <summary>What has been typed into the deletion box.</summary>
+    public string DeleteConfirmation
+    {
+        get => _deleteConfirmation;
+        set
+        {
+            if (Set(ref _deleteConfirmation, value))
+            {
+                Raise(nameof(CanDeleteAccount));
+            }
+        }
+    }
+
+    public bool CanDeleteAccount => DeleteConfirmation == DeleteConfirmationPhrase && !IsDeleting;
+
+    public bool IsDeleting
+    {
+        get => _isDeleting;
+        private set
+        {
+            if (Set(ref _isDeleting, value))
+            {
+                Raise(nameof(CanDeleteAccount));
+            }
+        }
+    }
+
+    private static string Day(string? instant) =>
+        DateTimeOffset.TryParse(instant, null, System.Globalization.DateTimeStyles.RoundtripKind,
+            out var parsed)
+            ? parsed.ToLocalTime().ToString("d")
+            : string.Empty;
 
     public ReminderSettings Reminders
     {
@@ -740,6 +854,70 @@ public sealed class SettingsViewModel : ObservableObject
         ErrorMessage = null;
         LastExportPath = path;
         return true;
+    }
+
+    /// <summary>Save the display name as typed (task 19fd9289).</summary>
+    public async Task<bool> SaveNameAsync(CancellationToken cancellationToken = default)
+    {
+        if (!CanSaveName)
+        {
+            return false;
+        }
+        return Read(await _core.CallAsync(
+            Commands.UpdateProfile(NameDraft.Trim(), null), cancellationToken));
+    }
+
+    /// <summary>Put a picture from this machine on the profile (task 19fd9289).</summary>
+    public async Task<bool> SetPhotoAsync(string path, CancellationToken cancellationToken = default) =>
+        Read(await _core.CallAsync(Commands.UpdateProfile(null, path), cancellationToken));
+
+    /// <summary>Ask for the verification email again (task 19fd9289).</summary>
+    public async Task<bool> ResendVerificationAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.ResendVerification(), cancellationToken);
+        if (!response.Ok)
+        {
+            VerificationSent = false;
+            ErrorMessage = response.IsStillPending
+                ? "Sending the email needs a connection."
+                : response.Error?.Message;
+            return false;
+        }
+        ErrorMessage = null;
+        VerificationSent = true;
+        return true;
+    }
+
+    /// <summary>
+    /// Delete the account for good (task 19fd9289). True when it is gone — the caller then shows
+    /// the door, because the core has already signed out.
+    /// </summary>
+    public async Task<bool> DeleteAccountAsync(CancellationToken cancellationToken = default)
+    {
+        if (!CanDeleteAccount)
+        {
+            return false;
+        }
+        IsDeleting = true;
+        try
+        {
+            var response = await _core.CallAsync(
+                Commands.DeleteAccount(DeleteConfirmation), cancellationToken);
+            if (!response.Ok)
+            {
+                ErrorMessage = response.IsStillPending
+                    ? "Deleting the account needs a connection."
+                    : response.Error?.Message;
+                return false;
+            }
+            ErrorMessage = null;
+            DeleteConfirmation = string.Empty;
+            return true;
+        }
+        finally
+        {
+            IsDeleting = false;
+        }
     }
 
     /// <summary>Read the account from the cache, then catch it up.</summary>
