@@ -134,6 +134,29 @@ public sealed class TaskListViewModelTests
         Assert.False(view.NeedsSignIn);
     }
 
+    /// <summary>
+    /// The add box says where its title came from, so the core can read <c>#list</c> tags out of
+    /// it when the account has smart parsing on — the shell sends the title as typed and decides
+    /// nothing about it (task 6ac2639a).
+    /// </summary>
+    [Fact]
+    public async Task The_add_box_marks_its_title_as_quick_add_task_6ac2639a()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(0))
+            .AnswerOk("createTask", new { id = "t1", title = "Pushups" })
+            .AnswerOk("rowsForList", Window(1, "Pushups"));
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Home");
+
+        Assert.True(await view.CreateTaskAsync("Pushups #health"));
+
+        Assert.Contains(core.Sent, json =>
+            json.Contains("\"kind\":\"createTask\"")
+            && json.Contains("\"title\":\"Pushups #health\"")
+            && json.Contains("\"quickAdd\":true"));
+    }
+
     [Fact]
     public async Task A_refusal_is_reported()
     {

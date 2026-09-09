@@ -613,6 +613,9 @@ public sealed record AccountSettings
 
     [JsonPropertyName("layoutChoices")]
     public IReadOnlyList<SettingChoice> LayoutChoices { get; init; } = [];
+
+    [JsonPropertyName("subtaskChoices")]
+    public IReadOnlyList<SettingChoice> SubtaskChoices { get; init; } = [];
 }
 
 /// <summary>

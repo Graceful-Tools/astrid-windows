@@ -1533,6 +1533,27 @@
                                                            Text="{x:Bind Shell.Settings.LayoutDescriptionKey, Mode=OneWay, Converter={StaticResource Words}}" />
                                                 <TextBlock x:Name="LayoutHint" FontSize="11" TextWrapping="Wrap"
                                                            Foreground="{ThemeResource AstridTextMuted}" />
+                                                <!--
+                                                    The web's other two Appearance settings
+                                                    (task 6ac2639a): whether the add box reads
+                                                    #list tags, and where subtasks appear. Both
+                                                    account settings, read by the core.
+                                                -->
+                                                <ToggleSwitch x:Name="SmartParsingToggle" Margin="0,8,0,0"
+                                                              AutomationProperties.Name="Smart task creation"
+                                                              IsOn="{x:Bind Shell.Settings.SmartParsingEnabled, Mode=OneWay}"
+                                                              Toggled="OnSmartParsingToggled" />
+                                                <TextBlock x:Name="SmartParsingHint" FontSize="11" TextWrapping="Wrap"
+                                                           Foreground="{ThemeResource AstridTextMuted}" />
+                                                <ComboBox x:Name="SubtasksBox" Margin="0,8,0,0"
+                                                          HorizontalAlignment="Stretch"
+                                                          AutomationProperties.Name="Sub tasks"
+                                                          ItemsSource="{x:Bind Shell.Settings.SubtaskChoices, Mode=OneWay}"
+                                                          ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                                                          SelectedItem="{x:Bind Shell.Settings.SelectedSubtaskDisplay, Mode=OneWay}"
+                                                          SelectionChanged="OnSmartTaskChoiceChosen" />
+                                                <TextBlock x:Name="SubtasksHint" FontSize="11" TextWrapping="Wrap"
+                                                           Foreground="{ThemeResource AstridTextMuted}" />
                                             </StackPanel>
 
                                             <StackPanel x:Name="AgentsSection" Spacing="10"

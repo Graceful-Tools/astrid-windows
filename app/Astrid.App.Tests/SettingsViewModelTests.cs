@@ -97,6 +97,64 @@ public sealed class SettingsViewModelTests
         },
     };
 
+    private static object WithAppearance(bool parsing, string subtasks) => new
+    {
+        user = new { id = "me", name = "Jon", email = "jon@x.io" },
+        reminderSettings = new { enablePushReminders = true, enableEmailReminders = true },
+        offsets = Array.Empty<object>(),
+        timezone = "+00:00",
+        smartTasks = new
+        {
+            emailToTaskEnabled = true,
+            defaultTaskDueOffset = "1_week",
+            defaultDueTime = "17:00",
+            taskDisplayMode = "list",
+            subtaskDisplay = subtasks,
+            smartTaskCreationEnabled = parsing,
+        },
+        dueOffsetChoices = Array.Empty<object>(),
+        dueTimeChoices = Array.Empty<object>(),
+        layoutChoices = Array.Empty<object>(),
+        subtaskChoices = new[]
+        {
+            new { value = "indented", titleKey = "smart.subtasks.indented" },
+            new { value = "under_parent", titleKey = "smart.subtasks.under_parent" },
+        },
+    };
+
+    /// <summary>
+    /// Appearance reads whether smart parsing is on and where subtasks go, writes each as one
+    /// field, and announces a subtask change the way it announces a layout change — the rows are
+    /// different now (task 6ac2639a).
+    /// </summary>
+    [Fact]
+    public async Task Appearance_reads_smart_parsing_and_subtasks_and_a_subtask_change_redraws_rows_task_6ac2639a()
+    {
+        var core = new FakeCore()
+            .AnswerOk("settings", WithAppearance(true, "indented"))
+            .AnswerOk("updateSmartTaskSettings", WithAppearance(false, "indented"))
+            .AnswerOk("updateSmartTaskSettings", WithAppearance(false, "under_parent"));
+        var view = new SettingsViewModel(core);
+        var redraws = 0;
+        view.DisplayModeChanged += () => redraws++;
+
+        await view.LoadAsync();
+        Assert.True(view.SmartParsingEnabled);
+        Assert.Equal(2, view.SubtaskChoices.Count);
+        Assert.Equal("smart.subtasks.indented", view.SelectedSubtaskDisplay?.TitleKey);
+
+        Assert.True(await view.SetSmartTaskAsync("smartTaskCreationEnabled", false));
+        Assert.False(view.SmartParsingEnabled);
+        Assert.Equal(0, redraws);
+        Assert.Contains(core.Sent, json =>
+            json.Contains("\"kind\":\"updateSmartTaskSettings\"")
+            && json.Contains("\"changes\":{\"smartTaskCreationEnabled\":false}"));
+
+        Assert.True(await view.SetSmartTaskAsync("subtaskDisplay", "under_parent"));
+        Assert.Equal("under_parent", view.SelectedSubtaskDisplay?.Value);
+        Assert.Equal(1, redraws);
+    }
+
     /// <summary>
     /// The Tasks page reads the core's shaped defaults and its choices, lights the current one in
     /// each combo, writes one field per change, and says so when the layout changed — because the

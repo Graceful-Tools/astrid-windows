@@ -18,7 +18,7 @@ milestones; this tracks the *product*.
 | Sidebar: lists, favourites, virtual lists | ✅ | ✅ | Today, Not in a List, I've Assigned |
 | My Tasks | ✅ | ✅ | The view the app opens on — yours and nobody's — with filters that belong to the account and follow you between machines |
 | Task list with subtasks and windowing | ✅ | ✅ | Windows sends a window of rows; the Mac loads the list |
-| Quick add, with `#list` autocomplete | ✅ | ✅ | Same parser, in the core |
+| Quick add, with `#list` tags | ✅ | ✅ | When the account's smart parsing is on, `#health` files the task in Health and leaves the title, by the web's rule in the core; off, the title is kept as typed. Dates and priority words are not parsed here (CONTRACTS D11) |
 | Task detail: title, description, priority, lists | ✅ | ✅ | Field order comes from the core. The description is drawn as the web draws it — GFM plus the @/#/! pills, rendered in the core — and clicked to edit. The Lists row edits: add, remove, or create a list from a search, with the web's privacy and colour rules in the core. The action menu is the web's: Copy link, Share (a shortcode minted on the server), Status (the board's columns, the same move a dragged card makes), Won't do / Reopen (`closedReason`, no repeat rollover), Delete |
 | Completion, including repeat rollover | ✅ | ✅ | One path, `TaskService::complete` |
 | Due dates and quick picks | ✅ | ✅ | Instants computed in the core, not in XAML |
@@ -35,7 +35,7 @@ milestones; this tracks the *product*.
 | Offline-first with an Outbox | ✅ | ✅ | |
 | Sign-in through the browser | ✅ | ✅ | |
 | Localisation | ✅ (12 languages) | ✅ (English) | Windows has the mechanism and one language |
-| Themes | ✅ | ✅ | Ocean, light, dark and auto — the same four the Apple clients store, chosen per machine. Appearance also carries the account's task-detail layout (list / project), which rows and the detail draw with at once |
+| Themes | ✅ | ✅ | Ocean, light, dark and auto — the same four the Apple clients store, chosen per machine. Appearance also carries the account's task-detail layout (list / project), which rows and the detail draw with at once; smart task creation on/off; and where subtasks appear — indented in lists, or inside the parent only |
 | Task settings | ✅ | ✅ | The web's Tasks page: Email-to-Task on/off and address, default due date and time for emailed tasks — stored on the server through `/api/v1/users/me/smart-tasks`, shaped and validated in the core |
 | Attachments | ✅ | ✅ | Open, attach from disk, paste from the clipboard; drawn in the comment they arrived on. A picture draws as a thumbnail from bytes already on this machine — the Outbox's own copy for one just posted — rather than being fetched back (AITD-308). Queued offline, with the bytes copied so the original can move away |
 | Timer on a task | ✅ | ✅ | Windows keeps a running timer across a restart; the Mac's is in memory |

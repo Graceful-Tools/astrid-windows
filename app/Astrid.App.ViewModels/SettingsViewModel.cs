@@ -209,11 +209,25 @@ public sealed class SettingsViewModel : ObservableObject
                 Raise(nameof(SelectedDueTime));
                 Raise(nameof(SelectedLayout));
                 Raise(nameof(LayoutDescriptionKey));
+                Raise(nameof(SmartParsingEnabled));
+                Raise(nameof(SelectedSubtaskDisplay));
             }
         }
     }
 
     public bool EmailToTaskEnabled => SmartTasks.EmailToTaskEnabled;
+
+    /// <summary>
+    /// Whether the quick-add box's <c>#list</c> tags file the task (task 6ac2639a). The rule is
+    /// the core's; this is only whether the account has it on.
+    /// </summary>
+    public bool SmartParsingEnabled => SmartTasks.SmartTaskCreationEnabled;
+
+    /// <summary>The two subtask layouts, for the Appearance page.</summary>
+    public ObservableCollection<DefaultChoice> SubtaskChoices { get; } = [];
+
+    public DefaultChoice? SelectedSubtaskDisplay =>
+        SubtaskChoices.FirstOrDefault(choice => choice.Value == SmartTasks.SubtaskDisplay);
 
     /// <summary>The due-date offsets the Tasks page offers, in the core's order.</summary>
     public ObservableCollection<DefaultChoice> DueOffsetChoices { get; } = [];
@@ -237,8 +251,9 @@ public sealed class SettingsViewModel : ObservableObject
     public string LayoutDescriptionKey => $"smart.layout.{SmartTasks.TaskDisplayMode}_desc";
 
     /// <summary>
-    /// Raised when the task-detail layout changes, so the shell can redraw the rows and the open
-    /// task: the leading control means something different now.
+    /// Raised when the task-detail layout or the subtask layout changes, so the shell can redraw
+    /// the rows and the open task: what a row is, and what its leading control does, are different
+    /// now.
     /// </summary>
     public event Action? DisplayModeChanged;
 
@@ -249,7 +264,7 @@ public sealed class SettingsViewModel : ObservableObject
     public async Task<bool> SetSmartTaskAsync(string field, object? value,
         CancellationToken cancellationToken = default)
     {
-        var before = SmartTasks.TaskDisplayMode;
+        var before = (SmartTasks.TaskDisplayMode, SmartTasks.SubtaskDisplay);
         var response = await _core.CallAsync(
             Commands.UpdateSmartTaskSettings(new Dictionary<string, object?> { [field] = value }),
             cancellationToken);
@@ -257,7 +272,7 @@ public sealed class SettingsViewModel : ObservableObject
         {
             return false;
         }
-        if (SmartTasks.TaskDisplayMode != before)
+        if ((SmartTasks.TaskDisplayMode, SmartTasks.SubtaskDisplay) != before)
         {
             DisplayModeChanged?.Invoke();
         }
@@ -1096,6 +1111,7 @@ public sealed class SettingsViewModel : ObservableObject
         ReplaceChoices(DueOffsetChoices, "defaultTaskDueOffset", account.DueOffsetChoices);
         ReplaceChoices(DueTimeChoices, "defaultDueTime", account.DueTimeChoices);
         ReplaceChoices(LayoutChoices, "taskDisplayMode", account.LayoutChoices);
+        ReplaceChoices(SubtaskChoices, "subtaskDisplay", account.SubtaskChoices);
         SmartTasks = account.SmartTasks;
         Offsets.Clear();
         foreach (var offset in account.Offsets)

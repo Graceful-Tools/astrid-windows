@@ -208,6 +208,24 @@
   <data name="smart_layout_project_desc" xml:space="preserve">
     <value>Compact. The checkbox opens priority, assignee, state and complete.</value>
   </data>
+  <data name="smart_parsing" xml:space="preserve">
+    <value>Smart task creation</value>
+  </data>
+  <data name="smart_parsing_hint" xml:space="preserve">
+    <value>Read list hashtags out of what you type in the add box: "Pushups #health" files the task in Health and calls it Pushups. Synced across your devices.</value>
+  </data>
+  <data name="smart_subtasks" xml:space="preserve">
+    <value>Sub tasks</value>
+  </data>
+  <data name="smart_subtasks_hint" xml:space="preserve">
+    <value>How sub tasks appear in your lists. Synced across your devices.</value>
+  </data>
+  <data name="smart_subtasks_indented" xml:space="preserve">
+    <value>In lists, indented</value>
+  </data>
+  <data name="smart_subtasks_under_parent" xml:space="preserve">
+    <value>Inside parent task only</value>
+  </data>
   <data name="defaults_all_day" xml:space="preserve">
     <value>All day</value>
   </data>

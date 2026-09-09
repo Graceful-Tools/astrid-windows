@@ -307,6 +307,21 @@ public sealed partial class ShellPage : UserControl
         DueTimeHint.Text = Strings.Get("smart.default_due_time_hint");
         LayoutBox.Header = Strings.Get("smart.layout");
         LayoutHint.Text = Strings.Get("smart.layout_hint");
+        SmartParsingToggle.Header = Strings.Get("smart.parsing");
+        SmartParsingHint.Text = Strings.Get("smart.parsing_hint");
+        SubtasksBox.Header = Strings.Get("smart.subtasks");
+        SubtasksHint.Text = Strings.Get("smart.subtasks_hint");
+    }
+
+    private async void OnSmartParsingToggled(object sender, RoutedEventArgs args)
+    {
+        if (_settingsLoading
+            || sender is not ToggleSwitch toggle
+            || toggle.IsOn == Shell.Settings.SmartParsingEnabled)
+        {
+            return;
+        }
+        await Shell.Settings.SetSmartTaskAsync("smartTaskCreationEnabled", toggle.IsOn);
     }
 
     private async void OnEmailToTaskToggled(object sender, RoutedEventArgs args)
@@ -335,6 +350,7 @@ public sealed partial class ShellPage : UserControl
             "defaultTaskDueOffset" => Shell.Settings.SmartTasks.DefaultTaskDueOffset,
             "defaultDueTime" => Shell.Settings.SmartTasks.DefaultDueTime,
             "taskDisplayMode" => Shell.Settings.SmartTasks.TaskDisplayMode,
+            "subtaskDisplay" => Shell.Settings.SmartTasks.SubtaskDisplay,
             _ => null,
         };
         if (choice.Value is null || choice.Value == current)

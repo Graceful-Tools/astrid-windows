@@ -433,8 +433,10 @@ public sealed class TaskListViewModel : ObservableObject
         }
 
         var listIds = string.IsNullOrEmpty(ListId) ? Array.Empty<string>() : [ListId];
+        // From the quick-add box, so the core may read `#list` tags out of it — or not, as the
+        // account's smart parsing says (task 6ac2639a).
         var response = await _core
-            .CallAsync(Commands.CreateTask(trimmed, listIds), cancellationToken);
+            .CallAsync(Commands.CreateTask(trimmed, listIds, quickAdd: true), cancellationToken);
         if (!Handle(response))
         {
             return false;
