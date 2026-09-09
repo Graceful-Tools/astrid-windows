@@ -1343,6 +1343,85 @@ public sealed partial class ShellPage : UserControl
         }
     }
 
+    // ── The board's columns (task e5214fba) ────────────────────────────────────────────────
+
+    /// <summary>After a column changes, the board on screen — if it is on screen — redraws.</summary>
+    private async Task StatusesChangedAsync()
+    {
+        if (Shell.IsBoardView)
+        {
+            await Shell.Board.RefreshAsync();
+        }
+    }
+
+    private async void OnAddStatus(object sender, RoutedEventArgs args) => await AddTypedStatusAsync();
+
+    private async void OnNewStatusKeyDown(object sender, KeyRoutedEventArgs args)
+    {
+        if (args.Key != VirtualKey.Enter)
+        {
+            return;
+        }
+        args.Handled = true;
+        await AddTypedStatusAsync();
+    }
+
+    private async Task AddTypedStatusAsync()
+    {
+        if (await Shell.ListSettings.AddStatusAsync(NewStatusBox.Text))
+        {
+            NewStatusBox.Text = string.Empty;
+            await StatusesChangedAsync();
+        }
+    }
+
+    private async void OnStatusRenamed(object sender, RoutedEventArgs args)
+    {
+        if (sender is TextBox { Tag: string role } box
+            && await Shell.ListSettings.RenameStatusAsync(role, box.Text))
+        {
+            await StatusesChangedAsync();
+        }
+    }
+
+    private void OnStatusNameKeyDown(object sender, KeyRoutedEventArgs args)
+    {
+        if (args.Key == VirtualKey.Enter && sender is TextBox box)
+        {
+            args.Handled = true;
+            // Losing focus is what commits the rename, the same as the list's name above.
+            box.IsEnabled = false;
+            box.IsEnabled = true;
+        }
+    }
+
+    private async void OnStatusMovedUp(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is string role
+            && await Shell.ListSettings.MoveStatusAsync(role, "up"))
+        {
+            await StatusesChangedAsync();
+        }
+    }
+
+    private async void OnStatusMovedDown(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is string role
+            && await Shell.ListSettings.MoveStatusAsync(role, "down"))
+        {
+            await StatusesChangedAsync();
+        }
+    }
+
+    private async void OnStatusRemoved(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is string role
+            && await Shell.ListSettings.RemoveStatusAsync(role))
+        {
+            await StatusesChangedAsync();
+        }
+    }
+
     /// <summary>A default for new tasks was chosen (task c4102c67). The view model writes only a change.</summary>
     private async void OnDefaultChosen(object sender, SelectionChangedEventArgs args)
     {

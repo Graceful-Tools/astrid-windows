@@ -78,6 +78,90 @@ public sealed class ListSettingsViewModelTests
     }
 
     /// <summary>
+    /// A list with a board offers its columns, and each change goes through the core and comes
+    /// back re-read (task e5214fba).
+    /// </summary>
+    [Fact]
+    public async Task Board_columns_are_listed_and_changed_from_the_settings_task_e5214fba()
+    {
+        object Settings(params object[] statuses) => new
+        {
+            listId = "l1",
+            name = "Work",
+            projectId = "p1",
+            canManageList = true,
+            statuses,
+            members = Array.Empty<object>(),
+        };
+        var ready = new { id = "ready", name = "Ready", isDefault = true };
+        var review = new { id = "custom-review", name = "Review", isDefault = false };
+        var renamed = new { id = "custom-review", name = "In review", isDefault = false };
+        var core = new FakeCore()
+            .AnswerOk("listMembers", Settings(ready))
+            .AnswerOk("addBoardStatus", new { state = review })
+            .AnswerOk("listMembers", Settings(ready, review))
+            .AnswerOk("renameBoardStatus", new { state = renamed })
+            .AnswerOk("listMembers", Settings(ready, renamed))
+            .AnswerOk("reorderBoardStatus", new { state = renamed })
+            .AnswerOk("listMembers", Settings(ready, renamed))
+            .AnswerOk("removeBoardStatus", new { state = renamed })
+            .AnswerOk("listMembers", Settings(ready));
+        var view = new ListSettingsViewModel(core);
+
+        await view.LoadAsync("l1");
+        Assert.True(view.HasBoard);
+        Assert.Single(view.Statuses);
+        Assert.True(view.Statuses[0].IsDefault);
+
+        Assert.True(await view.AddStatusAsync(" Review "));
+        Assert.Contains("\"name\":\"Review\"", core.Sent.First(sent => sent.Contains("addBoardStatus")));
+        Assert.Equal(2, view.Statuses.Count);
+        Assert.True(view.Statuses[1].IsCustom);
+
+        Assert.True(await view.RenameStatusAsync("custom-review", "In review"));
+        Assert.Contains("\"role\":\"custom-review\"", core.Sent.First(sent => sent.Contains("renameBoardStatus")));
+        Assert.Equal("In review", view.Statuses[1].Name);
+
+        Assert.True(await view.MoveStatusAsync("custom-review", "up"));
+        Assert.Contains("\"direction\":\"up\"", core.Sent.First(sent => sent.Contains("reorderBoardStatus")));
+
+        Assert.True(await view.RemoveStatusAsync("custom-review"));
+        Assert.Single(view.Statuses);
+
+        // The same name again is not a rename, and an empty one is not an add.
+        Assert.False(await view.RenameStatusAsync("ready", "Ready"));
+        Assert.False(await view.AddStatusAsync("   "));
+    }
+
+    /// <summary>A refusal from the core — the web's own message — is shown, not swallowed.</summary>
+    [Fact]
+    public async Task A_refused_column_name_is_reported_in_the_web_s_words()
+    {
+        var core = new FakeCore()
+            .AnswerOk("listMembers", new { listId = "l1", name = "Work", projectId = "p1", statuses = Array.Empty<object>(), members = Array.Empty<object>() })
+            .AnswerFailure("addBoardStatus", AstridFailureKind.BadRequest, "A status with that name already exists");
+        var view = new ListSettingsViewModel(core);
+        await view.LoadAsync("l1");
+
+        Assert.False(await view.AddStatusAsync("Review"));
+
+        Assert.Equal("A status with that name already exists", view.ErrorMessage);
+    }
+
+    /// <summary>A list with no board offers no columns.</summary>
+    [Fact]
+    public async Task A_list_without_a_board_has_no_columns_to_manage()
+    {
+        var core = new FakeCore().AnswerOk("listMembers", Settings());
+        var view = new ListSettingsViewModel(core);
+
+        await view.LoadAsync("l1");
+
+        Assert.False(view.HasBoard);
+        Assert.Empty(view.Statuses);
+    }
+
+    /// <summary>
     /// The defaults for new tasks are read from the settings and each choice writes its own field
     /// (task c4102c67); choosing no When also resets the repeat, as the web does.
     /// </summary>

@@ -35,6 +35,7 @@ public sealed class ListSettingsViewModel : ObservableObject
     private string _color = "#3b82f6";
     private string? _privacy;
     private bool _isFavorite;
+    private string? _projectId;
 
     public ListSettingsViewModel(IAstridCore core)
     {
@@ -145,6 +146,64 @@ public sealed class ListSettingsViewModel : ObservableObject
             return false;
         }
         IsFavorite = favorite;
+        return true;
+    }
+
+    // ── The board's columns (task e5214fba) ────────────────────────────────────────────────
+    //
+    // Shown only when the list has a board. What each write is allowed to do — the name checks,
+    // which columns move or go — is the core's, locked against the web; a refusal comes back as
+    // the error message the web would show.
+
+    /// <summary>The board this list belongs to, when it belongs to one.</summary>
+    public string? ProjectId
+    {
+        get => _projectId;
+        private set
+        {
+            if (Set(ref _projectId, value))
+            {
+                Raise(nameof(HasBoard));
+            }
+        }
+    }
+
+    public bool HasBoard => !string.IsNullOrEmpty(ProjectId);
+
+    /// <summary>The board's editable columns: the three defaults, then its own.</summary>
+    public ObservableCollection<BoardStatus> Statuses { get; } = [];
+
+    public Task<bool> AddStatusAsync(string name, CancellationToken cancellationToken = default) =>
+        string.IsNullOrWhiteSpace(name)
+            ? Task.FromResult(false)
+            : ChangeStatusesAsync(Commands.AddBoardStatus(ListId, name.Trim()), cancellationToken);
+
+    public Task<bool> RenameStatusAsync(string role, string name, CancellationToken cancellationToken = default)
+    {
+        var current = Statuses.FirstOrDefault(status => status.Id == role);
+        if (string.IsNullOrWhiteSpace(name) || current is null || current.Name == name.Trim())
+        {
+            return Task.FromResult(false);
+        }
+        return ChangeStatusesAsync(Commands.RenameBoardStatus(ListId, role, name.Trim()), cancellationToken);
+    }
+
+    /// <param name="direction"><c>up</c> or <c>down</c>.</param>
+    public Task<bool> MoveStatusAsync(string role, string direction, CancellationToken cancellationToken = default) =>
+        ChangeStatusesAsync(Commands.ReorderBoardStatus(ListId, role, direction), cancellationToken);
+
+    public Task<bool> RemoveStatusAsync(string role, CancellationToken cancellationToken = default) =>
+        ChangeStatusesAsync(Commands.RemoveBoardStatus(ListId, role), cancellationToken);
+
+    /// <summary>One column write, then the settings are re-read so the section shows the board as it is.</summary>
+    private async Task<bool> ChangeStatusesAsync(object command, CancellationToken cancellationToken)
+    {
+        var response = await _core.CallAsync(command, cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        await LoadAsync(ListId, cancellationToken);
         return true;
     }
 
@@ -432,6 +491,8 @@ public sealed class ListSettingsViewModel : ObservableObject
             Color = settings.Color;
             Privacy = settings.Privacy;
             IsFavorite = settings.IsFavorite;
+            ProjectId = settings.ProjectId;
+            Replace(Statuses, settings.Statuses);
             RefreshDefaultChoices(settings.Defaults, settings.Members);
             CanManageMembers = settings.CanManageMembers;
             CanManageList = settings.CanManageList;

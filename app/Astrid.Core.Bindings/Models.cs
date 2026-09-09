@@ -742,6 +742,12 @@ public sealed record ListSettings
 
     [JsonPropertyName("ownerId")] public string? OwnerId { get; init; }
 
+    /// <summary>The board this list belongs to, when it belongs to one.</summary>
+    [JsonPropertyName("projectId")] public string? ProjectId { get; init; }
+
+    /// <summary>The board's editable columns (task e5214fba); empty for a list with no board.</summary>
+    [JsonPropertyName("statuses")] public IReadOnlyList<BoardStatus> Statuses { get; init; } = [];
+
     /// <summary>The colour every screen draws the list in (task 53780e75).</summary>
     [JsonPropertyName("color")] public string Color { get; init; } = "#3b82f6";
 
@@ -767,6 +773,28 @@ public sealed record ListSettings
     [JsonPropertyName("currentUserId")] public string? CurrentUserId { get; init; }
 
     [JsonPropertyName("members")] public IReadOnlyList<ListMember> Members { get; init; } = [];
+}
+
+/// <summary>One editable column of a board (task e5214fba).</summary>
+public sealed record BoardStatus
+{
+    /// <summary>The role, which a task points at; kept across a rename.</summary>
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
+
+    /// <summary>One of the three every board shares: renameable, but neither moved nor removed.</summary>
+    [JsonPropertyName("isDefault")] public bool IsDefault { get; init; }
+
+    public bool IsCustom => !IsDefault;
+
+    public string RenameActionName => $"Rename {Name}";
+
+    public string MoveUpActionName => $"Move {Name} up";
+
+    public string MoveDownActionName => $"Move {Name} down";
+
+    public string RemoveActionName => $"Remove {Name}";
 }
 
 /// <summary>

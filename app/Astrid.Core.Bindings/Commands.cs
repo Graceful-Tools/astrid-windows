@@ -510,6 +510,20 @@ public static class Commands
     public static object CreateListForTask(string taskId, string name) =>
         new CreateListForTaskRequest("createListForTask", taskId, name);
 
+    /// <summary>A board's columns (task e5214fba), by the list the board was opened from.</summary>
+    public static object AddBoardStatus(string listId, string name) =>
+        new BoardStatusRequest("addBoardStatus", listId, null, name, null);
+
+    public static object RenameBoardStatus(string listId, string role, string name) =>
+        new BoardStatusRequest("renameBoardStatus", listId, role, name, null);
+
+    /// <param name="direction"><c>up</c> or <c>down</c>.</param>
+    public static object ReorderBoardStatus(string listId, string role, string direction) =>
+        new BoardStatusRequest("reorderBoardStatus", listId, role, null, direction);
+
+    public static object RemoveBoardStatus(string listId, string role) =>
+        new BoardStatusRequest("removeBoardStatus", listId, role, null, null);
+
     public static object SetTaskStatusRole(string taskId, string? statusRole) =>
         new StatusRoleRequest("setTaskStatusRole", taskId, statusRole);
 
@@ -618,6 +632,13 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("name")] string Name);
+
+    private sealed record BoardStatusRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("listId")] string ListId,
+        [property: JsonPropertyName("role"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Role,
+        [property: JsonPropertyName("name"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Name,
+        [property: JsonPropertyName("direction"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Direction);
 
     private sealed record StatusRoleRequest(
         [property: JsonPropertyName("kind")] string Kind,

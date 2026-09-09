@@ -27,7 +27,7 @@ milestones; this tracks the *product*.
 | Assignee picker | ✅ | ✅ | Windows offers agents; the Mac's picker predates them (CONTRACTS D8) |
 | Comments | ✅ | ✅ | |
 | Search | ✅ | ✅ | Over the cache on both — there is no server search |
-| Board view | ✅ | ✅ | Drag a card, or move it from its menu — which a keyboard can also do. A tapped card opens its task in place, inside the column, as the web's does; the list keeps its side pane |
+| Board view | ✅ | ✅ | Drag a card, or move it from its menu — which a keyboard can also do. A tapped card opens its task in place, inside the column, as the web's does; the list keeps its side pane. Columns are added, renamed, reordered and removed from list settings, with the web's rules locked by a fixture |
 | Filters and sort | ✅ | ✅ | All seven filters, fixture-checked values |
 | Chat | ✅ | ✅ | |
 | List settings, sharing, members | ✅ | ✅ | Colour (the web's palette), favourite, privacy and the defaults for new tasks have controls in the flyout; quick-add applies the defaults in the core, as the web does (CONTRACTS D10) |
