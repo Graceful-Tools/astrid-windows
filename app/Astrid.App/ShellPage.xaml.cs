@@ -1343,6 +1343,15 @@ public sealed partial class ShellPage : UserControl
         }
     }
 
+    /// <summary>A default for new tasks was chosen (task c4102c67). The view model writes only a change.</summary>
+    private async void OnDefaultChosen(object sender, SelectionChangedEventArgs args)
+    {
+        if (sender is ComboBox { SelectedItem: DefaultChoice choice })
+        {
+            await Shell.ListSettings.ChooseDefaultAsync(choice);
+        }
+    }
+
     private async void OnListPrivacyChosen(object sender, RoutedEventArgs args)
     {
         if ((sender as FrameworkElement)?.Tag is string privacy)

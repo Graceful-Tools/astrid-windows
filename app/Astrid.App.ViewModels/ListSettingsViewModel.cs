@@ -148,6 +148,149 @@ public sealed class ListSettingsViewModel : ObservableObject
         return true;
     }
 
+    // ── What a new task starts as (task c4102c67) ──────────────────────────────────────────
+    //
+    // The web's admin tab has Default Priority, Assignee, Repeating, When and When Time, and its
+    // quick-add applies them. The core applies them here too, at the door; this only offers the
+    // choices and writes the one picked. Every choice carries either a resource key or a name,
+    // never a word of its own.
+
+    private ListDefaults _defaults = new();
+
+    public ObservableCollection<DefaultChoice> DefaultPriorityChoices { get; } = [];
+    public ObservableCollection<DefaultChoice> DefaultAssigneeChoices { get; } = [];
+    public ObservableCollection<DefaultChoice> DefaultRepeatChoices { get; } = [];
+    public ObservableCollection<DefaultChoice> DefaultWhenChoices { get; } = [];
+    public ObservableCollection<DefaultChoice> DefaultTimeChoices { get; } = [];
+
+    public DefaultChoice? SelectedDefaultPriority => DefaultPriorityChoices.FirstOrDefault(choice => choice.IsSelected);
+    public DefaultChoice? SelectedDefaultAssignee => DefaultAssigneeChoices.FirstOrDefault(choice => choice.IsSelected);
+    public DefaultChoice? SelectedDefaultRepeat => DefaultRepeatChoices.FirstOrDefault(choice => choice.IsSelected);
+    public DefaultChoice? SelectedDefaultWhen => DefaultWhenChoices.FirstOrDefault(choice => choice.IsSelected);
+    public DefaultChoice? SelectedDefaultTime => DefaultTimeChoices.FirstOrDefault(choice => choice.IsSelected);
+
+    /// <summary>The list's defaults, as last loaded.</summary>
+    public ListDefaults Defaults => _defaults;
+
+    private static readonly string[] Repeats = ["never", "daily", "weekly", "monthly", "yearly"];
+    private static readonly (string Value, string Key)[] Whens =
+    [
+        ("none", "picker.no_due_date"),
+        ("today", "picker.today"),
+        ("tomorrow", "picker.tomorrow"),
+        ("next_week", "picker.next_week"),
+    ];
+    private static readonly string[] PriorityKeys = ["priority.none", "priority.low", "priority.medium", "priority.high"];
+
+    private void RefreshDefaultChoices(ListDefaults defaults, IReadOnlyList<ListMember> members)
+    {
+        _defaults = defaults;
+
+        Replace(DefaultPriorityChoices, PriorityKeys
+            .Select((key, level) => new DefaultChoice("priority", level.ToString(), key, null, defaults.Priority == level))
+            .ToList());
+
+        var assignees = new List<DefaultChoice>
+        {
+            new("assignee", null, "defaults.task_creator", null, string.IsNullOrEmpty(defaults.AssigneeId)),
+            new("assignee", "unassigned", "assignee.unassigned", null, defaults.AssigneeId == "unassigned"),
+        };
+        assignees.AddRange(members.Select(member =>
+            new DefaultChoice("assignee", member.UserId, null, member.DisplayName, defaults.AssigneeId == member.UserId)));
+        Replace(DefaultAssigneeChoices, assignees);
+
+        Replace(DefaultRepeatChoices, Repeats
+            .Select(value => new DefaultChoice("repeating", value, $"repeat.{value}", null, defaults.Repeating == value))
+            .ToList());
+
+        Replace(DefaultWhenChoices, Whens
+            .Select(when => new DefaultChoice("dueDate", when.Value, when.Key, null, defaults.DueDate == when.Value))
+            .ToList());
+
+        // All day, then the hours of a working day — and the stored time itself if it is not one
+        // of them, so a 09:15 set on the web is shown rather than silently rounded.
+        var times = new List<DefaultChoice>
+        {
+            new("dueTime", null, "defaults.all_day", null, defaults.DueTime is null),
+        };
+        var hours = Enumerable.Range(6, 17).Select(hour => $"{hour:00}:00").ToList();
+        if (defaults.DueTime is { } stored && !hours.Contains(stored))
+        {
+            hours.Add(stored);
+            hours.Sort(StringComparer.Ordinal);
+        }
+        times.AddRange(hours.Select(time =>
+            new DefaultChoice("dueTime", time, null, TimeLabel(time), defaults.DueTime == time)));
+        Replace(DefaultTimeChoices, times);
+
+        Raise(nameof(Defaults));
+        Raise(nameof(SelectedDefaultPriority));
+        Raise(nameof(SelectedDefaultAssignee));
+        Raise(nameof(SelectedDefaultRepeat));
+        Raise(nameof(SelectedDefaultWhen));
+        Raise(nameof(SelectedDefaultTime));
+    }
+
+    /// <summary><c>HH:MM</c> in the reader's own clock form.</summary>
+    private static string TimeLabel(string time) =>
+        TimeSpan.TryParse(time, System.Globalization.CultureInfo.InvariantCulture, out var span)
+            ? DateTime.Today.Add(span).ToString("t", System.Globalization.CultureInfo.CurrentCulture)
+            : time;
+
+    /// <summary>
+    /// A default was chosen. Writes only the field the choice belongs to — except that choosing no
+    /// *When* also resets the repeat, as the web does: a task with no date cannot repeat.
+    /// </summary>
+    public async Task<bool> ChooseDefaultAsync(DefaultChoice choice, CancellationToken cancellationToken = default)
+    {
+        if (choice.IsSelected)
+        {
+            return false;
+        }
+        var changes = new Dictionary<string, object?>();
+        switch (choice.Field)
+        {
+            case "priority":
+                changes["defaultPriority"] = int.TryParse(choice.Value, out var level) ? level : 0;
+                break;
+            case "assignee":
+                changes["defaultAssigneeId"] = choice.Value;
+                break;
+            case "repeating":
+                changes["defaultRepeating"] = choice.Value ?? "never";
+                break;
+            case "dueDate":
+                changes["defaultDueDate"] = choice.Value ?? "none";
+                if (choice.Value is null or "none")
+                {
+                    changes["defaultRepeating"] = "never";
+                }
+                break;
+            case "dueTime":
+                changes["defaultDueTime"] = choice.Value;
+                break;
+            default:
+                return false;
+        }
+        var response = await _core.CallAsync(Commands.UpdateList(ListId, changes), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        var updated = _defaults with
+        {
+            Priority = choice.Field == "priority" && int.TryParse(choice.Value, out var chosen) ? chosen : _defaults.Priority,
+            AssigneeId = choice.Field == "assignee" ? choice.Value : _defaults.AssigneeId,
+            Repeating = choice.Field == "repeating" ? choice.Value ?? "never"
+                : choice.Field == "dueDate" && choice.Value is null or "none" ? "never"
+                : _defaults.Repeating,
+            DueDate = choice.Field == "dueDate" ? choice.Value ?? "none" : _defaults.DueDate,
+            DueTime = choice.Field == "dueTime" ? choice.Value : _defaults.DueTime,
+        };
+        RefreshDefaultChoices(updated, Members.ToList());
+        return true;
+    }
+
     private void RefreshSwatches()
     {
         for (var index = 0; index < ColorChoices.Count; index++)
@@ -289,6 +432,7 @@ public sealed class ListSettingsViewModel : ObservableObject
             Color = settings.Color;
             Privacy = settings.Privacy;
             IsFavorite = settings.IsFavorite;
+            RefreshDefaultChoices(settings.Defaults, settings.Members);
             CanManageMembers = settings.CanManageMembers;
             CanManageList = settings.CanManageList;
             CanDeleteList = settings.CanDeleteList;
@@ -424,6 +568,12 @@ public sealed class ListSettingsViewModel : ObservableObject
         }
     }
 }
+
+/// <summary>
+/// One choice for one of a list's defaults (task c4102c67): which field, what it writes, and
+/// how it is named — by a resource key, or by a member's name.
+/// </summary>
+public sealed record DefaultChoice(string Field, string? Value, string? TitleKey, string? Text, bool IsSelected);
 
 /// <summary>One colour the list could wear, and whether it does.</summary>
 public sealed record ColorSwatch(string Hex, bool IsSelected)

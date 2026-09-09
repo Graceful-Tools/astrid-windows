@@ -77,6 +77,80 @@ public sealed class ListSettingsViewModelTests
         Assert.False(view.IsShared);
     }
 
+    /// <summary>
+    /// The defaults for new tasks are read from the settings and each choice writes its own field
+    /// (task c4102c67); choosing no When also resets the repeat, as the web does.
+    /// </summary>
+    [Fact]
+    public async Task Defaults_for_new_tasks_are_offered_and_written_task_c4102c67()
+    {
+        var core = new FakeCore()
+            .AnswerOk("listMembers", new
+            {
+                listId = "l1",
+                name = "Work",
+                canManageList = true,
+                defaults = new { assigneeId = "dana", priority = 3, repeating = "weekly", dueDate = "tomorrow", dueTime = "17:00" },
+                members = new[]
+                {
+                    new { userId = "me", role = "owner", user = new { id = "me", name = "Jon" } },
+                    new { userId = "dana", role = "member", user = new { id = "dana", name = "Dana" } },
+                },
+            })
+            .AnswerOk("updateList")
+            .AnswerOk("updateList")
+            .AnswerOk("updateList");
+        var view = new ListSettingsViewModel(core);
+
+        await view.LoadAsync("l1");
+
+        Assert.Equal("3", view.SelectedDefaultPriority?.Value);
+        Assert.Equal("Dana", view.SelectedDefaultAssignee?.Text);
+        Assert.Equal(4, view.DefaultAssigneeChoices.Count); // creator, unassigned, and the two members
+        Assert.Equal("defaults.task_creator", view.DefaultAssigneeChoices[0].TitleKey);
+        Assert.Equal("weekly", view.SelectedDefaultRepeat?.Value);
+        Assert.Equal("tomorrow", view.SelectedDefaultWhen?.Value);
+        Assert.Equal("17:00", view.SelectedDefaultTime?.Value);
+        Assert.Equal("defaults.all_day", view.DefaultTimeChoices[0].TitleKey);
+
+        Assert.True(await view.ChooseDefaultAsync(view.DefaultPriorityChoices[1]));
+        Assert.Contains("\"defaultPriority\":1", core.Sent.First(sent => sent.Contains("updateList")));
+        Assert.Equal("1", view.SelectedDefaultPriority?.Value);
+
+        var unassigned = view.DefaultAssigneeChoices.First(choice => choice.Value == "unassigned");
+        Assert.True(await view.ChooseDefaultAsync(unassigned));
+        Assert.Contains("\"defaultAssigneeId\":\"unassigned\"", core.Sent[2]);
+
+        var none = view.DefaultWhenChoices.First(choice => choice.Value == "none");
+        Assert.True(await view.ChooseDefaultAsync(none));
+        Assert.Contains("\"defaultDueDate\":\"none\"", core.Sent[3]);
+        Assert.Contains("\"defaultRepeating\":\"never\"", core.Sent[3]);
+        Assert.Equal("never", view.SelectedDefaultRepeat?.Value);
+
+        // The chosen one writes nothing.
+        Assert.False(await view.ChooseDefaultAsync(view.SelectedDefaultWhen!));
+        Assert.Equal(4, core.Sent.Count);
+    }
+
+    /// <summary>A time set on the web that is not on the hour is still shown, not rounded away.</summary>
+    [Fact]
+    public async Task A_stored_time_off_the_hour_is_still_offered()
+    {
+        var core = new FakeCore().AnswerOk("listMembers", new
+        {
+            listId = "l1",
+            name = "Work",
+            defaults = new { assigneeId = (string?)null, priority = 0, repeating = "never", dueDate = "today", dueTime = "09:15" },
+            members = Array.Empty<object>(),
+        });
+        var view = new ListSettingsViewModel(core);
+
+        await view.LoadAsync("l1");
+
+        Assert.Equal("09:15", view.SelectedDefaultTime?.Value);
+        Assert.Equal("defaults.task_creator", view.SelectedDefaultAssignee?.TitleKey);
+    }
+
     /// <summary>Choosing what is already chosen writes nothing.</summary>
     [Fact]
     public async Task Re_choosing_the_current_colour_favourite_or_privacy_writes_nothing()

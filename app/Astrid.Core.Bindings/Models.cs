@@ -753,6 +753,9 @@ public sealed record ListSettings
 
     [JsonPropertyName("isFavorite")] public bool IsFavorite { get; init; }
 
+    /// <summary>What a task added to this list starts as (task c4102c67).</summary>
+    [JsonPropertyName("defaults")] public ListDefaults Defaults { get; init; } = new();
+
     [JsonPropertyName("canManageMembers")] public bool CanManageMembers { get; init; }
 
     [JsonPropertyName("canManageList")] public bool CanManageList { get; init; }
@@ -764,6 +767,26 @@ public sealed record ListSettings
     [JsonPropertyName("currentUserId")] public string? CurrentUserId { get; init; }
 
     [JsonPropertyName("members")] public IReadOnlyList<ListMember> Members { get; init; } = [];
+}
+
+/// <summary>
+/// A list's defaults for new tasks, as the list stores them (task c4102c67).
+/// </summary>
+public sealed record ListDefaults
+{
+    /// <summary>Null for the task's creator, <c>unassigned</c> for nobody, or a member's id.</summary>
+    [JsonPropertyName("assigneeId")] public string? AssigneeId { get; init; }
+
+    [JsonPropertyName("priority")] public int Priority { get; init; }
+
+    /// <summary><c>never</c>, <c>daily</c>, <c>weekly</c>, <c>monthly</c>, <c>yearly</c> or <c>custom</c>.</summary>
+    [JsonPropertyName("repeating")] public string Repeating { get; init; } = "never";
+
+    /// <summary><c>none</c>, <c>today</c>, <c>tomorrow</c> or <c>next_week</c>.</summary>
+    [JsonPropertyName("dueDate")] public string DueDate { get; init; } = "none";
+
+    /// <summary><c>HH:MM</c>, or null for all day.</summary>
+    [JsonPropertyName("dueTime")] public string? DueTime { get; init; }
 }
 
 /// <summary>One column of a project board, and the cards in it.</summary>

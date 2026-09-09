@@ -198,6 +198,11 @@
                                          DetailSlot="{StaticResource BoardDetailSlotTemplate}" />
         <local:BoardColumnWidthConverter x:Key="ColumnWidth" />
         <local:SwatchRingConverter x:Key="SwatchRing" />
+        <local:ChoiceLabelConverter x:Key="ChoiceLabel" />
+        <!-- One row of a defaults combo: the choice, named. -->
+        <DataTemplate x:Key="DefaultChoiceTemplate" x:DataType="viewmodels:DefaultChoice">
+            <TextBlock Text="{x:Bind Converter={StaticResource ChoiceLabel}}" />
+        </DataTemplate>
     </UserControl.Resources>
 
     <!--
@@ -694,6 +699,11 @@
                                 FontFamily="{ThemeResource SymbolThemeFontFamily}">
                             <Button.Flyout>
                                 <Flyout Opening="OnListSettingsOpening">
+                                    <!-- Taller than a short window now that it carries the
+                                         defaults, so it scrolls rather than losing its bottom
+                                         — Delete is the last thing in it and the one that must
+                                         not vanish off the edge. -->
+                                    <ScrollViewer MaxHeight="640" VerticalScrollBarVisibility="Auto">
                                     <StackPanel Spacing="8" MinWidth="320">
                                         <TextBlock Text="List settings"
                                                    Style="{ThemeResource BodyStrongTextBlockStyle}" />
@@ -773,6 +783,66 @@
                                             server whether or not this app runs, Google by this app
                                             when it does.
                                         -->
+                                        <!--
+                                            What a task added to this list starts as
+                                            (task c4102c67): the web's Default Priority, Assignee,
+                                            Repeating, When and When Time. The core applies them
+                                            to quick-add on both clients; this only writes the
+                                            one picked. A combo's selection also moves when the
+                                            binding sets it, so the code-behind writes only a
+                                            choice that is not the current one.
+                                        -->
+                                        <TextBlock Text="Defaults for new tasks"
+                                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                                   Margin="0,8,0,0"
+                                                   Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                        <Grid ColumnSpacing="8" RowSpacing="6"
+                                              Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <ComboBox Grid.Row="0" Grid.Column="0" Header="Priority"
+                                                      HorizontalAlignment="Stretch"
+                                                      AutomationProperties.Name="Default priority"
+                                                      ItemsSource="{x:Bind Shell.ListSettings.DefaultPriorityChoices, Mode=OneWay}"
+                                                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                                                      SelectedItem="{x:Bind Shell.ListSettings.SelectedDefaultPriority, Mode=OneWay}"
+                                                      SelectionChanged="OnDefaultChosen" />
+                                            <ComboBox Grid.Row="0" Grid.Column="1" Header="Assignee"
+                                                      HorizontalAlignment="Stretch"
+                                                      AutomationProperties.Name="Default assignee"
+                                                      ItemsSource="{x:Bind Shell.ListSettings.DefaultAssigneeChoices, Mode=OneWay}"
+                                                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                                                      SelectedItem="{x:Bind Shell.ListSettings.SelectedDefaultAssignee, Mode=OneWay}"
+                                                      SelectionChanged="OnDefaultChosen" />
+                                            <ComboBox Grid.Row="1" Grid.Column="0" Header="Repeat"
+                                                      HorizontalAlignment="Stretch"
+                                                      AutomationProperties.Name="Default repeat"
+                                                      ItemsSource="{x:Bind Shell.ListSettings.DefaultRepeatChoices, Mode=OneWay}"
+                                                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                                                      SelectedItem="{x:Bind Shell.ListSettings.SelectedDefaultRepeat, Mode=OneWay}"
+                                                      SelectionChanged="OnDefaultChosen" />
+                                            <ComboBox Grid.Row="1" Grid.Column="1" Header="When"
+                                                      HorizontalAlignment="Stretch"
+                                                      AutomationProperties.Name="Default when"
+                                                      ItemsSource="{x:Bind Shell.ListSettings.DefaultWhenChoices, Mode=OneWay}"
+                                                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                                                      SelectedItem="{x:Bind Shell.ListSettings.SelectedDefaultWhen, Mode=OneWay}"
+                                                      SelectionChanged="OnDefaultChosen" />
+                                            <ComboBox Grid.Row="2" Grid.Column="0" Header="When time"
+                                                      HorizontalAlignment="Stretch"
+                                                      AutomationProperties.Name="Default when time"
+                                                      ItemsSource="{x:Bind Shell.ListSettings.DefaultTimeChoices, Mode=OneWay}"
+                                                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                                                      SelectedItem="{x:Bind Shell.ListSettings.SelectedDefaultTime, Mode=OneWay}"
+                                                      SelectionChanged="OnDefaultChosen" />
+                                        </Grid>
                                         <TextBlock Text="Mirrored to"
                                                    Style="{ThemeResource CaptionTextBlockStyle}"
                                                    Margin="0,8,0,0" />
@@ -872,6 +942,7 @@
                                                    Text="{x:Bind Shell.ListSettings.ErrorMessage, Mode=OneWay}"
                                                    Visibility="{x:Bind Shell.ListSettings.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
                                     </StackPanel>
+                                    </ScrollViewer>
                                 </Flyout>
                             </Button.Flyout>
                         </Button>

@@ -681,6 +681,21 @@ public sealed partial class BoardItemTemplateSelector : DataTemplateSelector
         SelectTemplateCore(item);
 }
 
+/// <summary>
+/// What a default's choice is called: a member's name when it has one, otherwise the word its
+/// resource key names (task c4102c67).
+/// </summary>
+public sealed partial class ChoiceLabelConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is Astrid.App.ViewModels.DefaultChoice choice
+            ? choice.Text ?? (choice.TitleKey is { } key ? Strings.Get(key) : string.Empty)
+            : string.Empty;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a label is not a value to read back");
+}
+
 /// <summary>The ring round the chosen colour swatch: a 2px border when chosen, none otherwise.</summary>
 public sealed partial class SwatchRingConverter : IValueConverter
 {

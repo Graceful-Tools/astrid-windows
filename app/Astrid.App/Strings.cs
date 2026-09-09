@@ -82,6 +82,8 @@ internal static class Strings
         ["picker.evening"] = "Evening",
         ["picker.night"] = "Night",
         ["assignee.unassigned"] = "Unassigned",
+        ["defaults.task_creator"] = "Task creator",
+        ["defaults.all_day"] = "All day",
         ["user.unknown"] = "Unknown user",
         ["due.today"] = "Today",
         ["due.tomorrow"] = "Tomorrow",
