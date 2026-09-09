@@ -20,14 +20,29 @@
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>Astrid.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!--
+      The taskbar, Alt-Tab and Explorer read this, and only this — the MSIX tiles do not reach the
+      UNPACKAGED build, which is the one a developer runs and the one the smoke tests drive. It had
+      no icon at all and wore the generic .NET one. Generated from the shared master by
+      scripts/make-icons.ps1 (task 70ffe6c3).
+    -->
+    <ApplicationIcon>Assets\Astrid.ico</ApplicationIcon>
     <Platforms>x86;x64;ARM64</Platforms>
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
     <UseWinUI>true</UseWinUI>
     <!--
-      Unpackaged for now. MSIX arrives in M4 with the Store and the update feed; until then an
-      unpackaged build is what a developer can run with F5 and what the UI smoke tests drive.
+      Unpackaged by default, packaged on request.
+
+      The unpackaged build is what a developer runs with F5 and what the UI smoke tests drive, so
+      it stays the default. `-p:AstridPackaged=true` leaves WindowsPackageType unset, which is the
+      SDK's way of saying MSIX — that is the Store build, and the only one whose `astrid://` comes
+      from the manifest rather than from the app writing its own registry key at startup.
+
+      One property rather than a second project: a .wapproj would mean a second build and a second
+      place for the version number to be wrong, which is the reason the manifest is hand-written
+      too (see packaging/README.md).
     -->
-    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsPackageType Condition="'$(AstridPackaged)' != 'true'">None</WindowsPackageType>
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

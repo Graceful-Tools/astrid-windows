@@ -54,9 +54,9 @@ milestones; this tracks the *product*.
 
 | What | Mac | Windows | What it needs |
 |---|---|---|---|
-| Signing the MSIX bundle | n/a | ➖ | The bundle builds for x64 and ARM64 and is unsigned. Installing one needs a certificate trusted on the machine — a decision, not a task |
-| The Store listing | n/a | ❌ | Needs a signed package and a publisher account |
-| The update feed (`.appinstaller`) | n/a | ❌ | Needs somewhere signed to publish to |
+| Signing the MSIX bundle | n/a | ➖ | Not needed: Astrid ships through the Store, which signs at submission. A certificate of ours would only be replaced by theirs. A self-hosted download would need one — see the Store section below |
+| The Store listing | n/a | ⏳ | The package is Store-shaped: packaged build, full tile set, `.msixupload` container. Blocked on a Partner Center company account for Graceful Tools LLC — business verification gates the app-name reservation, and the reservation is what supplies the package identity |
+| The update feed (`.appinstaller`) | n/a | ❌ | Superseded for now: the Store updates Store installs. A self-hosted feed would need our own certificate, and Windows disables the `ms-appinstaller:` handler by default, so it would be a download-and-double-click rather than a web install |
 
 ## Never — Apple-only by nature
 

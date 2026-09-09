@@ -7,9 +7,14 @@
     assets, and calls makeappx. The result is `dist/Astrid-<version>.msixbundle` plus the two
     single-architecture packages it was made from.
 
-    UNSIGNED. A package has to be signed before Windows will install it, and signing is a
-    deliberate act with a real certificate — see docs/ASTRID.md and the approvals section of
-    CLAUDE.md. This script stops one step short of that on purpose.
+    UNSIGNED, AND THAT IS THE POINT. Astrid ships through the Microsoft Store, and the Store
+    signs the package itself at submission — a certificate of ours would only be replaced by
+    theirs. So the output here is what Partner Center wants AND what Windows will refuse to
+    install directly; those are the same fact seen from two sides.
+
+    To put a build on a machine for testing, use a Store package flight or a private audience
+    rather than signing one by hand: a flight installs for named Microsoft accounts and needs no
+    certificate trusted anywhere.
 
     makeappx comes from the Windows SDK build tools the app already depends on, so there is nothing
     extra to install.
@@ -43,6 +48,24 @@ if (-not $makeappx) {
     throw "makeappx.exe was not found. Restore the app project first: it comes with Microsoft.Windows.SDK.BuildTools."
 }
 
+# The identity Partner Center assigned. Substituted rather than written into the manifest, because
+# a package whose Identity differs from the reservation by one character is rejected at upload.
+$identityFile = Join-Path $repoRoot 'packaging/store-identity.json'
+$identity = Get-Content $identityFile -Raw | ConvertFrom-Json
+$identityName = $identity.identityName
+$identityPublisher = $identity.identityPublisher
+
+if ($identityName -like 'REPLACE*' -or $identityPublisher -like 'REPLACE*') {
+    # Obviously fake, so a package built before the reservation exists cannot be mistaken for one
+    # that could be submitted — while still being buildable and WACK-testable today.
+    $identityName = 'GracefulTools.Astrid.LOCALBUILD'
+    $identityPublisher = 'CN=LOCAL BUILD - NOT FOR SUBMISSION'
+    Write-Host ''
+    Write-Host '!!  packaging/store-identity.json still holds placeholders.' -ForegroundColor Yellow
+    Write-Host '    Building with a LOCAL identity; this package cannot be submitted.' -ForegroundColor Yellow
+    Write-Host '    Fill it from Partner Center > Product management > Product identity.' -ForegroundColor Yellow
+}
+
 $dist = Join-Path $repoRoot 'dist'
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
 $packages = @()
@@ -57,12 +80,18 @@ foreach ($architecture in $Architectures) {
     # Self-contained, so the package carries its own runtime: a person installing from the Store
     # should not then be told to install .NET.
     dotnet publish (Join-Path $repoRoot 'app/Astrid.App/Astrid.App.csproj') `
-        -c $Configuration -r $rid --self-contained true -o $publish | Out-Null
+        -c $Configuration -r $rid --self-contained true -p:AstridPackaged=true -o $publish | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "publish failed for $rid" }
 
-    # The manifest, with this architecture and version in it.
+    # AstridPackaged=true above leaves WindowsPackageType unset, which is how the SDK is told to
+    # build for MSIX. Without it these are unpackaged binaries, and the astrid:// scheme is written
+    # into HKCU at startup instead of coming from the manifest — see Program.cs.
+
+    # The manifest, with this architecture, version and identity in it.
     $manifest = Get-Content (Join-Path $repoRoot 'packaging/AppxManifest.xml') -Raw
     $manifest = $manifest.Replace('{VERSION}', $Version).Replace('{ARCHITECTURE}', $architecture)
+    $manifest = $manifest.Replace('{IDENTITY_NAME}', $identityName)
+    $manifest = $manifest.Replace('{IDENTITY_PUBLISHER}', $identityPublisher)
     Set-Content -Path (Join-Path $publish 'AppxManifest.xml') -Value $manifest -Encoding utf8
 
     Copy-Item -Recurse -Force (Join-Path $repoRoot 'packaging/Assets') (Join-Path $publish 'Assets')
@@ -89,7 +118,22 @@ if ($packages.Count -gt 1) {
     if ($LASTEXITCODE -ne 0) { throw "makeappx bundle failed" }
     Write-Host ""
     Write-Host "[+] $bundle" -ForegroundColor Green
+
+    # What Partner Center takes: a ZIP of the bundle, named .msixupload. A bare .msixbundle
+    # uploads too, but the container is the documented shape and is where a symbol bundle goes
+    # when there is one to ship.
+    $upload = Join-Path $dist "Astrid-$Version.msixupload"
+    # Compressed as .zip and renamed: Compress-Archive refuses any other extension, and the
+    # container is a plain zip whatever it is called.
+    $uploadZip = "$upload.zip"
+    Remove-Item -Force $upload, $uploadZip -ErrorAction SilentlyContinue
+    Compress-Archive -Path $bundle -DestinationPath $uploadZip -CompressionLevel Optimal
+    Move-Item -Force $uploadZip $upload
+    Write-Host "[+] $upload" -ForegroundColor Green
 }
 
 Write-Host ""
-Write-Host "Unsigned. Signing is a separate, deliberate act — see CLAUDE.md." -ForegroundColor Yellow
+Write-Host "Unsigned, which is correct: the Store signs at submission." -ForegroundColor Cyan
+if ($identityPublisher -like 'CN=LOCAL BUILD*') {
+    Write-Host "LOCAL identity - fill packaging/store-identity.json before submitting." -ForegroundColor Yellow
+}

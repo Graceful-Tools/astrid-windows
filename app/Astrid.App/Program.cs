@@ -23,7 +23,7 @@ namespace Astrid.App;
 /// and warm need different handling either way.
 /// </para>
 /// </remarks>
-public static class Program
+public static partial class Program
 {
     /// <summary>
     /// The key every copy of the app registers under. One key, so the second launch finds the
@@ -46,10 +46,16 @@ public static class Program
             return 0;
         }
 
-        // Only the real instance registers the scheme, and it does so on every start rather than
-        // at install time: an unpackaged app can be moved, and a registration pointing at where
-        // the executable used to be silently stops the sign-in callback from arriving.
-        RegisterProtocol();
+        // Only the real instance registers the scheme, and only when this build has to.
+        //
+        // A PACKAGED build declares astrid:// in AppxManifest.xml, so the installer registers it
+        // and the uninstaller removes it. Writing the same key into HKCU as well would be both
+        // redundant and a leak: MSIX cannot clean up a key the app wrote outside its own package,
+        // so uninstalling would leave a dead scheme pointing at an executable that is gone.
+        if (!IsPackaged())
+        {
+            RegisterProtocol();
+        }
 
         // The callback parameter is named rather than discarded: `_` would shadow the discard on
         // the last line, and `_ = new App(...)` would then assign to the parameter instead.
@@ -115,6 +121,33 @@ public static class Program
     /// leaving a sign-in that hangs with no explanation anywhere.
     /// </para>
     /// </remarks>
+    /// <summary>
+    /// Whether this process is running from an MSIX package.
+    /// </summary>
+    /// <remarks>
+    /// Asked of the OS rather than of a build constant, because the same binaries are laid into a
+    /// package by <c>scripts/package.ps1</c> — so "was this compiled for the Store" and "is this
+    /// running packaged right now" are different questions, and only the second one is the truth
+    /// at the moment it matters.
+    ///
+    /// <c>GetCurrentPackageFullName</c> answers <c>APPMODEL_ERROR_NO_PACKAGE</c> for a process
+    /// with no package identity, which is the documented way to ask.
+    /// </remarks>
+    private static bool IsPackaged()
+    {
+        // 15700 — APPMODEL_ERROR_NO_PACKAGE.
+        const int NoPackage = 15700;
+        var length = 0;
+        return GetCurrentPackageFullName(ref length, null) != NoPackage;
+    }
+
+    [System.Runtime.InteropServices.LibraryImport(
+        "kernel32.dll",
+        EntryPoint = "GetCurrentPackageFullName",
+        StringMarshalling = System.Runtime.InteropServices.StringMarshalling.Utf16)]
+    private static partial int GetCurrentPackageFullName(ref int packageFullNameLength,
+        char[]? packageFullName);
+
     private static void RegisterProtocol()
     {
         var executable = Environment.ProcessPath;

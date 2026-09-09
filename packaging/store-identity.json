@@ -1,0 +1,20 @@
+{
+  "_comment": [
+    "The package identity Partner Center assigned, which is NOT a thing to invent.",
+    "",
+    "Where to find it: Partner Center -> Apps and games -> Astrid -> Product management ->",
+    "Product identity. It shows three values; the two below are the ones the manifest needs.",
+    "",
+    "'identityPublisher' is a machine-generated string that looks like CN= followed by a GUID.",
+    "It is NOT 'CN=Graceful Tools LLC'. The company name people read is PublisherDisplayName in",
+    "AppxManifest.xml, which is set separately and must match the account's publisher display",
+    "name exactly.",
+    "",
+    "A package whose Identity differs from the reservation by a single character is rejected at",
+    "upload, which is why these are pasted rather than guessed. Until they are real,",
+    "scripts/package.ps1 substitutes an obviously-fake local identity so the package can still be",
+    "built and run through the Windows App Certification Kit — and says so, loudly, every run."
+  ],
+  "identityName": "REPLACE-FROM-PARTNER-CENTER",
+  "identityPublisher": "REPLACE-FROM-PARTNER-CENTER"
+}

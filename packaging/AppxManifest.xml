@@ -23,15 +23,27 @@
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap rescap">
 
+  <!--
+    ASSIGNED BY PARTNER CENTER, not chosen here.
+
+    Reserving the app name produces an Identity Name and a Publisher, and the Publisher is a
+    machine-generated string — `CN=` followed by a GUID — rather than the company name. A package
+    whose Identity does not match the reservation byte for byte is rejected at upload, so these are
+    substituted by scripts/package.ps1 from the values in packaging/store-identity.json rather than
+    guessed at.
+
+    The name people actually read is PublisherDisplayName below, which is the same string the App
+    Store shows: Graceful Tools LLC.
+  -->
   <Identity
-    Name="GracefulTools.Astrid"
-    Publisher="CN=Graceful Tools"
+    Name="{IDENTITY_NAME}"
+    Publisher="{IDENTITY_PUBLISHER}"
     Version="{VERSION}"
     ProcessorArchitecture="{ARCHITECTURE}" />
 
   <Properties>
     <DisplayName>Astrid</DisplayName>
-    <PublisherDisplayName>Graceful Tools</PublisherDisplayName>
+    <PublisherDisplayName>Graceful Tools LLC</PublisherDisplayName>
     <Description>Tasks, shared with the people you share them with.</Description>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -47,13 +59,29 @@
 
   <Applications>
     <Application Id="Astrid" Executable="Astrid.App.exe" EntryPoint="Windows.FullTrustApplication">
+      <!--
+        Every tile Windows asks for. It shipped with three, so Start and the Store fell back to
+        scaling a 44px placeholder into a 310px slot.
+
+        The scale- and targetsize- variants beside these on disk are picked up by name; only the
+        base asset is named here, which is how MSIX resource resolution works. The unplated ones
+        matter most: they are what the taskbar draws, where the tile background must not show.
+
+        BackgroundColor stays transparent so the artwork sits on the user's accent rather than on a
+        colour of ours that would fight it.
+      -->
       <uap:VisualElements
         DisplayName="Astrid"
         Description="Tasks, shared with the people you share them with."
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
-        <uap:DefaultTile ShortName="Astrid" />
+        <uap:DefaultTile
+          ShortName="Astrid"
+          Square71x71Logo="Assets\Square71x71Logo.png"
+          Square310x310Logo="Assets\Square310x310Logo.png"
+          Wide310x150Logo="Assets\Wide310x150Logo.png" />
+        <uap:SplashScreen Image="Assets\SplashScreen.png" BackgroundColor="transparent" />
       </uap:VisualElements>
       <Extensions>
         <!--
