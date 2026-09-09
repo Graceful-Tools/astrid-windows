@@ -27,7 +27,7 @@ milestones; this tracks the *product*.
 | Assignee picker | ✅ | ✅ | Windows offers agents; the Mac's picker predates them (CONTRACTS D8) |
 | Comments | ✅ | ✅ | |
 | Search | ✅ | ✅ | Over the cache on both — there is no server search |
-| Board view | ✅ | ✅ | Drag a card, or move it from its menu — which a keyboard can also do |
+| Board view | ✅ | ✅ | Drag a card, or move it from its menu — which a keyboard can also do. A tapped card opens its task in place, inside the column, as the web's does; the list keeps its side pane |
 | Filters and sort | ✅ | ✅ | All seven filters, fixture-checked values |
 | Chat | ✅ | ✅ | |
 | List settings, sharing, members | ✅ | ✅ | |

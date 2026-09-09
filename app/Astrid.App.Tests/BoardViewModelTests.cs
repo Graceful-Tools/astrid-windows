@@ -176,3 +176,109 @@ public sealed class BoardViewModelTests
         Assert.Contains("\"columnId\":\"doing\"", move);
     }
 }
+
+
+/// <summary>
+/// A tapped card expands in place, as astrid-web's board does (task 91a25b8a).
+/// </summary>
+/// <remarks>
+/// The board says WHERE the detail goes — a slot after the expanded card — and nothing about what
+/// the detail contains. The shell hosts its one detail pane in that slot, so the board and the
+/// list share one implementation of a task.
+/// </remarks>
+public sealed class BoardExpansionTests
+{
+    private static object Column(string id, params string[] cards) => new
+    {
+        id,
+        name = id,
+        description = string.Empty,
+        kind = "status",
+        total = cards.Length,
+        cards = cards.Select(title => new
+        {
+            id = title,
+            title,
+            completed = false,
+            priority = 0,
+            due = new { key = "none" },
+            leading = new { kind = "unassigned" },
+            action = "openPicker",
+        }).ToArray(),
+    };
+
+    private static object Board(params object[] columns) => new { projectId = "p1", columns };
+
+    [Fact]
+    public async Task Expanding_a_card_puts_the_detail_slot_right_after_it_task_91a25b8a()
+    {
+        var core = new FakeCore().AnswerOk("board", Board(Column("ready", "t1", "t2", "t3")));
+        var view = new BoardViewModel(core);
+        await view.LoadAsync("l1");
+
+        view.Expand("t2");
+
+        Assert.Equal("t2", view.ExpandedTaskId);
+        var items = view.Columns[0].Items;
+        Assert.Equal(4, items.Count);
+        Assert.Equal("t2", Assert.IsType<TaskRow>(items[1]).Id);
+        Assert.Equal("t2", Assert.IsType<InlineDetailSlot>(items[2]).TaskId);
+        Assert.True(view.Columns[0].HoldsExpandedCard);
+        // The cards themselves are untouched: the slot is a place, not a card.
+        Assert.Equal(3, view.Columns[0].Cards.Count);
+    }
+
+    [Fact]
+    public async Task Collapsing_removes_the_slot()
+    {
+        var core = new FakeCore().AnswerOk("board", Board(Column("ready", "t1", "t2")));
+        var view = new BoardViewModel(core);
+        await view.LoadAsync("l1");
+        view.Expand("t1");
+
+        view.Collapse();
+
+        Assert.Null(view.ExpandedTaskId);
+        Assert.Equal(2, view.Columns[0].Items.Count);
+        Assert.DoesNotContain(view.Columns[0].Items, item => item is InlineDetailSlot);
+        Assert.False(view.Columns[0].HoldsExpandedCard);
+    }
+
+    /// <summary>
+    /// A refresh — a sync, a colleague's edit, the expanded task's own title being changed — must
+    /// not lose the expansion. The slot follows the card wherever the reload puts it.
+    /// </summary>
+    [Fact]
+    public async Task A_refresh_keeps_the_slot_with_its_card_even_when_the_card_moves()
+    {
+        var core = new FakeCore()
+            .AnswerOk("board", Board(Column("ready", "t1", "t2"), Column("doing")))
+            .AnswerOk("board", Board(Column("ready", "t1"), Column("doing", "t2")));
+        var view = new BoardViewModel(core);
+        await view.LoadAsync("l1");
+        view.Expand("t2");
+
+        await view.RefreshAsync();
+
+        Assert.Equal("t2", view.ExpandedTaskId);
+        Assert.False(view.Columns[0].HoldsExpandedCard);
+        Assert.True(view.Columns[1].HoldsExpandedCard);
+        Assert.Equal("t2", Assert.IsType<InlineDetailSlot>(view.Columns[1].Items[1]).TaskId);
+    }
+
+    /// <summary>A card that is no longer on the board has nothing to expand, as on the web.</summary>
+    [Fact]
+    public async Task A_card_that_left_the_board_collapses()
+    {
+        var core = new FakeCore()
+            .AnswerOk("board", Board(Column("ready", "t1", "t2")))
+            .AnswerOk("board", Board(Column("ready", "t1")));
+        var view = new BoardViewModel(core);
+        await view.LoadAsync("l1");
+        view.Expand("t2");
+
+        await view.RefreshAsync();
+
+        Assert.Null(view.ExpandedTaskId);
+    }
+}

@@ -153,6 +153,124 @@ public sealed class ShellViewModelTests
         Assert.True(shell.Detail.IsOpen);
     }
 
+    /// <summary>
+    /// On the board, a tapped card opens its task IN PLACE, and tapping it again closes it
+    /// (task 91a25b8a). astrid-web's board expands the card inside its column rather than opening
+    /// the side panel, and a person moving between the two should find the same gesture.
+    /// </summary>
+    [Fact]
+    public async Task Tapping_a_card_on_the_board_expands_it_inline_task_91a25b8a()
+    {
+        var core = StartedCore(("l1", "Home", false))
+            .AnswerOk("board", BoardWith("t1", "t2"))
+            .AnswerOk("taskDetail", TaskDetail("t1"));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        await shell.ShowBoardAsync(true);
+
+        await shell.ToggleCardAsync("t1");
+
+        Assert.True(shell.Detail.IsOpen);
+        Assert.Equal("t1", shell.Detail.TaskId);
+        Assert.Equal("t1", shell.Board.ExpandedTaskId);
+        Assert.True(shell.ShowsDetailInline);
+        Assert.False(shell.ShowsDetailPane, "the side pane stays shut while the card holds the detail");
+    }
+
+    [Fact]
+    public async Task Tapping_the_expanded_card_collapses_it()
+    {
+        var core = StartedCore(("l1", "Home", false))
+            .AnswerOk("board", BoardWith("t1", "t2"))
+            .AnswerOk("taskDetail", TaskDetail("t1"));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        await shell.ShowBoardAsync(true);
+        await shell.ToggleCardAsync("t1");
+
+        await shell.ToggleCardAsync("t1");
+
+        Assert.False(shell.Detail.IsOpen);
+        Assert.Null(shell.Board.ExpandedTaskId);
+    }
+
+    [Fact]
+    public async Task Tapping_another_card_moves_the_expansion_to_it()
+    {
+        var core = StartedCore(("l1", "Home", false))
+            .AnswerOk("board", BoardWith("t1", "t2"))
+            .AnswerOk("taskDetail", TaskDetail("t1"))
+            .AnswerOk("taskDetail", TaskDetail("t2"));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        await shell.ShowBoardAsync(true);
+        await shell.ToggleCardAsync("t1");
+
+        await shell.ToggleCardAsync("t2");
+
+        Assert.True(shell.Detail.IsOpen);
+        Assert.Equal("t2", shell.Detail.TaskId);
+        Assert.Equal("t2", shell.Board.ExpandedTaskId);
+    }
+
+    /// <summary>Closing the detail from its own menu collapses the card it was drawn in.</summary>
+    [Fact]
+    public async Task Closing_the_detail_collapses_the_card()
+    {
+        var core = StartedCore(("l1", "Home", false))
+            .AnswerOk("board", BoardWith("t1"))
+            .AnswerOk("taskDetail", TaskDetail("t1"));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        await shell.ShowBoardAsync(true);
+        await shell.ToggleCardAsync("t1");
+
+        shell.Detail.Close();
+
+        Assert.Null(shell.Board.ExpandedTaskId);
+        Assert.False(shell.ShowsDetailInline);
+    }
+
+    /// <summary>Off the board, the detail is the side pane it always was.</summary>
+    [Fact]
+    public async Task In_list_view_the_detail_is_the_side_pane()
+    {
+        var core = StartedCore(("l1", "Home", false)).AnswerOk("taskDetail", TaskDetail("t1"));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        await shell.OpenOrCloseTaskAsync("t1");
+
+        Assert.True(shell.ShowsDetailPane);
+        Assert.False(shell.ShowsDetailInline);
+    }
+
+    private static object BoardWith(params string[] cards) => new
+    {
+        projectId = "p1",
+        columns = new object[]
+        {
+            new
+            {
+                id = "ready",
+                name = "Ready",
+                description = string.Empty,
+                kind = "status",
+                total = cards.Length,
+                cards = cards.Select(id => new
+                {
+                    id,
+                    title = id,
+                    completed = false,
+                    priority = 0,
+                    due = new { key = "none" },
+                    leading = new { kind = "unassigned" },
+                    action = "openPicker",
+                }).ToArray(),
+            },
+        },
+    };
+
     private static object TaskDetail(string id) => new
     {
         task = new { id, title = "Buy milk", description = "", completed = false, priority = 0 },

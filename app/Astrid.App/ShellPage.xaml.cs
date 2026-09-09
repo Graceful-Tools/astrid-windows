@@ -60,6 +60,21 @@ public sealed partial class ShellPage : UserControl
         Shell.PaletteCommandRequested += OnPaletteCommand;
         _shortcuts.ShellActionRequested += OnShellAction;
         Loaded += OnLoaded;
+        // The pane's place follows the open task and the expanded card (task 91a25b8a).
+        Shell.Detail.PropertyChanged += (_, changed) =>
+        {
+            if (changed.PropertyName == nameof(TaskDetailViewModel.IsOpen))
+            {
+                PlaceDetailPane();
+            }
+        };
+        Shell.Board.PropertyChanged += (_, changed) =>
+        {
+            if (changed.PropertyName == nameof(BoardViewModel.ExpandedTaskId))
+            {
+                PlaceDetailPane();
+            }
+        };
         // Every protocol activation, launch or redirected, arrives here. The core decides which
         // are sign-in callbacks; a deep link to a task uses the same scheme.
         App.UriActivated += OnUriActivated;
@@ -450,6 +465,7 @@ public sealed partial class ShellPage : UserControl
     private void PointArrowAtSelectedRow()
     {
         if (!Shell.Detail.IsOpen
+            || Shell.IsBoardView
             || Shell.Tasks.Selected is not { } selected
             || TaskRows.ContainerFromItem(selected) is not FrameworkElement container)
         {
@@ -1400,13 +1416,102 @@ public sealed partial class ShellPage : UserControl
         }
     }
 
+    /// <summary>A card was tapped. The view model decides whether that opens or closes.</summary>
     private async void OnCardOpened(object sender, RoutedEventArgs args)
     {
         if ((sender as FrameworkElement)?.Tag is string taskId)
         {
-            await Shell.OpenTaskAsync(taskId);
+            await Shell.ToggleCardAsync(taskId);
             SyncDetailPriority();
         }
+    }
+
+    // ── The detail, in place (task 91a25b8a) ────────────────────────────────────────────────
+    //
+    // There is ONE detail pane. In list view it is the column beside the list; on the board it
+    // is lifted out of that column and set inside the slot the board puts after the expanded
+    // card, so a task opened from a card is the same fields, thread and comment box as one opened
+    // from a row. A second copy of that pane for the board is how the two would come to differ.
+    //
+    // The slot is an item in the column's ItemsControl, so a refresh that rebuilds the columns
+    // rebuilds the slot too — and Loaded fires on the new one, which is what re-homes the pane
+    // after every reload rather than leaving it inside a container that is no longer on screen.
+
+    /// <summary>The slot that currently holds the pane, when one does.</summary>
+    private ContentControl? _detailHost;
+
+    private void OnInlineDetailSlotLoaded(object sender, RoutedEventArgs args)
+    {
+        if (sender is ContentControl host)
+        {
+            HostDetailPane(host);
+        }
+    }
+
+    /// <summary>Set the pane inside a card's slot, as the expanded card's detail.</summary>
+    private void HostDetailPane(ContentControl host)
+    {
+        if (!ReferenceEquals(_detailHost, host))
+        {
+            DetachDetailPane();
+            host.Content = DetailPane;
+            _detailHost = host;
+            // A card, not a panel: every edge drawn, the corner the cards have, and the same
+            // 6px gap under it the cards keep between themselves.
+            DetailPane.Width = double.NaN;
+            DetailPane.BorderThickness = new Thickness(1);
+            DetailPane.CornerRadius = new CornerRadius(10);
+            DetailPane.Margin = new Thickness(0, 0, 0, 6);
+        }
+        PlaceDetailPane();
+    }
+
+    /// <summary>Put the pane back beside the list.</summary>
+    private void DockDetailPane()
+    {
+        if (_detailHost is null && RootGrid.Children.Contains(DetailPane))
+        {
+            return;
+        }
+        DetachDetailPane();
+        // Grid.Column is an attached property on the element itself, so it survives the move.
+        RootGrid.Children.Add(DetailPane);
+        DetailPane.Width = 360;
+        DetailPane.BorderThickness = new Thickness(1, 0, 0, 0);
+        DetailPane.CornerRadius = new CornerRadius(0);
+        DetailPane.Margin = new Thickness(0);
+    }
+
+    private void DetachDetailPane()
+    {
+        if (_detailHost is not null)
+        {
+            _detailHost.Content = null;
+            _detailHost = null;
+        }
+        RootGrid.Children.Remove(DetailPane);
+    }
+
+    /// <summary>
+    /// Where the pane belongs right now, and whether it shows.
+    /// </summary>
+    /// <remarks>
+    /// One decision rather than a binding and a handler that could disagree. With no card
+    /// expanded the pane is docked and shows whenever a task is open. With a card expanded it
+    /// shows only once a slot has taken it: between the board saying which card and the slot
+    /// loading, a pane still docked beside the board would flash there for a frame.
+    /// </remarks>
+    private void PlaceDetailPane()
+    {
+        if (Shell.Board.ExpandedTaskId is null)
+        {
+            DockDetailPane();
+            DetailPane.Visibility = Shell.Detail.IsOpen ? Visibility.Visible : Visibility.Collapsed;
+            return;
+        }
+        DetailPane.Visibility = Shell.Detail.IsOpen && _detailHost is not null
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     /// <summary>

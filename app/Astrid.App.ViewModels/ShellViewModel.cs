@@ -50,6 +50,36 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Chat = new ChatViewModel(core);
         Settings = new SettingsViewModel(core);
         _core.Changed += OnChanged;
+
+        // The board's expanded card and the open detail are one fact seen from two sides
+        // (task 91a25b8a). Closing the detail — from its own menu, or by opening a different
+        // list — collapses the card; a card the board no longer has closes the detail it was
+        // drawn under. Neither side loops: each only acts when the other has actually moved.
+        Detail.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(TaskDetailViewModel.IsOpen) && !Detail.IsOpen)
+            {
+                Board.Collapse();
+            }
+            if (args.PropertyName == nameof(TaskDetailViewModel.IsOpen))
+            {
+                Raise(nameof(ShowsDetailInline));
+                Raise(nameof(ShowsDetailPane));
+            }
+        };
+        Board.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName != nameof(BoardViewModel.ExpandedTaskId))
+            {
+                return;
+            }
+            if (Board.ExpandedTaskId is null && IsBoardView && Detail.IsOpen)
+            {
+                Detail.Close();
+            }
+            Raise(nameof(ShowsDetailInline));
+            Raise(nameof(ShowsDetailPane));
+        };
     }
 
     /// <summary>
@@ -297,6 +327,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             if (Set(ref _isBoardView, value))
             {
                 Raise(nameof(ShowsNoBoardNotice));
+                Raise(nameof(ShowsDetailInline));
+                Raise(nameof(ShowsDetailPane));
             }
         }
     }
@@ -313,14 +345,64 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public bool ShowsNoBoardNotice => IsBoardView && !Board.HasBoard;
 
     /// <summary>Swap between the list and its board.</summary>
+    /// <remarks>
+    /// An open task comes along when it can. Switching to the board with a task open expands its
+    /// card, so the thing being read is still on screen; switching back to the list collapses
+    /// the card and the pane takes over. A task open in the side pane that is on no card — the
+    /// board is still loading, or the list has no board — is closed rather than left floating
+    /// beside a view it has no place in.
+    /// </remarks>
     public async Task ShowBoardAsync(bool board, CancellationToken cancellationToken = default)
     {
         IsBoardView = board;
         if (board)
         {
             await Board.LoadAsync(Tasks.ListId, cancellationToken);
+            if (Detail.IsOpen && Detail.TaskId is { } open && Board.Has(open))
+            {
+                Board.Expand(open);
+            }
+            else if (Detail.IsOpen)
+            {
+                Detail.Close();
+            }
+        }
+        else
+        {
+            Board.Collapse();
         }
         Raise(nameof(ShowsNoBoardNotice));
+        Raise(nameof(ShowsDetailInline));
+        Raise(nameof(ShowsDetailPane));
+    }
+
+    /// <summary>
+    /// Whether the open task is drawn inside its card on the board, as astrid-web's board draws
+    /// it (task 91a25b8a).
+    /// </summary>
+    public bool ShowsDetailInline => IsBoardView && Detail.IsOpen && Board.ExpandedTaskId is not null;
+
+    /// <summary>Whether the open task is drawn in the side pane beside the list.</summary>
+    public bool ShowsDetailPane => Detail.IsOpen && !ShowsDetailInline;
+
+    /// <summary>
+    /// A card was tapped: open its task in place, or close it if that task is the open one.
+    /// </summary>
+    /// <remarks>
+    /// The board's version of <see cref="OpenOrCloseTaskAsync"/>, with the same shape: a second
+    /// tap on the open card is a dismissal, and a tap on a different card is a different question.
+    /// The card is expanded before the detail loads so the column makes room straight away rather
+    /// than after the round trip.
+    /// </remarks>
+    public async Task ToggleCardAsync(string taskId, CancellationToken cancellationToken = default)
+    {
+        if (Board.ExpandedTaskId == taskId)
+        {
+            Detail.Close();
+            return;
+        }
+        Board.Expand(taskId);
+        await OpenTaskAsync(taskId, cancellationToken);
     }
 
     /// <summary>True while anything is waiting in the Outbox.</summary>
