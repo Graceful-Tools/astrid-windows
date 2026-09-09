@@ -371,13 +371,51 @@ public sealed partial class ShellPage : UserControl
     /// double-tap here, which made the pane the only screen a keyboard could not reach and asked
     /// for a gesture no other client asks for.
     /// </remarks>
+    /// <summary>
+    /// True while a selection change is the tail of a pointer press.
+    /// </summary>
+    /// <remarks>
+    /// A click raises PointerPressed, then SelectionChanged, then ItemClick. Only the last of
+    /// those can tell a tap on the ALREADY selected row from a tap on a new one, because tapping
+    /// the selected row raises no selection change at all — so the click path owns the decision
+    /// and the selection path stands down for it.
+    /// </remarks>
+    private bool _selectionFromPointer;
+
+    private void OnRowsPointerPressed(object sender, PointerRoutedEventArgs args) =>
+        _selectionFromPointer = true;
+
+    /// <summary>
+    /// Selection moved. Opens the task — which is how the pane is reachable from a keyboard.
+    /// </summary>
+    /// <remarks>
+    /// Stands down for the pointer: <see cref="OnRowClicked"/> handles that, and both acting would
+    /// open a task and then immediately close it again.
+    /// </remarks>
     private async void OnRowSelected(object sender, SelectionChangedEventArgs args)
     {
+        if (_selectionFromPointer)
+        {
+            _selectionFromPointer = false;
+            return;
+        }
         if (Shell.Tasks.Selected is { } row)
         {
             await Shell.OpenTaskAsync(row.Id);
             SyncDetailPriority();
         }
+    }
+
+    /// <summary>A row was tapped. The view model decides whether that opens or closes.</summary>
+    private async void OnRowClicked(object sender, ItemClickEventArgs args)
+    {
+        _selectionFromPointer = false;
+        if (args.ClickedItem is not TaskRow row)
+        {
+            return;
+        }
+        await Shell.OpenOrCloseTaskAsync(row.Id);
+        SyncDetailPriority();
     }
 
     private void OnCloseDetail(object sender, RoutedEventArgs args) => Shell.Detail.Close();
@@ -1564,11 +1602,13 @@ public sealed partial class ShellPage : UserControl
             // Same colours as the row stripe and every other client, read from the one converter
             // that owns them rather than restated here.
             var colour = (Brush)PriorityColours.Convert(level, typeof(Brush), null!, string.Empty);
-            // No-priority has no colour of its own — the stripe deliberately draws nothing for it —
-            // so its square borrows the muted text colour to stay visible.
+            // No-priority has no colour of its own in the STRIPE — that deliberately draws nothing
+            // — but a swatch still has to be visible, so it takes the grey the unmarked checkbox
+            // image is drawn in rather than a muted text colour that matches nothing on screen.
             if (level == 0)
             {
-                colour = (Brush)Application.Current.Resources["AstridTextMuted"];
+                colour = new SolidColorBrush(
+                    Colours.Parse(PriorityPalette.None) ?? Colors.Gray);
             }
 
             button.BorderBrush = colour;

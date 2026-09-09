@@ -101,6 +101,65 @@ public sealed class ShellViewModelTests
         Assert.True(shell.IsTourOpen);
     }
 
+    // ── Tapping a row ────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Tapping the row whose task is already open closes the pane (task 8ac00791).
+    /// </summary>
+    /// <remarks>
+    /// Selection alone cannot express this: tapping the selected row raises no selection change,
+    /// so the pane sat open with no way to dismiss it from the list it came from.
+    /// </remarks>
+    [Fact]
+    public async Task Tapping_the_open_task_closes_it()
+    {
+        var core = StartedCore(("l1", "Home", false)).AnswerOk("taskDetail", TaskDetail("t1"));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        await shell.OpenOrCloseTaskAsync("t1");
+        Assert.True(shell.Detail.IsOpen);
+
+        await shell.OpenOrCloseTaskAsync("t1");
+
+        Assert.False(shell.Detail.IsOpen);
+    }
+
+    /// <summary>Tapping a DIFFERENT row opens that one rather than closing the pane.</summary>
+    [Fact]
+    public async Task Tapping_another_task_opens_it_instead_of_closing()
+    {
+        var core = StartedCore(("l1", "Home", false))
+            .AnswerOk("taskDetail", TaskDetail("t1"));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        await shell.OpenOrCloseTaskAsync("t1");
+
+        await shell.OpenOrCloseTaskAsync("t2");
+
+        Assert.True(shell.Detail.IsOpen, "a second task is a different question, not a dismissal");
+    }
+
+    /// <summary>With nothing open, a tap opens — there is nothing to toggle off.</summary>
+    [Fact]
+    public async Task Tapping_with_nothing_open_opens()
+    {
+        var core = StartedCore(("l1", "Home", false)).AnswerOk("taskDetail", TaskDetail("t1"));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        await shell.OpenOrCloseTaskAsync("t1");
+
+        Assert.True(shell.Detail.IsOpen);
+    }
+
+    private static object TaskDetail(string id) => new
+    {
+        task = new { id, title = "Buy milk", description = "", completed = false, priority = 0 },
+        comments = Array.Empty<object>(),
+        subtasks = Array.Empty<object>(),
+    };
+
     private static object PaletteRows() => new
     {
         rows = new object[]

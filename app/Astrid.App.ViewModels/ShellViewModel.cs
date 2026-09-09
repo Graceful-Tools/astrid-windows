@@ -380,6 +380,27 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public Task OpenTaskAsync(string taskId, CancellationToken cancellationToken = default)
         => Detail.OpenAsync(taskId, cancellationToken);
 
+    /// <summary>
+    /// A row was tapped: open its task, or close the pane if that task is already the open one.
+    /// </summary>
+    /// <remarks>
+    /// Selection alone cannot express this. Tapping the row that is already selected raises no
+    /// selection change, so the pane sat open with no way to dismiss it from the list it came from
+    /// — the close was in the header's overflow menu and nowhere a hand would look (task 8ac00791).
+    ///
+    /// Tapping a DIFFERENT row opens that one. A second task is a different question, not a
+    /// dismissal, which is the case a plain "toggle" would get wrong.
+    /// </remarks>
+    public Task OpenOrCloseTaskAsync(string taskId, CancellationToken cancellationToken = default)
+    {
+        if (Detail.IsOpen && Detail.TaskId == taskId)
+        {
+            Detail.Close();
+            return Task.CompletedTask;
+        }
+        return OpenTaskAsync(taskId, cancellationToken);
+    }
+
     /// <summary>Open whatever the sidebar has selected.</summary>
     public async Task OpenSelectedAsync(CancellationToken cancellationToken = default)
     {
