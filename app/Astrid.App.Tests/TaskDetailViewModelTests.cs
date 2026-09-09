@@ -32,6 +32,54 @@ public sealed class TaskDetailViewModelTests
         };
 
     /// <summary>
+    /// Typing a sigil fills the popup from the core, the arrows move the lit row round, and a
+    /// choice comes back as the text the server will read (task 3271a0c5).
+    /// </summary>
+    [Fact]
+    public async Task The_comment_box_offers_suggestions_and_applies_the_chosen_one_task_3271a0c5()
+    {
+        var core = OpenedTask()
+            .AnswerOk("commentSuggestions", new
+            {
+                trigger = new { kind = "mention", start = 4, query = "as" },
+                items = new[]
+                {
+                    new { kind = "mention", id = "ai-agent-astrid", label = "Astrid", secondary = "astrid@astrid.cc", isAgent = true, completed = false },
+                    new { kind = "mention", id = "dana", label = "Dana", secondary = "dana@x.io", isAgent = false, completed = false },
+                },
+            })
+            .AnswerOk("applyCommentSuggestion", new { text = "hey @[Dana](dana) ", caret = 18 })
+            .AnswerOk("commentSuggestions", new { trigger = (object?)null, items = Array.Empty<object>() });
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.True(await view.SuggestCommentAsync("hey @as", 7));
+        Assert.Equal(2, view.CommentSuggestions.Count);
+        Assert.True(view.CommentSuggestions[0].IsAgent);
+        Assert.Equal("@", view.CommentSuggestions[0].Sigil);
+        Assert.Equal(0, view.SuggestionIndex);
+
+        view.MoveSuggestion(1);
+        Assert.Equal(1, view.SuggestionIndex);
+        view.MoveSuggestion(1);
+        Assert.Equal(0, view.SuggestionIndex); // wraps
+        view.MoveSuggestion(-1);
+        Assert.Equal(1, view.SuggestionIndex); // wraps the other way
+
+        var applied = await view.ApplyCommentSuggestionAsync(null, "hey @as", 7);
+        Assert.NotNull(applied);
+        Assert.Equal("hey @[Dana](dana) ", applied!.Text);
+        Assert.Equal(18, applied.Caret);
+        var sent = core.Sent.First(command => command.Contains("applyCommentSuggestion"));
+        Assert.Contains("\"triggerKind\":\"mention\"", sent);
+        Assert.Contains("\"id\":\"dana\"", sent);
+        Assert.False(view.HasCommentSuggestions, "the popup closes on a choice");
+
+        Assert.False(await view.SuggestCommentAsync("hey @[Dana](dana) ", 18), "nothing at the caret");
+        Assert.Empty(view.CommentSuggestions);
+    }
+
+    /// <summary>
     /// A reply is posted under the comment its box was opened on, an edit changes the text, and
     /// a delete removes it — each through the core and each followed by a re-read of the thread
     /// (task 97c817dd).

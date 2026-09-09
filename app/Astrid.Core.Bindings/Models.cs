@@ -810,6 +810,57 @@ public sealed record RepositoryChoice
     [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
 }
 
+/// <summary>What the comment box's popup shows (task 3271a0c5).</summary>
+public sealed record CommentSuggestions
+{
+    /// <summary>The trigger the caret is inside, or null when there is nothing to offer.</summary>
+    [JsonPropertyName("trigger")] public SuggestionTrigger? Trigger { get; init; }
+
+    [JsonPropertyName("items")] public IReadOnlyList<Suggestion> Items { get; init; } = [];
+}
+
+public sealed record SuggestionTrigger
+{
+    /// <summary><c>mention</c>, <c>list</c> or <c>task</c>.</summary>
+    [JsonPropertyName("kind")] public string Kind { get; init; } = string.Empty;
+
+    [JsonPropertyName("start")] public int Start { get; init; }
+
+    [JsonPropertyName("query")] public string Query { get; init; } = string.Empty;
+}
+
+/// <summary>One row of the comment box's popup.</summary>
+public sealed record Suggestion
+{
+    [JsonPropertyName("kind")] public string Kind { get; init; } = string.Empty;
+
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("label")] public string Label { get; init; } = string.Empty;
+
+    /// <summary>A person's email, a list's sharing, a task's first list.</summary>
+    [JsonPropertyName("secondary")] public string? Secondary { get; init; }
+
+    [JsonPropertyName("isAgent")] public bool IsAgent { get; init; }
+
+    [JsonPropertyName("completed")] public bool Completed { get; init; }
+
+    /// <summary>The sigil the row was typed with, for the glyph beside it.</summary>
+    public string Sigil => Kind switch { "mention" => "@", "list" => "#", _ => "!" };
+
+    public bool HasSecondary => !string.IsNullOrEmpty(Secondary);
+
+    public override string ToString() => Label;
+}
+
+/// <summary>Where a chosen suggestion left the text and the caret.</summary>
+public sealed record AppliedSuggestion
+{
+    [JsonPropertyName("text")] public string Text { get; init; } = string.Empty;
+
+    [JsonPropertyName("caret")] public int Caret { get; init; }
+}
+
 /// <summary>One editable column of a board (task e5214fba).</summary>
 public sealed record BoardStatus
 {

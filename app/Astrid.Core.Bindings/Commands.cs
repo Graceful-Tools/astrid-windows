@@ -549,6 +549,14 @@ public static class Commands
     public static object EditComment(string commentId, string content) =>
         new EditCommentRequest("editComment", commentId, content);
 
+    /// <summary>What the comment box's popup should show for this text and caret (task 3271a0c5). Positions are UTF-16 units.</summary>
+    public static object CommentSuggestions(string taskId, string text, int caret) =>
+        new CommentSuggestionsRequest("commentSuggestions", taskId, text, caret);
+
+    /// <summary>Put a chosen row into the text, the way the server will read it back.</summary>
+    public static object ApplyCommentSuggestion(string text, int caret, string triggerKind, string id, string label) =>
+        new ApplyCommentSuggestionRequest("applyCommentSuggestion", text, caret, triggerKind, id, label);
+
     public static object DeleteComment(string commentId) =>
         new CommentIdRequest("deleteComment", commentId);
 
@@ -673,6 +681,20 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("commentId")] string CommentId,
         [property: JsonPropertyName("content")] string Content);
+
+    private sealed record CommentSuggestionsRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("taskId")] string TaskId,
+        [property: JsonPropertyName("text")] string Text,
+        [property: JsonPropertyName("caret")] int Caret);
+
+    private sealed record ApplyCommentSuggestionRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("text")] string Text,
+        [property: JsonPropertyName("caret")] int Caret,
+        [property: JsonPropertyName("triggerKind")] string TriggerKind,
+        [property: JsonPropertyName("id")] string Id,
+        [property: JsonPropertyName("label")] string Label);
 
     private sealed record ThemeRequest(
         [property: JsonPropertyName("kind")] string Kind,

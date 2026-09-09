@@ -200,6 +200,18 @@
         <local:SwatchRingConverter x:Key="SwatchRing" />
         <local:ChoiceLabelConverter x:Key="ChoiceLabel" />
         <local:ReplyIndentConverter x:Key="ReplyIndent" />
+        <!-- One row of the comment box's popup: the sigil, the name, and what tells it apart. -->
+        <DataTemplate x:Key="SuggestionTemplate" x:DataType="bindings:Suggestion">
+            <StackPanel Orientation="Horizontal" Spacing="8" Padding="4,2">
+                <TextBlock Text="{x:Bind Sigil}" Width="14" TextAlignment="Center"
+                           Foreground="{ThemeResource AstridTextMuted}" />
+                <TextBlock Text="{x:Bind Label}" />
+                <TextBlock Text="{x:Bind Secondary}" FontSize="11"
+                           Foreground="{ThemeResource AstridTextMuted}"
+                           VerticalAlignment="Center"
+                           Visibility="{x:Bind HasSecondary, Converter={StaticResource Visible}}" />
+            </StackPanel>
+        </DataTemplate>
         <!-- The small quiet words under a bubble: Reply, Edit, Delete. -->
         <Style x:Key="BubbleAction" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
@@ -2861,9 +2873,12 @@
                                                 bubble: an empty bubble beside a picture is what
                                                 "it did not attach" looks like. The core decides it.
                                             -->
-                                            <TextBlock Text="{x:Bind Content}" TextWrapping="Wrap"
-                                                       Foreground="{ThemeResource AstridTextPrimary}"
-                                                       Visibility="{x:Bind ShowsText, Converter={StaticResource Visible}}" />
+                                            <!-- Drawn through the same markdown a description gets,
+                                                 so a mention is a pill and a link is a link (task
+                                                 3271a0c5). The control takes the row's blocks. -->
+                                            <local:MarkdownView Blocks="{x:Bind Blocks}"
+                                                                Foreground="{ThemeResource AstridTextPrimary}"
+                                                                Visibility="{x:Bind ShowsText, Converter={StaticResource Visible}}" />
                                             <!--
                                                 The comment's own files. Attachments reach a task
                                                 through comments, so a file hangs off the comment
@@ -2973,6 +2988,7 @@
                                         <TextBox Grid.Column="0"
                                                  PlaceholderText="Reply..."
                                                  AutomationProperties.Name="Reply"
+                                                 TextChanged="OnCommentTextChanged"
                                                  KeyDown="OnReplyKeyDown" />
                                         <Button Grid.Column="1" Content="Send"
                                                 AutomationProperties.Name="Send reply"
@@ -3030,6 +3046,7 @@
                                  CornerRadius="12"
                                  Padding="12,7"
                                  Text="{x:Bind Shell.Detail.CommentDraft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 TextChanged="OnCommentTextChanged"
                                  KeyDown="OnCommentKeyDown" />
                         <!--
                             Return posted a comment and nothing else did, so the affordance for the

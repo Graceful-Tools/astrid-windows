@@ -60,6 +60,11 @@ public sealed partial class ShellPage : UserControl
         Shell.PaletteCommandRequested += OnPaletteCommand;
         _shortcuts.ShellActionRequested += OnShellAction;
         Loaded += OnLoaded;
+        // Where a pill in a comment goes when clicked: the same places a pill in the description
+        // goes (task 3271a0c5).
+        MarkdownView.ReferenceFollowed = reference => _ = FollowReferenceAsync(reference);
+        MarkdownView.LinkFollowed = link => _ = FollowLinkAsync(link);
+
         // The pane's place follows the open task and the expanded card (task 91a25b8a).
         Shell.Detail.PropertyChanged += (_, changed) =>
         {
@@ -1919,12 +1924,140 @@ public sealed partial class ShellPage : UserControl
             }
             return;
         }
+        if (sender is TextBox box && await HandleSuggestionKeyAsync(box, args))
+        {
+            return;
+        }
         if (args.Key != VirtualKey.Enter)
         {
             return;
         }
         args.Handled = true;
         await SendCommentAsync();
+    }
+
+    // ── @person, #list, !task (task 3271a0c5) ───────────────────────────────────────────────
+    //
+    // One transient flyout serves the comment box and every reply box: it is shown at whichever
+    // box is being typed in and never takes the focus, so typing carries on underneath it. The
+    // rules — when it opens, what it offers, what a choice writes — are the core's.
+
+    private Flyout? _suggestionFlyout;
+    private ListView? _suggestionList;
+    private TextBox? _suggestionBox;
+
+    private async void OnCommentTextChanged(object sender, TextChangedEventArgs args)
+    {
+        if (sender is not TextBox box)
+        {
+            return;
+        }
+        var offered = await Shell.Detail.SuggestCommentAsync(box.Text, box.SelectionStart);
+        if (offered)
+        {
+            ShowSuggestions(box);
+        }
+        else
+        {
+            HideSuggestions();
+        }
+    }
+
+    private void ShowSuggestions(TextBox box)
+    {
+        if (_suggestionFlyout is null)
+        {
+            _suggestionList = new ListView
+            {
+                ItemsSource = Shell.Detail.CommentSuggestions,
+                ItemTemplate = (DataTemplate)Resources["SuggestionTemplate"],
+                SelectionMode = ListViewSelectionMode.Single,
+                IsItemClickEnabled = true,
+                MinWidth = 220,
+                MaxHeight = 260,
+            };
+            _suggestionList.ItemClick += async (_, clicked) =>
+            {
+                if (clicked.ClickedItem is Suggestion chosen && _suggestionBox is { } target)
+                {
+                    await ApplySuggestionAsync(target, chosen);
+                }
+            };
+            _suggestionFlyout = new Flyout
+            {
+                Content = _suggestionList,
+                ShowMode = FlyoutShowMode.Transient,
+                Placement = FlyoutPlacementMode.Top,
+                ShouldConstrainToRootBounds = false,
+            };
+            Shell.Detail.PropertyChanged += (_, changed) =>
+            {
+                if (changed.PropertyName == nameof(TaskDetailViewModel.SuggestionIndex)
+                    && _suggestionList is not null)
+                {
+                    _suggestionList.SelectedIndex = Shell.Detail.SuggestionIndex;
+                }
+            };
+        }
+        _suggestionBox = box;
+        _suggestionList!.SelectedIndex = Shell.Detail.SuggestionIndex;
+        if (!_suggestionFlyout.IsOpen || !ReferenceEquals(_suggestionFlyout.Target, box))
+        {
+            _suggestionFlyout.ShowAt(box, new FlyoutShowOptions { ShowMode = FlyoutShowMode.Transient });
+        }
+    }
+
+    private void HideSuggestions()
+    {
+        if (_suggestionFlyout is { IsOpen: true })
+        {
+            _suggestionFlyout.Hide();
+        }
+    }
+
+    /// <summary>The keys the popup takes while it is open: Up, Down, Return, Tab, Escape.</summary>
+    private async Task<bool> HandleSuggestionKeyAsync(TextBox box, KeyRoutedEventArgs args)
+    {
+        if (!Shell.Detail.HasCommentSuggestions)
+        {
+            return false;
+        }
+        switch (args.Key)
+        {
+            case VirtualKey.Down:
+                Shell.Detail.MoveSuggestion(1);
+                args.Handled = true;
+                return true;
+            case VirtualKey.Up:
+                Shell.Detail.MoveSuggestion(-1);
+                args.Handled = true;
+                return true;
+            case VirtualKey.Enter:
+            case VirtualKey.Tab:
+                args.Handled = true;
+                await ApplySuggestionAsync(box, null);
+                return true;
+            case VirtualKey.Escape:
+                args.Handled = true;
+                Shell.Detail.ClearSuggestions();
+                HideSuggestions();
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private async Task ApplySuggestionAsync(TextBox box, Suggestion? chosen)
+    {
+        var applied = await Shell.Detail.ApplyCommentSuggestionAsync(chosen, box.Text, box.SelectionStart);
+        HideSuggestions();
+        if (applied is null)
+        {
+            return;
+        }
+        box.Text = applied.Text;
+        box.SelectionStart = Math.Min(applied.Caret, box.Text.Length);
+        box.Focus(FocusState.Programmatic);
     }
 
     private static bool IsControlDown() =>
@@ -2069,6 +2202,10 @@ public sealed partial class ShellPage : UserControl
 
     private async void OnReplyKeyDown(object sender, KeyRoutedEventArgs args)
     {
+        if (sender is TextBox typing && await HandleSuggestionKeyAsync(typing, args))
+        {
+            return;
+        }
         if (args.Key == VirtualKey.Enter && sender is TextBox box)
         {
             args.Handled = true;

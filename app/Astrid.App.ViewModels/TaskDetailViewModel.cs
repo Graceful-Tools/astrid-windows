@@ -958,6 +958,80 @@ public sealed class TaskDetailViewModel : ObservableObject
         return true;
     }
 
+    // ── @person, #list, !task (task 3271a0c5) ───────────────────────────────────────────────
+    //
+    // The comment box and the reply box share one popup. When a popup opens, what is offered,
+    // and what a choice puts into the text are the core's rules, mirrored from the web; this
+    // holds the rows and which one is lit.
+
+    private int _suggestionIndex;
+
+    /// <summary>The popup's rows for the text as it stands. Empty means no popup.</summary>
+    public ObservableCollection<Suggestion> CommentSuggestions { get; } = [];
+
+    public bool HasCommentSuggestions => CommentSuggestions.Count > 0;
+
+    /// <summary>Which row Return or Tab would take.</summary>
+    public int SuggestionIndex
+    {
+        get => _suggestionIndex;
+        private set => Set(ref _suggestionIndex, value);
+    }
+
+    /// <summary>Ask what the box should offer for this text and caret. Answers whether there is anything.</summary>
+    public async Task<bool> SuggestCommentAsync(string text, int caret, CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(Commands.CommentSuggestions(TaskId, text, caret), cancellationToken);
+        var suggestions = response.Ok ? response.Read<CommentSuggestions>() : null;
+        Replace(CommentSuggestions, suggestions?.Trigger is null ? [] : suggestions.Items);
+        SuggestionIndex = 0;
+        Raise(nameof(HasCommentSuggestions));
+        return HasCommentSuggestions;
+    }
+
+    /// <summary>Move the lit row, wrapping at either end as the web's list does.</summary>
+    public void MoveSuggestion(int delta)
+    {
+        if (CommentSuggestions.Count == 0)
+        {
+            return;
+        }
+        var count = CommentSuggestions.Count;
+        SuggestionIndex = ((SuggestionIndex + delta) % count + count) % count;
+    }
+
+    public void ClearSuggestions()
+    {
+        if (CommentSuggestions.Count > 0)
+        {
+            CommentSuggestions.Clear();
+            Raise(nameof(HasCommentSuggestions));
+        }
+        SuggestionIndex = 0;
+    }
+
+    /// <summary>
+    /// Put a row into the text — the lit one when none is named. Answers the new text and caret,
+    /// or null when there was nothing to put.
+    /// </summary>
+    public async Task<AppliedSuggestion?> ApplyCommentSuggestionAsync(Suggestion? chosen, string text, int caret,
+        CancellationToken cancellationToken = default)
+    {
+        chosen ??= SuggestionIndex < CommentSuggestions.Count ? CommentSuggestions[SuggestionIndex] : null;
+        if (chosen is null)
+        {
+            return null;
+        }
+        var response = await _core.CallAsync(
+            Commands.ApplyCommentSuggestion(text, caret, chosen.Kind, chosen.Id, chosen.Label), cancellationToken);
+        ClearSuggestions();
+        return response.Ok ? response.Read<AppliedSuggestion>() : null;
+    }
+
     // ── Reply, edit, delete (task 97c817dd) ─────────────────────────────────────────────────
     //
     // One comment at a time is being replied to, and one edited; the rows carry the flags so the
@@ -1270,6 +1344,10 @@ public sealed record CommentSummary
     /// <summary>Nobody wrote it; the server did. A centred note rather than either voice.</summary>
     [System.Text.Json.Serialization.JsonPropertyName("isSystem")]
     public bool IsSystem { get; init; }
+
+    /// <summary>The text as the web draws it — pills and markdown — rendered in the core (task 3271a0c5).</summary>
+    [System.Text.Json.Serialization.JsonPropertyName("blocks")]
+    public IReadOnlyList<MarkdownBlock> Blocks { get; init; } = [];
 
     /// <summary>The comment this one answers, when it answers one (task 97c817dd).</summary>
     [System.Text.Json.Serialization.JsonPropertyName("parentId")]
