@@ -1,0 +1,114 @@
+# Publish a downloadable build.
+#
+# Runs on a tag, because a release is a deliberate act: pushing `main` builds nothing that reaches
+# anyone (CLAUDE.md, Approvals), and tagging is how somebody says "this one".
+#
+# ## What it publishes, and what it deliberately does not
+#
+# The **portable zip** for each architecture: a self-contained build somebody unzips anywhere and
+# runs. No installer, no runtime to fetch, no certificate needed on the machine. Windows SmartScreen
+# will warn the first time, because the executable is unsigned — that is the honest cost of a
+# download that is not from the Store, and the release notes say so rather than letting somebody
+# meet it unprepared.
+#
+# The **MSIX bundle is not attached.** It is unsigned, and until `packaging/store-identity.json`
+# carries the real Partner Center values it also has a placeholder identity — so Windows refuses to
+# install it and always will. Publishing it as "download the app" would hand people a file that
+# cannot work. The MSIX exists for the Store, which signs it at submission; that is its only route.
+#
+# ## Versioning
+#
+# The tag is the version. `v0.1.0` publishes `Astrid-0.1.0-win-x64-portable.zip` and its ARM64
+# sibling, so the file somebody downloaded can always be traced back to a commit.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  # So a release can be rehearsed, or rebuilt without moving a tag.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build, without the leading v (e.g. 0.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: portable (${{ matrix.arch }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      # ARM64 is cross-built from the x64 runner, which is what `npm run predeploy` already does
+      # every run — so this is not a path that only a release exercises.
+      - name: Publish
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if [ -n "${{ inputs.version }}" ]; then version="${{ inputs.version }}"; fi
+          echo "version=$version" >> "$GITHUB_ENV"
+          dotnet publish app/Astrid.App/Astrid.App.csproj \
+            -c Release -r win-${{ matrix.arch }} --self-contained true \
+            -o "dist/portable/win-${{ matrix.arch }}"
+
+      - name: Zip
+        shell: pwsh
+        run: |
+          $name = "Astrid-$env:version-win-${{ matrix.arch }}-portable.zip"
+          Compress-Archive -Path "dist/portable/win-${{ matrix.arch }}/*" `
+            -DestinationPath "dist/$name" -CompressionLevel Optimal
+          "asset=dist/$name" >> $env:GITHUB_ENV
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: portable-${{ matrix.arch }}
+          path: ${{ env.asset }}
+          if-no-files-found: error
+
+  release:
+    name: publish
+    needs: build
+    runs-on: ubuntu-latest
+    # Only a tag publishes. A manual run builds and leaves the artifacts on the run, so a release
+    # can be rehearsed without creating one.
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: assets/*.zip
+          draft: true
+          generate_release_notes: true
+          body: |
+            ## Install
+
+            Download the zip for your machine, unzip it anywhere, and run `Astrid.App.exe`.
+            There is no installer and nothing else to fetch — the build carries its own runtime.
+
+            - **arm64** — Snapdragon and other ARM Windows machines
+            - **x64** — everything else
+
+            **Windows will warn you the first time.** These builds are not code-signed, so
+            SmartScreen shows "Windows protected your PC"; choose *More info* then *Run anyway*.
+            The Microsoft Store version, which is signed by Microsoft and updates itself, is on its
+            way — this is the download for people who want it before then.
+
+            Signing in opens your browser and comes back to the app.
