@@ -3,6 +3,8 @@ using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
+using System.IO;
 using System.Text;
 using Windows.UI;
 
@@ -604,4 +606,47 @@ public sealed partial class ChipColourConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("a chip's colour is not a value to read back");
+}
+
+/// <summary>
+/// A file on disk, as something an <c>Image</c> can draw.
+/// </summary>
+/// <remarks>
+/// A path is not an image source: XAML needs a <see cref="BitmapImage"/>, and binding the string
+/// draws nothing at all rather than failing loudly. Decoded at the width it is drawn, because a
+/// phone photograph decoded at full size to fill a 220px bubble is forty megabytes of bitmap per
+/// comment.
+///
+/// Anything unreadable comes back null and the row falls back to its chip — a half-written file in
+/// the pending directory must not take the window down.
+/// </remarks>
+public sealed partial class FileThumbnailConverter : IValueConverter
+{
+    /// <summary>The widest a thumbnail is drawn, and so the widest it needs decoding.</summary>
+    private const int DecodeWidth = 240;
+
+    public object? Convert(object value, Type targetType, object parameter, string language)
+    {
+        if (value is not string path || string.IsNullOrEmpty(path) || !File.Exists(path))
+        {
+            return null;
+        }
+        try
+        {
+            var image = new BitmapImage
+            {
+                DecodePixelWidth = DecodeWidth,
+                UriSource = new Uri(path),
+            };
+            return image;
+        }
+        catch (Exception)
+        {
+            // An unreadable file is a chip, not a crash.
+            return null;
+        }
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a thumbnail is not a value to read back");
 }

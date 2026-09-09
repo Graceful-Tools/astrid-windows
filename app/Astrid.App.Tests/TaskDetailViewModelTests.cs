@@ -702,6 +702,66 @@ public sealed class TaskDetailViewModelTests
     }
 
     /// <summary>
+    /// A picture whose bytes are in hand is drawn, not described. The core reports the path
+    /// without touching the network, so a screenshot posted from this machine appears at once
+    /// instead of being fetched back from a server it has not reached yet (AITD-308).
+    /// </summary>
+    [Fact]
+    public void A_picture_with_its_bytes_in_hand_is_drawn()
+    {
+        var file = new CommentFile
+        {
+            Id = "f1",
+            Name = "shot.png",
+            MimeType = "image/png",
+            RendersInline = true,
+            LocalPath = @"C:\cache\pending1",
+        };
+
+        Assert.True(file.ShowsThumbnail);
+        Assert.False(file.ShowsChip);
+    }
+
+    /// <summary>
+    /// Not fetched yet is a chip, not a broken image. It is also exactly what the row looked like
+    /// before any of this, so the fallback is the old behaviour rather than a new empty state.
+    /// </summary>
+    [Fact]
+    public void A_picture_whose_bytes_are_not_here_yet_stays_a_chip()
+    {
+        var file = new CommentFile
+        {
+            Id = "f1",
+            Name = "shot.png",
+            MimeType = "image/png",
+            RendersInline = true,
+        };
+
+        Assert.False(file.ShowsThumbnail);
+        Assert.True(file.ShowsChip);
+    }
+
+    /// <summary>
+    /// A document is a chip whether or not its bytes are here. The core decides what is drawable;
+    /// having a path is not a second opinion about it.
+    /// </summary>
+    [Fact]
+    public void A_document_is_a_chip_even_with_its_bytes_in_hand()
+    {
+        var file = new CommentFile
+        {
+            Id = "f1",
+            Name = "notes.pdf",
+            MimeType = "application/pdf",
+            RendersInline = false,
+            LocalPath = @"C:\cache1",
+        };
+
+        Assert.False(file.ShowsThumbnail);
+        Assert.True(file.ShowsChip);
+    }
+
+    /// <summary>
     /// The Send button and the Return key have to agree about whether there is anything to send —
     /// an offered Send that does nothing when clicked is worse than no Send at all.
     /// </summary>

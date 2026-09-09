@@ -34,6 +34,7 @@
         <local:FileGlyphConverter x:Key="FileGlyph" />
         <local:ChipTintConverter x:Key="ChipTint" />
         <local:ChipColourConverter x:Key="ChipColour" />
+        <local:FileThumbnailConverter x:Key="FileThumbnail" />
         <local:BubbleAlignConverter x:Key="BubbleAlign" />
         <local:BubbleBrushConverter x:Key="BubbleBrush" />
 
@@ -2407,22 +2408,61 @@
                                                           Visibility="{x:Bind HasFiles, Converter={StaticResource Visible}}">
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate x:DataType="viewmodels:CommentFile">
-                                                        <Button Padding="8,4" Margin="0,2"
-                                                                HorizontalAlignment="Left"
-                                                                CornerRadius="6"
-                                                                Tag="{x:Bind Id}"
-                                                                Click="OnOpenCommentFile">
-                                                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                                                <FontIcon FontSize="12"
-                                                                          Glyph="{x:Bind RendersInline, Converter={StaticResource FileGlyph}}" />
-                                                                <TextBlock Text="{x:Bind Name}"
-                                                                           TextTrimming="CharacterEllipsis"
-                                                                           MaxWidth="160" />
-                                                                <TextBlock Text="{x:Bind SizeLabel}"
-                                                                           FontSize="11"
-                                                                           Foreground="{ThemeResource AstridTextMuted}" />
-                                                            </StackPanel>
-                                                        </Button>
+                                                        <StackPanel>
+                                                            <!--
+                                                                The picture, when its bytes are on
+                                                                this machine. A screenshot posted
+                                                                from here draws from the copy the
+                                                                Outbox already wrote, so it appears
+                                                                at once rather than being fetched
+                                                                back from a server it has not
+                                                                reached yet.
+
+                                                                Still a button: what somebody wants
+                                                                from a thumbnail is the full-size
+                                                                file, and clicking it is how they
+                                                                say so.
+                                                            -->
+                                                            <Button Padding="0" Margin="0,2"
+                                                                    HorizontalAlignment="Left"
+                                                                    CornerRadius="8"
+                                                                    BorderThickness="0"
+                                                                    Background="Transparent"
+                                                                    Tag="{x:Bind Id}"
+                                                                    AutomationProperties.Name="{x:Bind Name}"
+                                                                    Click="OnOpenCommentFile"
+                                                                    Visibility="{x:Bind ShowsThumbnail, Converter={StaticResource Visible}}">
+                                                                <Border CornerRadius="8">
+                                                                    <Image Source="{x:Bind LocalPath, Converter={StaticResource FileThumbnail}}"
+                                                                           MaxWidth="220"
+                                                                           MaxHeight="180"
+                                                                           Stretch="Uniform" />
+                                                                </Border>
+                                                            </Button>
+
+                                                            <!--
+                                                                Everything else, and anything whose
+                                                                bytes are not here yet: a chip that
+                                                                says what it is and opens it.
+                                                            -->
+                                                            <Button Padding="8,4" Margin="0,2"
+                                                                    HorizontalAlignment="Left"
+                                                                    CornerRadius="6"
+                                                                    Tag="{x:Bind Id}"
+                                                                    Click="OnOpenCommentFile"
+                                                                    Visibility="{x:Bind ShowsChip, Converter={StaticResource Visible}}">
+                                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                    <FontIcon FontSize="12"
+                                                                              Glyph="{x:Bind RendersInline, Converter={StaticResource FileGlyph}}" />
+                                                                    <TextBlock Text="{x:Bind Name}"
+                                                                               TextTrimming="CharacterEllipsis"
+                                                                               MaxWidth="160" />
+                                                                    <TextBlock Text="{x:Bind SizeLabel}"
+                                                                               FontSize="11"
+                                                                               Foreground="{ThemeResource AstridTextMuted}" />
+                                                                </StackPanel>
+                                                            </Button>
+                                                        </StackPanel>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>

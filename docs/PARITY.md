@@ -36,7 +36,7 @@ milestones; this tracks the *product*.
 | Sign-in through the browser | ✅ | ✅ | |
 | Localisation | ✅ (12 languages) | ✅ (English) | Windows has the mechanism and one language |
 | Themes | ✅ | ✅ | Ocean, light, dark and auto — the same four the Apple clients store, chosen per machine |
-| Attachments | ✅ | ✅ | Open, attach from disk, paste from the clipboard; drawn in the comment they arrived on. Queued offline, with the bytes copied so the original can move away |
+| Attachments | ✅ | ✅ | Open, attach from disk, paste from the clipboard; drawn in the comment they arrived on. A picture draws as a thumbnail from bytes already on this machine — the Outbox's own copy for one just posted — rather than being fetched back (AITD-308). Queued offline, with the bytes copied so the original can move away |
 | Timer on a task | ✅ | ✅ | Windows keeps a running timer across a restart; the Mac's is in memory |
 | Account screen and reminder settings | ✅ | ✅ | Push, email, default offset, digest, quiet hours |
 | Global quick-add hotkey | ✅ | ✅ | Ctrl+Shift+A; not yet rebindable |

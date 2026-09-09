@@ -238,6 +238,59 @@ public sealed class TaskDetailViewModel : ObservableObject
             // directly rather than by re-reading the whole screen.
             Replace(Comments, response.ReadArray<CommentSummary>());
         }
+        await EnsureInlineFilesAsync(cancellationToken);
+    }
+
+    /// <summary>True while the pass below is running, so its own refresh does not restart it.</summary>
+    private bool _fetchingInlineFiles;
+
+    /// <summary>
+    /// Fetch the pictures a comment would draw but has no bytes for.
+    /// </summary>
+    /// <remarks>
+    /// The core says where bytes already are without touching the network, which covers anything
+    /// this device attached. A picture posted from another client is on the server and nowhere
+    /// else, so without this it draws as a chip until somebody clicks it — a thumbnail that
+    /// appears for your own half of the thread and never for theirs.
+    /// <para>
+    /// Bounded twice over: only files the core said would be drawn, and only the ones whose bytes
+    /// are missing. The refresh at the end rebuilds the rows now the paths resolve, and the guard
+    /// is what stops that refresh starting the pass again.
+    /// </para>
+    /// </remarks>
+    private async Task EnsureInlineFilesAsync(CancellationToken cancellationToken)
+    {
+        if (_fetchingInlineFiles || TaskId is null)
+        {
+            return;
+        }
+        var missing = Comments
+            .SelectMany(comment => comment.Files)
+            .Where(file => file.RendersInline && string.IsNullOrEmpty(file.LocalPath))
+            .Select(file => file.Id)
+            .Distinct()
+            .ToList();
+        if (missing.Count == 0)
+        {
+            return;
+        }
+
+        _fetchingInlineFiles = true;
+        try
+        {
+            foreach (var fileId in missing)
+            {
+                // Failures are ignored on purpose: offline, or a file somebody deleted, leaves the
+                // chip on screen, which is what it looked like a moment ago anyway.
+                await _core.CallAsync(
+                    Commands.DownloadAttachment(TaskId, fileId), cancellationToken);
+            }
+            await RefreshCommentsAsync(cancellationToken);
+        }
+        finally
+        {
+            _fetchingInlineFiles = false;
+        }
     }
 
     /// <summary>Close the pane.</summary>
@@ -921,6 +974,23 @@ public sealed record CommentFile
     /// <summary>Whether it is drawn where it sits, or offered as something to open.</summary>
     [System.Text.Json.Serialization.JsonPropertyName("rendersInline")]
     public bool RendersInline { get; init; }
+
+    /// <summary>
+    /// Where the bytes are on this machine, when they are already here.
+    /// </summary>
+    /// <remarks>
+    /// Null is not an error — it means "not fetched yet". The core reports it without touching the
+    /// network, so a picture this device attached draws from the copy the Outbox already wrote
+    /// rather than being fetched back from the server it has not reached yet.
+    /// </remarks>
+    [System.Text.Json.Serialization.JsonPropertyName("localPath")]
+    public string? LocalPath { get; init; }
+
+    /// <summary>Whether there is a picture to draw right now, as opposed to a chip.</summary>
+    public bool ShowsThumbnail => RendersInline && !string.IsNullOrEmpty(LocalPath);
+
+    /// <summary>The chip is what is drawn when there is no picture in hand.</summary>
+    public bool ShowsChip => !ShowsThumbnail;
 
     /// <summary>The size as a person reads it.</summary>
     public string SizeLabel => Size switch
