@@ -1269,6 +1269,8 @@ public sealed partial class ShellPage : UserControl
     {
         await Shell.LoadListSettingsAsync();
         await Shell.ListSettings.LoadExternalAsync();
+        // The agents and repositories the list can be bound to (task f44b4a0c).
+        await Shell.ListSettings.LoadAgentOptionsAsync();
     }
 
     /// <summary>

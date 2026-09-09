@@ -78,6 +78,79 @@ public sealed class ListSettingsViewModelTests
     }
 
     /// <summary>
+    /// The agent that picks up a list's tasks and the repository it commits to are offered from
+    /// what the account can use, and each choice writes its own field (task f44b4a0c).
+    /// </summary>
+    [Fact]
+    public async Task The_list_s_agent_and_repository_are_offered_and_written_task_f44b4a0c()
+    {
+        var core = new FakeCore()
+            .AnswerOk("listMembers", new
+            {
+                listId = "l1",
+                name = "Work",
+                canManageList = true,
+                defaultAgentId = (string?)null,
+                githubRepositoryId = (string?)null,
+                members = Array.Empty<object>(),
+            })
+            .AnswerOk("listAgentOptions", new
+            {
+                defaultAgentId = (string?)null,
+                githubRepositoryId = (string?)null,
+                agents = new[] { new { id = "ai-agent-claude", name = "Claude Agent" } },
+                repositories = new[] { new { fullName = "Graceful-Tools/astrid-windows", name = "astrid-windows" } },
+                githubConnected = true,
+            })
+            .AnswerOk("updateList")
+            .AnswerOk("updateList");
+        var view = new ListSettingsViewModel(core);
+        await view.LoadAsync("l1");
+
+        await view.LoadAgentOptionsAsync();
+
+        Assert.Equal(2, view.AgentChoices.Count);
+        Assert.Equal("defaults.account_agent", view.SelectedAgent?.TitleKey);
+        Assert.Equal("Claude Agent", view.AgentChoices[1].Text);
+        Assert.Equal(2, view.RepositoryChoices.Count);
+        Assert.Equal("defaults.no_repository", view.SelectedRepository?.TitleKey);
+        Assert.False(view.NeedsGithub);
+
+        Assert.True(await view.ChooseDefaultAsync(view.AgentChoices[1]));
+        Assert.Contains("\"defaultAgentId\":\"ai-agent-claude\"", core.Sent.First(sent => sent.Contains("updateList")));
+        Assert.Equal("ai-agent-claude", view.DefaultAgentId);
+        Assert.Equal("ai-agent-claude", view.SelectedAgent?.Value);
+
+        Assert.True(await view.ChooseDefaultAsync(view.RepositoryChoices[1]));
+        Assert.Contains("\"githubRepositoryId\":\"Graceful-Tools/astrid-windows\"", core.Sent.Last(sent => sent.Contains("updateList")));
+        Assert.Equal("Graceful-Tools/astrid-windows", view.SelectedRepository?.Value);
+    }
+
+    /// <summary>Without GitHub there are no repositories to offer, and the screen can say why.</summary>
+    [Fact]
+    public async Task Without_github_the_repository_choice_says_to_connect_it()
+    {
+        var core = new FakeCore()
+            .AnswerOk("listMembers", Settings())
+            .AnswerOk("listAgentOptions", new
+            {
+                defaultAgentId = (string?)null,
+                githubRepositoryId = "Graceful-Tools/astrid-web",
+                agents = Array.Empty<object>(),
+                repositories = Array.Empty<object>(),
+                githubConnected = false,
+            });
+        var view = new ListSettingsViewModel(core);
+        await view.LoadAsync("l1");
+
+        await view.LoadAgentOptionsAsync();
+
+        Assert.True(view.NeedsGithub);
+        // The repository set on the web is still shown as set, not silently read as none.
+        Assert.Equal("Graceful-Tools/astrid-web", view.SelectedRepository?.Value);
+    }
+
+    /// <summary>
     /// A list with a board offers its columns, and each change goes through the core and comes
     /// back re-read (task e5214fba).
     /// </summary>

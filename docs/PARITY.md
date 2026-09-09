@@ -30,7 +30,7 @@ milestones; this tracks the *product*.
 | Board view | ✅ | ✅ | Drag a card, or move it from its menu — which a keyboard can also do. A tapped card opens its task in place, inside the column, as the web's does; the list keeps its side pane. Columns are added, renamed, reordered and removed from list settings, with the web's rules locked by a fixture |
 | Filters and sort | ✅ | ✅ | All seven filters, fixture-checked values |
 | Chat | ✅ | ✅ | |
-| List settings, sharing, members | ✅ | ✅ | Colour (the web's palette), favourite, privacy and the defaults for new tasks have controls in the flyout; quick-add applies the defaults in the core, as the web does (CONTRACTS D10) |
+| List settings, sharing, members | ✅ | ✅ | Colour (the web's palette), favourite, privacy, the coding agent and its repository, and the defaults for new tasks have controls in the flyout; quick-add applies the defaults in the core, as the web does (CONTRACTS D10) |
 | Keyboard scheme | ✅ | ✅ | The same table, from one fixture |
 | Offline-first with an Outbox | ✅ | ✅ | |
 | Sign-in through the browser | ✅ | ✅ | |

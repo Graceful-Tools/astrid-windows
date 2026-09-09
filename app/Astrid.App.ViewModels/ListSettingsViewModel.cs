@@ -207,6 +207,107 @@ public sealed class ListSettingsViewModel : ObservableObject
         return true;
     }
 
+    // ── The coding agent (task f44b4a0c) ───────────────────────────────────────────────────
+    //
+    // The web's admin tab has an AI Agent picker and "Repository the coding agent works in":
+    // which agent picks the list's tasks up, and which GitHub repo it commits to — the binding
+    // that turns a board into something a fixall loop can act on. The choices come from the
+    // account (its agents) and its GitHub connection (its repositories), fetched when the flyout
+    // opens; the two combos reuse the defaults' choice rows.
+
+    private string? _defaultAgentId;
+    private string? _githubRepositoryId;
+    private bool _githubConnected = true;
+    private IReadOnlyList<AgentChoice> _agents = [];
+    private IReadOnlyList<RepositoryChoice> _repositories = [];
+
+    public ObservableCollection<DefaultChoice> AgentChoices { get; } = [];
+    public ObservableCollection<DefaultChoice> RepositoryChoices { get; } = [];
+
+    public DefaultChoice? SelectedAgent => AgentChoices.FirstOrDefault(choice => choice.IsSelected);
+    public DefaultChoice? SelectedRepository => RepositoryChoices.FirstOrDefault(choice => choice.IsSelected);
+
+    /// <summary>Which agent picks this list's tasks up; null for the account's default.</summary>
+    public string? DefaultAgentId => _defaultAgentId;
+
+    /// <summary><c>owner/name</c> of the repository a coding agent commits to; null for none.</summary>
+    public string? GithubRepositoryId => _githubRepositoryId;
+
+    /// <summary>False means the repositories are empty because GitHub is not connected.</summary>
+    public bool GithubConnected
+    {
+        get => _githubConnected;
+        private set
+        {
+            if (Set(ref _githubConnected, value))
+            {
+                Raise(nameof(NeedsGithub));
+            }
+        }
+    }
+
+    public bool NeedsGithub => !GithubConnected;
+
+    /// <summary>Fetch the agents and repositories this list could be set to. Called as the flyout opens.</summary>
+    public async Task LoadAgentOptionsAsync(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(ListId))
+        {
+            return;
+        }
+        var response = await _core.CallAsync(Commands.ListAgentOptions(ListId), cancellationToken);
+        if (!Handle(response))
+        {
+            return;
+        }
+        var options = response.Read<ListAgentOptions>();
+        if (options is null)
+        {
+            return;
+        }
+        _agents = options.Agents;
+        _repositories = options.Repositories;
+        _defaultAgentId = options.DefaultAgentId;
+        _githubRepositoryId = options.GithubRepositoryId;
+        GithubConnected = options.GithubConnected;
+        RefreshAgentChoices();
+    }
+
+    private void RefreshAgentChoices()
+    {
+        var agents = new List<DefaultChoice>
+        {
+            new("agent", null, "defaults.account_agent", null, string.IsNullOrEmpty(_defaultAgentId)),
+        };
+        agents.AddRange(_agents.Select(agent =>
+            new DefaultChoice("agent", agent.Id, null, agent.Name, agent.Id == _defaultAgentId)));
+        // An agent set on the web that this account can no longer run is still shown as set,
+        // rather than silently reading as "account default".
+        if (_defaultAgentId is { } chosen && agents.All(choice => choice.Value != chosen))
+        {
+            agents.Add(new DefaultChoice("agent", chosen, null, chosen, true));
+        }
+        Replace(AgentChoices, agents);
+
+        var repositories = new List<DefaultChoice>
+        {
+            new("repository", null, "defaults.no_repository", null, string.IsNullOrEmpty(_githubRepositoryId)),
+        };
+        repositories.AddRange(_repositories.Select(repository =>
+            new DefaultChoice("repository", repository.FullName, null, repository.FullName,
+                repository.FullName == _githubRepositoryId)));
+        if (_githubRepositoryId is { } repo && repositories.All(choice => choice.Value != repo))
+        {
+            repositories.Add(new DefaultChoice("repository", repo, null, repo, true));
+        }
+        Replace(RepositoryChoices, repositories);
+
+        Raise(nameof(DefaultAgentId));
+        Raise(nameof(GithubRepositoryId));
+        Raise(nameof(SelectedAgent));
+        Raise(nameof(SelectedRepository));
+    }
+
     // ── What a new task starts as (task c4102c67) ──────────────────────────────────────────
     //
     // The web's admin tab has Default Priority, Assignee, Repeating, When and When Time, and its
@@ -328,6 +429,12 @@ public sealed class ListSettingsViewModel : ObservableObject
             case "dueTime":
                 changes["defaultDueTime"] = choice.Value;
                 break;
+            case "agent":
+                changes["defaultAgentId"] = choice.Value;
+                break;
+            case "repository":
+                changes["githubRepositoryId"] = choice.Value;
+                break;
             default:
                 return false;
         }
@@ -335,6 +442,19 @@ public sealed class ListSettingsViewModel : ObservableObject
         if (!Handle(response))
         {
             return false;
+        }
+        if (choice.Field is "agent" or "repository")
+        {
+            if (choice.Field == "agent")
+            {
+                _defaultAgentId = choice.Value;
+            }
+            else
+            {
+                _githubRepositoryId = choice.Value;
+            }
+            RefreshAgentChoices();
+            return true;
         }
         var updated = _defaults with
         {
@@ -493,6 +613,9 @@ public sealed class ListSettingsViewModel : ObservableObject
             IsFavorite = settings.IsFavorite;
             ProjectId = settings.ProjectId;
             Replace(Statuses, settings.Statuses);
+            _defaultAgentId = settings.DefaultAgentId;
+            _githubRepositoryId = settings.GithubRepositoryId;
+            RefreshAgentChoices();
             RefreshDefaultChoices(settings.Defaults, settings.Members);
             CanManageMembers = settings.CanManageMembers;
             CanManageList = settings.CanManageList;

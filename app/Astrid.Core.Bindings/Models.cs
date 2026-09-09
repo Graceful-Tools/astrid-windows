@@ -748,6 +748,12 @@ public sealed record ListSettings
     /// <summary>The board's editable columns (task e5214fba); empty for a list with no board.</summary>
     [JsonPropertyName("statuses")] public IReadOnlyList<BoardStatus> Statuses { get; init; } = [];
 
+    /// <summary>Which agent picks this list's tasks up; null for the account's default (task f44b4a0c).</summary>
+    [JsonPropertyName("defaultAgentId")] public string? DefaultAgentId { get; init; }
+
+    /// <summary><c>owner/name</c> of the repository a coding agent commits to; null for none.</summary>
+    [JsonPropertyName("githubRepositoryId")] public string? GithubRepositoryId { get; init; }
+
     /// <summary>The colour every screen draws the list in (task 53780e75).</summary>
     [JsonPropertyName("color")] public string Color { get; init; } = "#3b82f6";
 
@@ -773,6 +779,35 @@ public sealed record ListSettings
     [JsonPropertyName("currentUserId")] public string? CurrentUserId { get; init; }
 
     [JsonPropertyName("members")] public IReadOnlyList<ListMember> Members { get; init; } = [];
+}
+
+/// <summary>What a list's coding-agent settings can be set to (task f44b4a0c).</summary>
+public sealed record ListAgentOptions
+{
+    [JsonPropertyName("defaultAgentId")] public string? DefaultAgentId { get; init; }
+
+    [JsonPropertyName("githubRepositoryId")] public string? GithubRepositoryId { get; init; }
+
+    [JsonPropertyName("agents")] public IReadOnlyList<AgentChoice> Agents { get; init; } = [];
+
+    [JsonPropertyName("repositories")] public IReadOnlyList<RepositoryChoice> Repositories { get; init; } = [];
+
+    /// <summary>False means the repositories are empty because GitHub is not connected, not because there are none.</summary>
+    [JsonPropertyName("githubConnected")] public bool GithubConnected { get; init; }
+}
+
+public sealed record AgentChoice
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
+}
+
+public sealed record RepositoryChoice
+{
+    [JsonPropertyName("fullName")] public string FullName { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
 }
 
 /// <summary>One editable column of a board (task e5214fba).</summary>

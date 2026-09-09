@@ -43,6 +43,12 @@
   <data name="picker_night" xml:space="preserve">
     <value>Night</value>
   </data>
+  <data name="defaults_account_agent" xml:space="preserve">
+    <value>Account default</value>
+  </data>
+  <data name="defaults_no_repository" xml:space="preserve">
+    <value>None</value>
+  </data>
   <data name="defaults_task_creator" xml:space="preserve">
     <value>Task creator</value>
   </data>

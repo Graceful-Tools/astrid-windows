@@ -83,6 +83,8 @@ internal static class Strings
         ["picker.night"] = "Night",
         ["assignee.unassigned"] = "Unassigned",
         ["defaults.task_creator"] = "Task creator",
+        ["defaults.account_agent"] = "Account default",
+        ["defaults.no_repository"] = "None",
         ["defaults.all_day"] = "All day",
         ["user.unknown"] = "Unknown user",
         ["due.today"] = "Today",

@@ -524,6 +524,9 @@ public static class Commands
     public static object RemoveBoardStatus(string listId, string role) =>
         new BoardStatusRequest("removeBoardStatus", listId, role, null, null);
 
+    /// <summary>The agents and repositories a list's coding-agent settings can be set to (task f44b4a0c).</summary>
+    public static object ListAgentOptions(string listId) => new WithListId("listAgentOptions", listId);
+
     public static object SetTaskStatusRole(string taskId, string? statusRole) =>
         new StatusRoleRequest("setTaskStatusRole", taskId, statusRole);
 

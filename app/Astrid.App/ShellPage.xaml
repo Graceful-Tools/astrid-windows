@@ -857,6 +857,45 @@
                                             </Grid>
                                         </StackPanel>
                                         <!--
+                                            The coding agent (task f44b4a0c): the web's AI Agent
+                                            picker and "Repository the coding agent works in".
+                                            Which agent picks this list's tasks up, and which
+                                            repository it commits to — the binding that turns a
+                                            board into something a fixall loop can act on. The
+                                            choices are the account's agents and its GitHub
+                                            repositories, fetched as the flyout opens.
+                                        -->
+                                        <TextBlock Text="Coding agent"
+                                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                                   Margin="0,8,0,0"
+                                                   Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                        <Grid ColumnSpacing="8"
+                                              Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <ComboBox Grid.Column="0" Header="Agent"
+                                                      HorizontalAlignment="Stretch"
+                                                      AutomationProperties.Name="List agent"
+                                                      ItemsSource="{x:Bind Shell.ListSettings.AgentChoices, Mode=OneWay}"
+                                                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                                                      SelectedItem="{x:Bind Shell.ListSettings.SelectedAgent, Mode=OneWay}"
+                                                      SelectionChanged="OnDefaultChosen" />
+                                            <ComboBox Grid.Column="1" Header="Repository"
+                                                      HorizontalAlignment="Stretch"
+                                                      AutomationProperties.Name="Coding agent repository"
+                                                      ItemsSource="{x:Bind Shell.ListSettings.RepositoryChoices, Mode=OneWay}"
+                                                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                                                      SelectedItem="{x:Bind Shell.ListSettings.SelectedRepository, Mode=OneWay}"
+                                                      SelectionChanged="OnDefaultChosen" />
+                                        </Grid>
+                                        <TextBlock Text="Connect GitHub under Mirrored to, below, to choose a repository."
+                                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{ThemeResource AstridTextMuted}"
+                                                   Visibility="{x:Bind Shell.ListSettings.NeedsGithub, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                        <!--
                                             What a task added to this list starts as
                                             (task c4102c67): the web's Default Priority, Assignee,
                                             Repeating, When and When Time. The core applies them
