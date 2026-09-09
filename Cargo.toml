@@ -43,6 +43,9 @@ futures-util = { version = "0.3", default-features = false, features = ["std"] }
 rusqlite = { version = "0.32", features = ["bundled", "chrono", "serde_json", "backup"] }
 uuid = { version = "1", features = ["v4"] }
 tracing = "0.1"
+# Markdown, for task descriptions, comments and chat: the same GFM the web renders through
+# `marked`, turned into blocks the shell draws. No HTML output is wanted, so no `html` feature.
+pulldown-cmark = { version = "0.13", default-features = false }
 
 [profile.release]
 lto = "thin"

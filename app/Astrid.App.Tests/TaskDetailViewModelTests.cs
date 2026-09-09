@@ -31,6 +31,79 @@ public sealed class TaskDetailViewModelTests
             }).ToArray(),
         };
 
+    /// <summary>
+    /// The description comes rendered, and is shown rendered until somebody clicks it
+    /// (task 11cfaf6d). What the blocks MEAN was decided in the core; the view model only says
+    /// which of the two — the drawing or the box — is on screen.
+    /// </summary>
+    [Fact]
+    public async Task A_description_arrives_rendered_and_opens_for_editing_on_request_task_11cfaf6d()
+    {
+        var rendered = new
+        {
+            task = new { id = "t1", title = "Pushups", description = "##title\n**bold**", priority = 0, completed = false },
+            descriptionBlocks = new object[]
+            {
+                new
+                {
+                    kind = "paragraph",
+                    inlines = new object[]
+                    {
+                        new { kind = "text", text = "##title", bold = false, italic = false, strike = false, code = false, link = (string?)null },
+                        new { kind = "lineBreak" },
+                        new { kind = "text", text = "bold", bold = true, italic = false, strike = false, code = false, link = (string?)null },
+                    },
+                },
+            },
+            fieldOrder = new[] { "assignee", "when", "priority", "lists" },
+            priorityGlyph = "○",
+            due = new { key = "none" },
+            listChips = Array.Empty<object>(),
+            comments = Array.Empty<object>(),
+            subtasks = Array.Empty<object>(),
+        };
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", rendered)
+            .AnswerOk("dueDateOptions", NoDuePicks())
+            .AnswerOk("refreshComments")
+            .AnswerOk("updateTask")
+            .AnswerOk("taskDetail", rendered)
+            .AnswerOk("dueDateOptions", NoDuePicks());
+        var view = new TaskDetailViewModel(core);
+
+        await view.OpenAsync("t1");
+
+        var block = Assert.Single(view.DescriptionBlocks);
+        Assert.Equal("paragraph", block.Kind);
+        Assert.Equal(3, block.Inlines.Count);
+        Assert.Equal("lineBreak", block.Inlines[1].Kind);
+        Assert.True(block.Inlines[2].Bold);
+        Assert.True(view.ShowsRenderedDescription);
+        Assert.False(view.ShowsDescriptionEditor);
+        // The text is still there to edit; the drawing does not replace it.
+        Assert.Equal("##title\n**bold**", view.Description);
+
+        view.BeginEditingDescription();
+        Assert.True(view.ShowsDescriptionEditor);
+        Assert.False(view.ShowsRenderedDescription);
+
+        await view.SaveDescriptionAsync("##title\n**bold**");
+        Assert.True(view.ShowsRenderedDescription, "saving goes back to the drawing");
+    }
+
+    /// <summary>Nothing to draw means the box, with its placeholder, as the web shows its prompt.</summary>
+    [Fact]
+    public async Task An_empty_description_shows_the_editor()
+    {
+        var view = new TaskDetailViewModel(OpenedTask());
+
+        await view.OpenAsync("t1");
+
+        Assert.Empty(view.DescriptionBlocks);
+        Assert.True(view.ShowsDescriptionEditor);
+        Assert.False(view.ShowsRenderedDescription);
+    }
+
     private static object NoDuePicks() =>
         new { isAllDay = true, dates = Array.Empty<object>(), times = Array.Empty<object>() };
 

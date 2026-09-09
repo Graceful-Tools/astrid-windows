@@ -158,6 +158,59 @@ public sealed class TaskDetailViewModel : ObservableObject
         set => Set(ref _description, value);
     }
 
+    private IReadOnlyList<MarkdownBlock> _descriptionBlocks = [];
+    private bool _isEditingDescription;
+
+    /// <summary>
+    /// The description as the core rendered it, block by block (task 11cfaf6d).
+    /// </summary>
+    /// <remarks>
+    /// Beside <see cref="Description"/>, not instead of it: the web draws the rendered form and
+    /// edits the text, and so does this. Which markdown means what is the core's decision,
+    /// mirrored from the web's own renderer, so the two clients cannot read one description two
+    /// ways.
+    /// </remarks>
+    public IReadOnlyList<MarkdownBlock> DescriptionBlocks
+    {
+        get => _descriptionBlocks;
+        private set
+        {
+            if (Set(ref _descriptionBlocks, value))
+            {
+                Raise(nameof(ShowsRenderedDescription));
+                Raise(nameof(ShowsDescriptionEditor));
+            }
+        }
+    }
+
+    /// <summary>Whether the description is open for typing rather than drawn.</summary>
+    public bool IsEditingDescription
+    {
+        get => _isEditingDescription;
+        private set
+        {
+            if (Set(ref _isEditingDescription, value))
+            {
+                Raise(nameof(ShowsRenderedDescription));
+                Raise(nameof(ShowsDescriptionEditor));
+            }
+        }
+    }
+
+    /// <summary>
+    /// The rendered description is on screen: there is one, and nobody is editing it.
+    /// </summary>
+    public bool ShowsRenderedDescription => !IsEditingDescription && DescriptionBlocks.Count > 0;
+
+    /// <summary>
+    /// The plain editor is on screen: the description is being edited, or there is none yet to
+    /// draw — an empty one shows the box with its placeholder, as the web shows its prompt.
+    /// </summary>
+    public bool ShowsDescriptionEditor => !ShowsRenderedDescription;
+
+    /// <summary>The rendered description was clicked: open it for typing.</summary>
+    public void BeginEditingDescription() => IsEditingDescription = true;
+
     public int Priority
     {
         get => _priority;
@@ -212,6 +265,12 @@ public sealed class TaskDetailViewModel : ObservableObject
     /// </remarks>
     public async Task OpenAsync(string taskId, CancellationToken cancellationToken = default)
     {
+        if (TaskId != taskId)
+        {
+            // A different task: whatever was being typed into the last one's description is not
+            // being typed into this one's.
+            IsEditingDescription = false;
+        }
         TaskId = taskId;
         IsOpen = true;
         await ReloadAsync(cancellationToken);
@@ -355,9 +414,18 @@ public sealed class TaskDetailViewModel : ObservableObject
             : UpdateAsync(new Dictionary<string, object?> { ["title"] = trimmed }, cancellationToken);
     }
 
-    public Task<bool> SaveDescriptionAsync(string description, CancellationToken cancellationToken = default)
-        => UpdateAsync(new Dictionary<string, object?> { ["description"] = description },
+    /// <summary>Save the description, and go back to drawing it.</summary>
+    /// <remarks>
+    /// Editing ends whether or not the save reached the server: offline, the write is in the
+    /// Outbox and the reload draws what was typed, which is what "saved" means here.
+    /// </remarks>
+    public async Task<bool> SaveDescriptionAsync(string description, CancellationToken cancellationToken = default)
+    {
+        var saved = await UpdateAsync(new Dictionary<string, object?> { ["description"] = description },
             cancellationToken);
+        IsEditingDescription = false;
+        return saved;
+    }
 
     public Task<bool> SetPriorityAsync(int priority, CancellationToken cancellationToken = default)
         => UpdateAsync(new Dictionary<string, object?> { ["priority"] = priority }, cancellationToken);
@@ -849,6 +917,7 @@ public sealed class TaskDetailViewModel : ObservableObject
             Description = task.TryGetProperty("description", out var description)
                 ? description.GetString() ?? string.Empty
                 : string.Empty;
+            DescriptionBlocks = Read<MarkdownBlock>(value, "descriptionBlocks");
             Priority = task.TryGetProperty("priority", out var priority) ? priority.GetInt32() : 0;
             Completed = task.TryGetProperty("completed", out var completed) && completed.GetBoolean();
         }

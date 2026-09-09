@@ -19,7 +19,7 @@ milestones; this tracks the *product*.
 | My Tasks | ✅ | ✅ | The view the app opens on — yours and nobody's — with filters that belong to the account and follow you between machines |
 | Task list with subtasks and windowing | ✅ | ✅ | Windows sends a window of rows; the Mac loads the list |
 | Quick add, with `#list` autocomplete | ✅ | ✅ | Same parser, in the core |
-| Task detail: title, description, priority, lists | ✅ | ✅ | Field order comes from the core |
+| Task detail: title, description, priority, lists | ✅ | ✅ | Field order comes from the core. The description is drawn as the web draws it — GFM plus the @/#/! pills, rendered in the core — and clicked to edit |
 | Completion, including repeat rollover | ✅ | ✅ | One path, `TaskService::complete` |
 | Due dates and quick picks | ✅ | ✅ | Instants computed in the core, not in XAML |
 | Reminders | ✅ | ✅ | Windows adds a banner with Complete and Snooze |

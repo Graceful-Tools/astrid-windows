@@ -888,6 +888,89 @@ public sealed record OutboxStats
     [JsonPropertyName("hasUnsentWork")] public bool HasUnsentWork { get; init; }
 }
 
+/// <summary>
+/// One block of a rendered description, comment or message, as <c>astrid_core::markdown</c>
+/// renders it (task 11cfaf6d).
+/// </summary>
+/// <remarks>
+/// One flat record for every kind rather than a class per kind: the shell switches on
+/// <see cref="Kind"/> and reads the fields that kind carries — <c>paragraph</c> and
+/// <c>heading</c> their <see cref="Inlines"/>, <c>code</c> its <see cref="Text"/>, <c>list</c>
+/// its <see cref="Items"/>, <c>quote</c> its <see cref="Blocks"/>, <c>table</c> its
+/// <see cref="Header"/> and <see cref="Rows"/>. A <c>rule</c> carries nothing.
+/// </remarks>
+public sealed record MarkdownBlock
+{
+    [JsonPropertyName("kind")] public string Kind { get; init; } = string.Empty;
+
+    [JsonPropertyName("inlines")] public IReadOnlyList<MarkdownInline> Inlines { get; init; } = [];
+
+    /// <summary>A heading's level, 1 through 6.</summary>
+    [JsonPropertyName("level")] public int Level { get; init; }
+
+    /// <summary>A code block's language, when the fence named one.</summary>
+    [JsonPropertyName("language")] public string? Language { get; init; }
+
+    /// <summary>A code block's text.</summary>
+    [JsonPropertyName("text")] public string Text { get; init; } = string.Empty;
+
+    [JsonPropertyName("ordered")] public bool Ordered { get; init; }
+
+    /// <summary>The first number of an ordered list.</summary>
+    [JsonPropertyName("start")] public long Start { get; init; } = 1;
+
+    [JsonPropertyName("items")] public IReadOnlyList<MarkdownListItem> Items { get; init; } = [];
+
+    /// <summary>A quote's own blocks.</summary>
+    [JsonPropertyName("blocks")] public IReadOnlyList<MarkdownBlock> Blocks { get; init; } = [];
+
+    /// <summary>A table's column alignments: <c>left</c>, <c>center</c>, <c>right</c> or <c>none</c>.</summary>
+    [JsonPropertyName("alignments")] public IReadOnlyList<string> Alignments { get; init; } = [];
+
+    [JsonPropertyName("header")] public IReadOnlyList<IReadOnlyList<MarkdownInline>> Header { get; init; } = [];
+
+    [JsonPropertyName("rows")] public IReadOnlyList<IReadOnlyList<IReadOnlyList<MarkdownInline>>> Rows { get; init; } = [];
+}
+
+/// <summary>One item of a rendered list.</summary>
+public sealed record MarkdownListItem
+{
+    /// <summary>Set for a task-list item; null for an ordinary one.</summary>
+    [JsonPropertyName("checked")] public bool? Checked { get; init; }
+
+    [JsonPropertyName("blocks")] public IReadOnlyList<MarkdownBlock> Blocks { get; init; } = [];
+}
+
+/// <summary>One run of a rendered block: text in a style, a reference pill, or a line break.</summary>
+public sealed record MarkdownInline
+{
+    /// <summary><c>text</c>, <c>reference</c> or <c>lineBreak</c>.</summary>
+    [JsonPropertyName("kind")] public string Kind { get; init; } = string.Empty;
+
+    [JsonPropertyName("text")] public string Text { get; init; } = string.Empty;
+
+    [JsonPropertyName("bold")] public bool Bold { get; init; }
+
+    [JsonPropertyName("italic")] public bool Italic { get; init; }
+
+    [JsonPropertyName("strike")] public bool Strike { get; init; }
+
+    /// <summary>An inline code span.</summary>
+    [JsonPropertyName("code")] public bool Code { get; init; }
+
+    /// <summary>Where the run goes when clicked, when the core kept an address for it.</summary>
+    [JsonPropertyName("link")] public string? Link { get; init; }
+
+    /// <summary>A pill's kind: <c>user</c>, <c>list</c> or <c>task</c>.</summary>
+    [JsonPropertyName("reference")] public string? Reference { get; init; }
+
+    /// <summary>A pill's label — the name as it was typed.</summary>
+    [JsonPropertyName("label")] public string Label { get; init; } = string.Empty;
+
+    /// <summary>A pill's id.</summary>
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+}
+
 /// <summary>Reading a response into one of the shapes above.</summary>
 public static class ResponseReader
 {

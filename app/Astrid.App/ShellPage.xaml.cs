@@ -67,6 +67,11 @@ public sealed partial class ShellPage : UserControl
             {
                 PlaceDetailPane();
             }
+            // The description is redrawn from its blocks whenever they change (task 11cfaf6d).
+            if (changed.PropertyName == nameof(TaskDetailViewModel.DescriptionBlocks))
+            {
+                RenderDescription();
+            }
         };
         Shell.Board.PropertyChanged += (_, changed) =>
         {
@@ -1619,6 +1624,95 @@ public sealed partial class ShellPage : UserControl
 
     private async void OnDetailDescriptionCommitted(object sender, RoutedEventArgs args) =>
         await Shell.Detail.SaveDescriptionAsync(DetailDescriptionBox.Text);
+
+    // ── The description, drawn (task 11cfaf6d) ───────────────────────────────────────────────
+
+    /// <summary>
+    /// True for the tap that followed a link, so the tap does not also open the editor.
+    /// </summary>
+    /// <remarks>
+    /// A hyperlink's Click and the panel's Tapped both fire for one click on a link, and the
+    /// first cannot mark the second handled. Following the link is the whole of what that click
+    /// meant.
+    /// </remarks>
+    private bool _descriptionLinkFollowed;
+
+    /// <summary>Draw the description's blocks into the panel, replacing what was there.</summary>
+    private void RenderDescription()
+    {
+        DetailDescriptionBlocks.Children.Clear();
+        var renderer = new MarkdownRenderer(
+            ThemedBrush,
+            reference => _ = FollowReferenceAsync(reference),
+            link => _ = FollowLinkAsync(link),
+            ActualTheme == ElementTheme.Dark);
+        foreach (var element in renderer.Render(Shell.Detail.DescriptionBlocks))
+        {
+            DetailDescriptionBlocks.Children.Add(element);
+        }
+    }
+
+    /// <summary>A themed brush by key, from the dictionary the current theme resolves.</summary>
+    private static Brush ThemedBrush(string key) =>
+        Application.Current.Resources.TryGetValue(key, out var brush) && brush is Brush themed
+            ? themed
+            : new SolidColorBrush(Colors.Gray);
+
+    /// <summary>The rendered description was clicked: open the editor where it was.</summary>
+    private void OnDescriptionTapped(object sender, TappedRoutedEventArgs args)
+    {
+        if (_descriptionLinkFollowed)
+        {
+            _descriptionLinkFollowed = false;
+            return;
+        }
+        Shell.Detail.BeginEditingDescription();
+        // The box was collapsed a moment ago; it takes focus once layout has shown it.
+        DispatcherQueue.TryEnqueue(() => DetailDescriptionBox.Focus(FocusState.Programmatic));
+    }
+
+    /// <summary>The web's hover: a border appears to say the text can be clicked.</summary>
+    private void OnDescriptionPointerEntered(object sender, PointerRoutedEventArgs args) =>
+        DetailDescriptionRendered.BorderBrush = ThemedBrush("AstridBorder");
+
+    private void OnDescriptionPointerExited(object sender, PointerRoutedEventArgs args) =>
+        DetailDescriptionRendered.BorderBrush = new SolidColorBrush(Colors.Transparent);
+
+    /// <summary>A pill was clicked: a task opens here, a list opens here, a person opens on the web.</summary>
+    private async Task FollowReferenceAsync(MarkdownInline reference)
+    {
+        _descriptionLinkFollowed = true;
+        switch (reference.Reference)
+        {
+            case "task":
+                if (Shell.IsBoardView && Shell.Board.Has(reference.Id))
+                {
+                    await Shell.ToggleCardAsync(reference.Id);
+                }
+                else
+                {
+                    await Shell.OpenTaskAsync(reference.Id);
+                }
+                SyncDetailPriority();
+                break;
+            case "list":
+                await Shell.OpenListAsync(reference.Id, reference.Label);
+                break;
+            default:
+                await FollowLinkAsync($"https://astrid.cc/u/{Uri.EscapeDataString(reference.Id)}");
+                break;
+        }
+    }
+
+    /// <summary>A link was clicked. The core kept only addresses a browser may open.</summary>
+    private async Task FollowLinkAsync(string link)
+    {
+        _descriptionLinkFollowed = true;
+        if (Uri.TryCreate(link, UriKind.Absolute, out var uri))
+        {
+            await Windows.System.Launcher.LaunchUriAsync(uri);
+        }
+    }
 
     private async void OnDetailPriorityPicked(object sender, RoutedEventArgs args)
     {

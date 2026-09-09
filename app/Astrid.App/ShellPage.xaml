@@ -2343,6 +2343,31 @@
                                HorizontalAlignment="Center" VerticalAlignment="Top"
                                Margin="0,8,0,0"
                                Foreground="{ThemeResource AstridTextMuted}" />
+                    <!--
+                        The description as written, drawn (task 11cfaf6d). The web renders the
+                        markdown and opens a plain textarea when it is clicked; so does this. The
+                        blocks come from the core, and the code-behind fills this panel from them
+                        whenever they change. Its foreground is set here so every run inherits the
+                        theme's text colour without each being told.
+                    -->
+                    <Border Grid.Column="1" x:Name="DetailDescriptionRendered"
+                            AutomationProperties.Name="Description"
+                            Background="Transparent"
+                            BorderThickness="1"
+                            BorderBrush="Transparent"
+                            CornerRadius="8"
+                            Padding="10,8"
+                            MinHeight="40"
+                            Tapped="OnDescriptionTapped"
+                            PointerEntered="OnDescriptionPointerEntered"
+                            PointerExited="OnDescriptionPointerExited"
+                            Visibility="{x:Bind Shell.Detail.ShowsRenderedDescription, Mode=OneWay, Converter={StaticResource Visible}}">
+                        <ContentControl IsTabStop="False"
+                                        HorizontalContentAlignment="Stretch"
+                                        Foreground="{ThemeResource AstridTextPrimary}">
+                            <StackPanel x:Name="DetailDescriptionBlocks" Spacing="6" />
+                        </ContentControl>
+                    </Border>
                     <TextBox Grid.Column="1" x:Name="DetailDescriptionBox"
                              AutomationProperties.Name="Description"
                              PlaceholderText="Add a description..."
@@ -2352,6 +2377,7 @@
                              CornerRadius="8"
                              Padding="10,8"
                              Text="{x:Bind Shell.Detail.Description, Mode=TwoWay}"
+                             Visibility="{x:Bind Shell.Detail.ShowsDescriptionEditor, Mode=OneWay, Converter={StaticResource Visible}}"
                              LostFocus="OnDetailDescriptionCommitted" />
                 </Grid>
                 </StackPanel>

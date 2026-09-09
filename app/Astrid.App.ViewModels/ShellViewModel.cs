@@ -216,11 +216,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         switch (row.Kind)
         {
             case "list":
-                await Tasks.OpenAsync(row.Id, row.Title, cancellationToken);
-                // And the sidebar follows, so the app is not showing one list with another
-                // highlighted.
-                Sidebar.Selected = Sidebar.Favorites.Concat(Sidebar.Lists)
-                    .FirstOrDefault(list => list.Id == row.Id) ?? Sidebar.Selected;
+                await OpenListAsync(row.Id, row.Title, cancellationToken);
                 break;
             case "task":
                 await OpenTaskAsync(row.Id, cancellationToken);
@@ -461,6 +457,15 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// <summary>Open a task in the detail pane.</summary>
     public Task OpenTaskAsync(string taskId, CancellationToken cancellationToken = default)
         => Detail.OpenAsync(taskId, cancellationToken);
+
+    /// <summary>Open a list by id — from the palette, or from a <c>#list</c> pill in a description.</summary>
+    public async Task OpenListAsync(string listId, string name, CancellationToken cancellationToken = default)
+    {
+        await Tasks.OpenAsync(listId, name, cancellationToken);
+        // And the sidebar follows, so the app is not showing one list with another highlighted.
+        Sidebar.Selected = Sidebar.Favorites.Concat(Sidebar.Lists)
+            .FirstOrDefault(list => list.Id == listId) ?? Sidebar.Selected;
+    }
 
     /// <summary>
     /// A row was tapped: open its task, or close the pane if that task is already the open one.
