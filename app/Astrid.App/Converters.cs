@@ -30,15 +30,22 @@ public sealed partial class PriorityBrushConverter : IValueConverter
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("colours are read-only in the UI");
 
-    private static Color PriorityColor(int priority) => priority switch
-    {
-        3 => Color.FromArgb(0xFF, 0xEF, 0x44, 0x44),
-        2 => Color.FromArgb(0xFF, 0xF5, 0x9E, 0x0B),
-        1 => Color.FromArgb(0xFF, 0x10, 0xB9, 0x81),
-        // No priority draws nothing at all rather than grey: a stripe on every row is a stripe
-        // that says nothing, and the point of the stripe is that it is glanceable.
-        _ => Colors.Transparent,
-    };
+    /// <summary>
+    /// The colour for a priority, from the one table that also describes the row marks.
+    /// </summary>
+    /// <remarks>
+    /// These were hardcoded here, in values that disagreed with the checkbox images every row
+    /// draws — priority 1 was green here and blue on screen (task 204c9d98). The table is now
+    /// <see cref="PriorityPalette"/>, pinned against the shipped assets by a test.
+    ///
+    /// Zero is the exception, and stays transparent: no priority draws nothing at all rather than
+    /// grey, because a stripe on every row is a stripe that says nothing and the point of the
+    /// stripe is that it is glanceable. The picker's swatch, which needs a visible outline, asks
+    /// the palette for the grey directly.
+    /// </remarks>
+    private static Color PriorityColor(int priority) => priority is 1 or 2 or 3
+        ? Parse(PriorityPalette.Hex(priority))
+        : Colors.Transparent;
 
     /// <summary>
     /// Read <c>#rrggbb</c> or <c>#aarrggbb</c>.

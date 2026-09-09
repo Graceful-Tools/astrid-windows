@@ -118,10 +118,16 @@
                 <GradientStop Color="#F9FAFB" Offset="1" />
             </LinearGradientBrush>
 
-            <!-- Priority, in the colours every client uses. Mirrors `Task.Priority.color`. -->
-            <SolidColorBrush x:Key="PriorityHighBrush" Color="#EF4444" />
-            <SolidColorBrush x:Key="PriorityMediumBrush" Color="#F59E0B" />
-            <SolidColorBrush x:Key="PriorityLowBrush" Color="#10B981" />
+            <!--
+                Priority, in the colours the checkbox images draw — the marks on every row.
+
+                Sampled from `Assets/Checkboxes/check_box_{1..3}.png` and stated once in
+                `PriorityPalette`, which a test pins against those files. They used to be a
+                different table: priority 1 was green here and blue on every row (task 204c9d98).
+            -->
+            <SolidColorBrush x:Key="PriorityHighBrush" Color="#D5392E" />
+            <SolidColorBrush x:Key="PriorityMediumBrush" Color="#F5AF39" />
+            <SolidColorBrush x:Key="PriorityLowBrush" Color="#328ACC" />
 
             <x:Double x:Key="RowIndentPerDepth">24</x:Double>
         </ResourceDictionary>
