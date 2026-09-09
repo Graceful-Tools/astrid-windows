@@ -380,6 +380,33 @@ public sealed class TaskDetailViewModel : ObservableObject
     /// A time makes the task timed; clearing the date leaves it all-day, which is the state a task
     /// with no date is in.
     /// </remarks>
+    /// <summary>
+    /// Set the due date to a day chosen from a calendar.
+    /// </summary>
+    /// <remarks>
+    /// Two steps because the first is a question only the core can answer: what that day means for
+    /// this task. An all-day task takes the day; a timed one keeps its time of day, because
+    /// picking "the 14th" on something due at 17:00 means the 14th at 17:00. The shell computes
+    /// neither.
+    /// </remarks>
+    public async Task<bool> SetDueDayAsync(DateTimeOffset day,
+        CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(
+            Commands.DueDateOnDay(TaskId, day.ToString("yyyy-MM-dd")), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        var picked = response.Read<DuePick>();
+        return picked is not null
+            && await SetDueDateAsync(picked.DueDateTime, IsAllDay, cancellationToken);
+    }
+
     public Task<bool> TakeDuePickAsync(DuePick pick, CancellationToken cancellationToken = default)
         => SetDueDateAsync(pick.DueDateTime, isAllDay: pick.Hour is null && pick.DueDateTime is not null
             ? IsAllDay

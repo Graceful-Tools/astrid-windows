@@ -525,6 +525,22 @@ public sealed partial class ShellPage : UserControl
     /// storage, what "morning" means where the reader is — is decided in the core for all three
     /// clients.
     /// </remarks>
+    /// <summary>
+    /// A day was chosen from the calendar.
+    /// </summary>
+    /// <remarks>
+    /// Guarded against the null the control raises while it is being reset, which would otherwise
+    /// clear the date every time the flyout closed.
+    /// </remarks>
+    private async void OnDueDayPicked(CalendarDatePicker sender, CalendarDatePickerDateChangedEventArgs args)
+    {
+        if (args.NewDate is not { } day)
+        {
+            return;
+        }
+        await Shell.Detail.SetDueDayAsync(day);
+    }
+
     private async void OnDuePickChosen(object sender, RoutedEventArgs args)
     {
         if (sender is not FrameworkElement { Tag: string key })

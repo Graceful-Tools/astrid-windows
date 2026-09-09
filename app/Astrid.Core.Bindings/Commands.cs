@@ -64,6 +64,17 @@ public static class Commands
         new WithTaskId("dueDateOptions", taskId);
 
     /// <summary>
+    /// What a chosen calendar day means for this task, as an instant.
+    /// </summary>
+    /// <remarks>
+    /// Asked rather than computed. A calendar hands back a day; whether that is a date or a
+    /// date-and-time depends on the task, and an all-day date written as a local midnight reads
+    /// back as the day before for anyone west of UTC. Same reason the quick picks carry instants.
+    /// </remarks>
+    public static object DueDateOnDay(string taskId, string day) =>
+        new DayRequest("dueDateOnDay", taskId, day);
+
+    /// <summary>
     /// Who a task can be assigned to, in the order the picker shows them.
     /// </summary>
     /// <remarks>
@@ -631,6 +642,12 @@ public static class Commands
     private sealed record AgentIdRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("agentId")] string AgentId);
+
+    /// <summary>A calendar day, as <c>YYYY-MM-DD</c>.</summary>
+    private sealed record DayRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("taskId")] string TaskId,
+        [property: JsonPropertyName("day")] string Day);
 
     private sealed record NamedRequest(
         [property: JsonPropertyName("kind")] string Kind,

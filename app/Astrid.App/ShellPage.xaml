@@ -2045,6 +2045,23 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
+                                <!--
+                                    Any other day. The quick choices cover today through next
+                                    week; a date beyond that had to be typed nowhere, because
+                                    there was nowhere to type it (task be8fd2ff).
+
+                                    What the day MEANS is asked of the core, not worked out here:
+                                    an all-day task takes the date, a timed one keeps its time of
+                                    day, and an all-day date written as a local midnight reads
+                                    back as the day before west of UTC.
+                                -->
+                                <CalendarDatePicker x:Name="DueDayPicker"
+                                                    AutomationProperties.Name="Pick a date"
+                                                    PlaceholderText="Pick a date"
+                                                    HorizontalAlignment="Stretch"
+                                                    Margin="0,4,0,0"
+                                                    DateChanged="OnDueDayPicked" />
+
                                 <TextBlock Text="Time" Style="{ThemeResource CaptionTextBlockStyle}"
                                            Margin="0,8,0,0" />
                                 <ItemsControl ItemsSource="{x:Bind Shell.Detail.TimePicks, Mode=OneWay}">
