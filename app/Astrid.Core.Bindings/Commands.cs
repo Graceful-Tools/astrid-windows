@@ -307,6 +307,13 @@ public static class Commands
     public static object UpdateReminderSettings(IReadOnlyDictionary<string, object?> changes) =>
         new SettingsRequest("updateReminderSettings", changes);
 
+    /// <summary>
+    /// Change the account's task defaults or its task-detail layout (task c0f3db19). One field at
+    /// a time, merged in the core, refused there when the server would refuse it.
+    /// </summary>
+    public static object UpdateSmartTaskSettings(IReadOnlyDictionary<string, object?> changes) =>
+        new SettingsRequest("updateSmartTaskSettings", changes);
+
     /// <summary>Start timing a task.</summary>
     /// <remarks>
     /// The start time is kept in the cache rather than in memory, so a timer survives a restart —

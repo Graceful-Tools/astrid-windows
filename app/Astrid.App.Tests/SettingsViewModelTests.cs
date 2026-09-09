@@ -63,6 +63,82 @@ public sealed class SettingsViewModelTests
         timezone = "+00:00",
     };
 
+    private static object WithSmartTasks(string offset, string time, string layout, bool email = true) => new
+    {
+        user = new { id = "me", name = "Jon", email = "jon@x.io" },
+        reminderSettings = new { enablePushReminders = true, enableEmailReminders = true },
+        offsets = Array.Empty<object>(),
+        timezone = "+00:00",
+        smartTasks = new
+        {
+            emailToTaskEnabled = email,
+            defaultTaskDueOffset = offset,
+            defaultDueTime = time,
+            taskDisplayMode = layout,
+            subtaskDisplay = "indented",
+            smartTaskCreationEnabled = true,
+        },
+        dueOffsetChoices = new[]
+        {
+            new { value = "none", titleKey = "smart.offset.none" },
+            new { value = "1_day", titleKey = "smart.offset.1_day" },
+            new { value = "3_days", titleKey = "smart.offset.3_days" },
+            new { value = "1_week", titleKey = "smart.offset.1_week" },
+        },
+        dueTimeChoices = new[]
+        {
+            new { value = "09:00", titleKey = "smart.time.09_00" },
+            new { value = "17:00", titleKey = "smart.time.17_00" },
+        },
+        layoutChoices = new[]
+        {
+            new { value = "list", titleKey = "smart.layout.list" },
+            new { value = "project", titleKey = "smart.layout.project" },
+        },
+    };
+
+    /// <summary>
+    /// The Tasks page reads the core's shaped defaults and its choices, lights the current one in
+    /// each combo, writes one field per change, and says so when the layout changed — because the
+    /// rows have to be redrawn for that one (task c0f3db19).
+    /// </summary>
+    [Fact]
+    public async Task Task_settings_read_the_defaults_write_one_field_and_announce_a_layout_change_task_c0f3db19()
+    {
+        var core = new FakeCore()
+            .AnswerOk("settings", WithSmartTasks("1_week", "17:00", "list"))
+            .AnswerOk("updateSmartTaskSettings", WithSmartTasks("3_days", "17:00", "list"))
+            .AnswerOk("updateSmartTaskSettings", WithSmartTasks("3_days", "17:00", "project"))
+            .AnswerFailure("updateSmartTaskSettings", AstridFailureKind.BadRequest, "Invalid defaultTaskDueOffset value");
+        var view = new SettingsViewModel(core);
+        var layoutChanges = 0;
+        view.DisplayModeChanged += () => layoutChanges++;
+
+        await view.LoadAsync();
+        Assert.True(view.EmailToTaskEnabled);
+        Assert.Equal(4, view.DueOffsetChoices.Count);
+        Assert.Equal("smart.offset.1_week", view.SelectedDueOffset?.TitleKey);
+        Assert.Equal("17:00", view.SelectedDueTime?.Value);
+        Assert.Equal("list", view.SelectedLayout?.Value);
+        Assert.Equal("smart.layout.list_desc", view.LayoutDescriptionKey);
+
+        Assert.True(await view.SetSmartTaskAsync("defaultTaskDueOffset", "3_days"));
+        Assert.Equal("3_days", view.SelectedDueOffset?.Value);
+        Assert.Equal(0, layoutChanges);
+        Assert.Contains(core.Sent, json =>
+            json.Contains("\"kind\":\"updateSmartTaskSettings\"")
+            && json.Contains("\"changes\":{\"defaultTaskDueOffset\":\"3_days\"}"));
+
+        Assert.True(await view.SetSmartTaskAsync("taskDisplayMode", "project"));
+        Assert.Equal(1, layoutChanges);
+        Assert.Equal("project", view.SelectedLayout?.Value);
+        Assert.Equal("smart.layout.project_desc", view.LayoutDescriptionKey);
+
+        Assert.False(await view.SetSmartTaskAsync("defaultTaskDueOffset", "2_weeks"));
+        Assert.Equal("Invalid defaultTaskDueOffset value", view.ErrorMessage);
+        Assert.Equal(1, layoutChanges); // a refused write changes nothing
+    }
+
     /// <summary>
     /// The account's own state reads off the user the core answers with: verification as a key
     /// for the shell to word, the pending address, the dates as days, and the id (task 19fd9289).

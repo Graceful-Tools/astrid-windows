@@ -142,6 +142,72 @@
   <data name="account_delete_button" xml:space="preserve">
     <value>Permanently delete account</value>
   </data>
+  <data name="smart_title" xml:space="preserve">
+    <value>Tasks</value>
+  </data>
+  <data name="smart_email_to_task" xml:space="preserve">
+    <value>Email-to-Task</value>
+  </data>
+  <data name="smart_email_to_task_hint" xml:space="preserve">
+    <value>Create tasks by sending email to</value>
+  </data>
+  <data name="smart_email_address" xml:space="preserve">
+    <value>remindme@astrid.cc</value>
+  </data>
+  <data name="smart_default_due_date" xml:space="preserve">
+    <value>Default due date</value>
+  </data>
+  <data name="smart_default_due_date_hint" xml:space="preserve">
+    <value>Tasks created by email are due this long after they are sent.</value>
+  </data>
+  <data name="smart_default_due_time" xml:space="preserve">
+    <value>Default due time</value>
+  </data>
+  <data name="smart_default_due_time_hint" xml:space="preserve">
+    <value>The time of day for tasks created by email.</value>
+  </data>
+  <data name="smart_offset_none" xml:space="preserve">
+    <value>No due date</value>
+  </data>
+  <data name="smart_offset_1_day" xml:space="preserve">
+    <value>1 day</value>
+  </data>
+  <data name="smart_offset_3_days" xml:space="preserve">
+    <value>3 days</value>
+  </data>
+  <data name="smart_offset_1_week" xml:space="preserve">
+    <value>1 week</value>
+  </data>
+  <data name="smart_time_09_00" xml:space="preserve">
+    <value>9:00 AM</value>
+  </data>
+  <data name="smart_time_12_00" xml:space="preserve">
+    <value>12:00 PM (noon)</value>
+  </data>
+  <data name="smart_time_17_00" xml:space="preserve">
+    <value>5:00 PM</value>
+  </data>
+  <data name="smart_time_20_00" xml:space="preserve">
+    <value>8:00 PM</value>
+  </data>
+  <data name="smart_layout" xml:space="preserve">
+    <value>Task detail layout</value>
+  </data>
+  <data name="smart_layout_hint" xml:space="preserve">
+    <value>How priority, assignee and state appear on a task. Synced across your devices.</value>
+  </data>
+  <data name="smart_layout_list" xml:space="preserve">
+    <value>List</value>
+  </data>
+  <data name="smart_layout_project" xml:space="preserve">
+    <value>Project</value>
+  </data>
+  <data name="smart_layout_list_desc" xml:space="preserve">
+    <value>The checkbox completes the task, and priority and assignee each get their own row.</value>
+  </data>
+  <data name="smart_layout_project_desc" xml:space="preserve">
+    <value>Compact. The checkbox opens priority, assignee, state and complete.</value>
+  </data>
   <data name="defaults_all_day" xml:space="preserve">
     <value>All day</value>
   </data>

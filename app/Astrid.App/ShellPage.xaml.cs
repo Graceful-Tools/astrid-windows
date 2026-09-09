@@ -64,6 +64,7 @@ public sealed partial class ShellPage : UserControl
         // goes (task 3271a0c5).
         WontDoChip.Text = Strings.Get("detail.wont_do_chip");
         WordAccountSection();
+        WordTasksSection();
         MarkdownView.ReferenceFollowed = reference => _ = FollowReferenceAsync(reference);
         MarkdownView.LinkFollowed = link => _ = FollowLinkAsync(link);
 
@@ -292,6 +293,56 @@ public sealed partial class ShellPage : UserControl
         await Shell.SignIn.CancelAsync();
 
     private async void OnSignOut(object sender, RoutedEventArgs args) => await Shell.SignOutAsync();
+
+    /// <summary>The Tasks page's words, and the layout combo's (task c0f3db19).</summary>
+    private void WordTasksSection()
+    {
+        TasksNavLabel.Text = Strings.Get("smart.title");
+        EmailToTaskToggle.Header = Strings.Get("smart.email_to_task");
+        EmailToTaskHint.Text = Strings.Get("smart.email_to_task_hint");
+        EmailToTaskAddress.Text = Strings.Get("smart.email_address");
+        DueOffsetBox.Header = Strings.Get("smart.default_due_date");
+        DueOffsetHint.Text = Strings.Get("smart.default_due_date_hint");
+        DueTimeBox.Header = Strings.Get("smart.default_due_time");
+        DueTimeHint.Text = Strings.Get("smart.default_due_time_hint");
+        LayoutBox.Header = Strings.Get("smart.layout");
+        LayoutHint.Text = Strings.Get("smart.layout_hint");
+    }
+
+    private async void OnEmailToTaskToggled(object sender, RoutedEventArgs args)
+    {
+        if (_settingsLoading
+            || sender is not ToggleSwitch toggle
+            || toggle.IsOn == Shell.Settings.EmailToTaskEnabled)
+        {
+            return;
+        }
+        await Shell.Settings.SetSmartTaskAsync("emailToTaskEnabled", toggle.IsOn);
+    }
+
+    /// <summary>
+    /// One handler for the three combos: each row knows which field it is a value of, so the
+    /// control does not have to.
+    /// </summary>
+    private async void OnSmartTaskChoiceChosen(object sender, SelectionChangedEventArgs args)
+    {
+        if (_settingsLoading || sender is not ComboBox { SelectedItem: DefaultChoice choice })
+        {
+            return;
+        }
+        var current = choice.Field switch
+        {
+            "defaultTaskDueOffset" => Shell.Settings.SmartTasks.DefaultTaskDueOffset,
+            "defaultDueTime" => Shell.Settings.SmartTasks.DefaultDueTime,
+            "taskDisplayMode" => Shell.Settings.SmartTasks.TaskDisplayMode,
+            _ => null,
+        };
+        if (choice.Value is null || choice.Value == current)
+        {
+            return;
+        }
+        await Shell.Settings.SetSmartTaskAsync(choice.Field, choice.Value);
+    }
 
     /// <summary>The account page's words, from the strings table (task 19fd9289).</summary>
     private void WordAccountSection()
@@ -968,6 +1019,7 @@ public sealed partial class ShellPage : UserControl
         SettingsSectionTitle.Text = section switch
         {
             "Reminders" => "Reminders",
+            "Tasks" => Strings.Get("smart.title"),
             "Appearance" => "Appearance",
             "Agents" => "AI agents",
             "ApiAccess" => "API access",
@@ -977,6 +1029,7 @@ public sealed partial class ShellPage : UserControl
         };
 
         AccountSection.Visibility = Visible("Account");
+        TasksSection.Visibility = Visible("Tasks");
         RemindersSection.Visibility = Visible("Reminders");
         AppearanceSection.Visibility = Visible("Appearance");
         AgentsSection.Visibility = Visible("Agents");

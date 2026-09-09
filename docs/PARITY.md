@@ -35,7 +35,8 @@ milestones; this tracks the *product*.
 | Offline-first with an Outbox | ✅ | ✅ | |
 | Sign-in through the browser | ✅ | ✅ | |
 | Localisation | ✅ (12 languages) | ✅ (English) | Windows has the mechanism and one language |
-| Themes | ✅ | ✅ | Ocean, light, dark and auto — the same four the Apple clients store, chosen per machine |
+| Themes | ✅ | ✅ | Ocean, light, dark and auto — the same four the Apple clients store, chosen per machine. Appearance also carries the account's task-detail layout (list / project), which rows and the detail draw with at once |
+| Task settings | ✅ | ✅ | The web's Tasks page: Email-to-Task on/off and address, default due date and time for emailed tasks — stored on the server through `/api/v1/users/me/smart-tasks`, shaped and validated in the core |
 | Attachments | ✅ | ✅ | Open, attach from disk, paste from the clipboard; drawn in the comment they arrived on. A picture draws as a thumbnail from bytes already on this machine — the Outbox's own copy for one just posted — rather than being fetched back (AITD-308). Queued offline, with the bytes copied so the original can move away |
 | Timer on a task | ✅ | ✅ | Windows keeps a running timer across a restart; the Mac's is in memory |
 | Account screen and reminder settings | ✅ | ✅ | Push, email, default offset, digest, quiet hours. The Account page carries the web's sections: profile photo and display name, email verification with resend, account information, and account deletion behind the typed phrase the server requires. Passkeys wait on a `/api/v1` route (web task c4ad9e68) and hand off to the browser meanwhile |

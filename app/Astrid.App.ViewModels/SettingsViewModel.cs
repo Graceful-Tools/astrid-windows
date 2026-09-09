@@ -41,6 +41,7 @@ public sealed class SettingsViewModel : ObservableObject
     private string _deleteConfirmation = string.Empty;
     private bool _verificationSent;
     private bool _isDeleting;
+    private SmartTaskSettings _smartTasks = new();
 
     public SettingsViewModel(IAstridCore core)
     {
@@ -190,6 +191,77 @@ public sealed class SettingsViewModel : ObservableObject
                 Raise(nameof(QuietHoursEnabled));
             }
         }
+    }
+
+    /// <summary>
+    /// The task defaults and the task-detail layout (task c0f3db19). Shaped by the core, so a
+    /// server that has never stored them reads as the web's defaults here too.
+    /// </summary>
+    public SmartTaskSettings SmartTasks
+    {
+        get => _smartTasks;
+        private set
+        {
+            if (Set(ref _smartTasks, value))
+            {
+                Raise(nameof(EmailToTaskEnabled));
+                Raise(nameof(SelectedDueOffset));
+                Raise(nameof(SelectedDueTime));
+                Raise(nameof(SelectedLayout));
+                Raise(nameof(LayoutDescriptionKey));
+            }
+        }
+    }
+
+    public bool EmailToTaskEnabled => SmartTasks.EmailToTaskEnabled;
+
+    /// <summary>The due-date offsets the Tasks page offers, in the core's order.</summary>
+    public ObservableCollection<DefaultChoice> DueOffsetChoices { get; } = [];
+
+    /// <summary>The due times the Tasks page offers.</summary>
+    public ObservableCollection<DefaultChoice> DueTimeChoices { get; } = [];
+
+    /// <summary>The two task-detail layouts, for the Appearance page.</summary>
+    public ObservableCollection<DefaultChoice> LayoutChoices { get; } = [];
+
+    public DefaultChoice? SelectedDueOffset =>
+        DueOffsetChoices.FirstOrDefault(choice => choice.Value == SmartTasks.DefaultTaskDueOffset);
+
+    public DefaultChoice? SelectedDueTime =>
+        DueTimeChoices.FirstOrDefault(choice => choice.Value == SmartTasks.DefaultDueTime);
+
+    public DefaultChoice? SelectedLayout =>
+        LayoutChoices.FirstOrDefault(choice => choice.Value == SmartTasks.TaskDisplayMode);
+
+    /// <summary>The line under the layout combo, as a key: what the chosen layout does.</summary>
+    public string LayoutDescriptionKey => $"smart.layout.{SmartTasks.TaskDisplayMode}_desc";
+
+    /// <summary>
+    /// Raised when the task-detail layout changes, so the shell can redraw the rows and the open
+    /// task: the leading control means something different now.
+    /// </summary>
+    public event Action? DisplayModeChanged;
+
+    /// <summary>
+    /// Change one task setting (task c0f3db19). The core merges it and refuses what the server
+    /// would refuse; the screen redraws from the answer.
+    /// </summary>
+    public async Task<bool> SetSmartTaskAsync(string field, object? value,
+        CancellationToken cancellationToken = default)
+    {
+        var before = SmartTasks.TaskDisplayMode;
+        var response = await _core.CallAsync(
+            Commands.UpdateSmartTaskSettings(new Dictionary<string, object?> { [field] = value }),
+            cancellationToken);
+        if (!Read(response))
+        {
+            return false;
+        }
+        if (SmartTasks.TaskDisplayMode != before)
+        {
+            DisplayModeChanged?.Invoke();
+        }
+        return true;
     }
 
     public bool PushEnabled => Reminders.EnablePushReminders;
@@ -979,6 +1051,25 @@ public sealed class SettingsViewModel : ObservableObject
         Read(await _core.CallAsync(command, cancellationToken));
     }
 
+    /// <summary>
+    /// Refill a combo's choices only when they differ, so a combo bound to them does not lose its
+    /// selection on every settings answer.
+    /// </summary>
+    private static void ReplaceChoices(ObservableCollection<DefaultChoice> target, string field,
+        IReadOnlyList<SettingChoice> choices)
+    {
+        if (target.Count == choices.Count
+            && target.Zip(choices).All(pair => pair.First.Value == pair.Second.Value))
+        {
+            return;
+        }
+        target.Clear();
+        foreach (var choice in choices)
+        {
+            target.Add(new DefaultChoice(field, choice.Value, choice.TitleKey, null, false));
+        }
+    }
+
     private bool Read(AstridResponse response)
     {
         if (!response.Ok)
@@ -1002,6 +1093,10 @@ public sealed class SettingsViewModel : ObservableObject
         }
         User = account.User;
         Reminders = account.ReminderSettings;
+        ReplaceChoices(DueOffsetChoices, "defaultTaskDueOffset", account.DueOffsetChoices);
+        ReplaceChoices(DueTimeChoices, "defaultDueTime", account.DueTimeChoices);
+        ReplaceChoices(LayoutChoices, "taskDisplayMode", account.LayoutChoices);
+        SmartTasks = account.SmartTasks;
         Offsets.Clear();
         foreach (var offset in account.Offsets)
         {

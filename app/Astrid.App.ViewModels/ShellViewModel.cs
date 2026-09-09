@@ -51,6 +51,21 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Settings = new SettingsViewModel(core);
         _core.Changed += OnChanged;
 
+        // The task-detail layout decides what the leading control does on every row and in the
+        // open task (task c0f3db19). A change has to be seen at once, not after the next sync.
+        Settings.DisplayModeChanged += () => _post(async () =>
+        {
+            await Tasks.RefreshAsync();
+            if (IsBoardView)
+            {
+                await Board.RefreshAsync();
+            }
+            if (Detail.IsOpen)
+            {
+                await Detail.ReloadAsync();
+            }
+        });
+
         // The board's expanded card and the open detail are one fact seen from two sides
         // (task 91a25b8a). Closing the detail — from its own menu, or by opening a different
         // list — collapses the card; a card the board no longer has closes the detail it was

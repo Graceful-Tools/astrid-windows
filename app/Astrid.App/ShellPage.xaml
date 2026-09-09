@@ -1229,6 +1229,16 @@
                                                     <TextBlock Text="Reminders" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </ListViewItem>
+                                            <ListViewItem Tag="Tasks" AutomationProperties.Name="Tasks">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="&#xE73A;"
+                                                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                               FontSize="15" Width="20"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{ThemeResource AstridTextMuted}" />
+                                                    <TextBlock x:Name="TasksNavLabel" Text="Tasks" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </ListViewItem>
                                             <ListViewItem Tag="Appearance" AutomationProperties.Name="Appearance">
                                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                                     <TextBlock Text="&#xE790;"
@@ -1403,6 +1413,41 @@
                                                         IsEnabled="{x:Bind Shell.Settings.CanDeleteAccount, Mode=OneWay}" />
                                             </StackPanel>
 
+                                            <!--
+                                                The web's Task Settings page (task c0f3db19). The
+                                                due date and time are for tasks created by email,
+                                                as they are on the web; quick add does not read
+                                                them on either client.
+                                            -->
+                                            <StackPanel x:Name="TasksSection" Spacing="10"
+                                                        Visibility="Collapsed">
+                                                <ToggleSwitch x:Name="EmailToTaskToggle"
+                                                              AutomationProperties.Name="Email-to-Task"
+                                                              IsOn="{x:Bind Shell.Settings.EmailToTaskEnabled, Mode=OneWay}"
+                                                              Toggled="OnEmailToTaskToggled" />
+                                                <TextBlock Foreground="{ThemeResource AstridTextSecondary}" TextWrapping="Wrap">
+                                                    <Run x:Name="EmailToTaskHint" /><Run Text=" " /><Run x:Name="EmailToTaskAddress" FontWeight="SemiBold" />
+                                                </TextBlock>
+                                                <ComboBox x:Name="DueOffsetBox"
+                                                          HorizontalAlignment="Stretch"
+                                                          AutomationProperties.Name="Default due date"
+                                                          ItemsSource="{x:Bind Shell.Settings.DueOffsetChoices, Mode=OneWay}"
+                                                          ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                                                          SelectedItem="{x:Bind Shell.Settings.SelectedDueOffset, Mode=OneWay}"
+                                                          SelectionChanged="OnSmartTaskChoiceChosen" />
+                                                <TextBlock x:Name="DueOffsetHint" FontSize="11" TextWrapping="Wrap"
+                                                           Foreground="{ThemeResource AstridTextMuted}" />
+                                                <ComboBox x:Name="DueTimeBox"
+                                                          HorizontalAlignment="Stretch"
+                                                          AutomationProperties.Name="Default due time"
+                                                          ItemsSource="{x:Bind Shell.Settings.DueTimeChoices, Mode=OneWay}"
+                                                          ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                                                          SelectedItem="{x:Bind Shell.Settings.SelectedDueTime, Mode=OneWay}"
+                                                          SelectionChanged="OnSmartTaskChoiceChosen" />
+                                                <TextBlock x:Name="DueTimeHint" FontSize="11" TextWrapping="Wrap"
+                                                           Foreground="{ThemeResource AstridTextMuted}" />
+                                            </StackPanel>
+
                                             <StackPanel x:Name="RemindersSection" Spacing="10"
                                                         Visibility="Collapsed">
                                                 <ToggleSwitch x:Name="PushToggle"
@@ -1470,6 +1515,24 @@
                                                           ItemsSource="{x:Bind Shell.Settings.ThemeChoices, Mode=OneWay}"
                                                           SelectedItem="{x:Bind Shell.Settings.Theme, Mode=OneWay}"
                                                           SelectionChanged="OnThemeChosen" />
+                                                <!--
+                                                    The task-detail layout, where the web keeps it
+                                                    (task c0f3db19). An account setting, so it
+                                                    follows the person between devices; the theme
+                                                    above is this machine's.
+                                                -->
+                                                <ComboBox x:Name="LayoutBox"
+                                                          HorizontalAlignment="Stretch"
+                                                          AutomationProperties.Name="Task detail layout"
+                                                          ItemsSource="{x:Bind Shell.Settings.LayoutChoices, Mode=OneWay}"
+                                                          ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                                                          SelectedItem="{x:Bind Shell.Settings.SelectedLayout, Mode=OneWay}"
+                                                          SelectionChanged="OnSmartTaskChoiceChosen" />
+                                                <TextBlock FontSize="11" TextWrapping="Wrap"
+                                                           Foreground="{ThemeResource AstridTextMuted}"
+                                                           Text="{x:Bind Shell.Settings.LayoutDescriptionKey, Mode=OneWay, Converter={StaticResource Words}}" />
+                                                <TextBlock x:Name="LayoutHint" FontSize="11" TextWrapping="Wrap"
+                                                           Foreground="{ThemeResource AstridTextMuted}" />
                                             </StackPanel>
 
                                             <StackPanel x:Name="AgentsSection" Spacing="10"

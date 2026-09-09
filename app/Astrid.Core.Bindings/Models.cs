@@ -601,6 +601,48 @@ public sealed record AccountSettings
     [JsonPropertyName("offsets")] public IReadOnlyList<ReminderOffset> Offsets { get; init; } = [];
 
     [JsonPropertyName("timezone")] public string? Timezone { get; init; }
+
+    /// <summary>The task defaults and the task-detail layout, shaped by the core (task c0f3db19).</summary>
+    [JsonPropertyName("smartTasks")] public SmartTaskSettings SmartTasks { get; init; } = new();
+
+    [JsonPropertyName("dueOffsetChoices")]
+    public IReadOnlyList<SettingChoice> DueOffsetChoices { get; init; } = [];
+
+    [JsonPropertyName("dueTimeChoices")]
+    public IReadOnlyList<SettingChoice> DueTimeChoices { get; init; } = [];
+
+    [JsonPropertyName("layoutChoices")]
+    public IReadOnlyList<SettingChoice> LayoutChoices { get; init; } = [];
+}
+
+/// <summary>
+/// The account's task defaults and its task-detail layout, as the server stores them and the core
+/// defaults them (task c0f3db19). The due date and time are for tasks created by email.
+/// </summary>
+public sealed record SmartTaskSettings
+{
+    [JsonPropertyName("emailToTaskEnabled")] public bool EmailToTaskEnabled { get; init; } = true;
+
+    [JsonPropertyName("defaultTaskDueOffset")] public string DefaultTaskDueOffset { get; init; } = "1_week";
+
+    [JsonPropertyName("defaultDueTime")] public string DefaultDueTime { get; init; } = "17:00";
+
+    /// <summary><c>list</c> or <c>project</c>.</summary>
+    [JsonPropertyName("taskDisplayMode")] public string TaskDisplayMode { get; init; } = "list";
+
+    [JsonPropertyName("subtaskDisplay")] public string SubtaskDisplay { get; init; } = "indented";
+
+    [JsonPropertyName("smartTaskCreationEnabled")] public bool SmartTaskCreationEnabled { get; init; } = true;
+}
+
+/// <summary>One entry a settings combo offers: the server's value, and the key to word it by.</summary>
+public sealed record SettingChoice
+{
+    [JsonPropertyName("value")] public string Value { get; init; } = string.Empty;
+
+    [JsonPropertyName("titleKey")] public string TitleKey { get; init; } = string.Empty;
+
+    [JsonPropertyName("descriptionKey")] public string? DescriptionKey { get; init; }
 }
 
 /// <summary>What a task's timer is doing.</summary>
