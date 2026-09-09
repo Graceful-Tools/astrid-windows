@@ -143,6 +143,19 @@ public sealed record ListChip
     [JsonPropertyName("color")] public string Color { get; init; } = "#3b82f6";
 }
 
+/// <summary>One board column as the detail's Status menu offers it (task 016ce981).</summary>
+public sealed record StatusChoice
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
+
+    /// <summary><c>inbox</c>, <c>status</c> or <c>done</c>.</summary>
+    [JsonPropertyName("kind")] public string Kind { get; init; } = "status";
+
+    [JsonPropertyName("isCurrent")] public bool IsCurrent { get; init; }
+}
+
 /// <summary>One list as the detail's list editor draws it (task d3f3b111).</summary>
 public sealed record ListPick
 {

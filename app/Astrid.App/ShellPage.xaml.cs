@@ -62,6 +62,7 @@ public sealed partial class ShellPage : UserControl
         Loaded += OnLoaded;
         // Where a pill in a comment goes when clicked: the same places a pill in the description
         // goes (task 3271a0c5).
+        WontDoChip.Text = Strings.Get("detail.wont_do_chip");
         MarkdownView.ReferenceFollowed = reference => _ = FollowReferenceAsync(reference);
         MarkdownView.LinkFollowed = link => _ = FollowLinkAsync(link);
 
@@ -522,6 +523,92 @@ public sealed partial class ShellPage : UserControl
     }
 
     private void OnCloseDetail(object sender, RoutedEventArgs args) => Shell.Detail.Close();
+
+    /// <summary>
+    /// Word the task menu as the task stands, and fill its Status submenu from the core.
+    /// </summary>
+    /// <remarks>
+    /// The words are set here rather than in the markup because "Won't do" reads "Reopen" on a
+    /// canceled task — the web's one entry, flipped — and the columns are asked for each time
+    /// because they are the task's board's, which can be renamed under an open pane. The shell
+    /// draws what it is given; which columns exist and which one is lit are the core's to say
+    /// (task 016ce981).
+    /// </remarks>
+    private async void OnTaskActionsOpening(object sender, object args)
+    {
+        CopyLinkItem.Text = Strings.Get("detail.copy_link");
+        ShareItem.Text = Strings.Get("detail.share");
+        StatusSubMenu.Text = Strings.Get("detail.status");
+        WontDoItem.Text = Strings.Get(Shell.Detail.WontDoLabelKey);
+        WontDoItem.Icon = new FontIcon { Glyph = Shell.Detail.IsCanceled ? "\uE7A7" : "\uE711" };
+
+        await Shell.Detail.LoadStatusChoicesAsync();
+        StatusSubMenu.Items.Clear();
+        foreach (var choice in Shell.Detail.StatusChoices)
+        {
+            var item = new RadioMenuFlyoutItem
+            {
+                Text = choice.Name,
+                IsChecked = choice.IsCurrent,
+                GroupName = "TaskStatus",
+                Tag = choice.Id,
+            };
+            item.Click += OnStatusChosen;
+            StatusSubMenu.Items.Add(item);
+        }
+    }
+
+    private async void OnStatusChosen(object sender, RoutedEventArgs args)
+    {
+        if (sender is FrameworkElement { Tag: string columnId })
+        {
+            await Shell.Detail.SetStatusAsync(columnId);
+        }
+    }
+
+    private async void OnToggleWontDo(object sender, RoutedEventArgs args) =>
+        await Shell.Detail.ToggleWontDoAsync();
+
+    private void OnCopyTaskLink(object sender, RoutedEventArgs args) =>
+        CopyToClipboard(Shell.Detail.Link);
+
+    /// <summary>
+    /// Share: mint the link on the server, copy it, and show it.
+    /// </summary>
+    /// <remarks>
+    /// The web shows the minted address in a modal with a copy button; here the copy is the
+    /// point, so it happens at once and the flyout only confirms what is now on the clipboard. A
+    /// share that fails — offline, or a task not yet on the server — is reported through the
+    /// pane's error line by the view model, so there is nothing to do here but stop.
+    /// </remarks>
+    private async void OnShareTask(object sender, RoutedEventArgs args)
+    {
+        var url = await Shell.Detail.ShareAsync();
+        if (url is null)
+        {
+            return;
+        }
+        CopyToClipboard(url);
+        var flyout = new Flyout
+        {
+            Content = new StackPanel
+            {
+                Spacing = 4,
+                MaxWidth = 320,
+                Children =
+                {
+                    new TextBlock { Text = Strings.Get("detail.share_copied") },
+                    new TextBlock
+                    {
+                        Text = url,
+                        IsTextSelectionEnabled = true,
+                        TextWrapping = TextWrapping.Wrap,
+                    },
+                },
+            },
+        };
+        flyout.ShowAt(TaskActionsButton);
+    }
 
     /// <summary>
     /// Throw away the task the panel is showing.

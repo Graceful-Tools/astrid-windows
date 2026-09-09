@@ -2232,20 +2232,33 @@
                             <Image Source="{x:Bind Shell.Detail.CheckboxAsset, Mode=OneWay}"
                                    Width="32" Height="32" />
                         </Button>
-                        <TextBox Grid.Column="1" x:Name="DetailTitleBox"
-                                 AutomationProperties.Name="Title"
-                                 Text="{x:Bind Shell.Detail.Title, Mode=TwoWay}"
-                                 FontSize="16"
-                                 FontWeight="SemiBold"
-                                 Background="Transparent"
-                                 BorderThickness="0"
-                                 Padding="0,4"
-                                 TextWrapping="Wrap"
-                                 AcceptsReturn="False"
-                                 Foreground="{ThemeResource AstridTextPrimary}"
-                                 LostFocus="OnDetailTitleCommitted"
-                                 KeyDown="OnDetailTitleKeyDown" />
-                        <Button Grid.Column="2"
+                        <StackPanel Grid.Column="1" Spacing="2">
+                            <TextBox x:Name="DetailTitleBox"
+                                     AutomationProperties.Name="Title"
+                                     Text="{x:Bind Shell.Detail.Title, Mode=TwoWay}"
+                                     FontSize="16"
+                                     FontWeight="SemiBold"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Padding="0,4"
+                                     TextWrapping="Wrap"
+                                     AcceptsReturn="False"
+                                     Foreground="{ThemeResource AstridTextPrimary}"
+                                     LostFocus="OnDetailTitleCommitted"
+                                     KeyDown="OnDetailTitleKeyDown" />
+                            <!--
+                                Closed as won't-do, not done: the web's chip beside the title, so a
+                                task that was abandoned does not read as finished (task 016ce981).
+                            -->
+                            <Border HorizontalAlignment="Left" Padding="6,1" CornerRadius="4"
+                                    BorderThickness="1" BorderBrush="{ThemeResource AstridBorder}"
+                                    AutomationProperties.Name="Won't do"
+                                    Visibility="{x:Bind Shell.Detail.IsCanceled, Mode=OneWay, Converter={StaticResource Visible}}">
+                                <TextBlock x:Name="WontDoChip" FontSize="11"
+                                           Foreground="{ThemeResource AstridTextSecondary}" />
+                            </Border>
+                        </StackPanel>
+                        <Button Grid.Column="2" x:Name="TaskActionsButton"
                                 Background="Transparent" BorderThickness="0"
                                 VerticalAlignment="Top"
                                 AutomationProperties.Name="Task actions">
@@ -2254,12 +2267,34 @@
                                        FontSize="16" />
                             <Button.Flyout>
                                 <!--
-                                    astrid-web's `TaskActionMenu` in the two entries this client
-                                    has behaviour for. Delete was reachable only by right-clicking
-                                    a row, so a task opened from search or a deep link could be
-                                    read and edited but not thrown away.
+                                    astrid-web's `TaskActionMenu`: Copy link, Share, Status,
+                                    Won't do / Reopen, Delete (task 016ce981). The words and the
+                                    Status rows are set when the menu opens — see
+                                    OnTaskActionsOpening — because "Won't do" reads "Reopen" on a
+                                    canceled task and the columns are the task's board's.
                                 -->
-                                <MenuFlyout>
+                                <MenuFlyout Opening="OnTaskActionsOpening">
+                                    <MenuFlyoutItem x:Name="CopyLinkItem" Click="OnCopyTaskLink"
+                                                    IsEnabled="{x:Bind Shell.Detail.CanCopyLink, Mode=OneWay}">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE71B;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem x:Name="ShareItem" Click="OnShareTask"
+                                                    IsEnabled="{x:Bind Shell.Detail.CanCopyLink, Mode=OneWay}">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE72D;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutSeparator />
+                                    <MenuFlyoutSubItem x:Name="StatusSubMenu">
+                                        <MenuFlyoutSubItem.Icon>
+                                            <FontIcon Glyph="&#xE8FD;" />
+                                        </MenuFlyoutSubItem.Icon>
+                                    </MenuFlyoutSubItem>
+                                    <MenuFlyoutSeparator />
+                                    <MenuFlyoutItem x:Name="WontDoItem" Click="OnToggleWontDo" />
+                                    <MenuFlyoutSeparator />
                                     <MenuFlyoutItem Text="Delete" Click="OnDeleteOpenTask">
                                         <MenuFlyoutItem.Icon>
                                             <FontIcon Glyph="&#xE74D;" />

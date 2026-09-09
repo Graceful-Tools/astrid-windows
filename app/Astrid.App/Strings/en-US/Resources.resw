@@ -52,6 +52,27 @@
   <data name="defaults_task_creator" xml:space="preserve">
     <value>Task creator</value>
   </data>
+  <data name="detail_copy_link" xml:space="preserve">
+    <value>Copy link</value>
+  </data>
+  <data name="detail_share" xml:space="preserve">
+    <value>Share</value>
+  </data>
+  <data name="detail_status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="detail_wont_do" xml:space="preserve">
+    <value>Won't do</value>
+  </data>
+  <data name="detail_reopen" xml:space="preserve">
+    <value>Reopen</value>
+  </data>
+  <data name="detail_wont_do_chip" xml:space="preserve">
+    <value>Won't do</value>
+  </data>
+  <data name="detail_share_copied" xml:space="preserve">
+    <value>Share link copied</value>
+  </data>
   <data name="defaults_all_day" xml:space="preserve">
     <value>All day</value>
   </data>

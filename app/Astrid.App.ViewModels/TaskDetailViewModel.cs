@@ -39,6 +39,8 @@ public sealed class TaskDetailViewModel : ObservableObject
     private bool _repeatsFromDueDate;
     private bool _hasReminder;
     private TimerState _timer = new();
+    private bool _isCanceled;
+    private string? _link;
 
     public TaskDetailViewModel(IAstridCore core)
     {
@@ -236,6 +238,49 @@ public sealed class TaskDetailViewModel : ObservableObject
         get => _due;
         private set => Set(ref _due, value);
     }
+
+    /// <summary>
+    /// Closed as anything but done (task 016ce981). The core decides what that means; the chip
+    /// beside the title and the menu's closing entry both read it.
+    /// </summary>
+    public bool IsCanceled
+    {
+        get => _isCanceled;
+        private set
+        {
+            if (Set(ref _isCanceled, value))
+            {
+                Raise(nameof(WontDoLabelKey));
+            }
+        }
+    }
+
+    /// <summary>
+    /// The menu's closing entry: "Won't do" on a task that is open or finished, "Reopen" on one
+    /// closed as won't-do — the web's single entry, flipped by the task's state.
+    /// </summary>
+    public string WontDoLabelKey => IsCanceled ? "detail.reopen" : "detail.wont_do";
+
+    /// <summary>
+    /// The address "Copy link" copies — the one the web's own task links carry. Null until the task
+    /// has reached the server, because until then it has no id the server knows.
+    /// </summary>
+    public string? Link
+    {
+        get => _link;
+        private set
+        {
+            if (Set(ref _link, value))
+            {
+                Raise(nameof(CanCopyLink));
+            }
+        }
+    }
+
+    public bool CanCopyLink => !string.IsNullOrEmpty(Link);
+
+    /// <summary>The columns the Status submenu offers, filled when the menu opens.</summary>
+    public ObservableCollection<StatusChoice> StatusChoices { get; } = [];
 
     /// <summary>The mark that stands for this task's priority — the core's, not the shell's.</summary>
     public string PriorityGlyph
@@ -900,6 +945,91 @@ public sealed class TaskDetailViewModel : ObservableObject
         UpdateAsync(new Dictionary<string, object?> { ["assigneeId"] = userId }, cancellationToken);
 
     /// <summary>
+    /// Won't do, or Reopen: the one menu entry, sending what the task's state calls for.
+    /// </summary>
+    public Task<bool> ToggleWontDoAsync(CancellationToken cancellationToken = default) =>
+        SetClosedReasonAsync(IsCanceled ? null : "canceled", cancellationToken);
+
+    /// <summary>
+    /// Close the open task as something other than done, or reopen it with null (task 016ce981).
+    /// </summary>
+    /// <remarks>
+    /// Its own command rather than an update carrying the flag: a canceled close must not roll a
+    /// repeating task forward, and the core is where that rule lives.
+    /// </remarks>
+    public async Task<bool> SetClosedReasonAsync(string? closedReason, CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(Commands.SetClosedReason(TaskId, closedReason), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        await ReloadAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// Fill the Status submenu from the core: the task's board's columns, with the current one lit.
+    /// </summary>
+    public async Task<bool> LoadStatusChoicesAsync(CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(Commands.TaskStatusOptions(TaskId), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        Replace(StatusChoices, Read<StatusChoice>(response.Value, "columns"));
+        return true;
+    }
+
+    /// <summary>
+    /// Put the open task in a column. The core makes the same move a dragged card makes, so Done
+    /// here means completed there too.
+    /// </summary>
+    public async Task<bool> SetStatusAsync(string columnId, CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(Commands.SetTaskStatus(TaskId, columnId), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        await ReloadAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// Mint a share link for the open task. The address, or null with the reason in
+    /// <see cref="ErrorMessage"/> — a share that cannot happen offline is a failure worth a word.
+    /// </summary>
+    public async Task<string?> ShareAsync(CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return null;
+        }
+        var response = await _core.CallAsync(Commands.ShareTask(TaskId), cancellationToken);
+        if (!Handle(response))
+        {
+            return null;
+        }
+        return response.Value.TryGetProperty("url", out var url) && url.ValueKind == JsonValueKind.String
+            ? url.GetString()
+            : null;
+    }
+
+    /// <summary>
     /// Complete or un-complete the open task.
     /// </summary>
     /// <remarks>
@@ -1223,6 +1353,11 @@ public sealed class TaskDetailViewModel : ObservableObject
             Completed = task.TryGetProperty("completed", out var completed) && completed.GetBoolean();
         }
 
+        IsCanceled = value.TryGetProperty("isCanceled", out var canceled)
+                     && canceled.ValueKind == JsonValueKind.True;
+        Link = value.TryGetProperty("link", out var link) && link.ValueKind == JsonValueKind.String
+            ? link.GetString()
+            : null;
         PriorityGlyph = value.TryGetProperty("priorityGlyph", out var glyph)
             ? glyph.GetString() ?? "○"
             : "○";

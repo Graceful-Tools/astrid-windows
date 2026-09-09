@@ -493,6 +493,24 @@ public static class Commands
 
     public static object DeleteTask(string taskId) => new WithTaskId("deleteTask", taskId);
 
+    /// <summary>
+    /// Close a task as something other than done — <c>canceled</c>, <c>duplicate</c> or
+    /// <c>not_planned</c> — or reopen it with <c>null</c> (task 016ce981). Not a way to complete
+    /// one: a canceled close does not roll a repeating task forward, on purpose.
+    /// </summary>
+    public static object SetClosedReason(string taskId, string? closedReason) =>
+        new ClosedReasonRequest("setClosedReason", taskId, closedReason);
+
+    /// <summary>The board columns a task's menu can put it in, and which one it is in now.</summary>
+    public static object TaskStatusOptions(string taskId) => new WithTaskId("taskStatusOptions", taskId);
+
+    /// <summary>Put a task in a column from its menu: the same move a dragged card makes.</summary>
+    public static object SetTaskStatus(string taskId, string columnId) =>
+        new StatusRequest("setTaskStatus", taskId, columnId);
+
+    /// <summary>Mint a link to the task other people can open. Online-only, like the web's.</summary>
+    public static object ShareTask(string taskId) => new WithTaskId("shareTask", taskId);
+
     public static object SetTaskLists(string taskId, IReadOnlyList<string> listIds) =>
         new SetListsRequest("setTaskLists", taskId, listIds);
 
@@ -840,6 +858,16 @@ public static class Commands
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("columnId")] string ColumnId,
         [property: JsonPropertyName("listId")] string ListId);
+
+    private sealed record ClosedReasonRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("taskId")] string TaskId,
+        [property: JsonPropertyName("closedReason")] string? ClosedReason);
+
+    private sealed record StatusRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("taskId")] string TaskId,
+        [property: JsonPropertyName("columnId")] string ColumnId);
 
     private sealed record SnoozeRequest(
         [property: JsonPropertyName("kind")] string Kind,

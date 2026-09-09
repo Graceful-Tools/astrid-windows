@@ -7,9 +7,12 @@ namespace Astrid.App.Tests;
 public sealed class TaskDetailViewModelTests
 {
     private static object Detail(string title = "Plan the trip", int priority = 3,
-        bool completed = false, string[]? subtasks = null, string[]? comments = null) => new
+        bool completed = false, string[]? subtasks = null, string[]? comments = null,
+        bool isCanceled = false) => new
         {
             task = new { id = "t1", title, description = "two weeks", priority, completed },
+            isCanceled,
+            link = "https://astrid.cc/tasks/t1",
             fieldOrder = new[] { "assignee", "when", "priority", "lists" },
             priorityGlyph = "!!!",
             due = new { key = "today" },
@@ -312,6 +315,97 @@ public sealed class TaskDetailViewModelTests
 
     private static object NoDuePicks() =>
         new { isAllDay = true, dates = Array.Empty<object>(), times = Array.Empty<object>() };
+
+    /// <summary>
+    /// The menu's closing entry reads "Won't do" on an open task and sends the reason; on a task
+    /// closed that way it reads "Reopen" and sends null. What canceled means is the core's
+    /// (task 016ce981).
+    /// </summary>
+    [Fact]
+    public async Task Won_t_do_sends_the_reason_and_reopen_clears_it_task_016ce981()
+    {
+        var core = OpenedTask()
+            .AnswerOk("setClosedReason", new { id = "t1", completed = true, closedReason = "canceled" })
+            .AnswerOk("taskDetail", Detail(completed: true, isCanceled: true))
+            .AnswerOk("setClosedReason", new { id = "t1", completed = false })
+            .AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+        Assert.False(view.IsCanceled);
+        Assert.Equal("detail.wont_do", view.WontDoLabelKey);
+        Assert.Equal("https://astrid.cc/tasks/t1", view.Link);
+        Assert.True(view.CanCopyLink);
+
+        Assert.True(await view.ToggleWontDoAsync());
+        Assert.True(view.IsCanceled);
+        Assert.True(view.Completed);
+        Assert.Equal("detail.reopen", view.WontDoLabelKey);
+
+        Assert.True(await view.ToggleWontDoAsync());
+        Assert.False(view.IsCanceled);
+        Assert.Equal("detail.wont_do", view.WontDoLabelKey);
+
+        var sent = core.Sent.Where(json => json.Contains("\"kind\":\"setClosedReason\"")).ToList();
+        Assert.Equal(2, sent.Count);
+        Assert.Contains("\"closedReason\":\"canceled\"", sent[0]);
+        // Nulls are not written, so a reopen carries no reason at all; the core reads absence as
+        // null, which is what clears it.
+        Assert.DoesNotContain("closedReason", sent[1]);
+    }
+
+    /// <summary>
+    /// The Status submenu is the board's columns as the core gives them, current one lit, and a
+    /// choice is sent by column id — the core makes the move (task 016ce981).
+    /// </summary>
+    [Fact]
+    public async Task The_status_menu_offers_the_board_s_columns_and_a_choice_moves_the_task_task_016ce981()
+    {
+        var core = OpenedTask()
+            .AnswerOk("taskStatusOptions", new
+            {
+                current = "__virtual_inbox__",
+                columns = new[]
+                {
+                    new { id = "__virtual_inbox__", name = "Inbox", kind = "inbox", isCurrent = true },
+                    new { id = "doing", name = "Doing", kind = "status", isCurrent = false },
+                    new { id = "__virtual_done__", name = "Done", kind = "done", isCurrent = false },
+                },
+            })
+            .AnswerOk("setTaskStatus", new { id = "t1", statusRole = "doing" })
+            .AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.True(await view.LoadStatusChoicesAsync());
+        Assert.Equal(new[] { "Inbox", "Doing", "Done" }, view.StatusChoices.Select(choice => choice.Name));
+        Assert.True(view.StatusChoices[0].IsCurrent);
+        Assert.False(view.StatusChoices[1].IsCurrent);
+
+        Assert.True(await view.SetStatusAsync("doing"));
+        Assert.Contains(core.Sent, json =>
+            json.Contains("\"kind\":\"setTaskStatus\"") && json.Contains("\"columnId\":\"doing\""));
+    }
+
+    /// <summary>
+    /// Share hands back the address the core minted, and a refusal lands in the error line rather
+    /// than vanishing (task 016ce981).
+    /// </summary>
+    [Fact]
+    public async Task Share_returns_the_minted_link_and_reports_a_refusal_task_016ce981()
+    {
+        var core = OpenedTask()
+            .AnswerOk("shareTask", new { url = "https://astrid.cc/s/abc123" })
+            .AnswerFailure("shareTask", AstridFailureKind.BadRequest,
+                "this task has not reached the server yet, so it cannot be shared");
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.Equal("https://astrid.cc/s/abc123", await view.ShareAsync());
+        Assert.Null(view.ErrorMessage);
+
+        Assert.Null(await view.ShareAsync());
+        Assert.Equal("this task has not reached the server yet, so it cannot be shared", view.ErrorMessage);
+    }
 
     private static FakeCore OpenedTask() => new FakeCore()
         .AnswerOk("taskDetail", Detail())
