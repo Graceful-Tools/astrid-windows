@@ -32,6 +32,9 @@ public sealed class ListSettingsViewModel : ObservableObject
     private bool _isLoading;
     private string? _errorMessage;
     private bool _needsSignIn;
+    private string _color = "#3b82f6";
+    private string? _privacy;
+    private bool _isFavorite;
 
     public ListSettingsViewModel(IAstridCore core)
     {
@@ -57,6 +60,105 @@ public sealed class ListSettingsViewModel : ObservableObject
     {
         get => _canManageMembers;
         private set => Set(ref _canManageMembers, value);
+    }
+
+    // ── How the list looks, and who can see it (task 53780e75) ─────────────────────────────
+
+    /// <summary>The colour every screen draws the list in.</summary>
+    public string Color
+    {
+        get => _color;
+        private set
+        {
+            if (Set(ref _color, value))
+            {
+                RefreshSwatches();
+            }
+        }
+    }
+
+    /// <summary>The web's palette, as swatches with the current one marked.</summary>
+    public ObservableCollection<ColorSwatch> ColorChoices { get; } = [];
+
+    /// <summary><c>PRIVATE</c>, <c>SHARED</c> or <c>PUBLIC</c>; null when the server never said.</summary>
+    public string? Privacy
+    {
+        get => _privacy;
+        private set
+        {
+            if (Set(ref _privacy, value))
+            {
+                Raise(nameof(IsPrivate));
+                Raise(nameof(IsShared));
+                Raise(nameof(IsPublic));
+            }
+        }
+    }
+
+    public bool IsPrivate => Privacy == "PRIVATE";
+
+    public bool IsShared => Privacy == "SHARED";
+
+    public bool IsPublic => Privacy == "PUBLIC";
+
+    /// <summary>Whether this account keeps the list in its Favourites.</summary>
+    public bool IsFavorite
+    {
+        get => _isFavorite;
+        private set => Set(ref _isFavorite, value);
+    }
+
+    /// <summary>Give the list a colour. An ordinary edit, through the Outbox.</summary>
+    public async Task<bool> SetColorAsync(string color, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(color) || color == Color)
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(
+            Commands.UpdateList(ListId, new Dictionary<string, object?> { ["color"] = color }),
+            cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        Color = color;
+        return true;
+    }
+
+    /// <summary>
+    /// Keep the list in Favourites, or not.
+    /// </summary>
+    /// <remarks>
+    /// Its own command rather than a list update: a favourite is this account's, not the list's,
+    /// and the core writes it the way the server stores it.
+    /// </remarks>
+    public async Task<bool> SetFavoriteAsync(bool favorite, CancellationToken cancellationToken = default)
+    {
+        if (favorite == IsFavorite)
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(Commands.SetListFavorite(ListId, favorite), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        IsFavorite = favorite;
+        return true;
+    }
+
+    private void RefreshSwatches()
+    {
+        for (var index = 0; index < ColorChoices.Count; index++)
+        {
+            var swatch = ColorChoices[index];
+            var selected = string.Equals(swatch.Hex, Color, StringComparison.OrdinalIgnoreCase);
+            if (swatch.IsSelected != selected)
+            {
+                ColorChoices[index] = swatch with { IsSelected = selected };
+            }
+        }
     }
 
     public bool CanManageList
@@ -181,6 +283,12 @@ public sealed class ListSettingsViewModel : ObservableObject
                 return;
             }
             Name = settings.Name;
+            Replace(ColorChoices, settings.ColorChoices
+                .Select(hex => new ColorSwatch(hex, string.Equals(hex, settings.Color, StringComparison.OrdinalIgnoreCase)))
+                .ToList());
+            Color = settings.Color;
+            Privacy = settings.Privacy;
+            IsFavorite = settings.IsFavorite;
             CanManageMembers = settings.CanManageMembers;
             CanManageList = settings.CanManageList;
             CanDeleteList = settings.CanDeleteList;
@@ -265,10 +373,19 @@ public sealed class ListSettingsViewModel : ObservableObject
     public async Task<bool> SetPrivacyAsync(string privacy,
         CancellationToken cancellationToken = default)
     {
+        if (privacy == Privacy)
+        {
+            return false;
+        }
         var response = await _core.CallAsync(
             Commands.UpdateList(ListId, new Dictionary<string, object?> { ["privacy"] = privacy }),
             cancellationToken);
-        return Handle(response);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        Privacy = privacy;
+        return true;
     }
 
     /// <summary>
@@ -306,4 +423,11 @@ public sealed class ListSettingsViewModel : ObservableObject
             target.Add(item);
         }
     }
+}
+
+/// <summary>One colour the list could wear, and whether it does.</summary>
+public sealed record ColorSwatch(string Hex, bool IsSelected)
+{
+    /// <summary>What a screen reader should call the swatch.</summary>
+    public string ActionName => $"Colour {Hex}";
 }

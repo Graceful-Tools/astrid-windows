@@ -742,6 +742,17 @@ public sealed record ListSettings
 
     [JsonPropertyName("ownerId")] public string? OwnerId { get; init; }
 
+    /// <summary>The colour every screen draws the list in (task 53780e75).</summary>
+    [JsonPropertyName("color")] public string Color { get; init; } = "#3b82f6";
+
+    /// <summary>The web's palette, offered as swatches.</summary>
+    [JsonPropertyName("colorChoices")] public IReadOnlyList<string> ColorChoices { get; init; } = [];
+
+    /// <summary><c>PRIVATE</c>, <c>SHARED</c> or <c>PUBLIC</c>; null when the server never said.</summary>
+    [JsonPropertyName("privacy")] public string? Privacy { get; init; }
+
+    [JsonPropertyName("isFavorite")] public bool IsFavorite { get; init; }
+
     [JsonPropertyName("canManageMembers")] public bool CanManageMembers { get; init; }
 
     [JsonPropertyName("canManageList")] public bool CanManageList { get; init; }

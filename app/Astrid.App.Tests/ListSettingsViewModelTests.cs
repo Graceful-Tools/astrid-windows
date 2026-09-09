@@ -27,6 +27,80 @@ public sealed class ListSettingsViewModelTests
         },
     };
 
+    /// <summary>
+    /// Colour, favourite and privacy have controls (task 53780e75): each is read from the
+    /// settings and each writes through the core, the colour and privacy as list edits and the
+    /// favourite as its own command, since it is this account's rather than the list's.
+    /// </summary>
+    [Fact]
+    public async Task Colour_favourite_and_privacy_are_read_and_written_task_53780e75()
+    {
+        var core = new FakeCore()
+            .AnswerOk("listMembers", new
+            {
+                listId = "l1",
+                name = "Work",
+                color = "#ef4444",
+                colorChoices = new[] { "#ef4444", "#22c55e", "#3b82f6" },
+                privacy = "SHARED",
+                isFavorite = false,
+                canManageList = true,
+                members = Array.Empty<object>(),
+            })
+            .AnswerOk("updateList")
+            .AnswerOk("setListFavorite")
+            .AnswerOk("updateList");
+        var view = new ListSettingsViewModel(core);
+
+        await view.LoadAsync("l1");
+        Assert.Equal("#ef4444", view.Color);
+        Assert.Equal(3, view.ColorChoices.Count);
+        Assert.True(view.ColorChoices[0].IsSelected);
+        Assert.False(view.ColorChoices[1].IsSelected);
+        Assert.True(view.IsShared);
+        Assert.False(view.IsFavorite);
+
+        Assert.True(await view.SetColorAsync("#22c55e"));
+        Assert.Contains("\"color\":\"#22c55e\"", core.Sent.First(sent => sent.Contains("updateList")));
+        Assert.Equal("#22c55e", view.Color);
+        Assert.True(view.ColorChoices[1].IsSelected, "the swatch follows the colour");
+        Assert.False(view.ColorChoices[0].IsSelected);
+
+        Assert.True(await view.SetFavoriteAsync(true));
+        var favourite = core.Sent.First(sent => sent.Contains("setListFavorite"));
+        Assert.Contains("\"favorite\":true", favourite);
+        Assert.True(view.IsFavorite);
+
+        Assert.True(await view.SetPrivacyAsync("PUBLIC"));
+        Assert.Contains("\"privacy\":\"PUBLIC\"", core.Sent.Last(sent => sent.Contains("updateList")));
+        Assert.True(view.IsPublic);
+        Assert.False(view.IsShared);
+    }
+
+    /// <summary>Choosing what is already chosen writes nothing.</summary>
+    [Fact]
+    public async Task Re_choosing_the_current_colour_favourite_or_privacy_writes_nothing()
+    {
+        var core = new FakeCore().AnswerOk("listMembers", new
+        {
+            listId = "l1",
+            name = "Work",
+            color = "#ef4444",
+            colorChoices = new[] { "#ef4444" },
+            privacy = "PRIVATE",
+            isFavorite = true,
+            members = Array.Empty<object>(),
+        });
+        var view = new ListSettingsViewModel(core);
+        await view.LoadAsync("l1");
+
+        Assert.False(await view.SetColorAsync("#ef4444"));
+        Assert.False(await view.SetFavoriteAsync(true));
+        Assert.False(await view.SetPrivacyAsync("PRIVATE"));
+
+        Assert.Equal(["listMembers"], core.SentKinds());
+    }
+
     [Fact]
     public async Task Loading_shows_the_members_and_what_this_account_may_do()
     {

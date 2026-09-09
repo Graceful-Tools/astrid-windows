@@ -681,6 +681,16 @@ public sealed partial class BoardItemTemplateSelector : DataTemplateSelector
         SelectTemplateCore(item);
 }
 
+/// <summary>The ring round the chosen colour swatch: a 2px border when chosen, none otherwise.</summary>
+public sealed partial class SwatchRingConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is true ? new Thickness(2) : new Thickness(0);
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a border is not a value to read back");
+}
+
 /// <summary>
 /// How wide a board column is: the ordinary width, or the wider one that holds the expanded
 /// card's detail.

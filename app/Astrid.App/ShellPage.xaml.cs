@@ -1316,6 +1316,41 @@ public sealed partial class ShellPage : UserControl
         await Shell.Sidebar.LoadAsync();
     }
 
+    // ── How the list looks, and who can see it (task 53780e75) ─────────────────────────────
+
+    /// <summary>A swatch was chosen. The sidebar mark and the chips follow on the reload.</summary>
+    private async void OnListColourChosen(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is string hex
+            && await Shell.ListSettings.SetColorAsync(hex))
+        {
+            await Shell.Sidebar.LoadAsync();
+            await Shell.Tasks.RefreshAsync();
+        }
+    }
+
+    /// <summary>
+    /// The favourite switch moved. It also moves when the binding sets it, so a value that already
+    /// matches the list is not a request.
+    /// </summary>
+    private async void OnListFavoriteToggled(object sender, RoutedEventArgs args)
+    {
+        if (sender is ToggleSwitch toggle
+            && toggle.IsOn != Shell.ListSettings.IsFavorite
+            && await Shell.ListSettings.SetFavoriteAsync(toggle.IsOn))
+        {
+            await Shell.Sidebar.LoadAsync();
+        }
+    }
+
+    private async void OnListPrivacyChosen(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is string privacy)
+        {
+            await Shell.ListSettings.SetPrivacyAsync(privacy);
+        }
+    }
+
     private async void OnInvite(object sender, RoutedEventArgs args)
     {
         if (await Shell.ListSettings.InviteAsync(InviteBox.Text))

@@ -30,7 +30,7 @@ milestones; this tracks the *product*.
 | Board view | ✅ | ✅ | Drag a card, or move it from its menu — which a keyboard can also do. A tapped card opens its task in place, inside the column, as the web's does; the list keeps its side pane |
 | Filters and sort | ✅ | ✅ | All seven filters, fixture-checked values |
 | Chat | ✅ | ✅ | |
-| List settings, sharing, members | ✅ | ✅ | |
+| List settings, sharing, members | ✅ | ✅ | Colour (the web's palette), favourite and privacy have controls in the flyout |
 | Keyboard scheme | ✅ | ✅ | The same table, from one fixture |
 | Offline-first with an Outbox | ✅ | ✅ | |
 | Sign-in through the browser | ✅ | ✅ | |

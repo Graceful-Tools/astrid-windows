@@ -197,6 +197,7 @@
                                          Card="{StaticResource BoardCardTemplate}"
                                          DetailSlot="{StaticResource BoardDetailSlotTemplate}" />
         <local:BoardColumnWidthConverter x:Key="ColumnWidth" />
+        <local:SwatchRingConverter x:Key="SwatchRing" />
     </UserControl.Resources>
 
     <!--
@@ -701,6 +702,70 @@
                                                  AutomationProperties.Name="List name"
                                                  Text="{x:Bind Shell.ListSettings.Name, Mode=OneWay}"
                                                  LostFocus="OnListRenamed" />
+                                        <!--
+                                            How the list looks and who can see it (task 53780e75):
+                                            the web's admin tab lets an owner set a colour, mark
+                                            a favourite and choose the privacy. The colour reaches
+                                            every screen — the sidebar mark, the row chips, the
+                                            detail chips all draw list.color — and the swatches
+                                            are the web's own palette. A favourite is this
+                                            account's, so it is offered to every member; the
+                                            colour and the privacy are the list's, so they wait
+                                            for somebody who may manage it.
+                                        -->
+                                        <TextBlock Text="Colour"
+                                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                                   Margin="0,8,0,0"
+                                                   Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                        <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.ColorChoices, Mode=OneWay}"
+                                                      Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="viewmodels:ColorSwatch">
+                                                    <!-- The chosen one wears a ring; the rest are plain discs. -->
+                                                    <Button Width="28" Height="28" Padding="0"
+                                                            CornerRadius="14"
+                                                            BorderThickness="{x:Bind IsSelected, Converter={StaticResource SwatchRing}}"
+                                                            BorderBrush="{ThemeResource AstridTextPrimary}"
+                                                            Background="{x:Bind Hex, Converter={StaticResource ChipColour}}"
+                                                            Tag="{x:Bind Hex}"
+                                                            AutomationProperties.Name="{x:Bind ActionName}"
+                                                            ToolTipService.ToolTip="{x:Bind Hex}"
+                                                            Click="OnListColourChosen" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <ToggleSwitch x:Name="ListFavoriteSwitch"
+                                                      Header="Favourite"
+                                                      AutomationProperties.Name="Favourite"
+                                                      OnContent="In Favourites"
+                                                      OffContent="Not a favourite"
+                                                      Margin="0,4,0,0"
+                                                      IsOn="{x:Bind Shell.ListSettings.IsFavorite, Mode=OneWay}"
+                                                      Toggled="OnListFavoriteToggled" />
+                                        <TextBlock Text="Privacy"
+                                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                                   Margin="0,4,0,0"
+                                                   Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                        <StackPanel Orientation="Horizontal" Spacing="12"
+                                                    Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
+                                            <RadioButton Content="Private" GroupName="ListPrivacy" Tag="PRIVATE"
+                                                         MinWidth="0"
+                                                         IsChecked="{x:Bind Shell.ListSettings.IsPrivate, Mode=OneWay}"
+                                                         Click="OnListPrivacyChosen" />
+                                            <RadioButton Content="Shared" GroupName="ListPrivacy" Tag="SHARED"
+                                                         MinWidth="0"
+                                                         IsChecked="{x:Bind Shell.ListSettings.IsShared, Mode=OneWay}"
+                                                         Click="OnListPrivacyChosen" />
+                                            <RadioButton Content="Public" GroupName="ListPrivacy" Tag="PUBLIC"
+                                                         MinWidth="0"
+                                                         IsChecked="{x:Bind Shell.ListSettings.IsPublic, Mode=OneWay}"
+                                                         Click="OnListPrivacyChosen" />
+                                        </StackPanel>
                                         <!--
                                             Where this list is mirrored. Google and GitHub work
                                             differently and the rows say so, because "linked" means
