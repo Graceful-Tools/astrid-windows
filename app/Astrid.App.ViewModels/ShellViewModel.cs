@@ -23,6 +23,8 @@ namespace Astrid.App.ViewModels;
 public sealed class ShellViewModel : ObservableObject, IDisposable
 {
     private readonly IAstridCore _core;
+    /// <summary>The task whose row was last chosen, by tap or by moving the selection.</summary>
+    private string? _lastSelectedRowId;
     private readonly Action<Func<Task>> _post;
     private bool _hasUnsentWork;
     private bool _isSyncing;
@@ -495,11 +497,32 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// </remarks>
     public Task OpenOrCloseTaskAsync(string taskId, CancellationToken cancellationToken = default)
     {
+        _lastSelectedRowId = taskId;
         if (Detail.IsOpen && Detail.TaskId == taskId)
         {
             Detail.Close();
             return Task.CompletedTask;
         }
+        return OpenTaskAsync(taskId, cancellationToken);
+    }
+
+    /// <summary>
+    /// The list's selection moved to a row — from the keyboard, or because a refresh handed the
+    /// list a new row object for the same task (task 8ac00791).
+    /// </summary>
+    /// <remarks>
+    /// Opens only when the selection has moved to a DIFFERENT task. The rows are rebuilt on every
+    /// refresh and the list re-selects the same task by id; treating that as a new selection
+    /// reopened a pane somebody had just tapped closed — the tap worked, and a moment later, when
+    /// the next sync or edit refreshed the rows, the pane was back.
+    /// </remarks>
+    public Task SelectRowAsync(string taskId, CancellationToken cancellationToken = default)
+    {
+        if (taskId == _lastSelectedRowId)
+        {
+            return Task.CompletedTask;
+        }
+        _lastSelectedRowId = taskId;
         return OpenTaskAsync(taskId, cancellationToken);
     }
 

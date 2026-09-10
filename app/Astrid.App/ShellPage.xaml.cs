@@ -575,7 +575,8 @@ public sealed partial class ShellPage : UserControl
         }
         if (Shell.Tasks.Selected is { } row)
         {
-            await Shell.OpenTaskAsync(row.Id);
+            // The view model tells a moved selection from a refresh re-selecting the same task.
+            await Shell.SelectRowAsync(row.Id);
             SyncDetailPriority();
             PointArrowAtSelectedRow();
         }

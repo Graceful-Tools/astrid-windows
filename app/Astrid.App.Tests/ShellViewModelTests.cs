@@ -154,6 +154,31 @@ public sealed class ShellViewModelTests
     }
 
     /// <summary>
+    /// A refresh hands the list new row objects and re-selects the same task by id. That is not a
+    /// new selection, and it must not reopen a pane somebody just tapped closed (task 8ac00791).
+    /// </summary>
+    [Fact]
+    public async Task Reselecting_the_same_row_after_a_refresh_does_not_reopen_a_closed_task_task_8ac00791()
+    {
+        var core = StartedCore(("l1", "Home", false))
+            .AnswerOk("taskDetail", TaskDetail("t1"))
+            .AnswerOk("taskDetail", TaskDetail("t2"));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        await shell.OpenOrCloseTaskAsync("t1");
+        await shell.OpenOrCloseTaskAsync("t1");
+        Assert.False(shell.Detail.IsOpen);
+
+        await shell.SelectRowAsync("t1");
+        Assert.False(shell.Detail.IsOpen, "the same task re-selected is a refresh, not a choice");
+
+        await shell.SelectRowAsync("t2");
+        Assert.True(shell.Detail.IsOpen, "a different task is a choice");
+        Assert.Equal("t2", shell.Detail.TaskId);
+    }
+
+    /// <summary>
     /// On the board, a tapped card opens its task IN PLACE, and tapping it again closes it
     /// (task 91a25b8a). astrid-web's board expands the card inside its column rather than opening
     /// the side panel, and a person moving between the two should find the same gesture.
