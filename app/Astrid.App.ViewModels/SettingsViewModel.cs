@@ -45,6 +45,8 @@ public sealed class SettingsViewModel : ObservableObject
     private SmartTaskSettings _smartTasks = new();
     private int _contactsTotal;
     private bool _contactsLoaded;
+    private string? _passkeysUnavailable;
+    private bool _passkeysLoaded;
 
     public SettingsViewModel(IAstridCore core)
     {
@@ -944,6 +946,102 @@ public sealed class SettingsViewModel : ObservableObject
         ErrorMessage = null;
         LastExportPath = path;
         return true;
+    }
+
+    /// <summary>The passkeys the account signs in with (task 19fd9289), newest first.</summary>
+    public ObservableCollection<PasskeySummary> Passkeys { get; } = [];
+
+    /// <summary>
+    /// Why the list is not there, when it is not: offline, or a server that does not offer passkeys
+    /// to apps. Null when the list stands.
+    /// </summary>
+    public string? PasskeysUnavailable
+    {
+        get => _passkeysUnavailable;
+        private set
+        {
+            if (Set(ref _passkeysUnavailable, value))
+            {
+                Raise(nameof(HasPasskeysUnavailable));
+            }
+        }
+    }
+
+    public bool HasPasskeysUnavailable => PasskeysUnavailable is not null;
+
+    public bool PasskeysLoaded
+    {
+        get => _passkeysLoaded;
+        private set
+        {
+            if (Set(ref _passkeysLoaded, value))
+            {
+                Raise(nameof(HasNoPasskeys));
+            }
+        }
+    }
+
+    /// <summary>Asked, answered, and none: the "no passkeys yet" line.</summary>
+    public bool HasNoPasskeys => PasskeysLoaded && PasskeysUnavailable is null && Passkeys.Count == 0;
+
+    /// <summary>Load the passkeys. Online-only; a refusal is worded, not hidden.</summary>
+    public async Task<bool> LoadPasskeysAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.Passkeys(), cancellationToken);
+        if (!response.Ok)
+        {
+            PasskeysUnavailable = response.IsStillPending
+                ? "Passkeys need a connection."
+                : response.Error?.Message ?? "Passkeys could not be loaded.";
+            PasskeysLoaded = true;
+            Raise(nameof(HasNoPasskeys));
+            return false;
+        }
+        PasskeysUnavailable = null;
+        Passkeys.Clear();
+        if (response.Value.TryGetProperty("passkeys", out var keys))
+        {
+            foreach (var key in keys.EnumerateArray())
+            {
+                if (key.Deserialize<PasskeySummary>(CommandJson.Options) is { } row)
+                {
+                    Passkeys.Add(row);
+                }
+            }
+        }
+        PasskeysLoaded = true;
+        Raise(nameof(HasNoPasskeys));
+        return true;
+    }
+
+    /// <summary>Rename one, then show the list as the server now has it.</summary>
+    public async Task<bool> RenamePasskeyAsync(string id, string name, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(Commands.RenamePasskey(id, name.Trim()), cancellationToken);
+        if (!response.Ok)
+        {
+            ErrorMessage = response.Error?.Message;
+            return false;
+        }
+        ErrorMessage = null;
+        return await LoadPasskeysAsync(cancellationToken);
+    }
+
+    /// <summary>Revoke one, then show the list as the server now has it.</summary>
+    public async Task<bool> RevokePasskeyAsync(string id, CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.RevokePasskey(id), cancellationToken);
+        if (!response.Ok)
+        {
+            ErrorMessage = response.Error?.Message;
+            return false;
+        }
+        ErrorMessage = null;
+        return await LoadPasskeysAsync(cancellationToken);
     }
 
     /// <summary>The contacts this account imported, for the Contacts page (task 438494c7).</summary>

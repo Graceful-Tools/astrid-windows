@@ -24,6 +24,9 @@
         <local:ReminderStateConverter x:Key="ReminderText" />
         <local:NotVisibleConverter x:Key="NotVisible" />
         <local:WordsConverter x:Key="Words" />
+        <local:PasskeyAddedConverter x:Key="PasskeyAdded" />
+        <local:FixedWordsConverter x:Key="PasskeyRenameWord" Key="passkeys.rename" />
+        <local:FixedWordsConverter x:Key="PasskeyRevokeWord" Key="passkeys.revoke" />
         <local:FilterStateConverter x:Key="FilterText" />
         <local:MessageBylineConverter x:Key="Byline" />
         <local:TimerButtonConverter x:Key="TimerText" />
@@ -1450,6 +1453,46 @@
                                                            Foreground="{ThemeResource AstridTextPrimary}" />
                                                 <TextBlock x:Name="PasskeysNote" TextWrapping="Wrap"
                                                            Foreground="{ThemeResource AstridTextSecondary}" />
+                                                <!--
+                                                    The list the web's PasskeyManagementSection draws,
+                                                    over the v1 route the web added for it (task
+                                                    19fd9289, web c4ad9e68). Adding one is a
+                                                    WebAuthn ceremony and stays in the browser.
+                                                -->
+                                                <TextBlock TextWrapping="Wrap"
+                                                           Foreground="{ThemeResource AstridTextMuted}"
+                                                           Text="{x:Bind Shell.Settings.PasskeysUnavailable, Mode=OneWay}"
+                                                           Visibility="{x:Bind Shell.Settings.HasPasskeysUnavailable, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                                <TextBlock x:Name="PasskeysEmpty"
+                                                           Foreground="{ThemeResource AstridTextMuted}"
+                                                           Visibility="{x:Bind Shell.Settings.HasNoPasskeys, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                                <ItemsControl ItemsSource="{x:Bind Shell.Settings.Passkeys, Mode=OneWay}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="bindings:PasskeySummary">
+                                                            <Grid ColumnSpacing="8" Padding="0,3">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <StackPanel Grid.Column="0">
+                                                                    <TextBlock Text="{x:Bind Label}" />
+                                                                    <TextBlock FontSize="11" Foreground="{ThemeResource AstridTextMuted}"
+                                                                               Text="{x:Bind CreatedAt, Converter={StaticResource PasskeyAdded}}" />
+                                                                </StackPanel>
+                                                                <Button Grid.Column="1" Tag="{x:Bind Id}" Click="OnRenamePasskey"
+                                                                        Style="{StaticResource BubbleAction}"
+                                                                        AutomationProperties.Name="Rename passkey"
+                                                                        Content="{x:Bind Converter={StaticResource PasskeyRenameWord}}" />
+                                                                <Button Grid.Column="2" Tag="{x:Bind Id}" Click="OnRevokePasskey"
+                                                                        Style="{StaticResource BubbleAction}"
+                                                                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                                                        AutomationProperties.Name="Revoke passkey"
+                                                                        Content="{x:Bind Converter={StaticResource PasskeyRevokeWord}}" />
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
                                                 <Button x:Name="ManagePasskeysButton" Click="OnManagePasskeys" />
 
                                                 <TextBlock x:Name="DeleteTitle" Margin="0,10,0,0"

@@ -98,6 +98,52 @@ public sealed class SettingsViewModelTests
     };
 
     /// <summary>
+    /// Passkeys are listed as the server has them, a rename or revoke reloads the list, an empty
+    /// name is refused without asking, and a server without the route is worded rather than shown
+    /// as nothing (task 19fd9289).
+    /// </summary>
+    [Fact]
+    public async Task Passkeys_are_listed_renamed_revoked_and_a_missing_route_is_worded_task_19fd9289()
+    {
+        var core = new FakeCore()
+            .AnswerOk("passkeys", new { passkeys = new[]
+            {
+                new { id = "k1", name = (string?)"MacBook", createdAt = "2026-08-01T00:00:00Z", isSynced = true },
+                new { id = "k2", name = (string?)null, createdAt = "2026-07-01T00:00:00Z", isSynced = false },
+            } })
+            .AnswerOk("renamePasskey")
+            .AnswerOk("passkeys", new { passkeys = new[] { new { id = "k1", name = "Laptop", createdAt = "2026-08-01T00:00:00Z", isSynced = true } } })
+            .AnswerOk("revokePasskey")
+            .AnswerOk("passkeys", new { passkeys = Array.Empty<object>() })
+            .AnswerFailure("passkeys", AstridFailureKind.Refused, "This server does not offer passkeys to apps yet; manage them on the web.");
+        var view = new SettingsViewModel(core);
+        Assert.False(view.HasNoPasskeys, "not asked yet is not none");
+
+        Assert.True(await view.LoadPasskeysAsync());
+        Assert.Equal(2, view.Passkeys.Count);
+        Assert.Equal("MacBook", view.Passkeys[0].Label);
+        Assert.Equal("Passkey", view.Passkeys[1].Label);
+        Assert.True(view.Passkeys[0].IsSynced);
+
+        Assert.False(await view.RenamePasskeyAsync("k1", "   "));
+        Assert.DoesNotContain(core.SentKinds(), kind => kind == "renamePasskey");
+
+        Assert.True(await view.RenamePasskeyAsync("k1", " Laptop "));
+        Assert.Single(view.Passkeys);
+        Assert.Equal("Laptop", view.Passkeys[0].Label);
+        Assert.Contains(core.Sent, json => json.Contains("\"kind\":\"renamePasskey\"") && json.Contains("\"name\":\"Laptop\""));
+
+        Assert.True(await view.RevokePasskeyAsync("k1"));
+        Assert.Empty(view.Passkeys);
+        Assert.True(view.HasNoPasskeys);
+
+        Assert.False(await view.LoadPasskeysAsync());
+        Assert.True(view.HasPasskeysUnavailable);
+        Assert.Contains("does not offer passkeys", view.PasskeysUnavailable);
+        Assert.False(view.HasNoPasskeys);
+    }
+
+    /// <summary>
     /// The Contacts page lists what the server holds, with a name when there is one and the
     /// address when there is not, and clearing empties it; offline says so (task 438494c7).
     /// </summary>

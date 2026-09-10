@@ -698,6 +698,34 @@ public sealed partial class WordsConverter : IValueConverter
         throw new NotSupportedException("words are not a value to read back");
 }
 
+/// <summary>"Added" plus the day a passkey was registered, in the reader's format (task 19fd9289).</summary>
+public sealed partial class PasskeyAddedConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is string instant
+        && DateTimeOffset.TryParse(instant, null, System.Globalization.DateTimeStyles.RoundtripKind, out var parsed)
+            ? Strings.Get("passkeys.added") + parsed.ToLocalTime().ToString("d")
+            : string.Empty;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a date line is not a value to read back");
+}
+
+/// <summary>
+/// One word from the strings table, for a button inside a data template — which cannot reach the
+/// page to be worded there. The key is set where the converter is declared.
+/// </summary>
+public sealed partial class FixedWordsConverter : IValueConverter
+{
+    public string Key { get; set; } = string.Empty;
+
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        Strings.Get(Key);
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("words are not a value to read back");
+}
+
 public sealed partial class ChoiceLabelConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language) =>

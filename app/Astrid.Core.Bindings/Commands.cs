@@ -289,6 +289,16 @@ public static class Commands
     /// <summary>Remove every imported contact.</summary>
     public static object ClearContacts() => new KindOnly("clearContacts");
 
+    /// <summary>The passkeys the account signs in with (task 19fd9289).</summary>
+    public static object Passkeys() => new KindOnly("passkeys");
+
+    /// <summary>Rename a passkey.</summary>
+    public static object RenamePasskey(string id, string name) =>
+        new PasskeyNameRequest("renamePasskey", id, name);
+
+    /// <summary>Revoke a passkey.</summary>
+    public static object RevokePasskey(string id) => new WithId("revokePasskey", id);
+
     /// <summary>
     /// Delete the account for good. The core refuses anything but the exact phrase, as the server
     /// does, and signs out afterwards.
@@ -902,6 +912,15 @@ public static class Commands
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("columnId")] string ColumnId,
         [property: JsonPropertyName("listId")] string ListId);
+
+    private sealed record WithId(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("id")] string Id);
+
+    private sealed record PasskeyNameRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("id")] string Id,
+        [property: JsonPropertyName("name")] string Name);
 
     private sealed record ClosedReasonRequest(
         [property: JsonPropertyName("kind")] string Kind,

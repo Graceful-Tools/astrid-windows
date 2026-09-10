@@ -638,6 +638,21 @@ public sealed record SmartTaskSettings
     [JsonPropertyName("smartTaskCreationEnabled")] public bool SmartTaskCreationEnabled { get; init; } = true;
 }
 
+/// <summary>One passkey, as the Account page lists it (task 19fd9289).</summary>
+public sealed record PasskeySummary
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")] public string? Name { get; init; }
+
+    [JsonPropertyName("createdAt")] public string? CreatedAt { get; init; }
+
+    /// <summary>A synced key (phone, password manager) rather than one bound to a device.</summary>
+    [JsonPropertyName("isSynced")] public bool IsSynced { get; init; }
+
+    public string Label => string.IsNullOrWhiteSpace(Name) ? "Passkey" : Name;
+}
+
 /// <summary>One imported contact, as the Contacts page lists it (task 438494c7).</summary>
 public sealed record ContactSummary
 {

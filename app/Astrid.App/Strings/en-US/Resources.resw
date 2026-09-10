@@ -124,12 +124,6 @@
   <data name="account_passkeys" xml:space="preserve">
     <value>Passkeys</value>
   </data>
-  <data name="account_passkeys_note" xml:space="preserve">
-    <value>Passkeys are managed on the web for now: the server's passkey API is not yet available to this app.</value>
-  </data>
-  <data name="account_manage_in_browser" xml:space="preserve">
-    <value>Manage in browser</value>
-  </data>
   <data name="account_delete_title" xml:space="preserve">
     <value>Delete account</value>
   </data>
@@ -258,6 +252,36 @@
   </data>
   <data name="terms_title" xml:space="preserve">
     <value>Terms of Service</value>
+  </data>
+  <data name="passkeys_note" xml:space="preserve">
+    <value>Passkeys sign you in without a password. Adding one happens in the browser; renaming and revoking happen here.</value>
+  </data>
+  <data name="passkeys_none" xml:space="preserve">
+    <value>No passkeys registered yet.</value>
+  </data>
+  <data name="passkeys_add" xml:space="preserve">
+    <value>Add a passkey in the browser</value>
+  </data>
+  <data name="passkeys_added" xml:space="preserve">
+    <value>Added </value>
+  </data>
+  <data name="passkeys_synced" xml:space="preserve">
+    <value>Synced</value>
+  </data>
+  <data name="passkeys_rename" xml:space="preserve">
+    <value>Rename</value>
+  </data>
+  <data name="passkeys_revoke" xml:space="preserve">
+    <value>Revoke</value>
+  </data>
+  <data name="passkeys_rename_prompt" xml:space="preserve">
+    <value>Name this passkey</value>
+  </data>
+  <data name="passkeys_revoke_confirm" xml:space="preserve">
+    <value>Revoke this passkey? You will no longer be able to sign in with it.</value>
+  </data>
+  <data name="passkeys_revoke_yes" xml:space="preserve">
+    <value>Revoke it</value>
   </data>
   <data name="defaults_all_day" xml:space="preserve">
     <value>All day</value>

@@ -445,8 +445,9 @@ public sealed partial class ShellPage : UserControl
         InfoUpdatedLabel.Text = Strings.Get("account.last_updated");
         InfoIdLabel.Text = Strings.Get("account.account_id");
         PasskeysTitle.Text = Strings.Get("account.passkeys");
-        PasskeysNote.Text = Strings.Get("account.passkeys_note");
-        ManagePasskeysButton.Content = Strings.Get("account.manage_in_browser");
+        PasskeysNote.Text = Strings.Get("passkeys.note");
+        PasskeysEmpty.Text = Strings.Get("passkeys.none");
+        ManagePasskeysButton.Content = Strings.Get("passkeys.add");
         DeleteTitle.Text = Strings.Get("account.delete_title");
         DeleteWarning.Text = Strings.Get("account.delete_warning");
         DeleteConfirmationBox.PlaceholderText = Strings.Get("account.type_to_confirm");
@@ -479,12 +480,71 @@ public sealed partial class ShellPage : UserControl
     private async void OnResendVerification(object sender, RoutedEventArgs args) =>
         await Shell.Settings.ResendVerificationAsync();
 
-    /// <summary>
-    /// Passkeys live on the web until the server offers them under /api/v1 (web task c4ad9e68);
-    /// registering one needs the browser's WebAuthn ceremony in any case.
-    /// </summary>
+    /// <summary>Registering a passkey is the browser's WebAuthn ceremony; the list here follows.</summary>
     private async void OnManagePasskeys(object sender, RoutedEventArgs args) =>
         await Windows.System.Launcher.LaunchUriAsync(new Uri("https://astrid.cc/settings"));
+
+    /// <summary>Rename a passkey: a box in a flyout, Enter to save (task 19fd9289).</summary>
+    private void OnRenamePasskey(object sender, RoutedEventArgs args)
+    {
+        if (sender is not FrameworkElement { Tag: string id } anchor)
+        {
+            return;
+        }
+        var current = Shell.Settings.Passkeys.FirstOrDefault(key => key.Id == id);
+        var box = new TextBox
+        {
+            Text = current?.Name ?? string.Empty,
+            PlaceholderText = Strings.Get("passkeys.rename_prompt"),
+            MinWidth = 220,
+        };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(box, "Passkey name");
+        var flyout = new Flyout { Content = box };
+        box.KeyDown += async (_, key) =>
+        {
+            if (key.Key == VirtualKey.Enter)
+            {
+                key.Handled = true;
+                flyout.Hide();
+                await Shell.Settings.RenamePasskeyAsync(id, box.Text);
+            }
+        };
+        flyout.ShowAt(anchor);
+    }
+
+    /// <summary>Revoke a passkey, after asking — losing a way to sign in is worth a question.</summary>
+    private void OnRevokePasskey(object sender, RoutedEventArgs args)
+    {
+        if (sender is not FrameworkElement { Tag: string id } anchor)
+        {
+            return;
+        }
+        var confirm = new Button
+        {
+            Content = Strings.Get("passkeys.revoke_yes"),
+            Style = (Style)Application.Current.Resources["AccentButtonStyle"],
+        };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(confirm, "Confirm revoke passkey");
+        var flyout = new Flyout
+        {
+            Content = new StackPanel
+            {
+                Spacing = 8,
+                MaxWidth = 260,
+                Children =
+                {
+                    new TextBlock { TextWrapping = TextWrapping.Wrap, Text = Strings.Get("passkeys.revoke_confirm") },
+                    confirm,
+                },
+            },
+        };
+        confirm.Click += async (_, _) =>
+        {
+            flyout.Hide();
+            await Shell.Settings.RevokePasskeyAsync(id);
+        };
+        flyout.ShowAt(anchor);
+    }
 
     /// <summary>
     /// Delete the account. The core has already signed out by the time this returns true; what is
@@ -993,6 +1053,8 @@ public sealed partial class ShellPage : UserControl
         try
         {
             await Shell.LoadSettingsAsync();
+            // The Account page is the one that opens, and its passkeys come from the server.
+            await Shell.Settings.LoadPasskeysAsync();
             await Shell.Settings.LoadAgentsAsync();
             await Shell.Settings.LoadGoogleSyncModeAsync();
             await Shell.Settings.LoadWebhookAsync();

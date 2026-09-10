@@ -39,7 +39,7 @@ milestones; this tracks the *product*.
 | Task settings | ✅ | ✅ | The web's Tasks page: Email-to-Task on/off and address, default due date and time for emailed tasks — stored on the server through `/api/v1/users/me/smart-tasks`, shaped and validated in the core |
 | Attachments | ✅ | ✅ | Open, attach from disk, paste from the clipboard; drawn in the comment they arrived on. A picture draws as a thumbnail from bytes already on this machine — the Outbox's own copy for one just posted — rather than being fetched back (AITD-308). Queued offline, with the bytes copied so the original can move away |
 | Timer on a task | ✅ | ✅ | Windows keeps a running timer across a restart; the Mac's is in memory |
-| Account screen and reminder settings | ✅ | ✅ | Push, email, default offset, digest, quiet hours. The Account page carries the web's sections: profile photo and display name, email verification with resend, account information, and account deletion behind the typed phrase the server requires. Passkeys wait on a `/api/v1` route (web task c4ad9e68) and hand off to the browser meanwhile |
+| Account screen and reminder settings | ✅ | ✅ | Push, email, default offset, digest, quiet hours. The Account page carries the web's sections: profile photo and display name, email verification with resend, account information, and account deletion behind the typed phrase the server requires. Passkeys are listed, renamed and revoked over the web's `/api/v1/users/me/passkeys`; adding one is the browser's WebAuthn ceremony |
 | Global quick-add hotkey | ✅ | ✅ | Ctrl+Shift+A; not yet rebindable |
 | Command palette | ✅ | ✅ | Ctrl+K, with the Mac's own fuzzy ranking |
 | First-run tour | ✅ | ✅ | The three things nobody can discover by looking |
