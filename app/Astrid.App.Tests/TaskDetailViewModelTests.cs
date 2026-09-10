@@ -407,6 +407,39 @@ public sealed class TaskDetailViewModelTests
         Assert.Equal("this task has not reached the server yet, so it cannot be shared", view.ErrorMessage);
     }
 
+    /// <summary>
+    /// The detail's buttons change what they show at once and let the core catch up; a refused
+    /// write puts the old value back (task cdb30d3d).
+    /// </summary>
+    [Fact]
+    public async Task Priority_completion_and_timer_show_at_once_and_a_refusal_puts_them_back_task_cdb30d3d()
+    {
+        var core = OpenedTask()
+            .Hold("updateTask")
+            .AnswerOk("updateTask", new { id = "t1" })
+            .AnswerOk("taskDetail", Detail(priority: 2))
+            .AnswerFailure("completeTask", AstridFailureKind.Refused, "not yours")
+            .AnswerOk("taskDetail", Detail(priority: 2))
+            .AnswerFailure("startTimer", AstridFailureKind.Refused, "no timer for you")
+            .AnswerOk("taskDetail", Detail(priority: 2));
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+        Assert.Equal(3, view.Priority);
+
+        var pending = view.SetPriorityAsync(2);
+        Assert.Equal(2, view.Priority); // before the core has answered
+        core.Release("updateTask");
+        Assert.True(await pending);
+        Assert.Equal(2, view.Priority);
+
+        Assert.False(await view.SetCompletedAsync(true));
+        Assert.False(view.Completed); // refused, so put back
+        Assert.Equal("not yours", view.ErrorMessage);
+
+        Assert.False(await view.SetTimingAsync(true));
+        Assert.False(view.IsTiming);
+    }
+
     private static FakeCore OpenedTask() => new FakeCore()
         .AnswerOk("taskDetail", Detail())
         .AnswerOk("dueDateOptions", NoDuePicks())

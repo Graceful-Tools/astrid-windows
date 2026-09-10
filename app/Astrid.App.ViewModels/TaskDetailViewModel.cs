@@ -90,10 +90,14 @@ public sealed class TaskDetailViewModel : ObservableObject
         {
             return false;
         }
+        // The button reads as pressed before the answer (task cdb30d3d); the answer then carries
+        // the real state, including what a stopped run was worth.
+        Timer = Timer with { IsRunning = running };
         var response = await _core.CallAsync(
             running ? Commands.StartTimer(TaskId) : Commands.StopTimer(TaskId), cancellationToken);
         if (!Handle(response))
         {
+            await RevertAsync(cancellationToken);
             return false;
         }
         var state = response.Read<TimerState>();
@@ -472,8 +476,24 @@ public sealed class TaskDetailViewModel : ObservableObject
         return saved;
     }
 
-    public Task<bool> SetPriorityAsync(int priority, CancellationToken cancellationToken = default)
-        => UpdateAsync(new Dictionary<string, object?> { ["priority"] = priority }, cancellationToken);
+    /// <summary>
+    /// Set the priority. The square lights before the core has answered (task cdb30d3d).
+    /// </summary>
+    /// <remarks>
+    /// Optimistic on purpose: the write is local-first through the Outbox, so the answer is the
+    /// cache agreeing a moment later. Showing the old value until then is what made the buttons
+    /// feel dead. A refused write reloads, which puts the old value back.
+    /// </remarks>
+    public async Task<bool> SetPriorityAsync(int priority, CancellationToken cancellationToken = default)
+    {
+        Priority = priority;
+        if (await UpdateAsync(new Dictionary<string, object?> { ["priority"] = priority }, cancellationToken))
+        {
+            return true;
+        }
+        await RevertAsync(cancellationToken);
+        return false;
+    }
 
     /// <summary>Set or clear the due date.</summary>
     /// <param name="dueDateTime">An ISO-8601 instant, or null to clear it.</param>
@@ -1042,9 +1062,13 @@ public sealed class TaskDetailViewModel : ObservableObject
         {
             return false;
         }
+        // The mark flips at once; the reload afterwards says what completing really did — a
+        // repeating task rolls forward and comes back unchecked (task cdb30d3d).
+        Completed = completed;
         var response = await _core.CallAsync(Commands.CompleteTask(TaskId, completed), cancellationToken);
         if (!Handle(response))
         {
+            await RevertAsync(cancellationToken);
             return false;
         }
         await ReloadAsync(cancellationToken);
@@ -1326,6 +1350,17 @@ public sealed class TaskDetailViewModel : ObservableObject
         }
         await ReloadAsync(cancellationToken);
         return true;
+    }
+
+    /// <summary>
+    /// Put an optimistic change back after a refused write: reload from the cache, but keep the
+    /// reason the write was refused, which the reload would otherwise clear (task cdb30d3d).
+    /// </summary>
+    private async Task RevertAsync(CancellationToken cancellationToken)
+    {
+        var reason = ErrorMessage;
+        await ReloadAsync(cancellationToken);
+        ErrorMessage = reason;
     }
 
     private bool Handle(AstridResponse response)
