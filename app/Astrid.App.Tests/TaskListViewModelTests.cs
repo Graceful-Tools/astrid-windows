@@ -157,6 +157,34 @@ public sealed class TaskListViewModelTests
             && json.Contains("\"quickAdd\":true"));
     }
 
+    /// <summary>
+    /// Adding a task says so, with the title the core made of it — the one that ends up on the
+    /// row — and the notice can be taken down again (task 79d4604c). A failed add says nothing
+    /// of the kind.
+    /// </summary>
+    [Fact]
+    public async Task Adding_a_task_says_so_with_the_title_the_core_made_task_79d4604c()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(0))
+            .AnswerOk("createTask", new { id = "t1", title = "Pushups" })
+            .AnswerOk("rowsForList", Window(1, "Pushups"))
+            .AnswerFailure("createTask", AstridFailureKind.Refused, "not yours");
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Home");
+        Assert.False(view.HasCreatedNotice);
+
+        Assert.True(await view.CreateTaskAsync("Pushups #health"));
+        Assert.Equal("Pushups", view.LastCreatedTitle);
+        Assert.True(view.HasCreatedNotice);
+
+        view.ClearCreatedNotice();
+        Assert.False(view.HasCreatedNotice);
+
+        Assert.False(await view.CreateTaskAsync("Nope"));
+        Assert.False(view.HasCreatedNotice);
+    }
+
     [Fact]
     public async Task A_refusal_is_reported()
     {

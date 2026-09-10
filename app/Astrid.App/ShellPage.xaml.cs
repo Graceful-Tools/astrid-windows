@@ -199,9 +199,21 @@ public sealed partial class ShellPage : UserControl
             // Cleared only on success, so a task that could not be created is not also a task the
             // user has to retype.
             QuickAddBox.Text = string.Empty;
+            QuickAddBox.Focus(FocusState.Programmatic);
+            // The notice stays as long as the web's toast does. A second add in the meantime
+            // restarts the clock rather than having the first one's clock take the second down.
+            var ticket = ++_addedNoticeTicket;
+            await Task.Delay(TimeSpan.FromSeconds(2.5));
+            if (ticket == _addedNoticeTicket)
+            {
+                Shell.Tasks.ClearCreatedNotice();
+            }
+            return;
         }
         QuickAddBox.Focus(FocusState.Programmatic);
     }
+
+    private int _addedNoticeTicket;
 
     /// <summary>
     /// The mark on a row, tapped.
@@ -318,6 +330,7 @@ public sealed partial class ShellPage : UserControl
         DueTimeHint.Text = Strings.Get("smart.default_due_time_hint");
         LayoutBox.Header = Strings.Get("smart.layout");
         LayoutHint.Text = Strings.Get("smart.layout_hint");
+        AddedPrefix.Text = Strings.Get("quickadd.added");
         SmartParsingToggle.Header = Strings.Get("smart.parsing");
         SmartParsingHint.Text = Strings.Get("smart.parsing_hint");
         SubtasksBox.Header = Strings.Get("smart.subtasks");

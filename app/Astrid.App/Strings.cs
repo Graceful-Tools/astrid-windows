@@ -141,6 +141,7 @@ internal static class Strings
         ["smart.subtasks_hint"] = "How sub tasks appear in your lists. Synced across your devices.",
         ["smart.subtasks.indented"] = "In lists, indented",
         ["smart.subtasks.under_parent"] = "Inside parent task only",
+        ["quickadd.added"] = "Added ",
         ["defaults.account_agent"] = "Account default",
         ["defaults.no_repository"] = "None",
         ["defaults.all_day"] = "All day",

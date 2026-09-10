@@ -2051,6 +2051,10 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
                         <TextBox x:Name="QuickAddBox"
                                  Grid.Column="0"
                                  PlaceholderText="Add a task"
@@ -2069,6 +2073,17 @@
                                 Style="{ThemeResource AccentButtonStyle}">
                             <FontIcon FontSize="16" Glyph="&#xE710;" />
                         </Button>
+                        <!--
+                            What just happened, in words, for a moment: the web's "Task created"
+                            toast (task 79d4604c). The title is the core's, after any #list tag
+                            came out of it.
+                        -->
+                        <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Margin="4,6,0,0" FontSize="12"
+                                   Foreground="{ThemeResource AstridTextSecondary}"
+                                   AutomationProperties.Name="Added"
+                                   Visibility="{x:Bind Shell.Tasks.HasCreatedNotice, Mode=OneWay, Converter={StaticResource Visible}}">
+                            <Run x:Name="AddedPrefix" /><Run Text="&#x201C;" /><Run Text="{x:Bind Shell.Tasks.LastCreatedTitle, Mode=OneWay}" FontWeight="SemiBold" /><Run Text="&#x201D;" />
+                        </TextBlock>
                     </Grid>
                 </Border>
 

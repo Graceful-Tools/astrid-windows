@@ -42,6 +42,7 @@ public sealed class TaskListViewModel : ObservableObject
     private string _searchQuery = string.Empty;
     private bool _isSearching;
     private bool _isFiltered;
+    private string? _lastCreatedTitle;
 
     public TaskListViewModel(IAstridCore core)
     {
@@ -421,6 +422,33 @@ public sealed class TaskListViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// The title of the task just added, as the core made it — after any <c>#list</c> tags came
+    /// out — so the screen can say what happened (task 79d4604c). Null once the notice is gone.
+    /// </summary>
+    /// <remarks>
+    /// The web answers a quick add with a toast, "Task created: … has been added". Here the box
+    /// empties and the row appears, but a row among fifty is easy to miss and a person who is not
+    /// sure the task went in adds it again. The row also carries a pending mark until the server
+    /// has it; this is the word beside the box.
+    /// </remarks>
+    public string? LastCreatedTitle
+    {
+        get => _lastCreatedTitle;
+        private set
+        {
+            if (Set(ref _lastCreatedTitle, value))
+            {
+                Raise(nameof(HasCreatedNotice));
+            }
+        }
+    }
+
+    public bool HasCreatedNotice => LastCreatedTitle is not null;
+
+    /// <summary>Take the notice down; the shell does this a moment after it appears.</summary>
+    public void ClearCreatedNotice() => LastCreatedTitle = null;
+
     /// <summary>Add a task to this list.</summary>
     public async Task<bool> CreateTaskAsync(string title, CancellationToken cancellationToken = default)
     {
@@ -441,6 +469,10 @@ public sealed class TaskListViewModel : ObservableObject
         {
             return false;
         }
+        LastCreatedTitle = response.Value.TryGetProperty("title", out var made)
+                           && made.GetString() is { Length: > 0 } named
+            ? named
+            : trimmed;
 
         await RefreshAsync(cancellationToken);
         return true;

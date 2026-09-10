@@ -226,6 +226,9 @@
   <data name="smart_subtasks_under_parent" xml:space="preserve">
     <value>Inside parent task only</value>
   </data>
+  <data name="quickadd_added" xml:space="preserve">
+    <value>Added </value>
+  </data>
   <data name="defaults_all_day" xml:space="preserve">
     <value>All day</value>
   </data>
