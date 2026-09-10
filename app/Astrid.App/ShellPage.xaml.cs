@@ -65,6 +65,17 @@ public sealed partial class ShellPage : UserControl
         WontDoChip.Text = Strings.Get("detail.wont_do_chip");
         WordAccountSection();
         WordTasksSection();
+        // The squares follow the open task wherever its priority came from — a tap, a sync, a
+        // task opened from the palette or a pill — not only the handlers that remembered to
+        // repaint (task 204c9d98).
+        Shell.Detail.PropertyChanged += (_, changed) =>
+        {
+            if (changed.PropertyName is nameof(TaskDetailViewModel.Priority)
+                or nameof(TaskDetailViewModel.IsOpen))
+            {
+                SyncDetailPriority();
+            }
+        };
         MarkdownView.ReferenceFollowed = reference => _ = FollowReferenceAsync(reference);
         MarkdownView.LinkFollowed = link => _ = FollowLinkAsync(link);
 
@@ -2555,31 +2566,19 @@ public sealed partial class ShellPage : UserControl
         Paint(PriorityMedium, 2);
         Paint(PriorityHigh, 3);
 
+        // Which square is lit and in what is a rule (PrioritySwatch, tested); this only paints.
         void Paint(Button button, int level)
         {
-            // Same colours as the row stripe and every other client, read from the one converter
-            // that owns them rather than restated here.
-            var colour = (Brush)PriorityColours.Convert(level, typeof(Brush), null!, string.Empty);
-            // No-priority has no colour of its own in the STRIPE — that deliberately draws nothing
-            // — but a swatch still has to be visible, so it takes the grey the unmarked checkbox
-            // image is drawn in rather than a muted text colour that matches nothing on screen.
-            if (level == 0)
-            {
-                colour = new SolidColorBrush(
-                    Colours.Parse(PriorityPalette.None) ?? Colors.Gray);
-            }
-
-            button.BorderBrush = colour;
-            var on = level == chosen;
-            button.Background = on ? colour : new SolidColorBrush(Colors.Transparent);
-            button.Foreground = on
-                ? new SolidColorBrush(Colors.White)
-                : colour;
+            var (background, foreground, border) = PrioritySwatch.For(level, chosen);
+            button.BorderBrush = SwatchBrush(border);
+            button.Background = SwatchBrush(background);
+            button.Foreground = SwatchBrush(foreground);
         }
-    }
 
-    /// <summary>The one place the priority colours are decided, borrowed for the squares.</summary>
-    private static readonly PriorityBrushConverter PriorityColours = new();
+        static Brush SwatchBrush(string hex) => hex == PrioritySwatch.Transparent
+            ? new SolidColorBrush(Colors.Transparent)
+            : new SolidColorBrush(Colours.Parse(hex) ?? Colors.Gray);
+    }
 
     /// <summary>Put the highlight where the view model says the selection is.</summary>
     private void SyncSelectionFromViewModel()
