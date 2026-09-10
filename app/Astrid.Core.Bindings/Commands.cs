@@ -283,6 +283,12 @@ public static class Commands
     /// <summary>Send the verification email again.</summary>
     public static object ResendVerification() => new KindOnly("resendVerification");
 
+    /// <summary>The contacts this account imported for collaborator suggestions (task 438494c7).</summary>
+    public static object Contacts() => new KindOnly("contacts");
+
+    /// <summary>Remove every imported contact.</summary>
+    public static object ClearContacts() => new KindOnly("clearContacts");
+
     /// <summary>
     /// Delete the account for good. The core refuses anything but the exact phrase, as the server
     /// does, and signs out afterwards.

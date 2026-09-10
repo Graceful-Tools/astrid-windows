@@ -1289,6 +1289,59 @@
                                                     <TextBlock Text="Your data" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </ListViewItem>
+                                            <!--
+                                                The web's last four settings pages (task 438494c7).
+                                                Contacts is a page; Help, Privacy and Terms open the
+                                                web's own pages in the browser, so there is one copy
+                                                of each — and the Store's checklist has its privacy
+                                                policy reachable from inside the app.
+                                            -->
+                                            <ListViewItem Tag="Contacts" AutomationProperties.Name="Contacts">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="&#xE716;"
+                                                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                               FontSize="15" Width="20"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{ThemeResource AstridTextMuted}" />
+                                                    <TextBlock x:Name="ContactsNavLabel" Text="Contacts" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </ListViewItem>
+                                            <ListViewItem Tag="Help" AutomationProperties.Name="Help and support">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="&#xE897;"
+                                                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                               FontSize="15" Width="20"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{ThemeResource AstridTextMuted}" />
+                                                    <TextBlock x:Name="HelpNavLabel" Text="Help &amp; Support" VerticalAlignment="Center" />
+                                                    <FontIcon Glyph="&#xE8A7;" FontSize="11" VerticalAlignment="Center"
+                                                              Foreground="{ThemeResource AstridTextMuted}" />
+                                                </StackPanel>
+                                            </ListViewItem>
+                                            <ListViewItem Tag="Privacy" AutomationProperties.Name="Privacy policy">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="&#xE72E;"
+                                                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                               FontSize="15" Width="20"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{ThemeResource AstridTextMuted}" />
+                                                    <TextBlock x:Name="PrivacyNavLabel" Text="Privacy Policy" VerticalAlignment="Center" />
+                                                    <FontIcon Glyph="&#xE8A7;" FontSize="11" VerticalAlignment="Center"
+                                                              Foreground="{ThemeResource AstridTextMuted}" />
+                                                </StackPanel>
+                                            </ListViewItem>
+                                            <ListViewItem Tag="Terms" AutomationProperties.Name="Terms of service">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="&#xE8A5;"
+                                                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                               FontSize="15" Width="20"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{ThemeResource AstridTextMuted}" />
+                                                    <TextBlock x:Name="TermsNavLabel" Text="Terms of Service" VerticalAlignment="Center" />
+                                                    <FontIcon Glyph="&#xE8A7;" FontSize="11" VerticalAlignment="Center"
+                                                              Foreground="{ThemeResource AstridTextMuted}" />
+                                                </StackPanel>
+                                            </ListViewItem>
                                         </ListView>
                                     </Grid>
 
@@ -1446,6 +1499,33 @@
                                                           SelectionChanged="OnSmartTaskChoiceChosen" />
                                                 <TextBlock x:Name="DueTimeHint" FontSize="11" TextWrapping="Wrap"
                                                            Foreground="{ThemeResource AstridTextMuted}" />
+                                            </StackPanel>
+
+                                            <StackPanel x:Name="ContactsSection" Spacing="10"
+                                                        Visibility="Collapsed">
+                                                <TextBlock x:Name="ContactsDescription" TextWrapping="Wrap"
+                                                           Foreground="{ThemeResource AstridTextSecondary}" />
+                                                <TextBlock Foreground="{ThemeResource AstridTextMuted}"
+                                                           Visibility="{x:Bind Shell.Settings.HasContacts, Mode=OneWay, Converter={StaticResource Visible}}">
+                                                    <Run Text="{x:Bind Shell.Settings.ContactsTotal, Mode=OneWay}" /><Run x:Name="ContactsCountSuffix" />
+                                                </TextBlock>
+                                                <TextBlock x:Name="ContactsEmpty"
+                                                           Foreground="{ThemeResource AstridTextMuted}"
+                                                           Visibility="{x:Bind Shell.Settings.ContactsAreEmpty, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                                <ItemsControl ItemsSource="{x:Bind Shell.Settings.Contacts, Mode=OneWay}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="bindings:ContactSummary">
+                                                            <StackPanel Padding="0,3">
+                                                                <TextBlock Text="{x:Bind Label}" />
+                                                                <TextBlock Text="{x:Bind Email}" FontSize="11"
+                                                                           Foreground="{ThemeResource AstridTextMuted}" />
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <Button x:Name="ClearContactsButton" Click="OnClearContacts"
+                                                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                                        Visibility="{x:Bind Shell.Settings.HasContacts, Mode=OneWay, Converter={StaticResource Visible}}" />
                                             </StackPanel>
 
                                             <StackPanel x:Name="RemindersSection" Spacing="10"

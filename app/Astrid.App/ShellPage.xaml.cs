@@ -65,6 +65,7 @@ public sealed partial class ShellPage : UserControl
         WontDoChip.Text = Strings.Get("detail.wont_do_chip");
         WordAccountSection();
         WordTasksSection();
+        WordContactsSection();
         // The squares follow the open task wherever its priority came from — a tap, a sync, a
         // task opened from the palette or a pill — not only the handlers that remembered to
         // repaint (task 204c9d98).
@@ -316,6 +317,49 @@ public sealed partial class ShellPage : UserControl
         await Shell.SignIn.CancelAsync();
 
     private async void OnSignOut(object sender, RoutedEventArgs args) => await Shell.SignOutAsync();
+
+    /// <summary>The Contacts page's words, and the three doors' (task 438494c7).</summary>
+    private void WordContactsSection()
+    {
+        ContactsNavLabel.Text = Strings.Get("contacts.title");
+        HelpNavLabel.Text = Strings.Get("help.title");
+        PrivacyNavLabel.Text = Strings.Get("privacy.title");
+        TermsNavLabel.Text = Strings.Get("terms.title");
+        ContactsDescription.Text = Strings.Get("contacts.description");
+        ContactsCountSuffix.Text = Strings.Get("contacts.count_suffix");
+        ContactsEmpty.Text = Strings.Get("contacts.empty");
+        ClearContactsButton.Content = Strings.Get("contacts.clear");
+    }
+
+    /// <summary>Clear every imported contact, after asking — the web asks too.</summary>
+    private void OnClearContacts(object sender, RoutedEventArgs args)
+    {
+        var confirm = new Button
+        {
+            Content = Strings.Get("contacts.clear_yes"),
+            Style = (Style)Application.Current.Resources["AccentButtonStyle"],
+        };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(confirm, "Confirm clear contacts");
+        var flyout = new Flyout
+        {
+            Content = new StackPanel
+            {
+                Spacing = 8,
+                MaxWidth = 260,
+                Children =
+                {
+                    new TextBlock { TextWrapping = TextWrapping.Wrap, Text = Strings.Get("contacts.clear_confirm") },
+                    confirm,
+                },
+            },
+        };
+        confirm.Click += async (_, _) =>
+        {
+            flyout.Hide();
+            await Shell.Settings.ClearContactsAsync();
+        };
+        flyout.ShowAt(ClearContactsButton);
+    }
 
     /// <summary>The Tasks page's words, and the layout combo's (task c0f3db19).</summary>
     private void WordTasksSection()
@@ -984,6 +1028,20 @@ public sealed partial class ShellPage : UserControl
         {
             return;
         }
+        // Three entries are doors, not pages: the web's own Help, Privacy and Terms open in the
+        // browser, so there is one copy of each (task 438494c7). The rail stays where it was.
+        var door = section switch
+        {
+            "Help" => "https://astrid.cc/help",
+            "Privacy" => "https://astrid.cc/privacy",
+            "Terms" => "https://astrid.cc/terms",
+            _ => null,
+        };
+        if (door is not null)
+        {
+            await Windows.System.Launcher.LaunchUriAsync(new Uri(door));
+            return;
+        }
         ShowSettingsSection(section);
 
         // Loaded when its page is opened rather than when the flyout is: it is a network round
@@ -991,6 +1049,10 @@ public sealed partial class ShellPage : UserControl
         if (section == "ApiAccess")
         {
             await Shell.Settings.LoadApiAccessAsync();
+        }
+        if (section == "Contacts")
+        {
+            await Shell.Settings.LoadContactsAsync();
         }
     }
 
@@ -1061,6 +1123,7 @@ public sealed partial class ShellPage : UserControl
         {
             "Reminders" => "Reminders",
             "Tasks" => Strings.Get("smart.title"),
+            "Contacts" => Strings.Get("contacts.title"),
             "Appearance" => "Appearance",
             "Agents" => "AI agents",
             "ApiAccess" => "API access",
@@ -1071,6 +1134,7 @@ public sealed partial class ShellPage : UserControl
 
         AccountSection.Visibility = Visible("Account");
         TasksSection.Visibility = Visible("Tasks");
+        ContactsSection.Visibility = Visible("Contacts");
         RemindersSection.Visibility = Visible("Reminders");
         AppearanceSection.Visibility = Visible("Appearance");
         AgentsSection.Visibility = Visible("Agents");

@@ -229,6 +229,36 @@
   <data name="quickadd_added" xml:space="preserve">
     <value>Added </value>
   </data>
+  <data name="contacts_title" xml:space="preserve">
+    <value>Contacts</value>
+  </data>
+  <data name="contacts_description" xml:space="preserve">
+    <value>People imported to suggest as collaborators when you share a list. Windows has no address book to import from; import on the web or from your phone, and they appear here.</value>
+  </data>
+  <data name="contacts_empty" xml:space="preserve">
+    <value>No contacts imported yet.</value>
+  </data>
+  <data name="contacts_count_suffix" xml:space="preserve">
+    <value> contacts</value>
+  </data>
+  <data name="contacts_clear" xml:space="preserve">
+    <value>Clear all contacts</value>
+  </data>
+  <data name="contacts_clear_confirm" xml:space="preserve">
+    <value>Remove every imported contact? This cannot be undone.</value>
+  </data>
+  <data name="contacts_clear_yes" xml:space="preserve">
+    <value>Clear contacts</value>
+  </data>
+  <data name="help_title" xml:space="preserve">
+    <value>Help &amp; Support</value>
+  </data>
+  <data name="privacy_title" xml:space="preserve">
+    <value>Privacy Policy</value>
+  </data>
+  <data name="terms_title" xml:space="preserve">
+    <value>Terms of Service</value>
+  </data>
   <data name="defaults_all_day" xml:space="preserve">
     <value>All day</value>
   </data>

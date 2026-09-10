@@ -50,6 +50,7 @@ milestones; this tracks the *product*.
 | Deleting a Google twin when a task is deleted here | ✅ | ✅ | A ledger captures the link at delete time — the server's link row cascades away with the task — and the next pass removes the twin and tombstones the id |
 | Agent Hub | ✅ | ✅ | Modes, credentials, Copilot, the webhook editor and the agents an account registers of its own |
 | Profile numbers and data export | ✅ | ✅ | JSON or CSV, written where you choose |
+| Contacts, Help & Support, Privacy, Terms | ✅ | ✅ | Contacts lists what the account imported and can clear it (no import here: Windows has no address book to read); Help, Privacy and Terms open the web's own pages in the browser |
 
 ## Not yet
 

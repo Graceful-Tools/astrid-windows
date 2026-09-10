@@ -638,6 +638,19 @@ public sealed record SmartTaskSettings
     [JsonPropertyName("smartTaskCreationEnabled")] public bool SmartTaskCreationEnabled { get; init; } = true;
 }
 
+/// <summary>One imported contact, as the Contacts page lists it (task 438494c7).</summary>
+public sealed record ContactSummary
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("email")] public string Email { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")] public string? Name { get; init; }
+
+    /// <summary>What to show first: the name when there is one, else the address.</summary>
+    public string Label => string.IsNullOrWhiteSpace(Name) ? Email : Name;
+}
+
 /// <summary>One entry a settings combo offers: the server's value, and the key to word it by.</summary>
 public sealed record SettingChoice
 {
