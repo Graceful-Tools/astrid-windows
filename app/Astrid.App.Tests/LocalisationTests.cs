@@ -126,28 +126,48 @@ public sealed class LocalisationTests
     /// The other direction: a resource with nothing to apply to is a translator's wasted hour,
     /// and an <c>x:Uid</c> naming a property the element does not have throws when the page loads.
     /// </summary>
+    /// <remarks>
+    /// The second half is the one that bit. The framework applies <em>every</em> <c>uid.*</c>
+    /// resource to <em>every</em> element carrying the uid, so a <c>TextBlock</c> (Text) and a
+    /// <c>ListViewItem</c> (Content) sharing <c>account</c> were each handed the other's
+    /// property, and the window threw on load — "Unable to resolve property 'Text' … for Uid
+    /// 'account'". So each element carrying a uid must have every property the uid's resources
+    /// name, not merely the union across elements.
+    /// </remarks>
     [Fact]
     public void Every_uid_resource_has_an_element_to_apply_to()
     {
         var app = AppDirectory();
         var xaml = File.ReadAllText(Path.Combine(app, "ShellPage.xaml"));
+        var resources = ResourceNames(app);
         var wanted = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var (_, attributes) in Elements(xaml))
+        var unsettable = new List<string>();
+        foreach (var (tag, attributes) in Elements(xaml))
         {
             if (!attributes.TryGetValue("x:Uid", out var uid))
             {
                 continue;
             }
-            foreach (var property in Properties.Where(attributes.ContainsKey))
+            var mine = Properties.Where(attributes.ContainsKey)
+                .Select(property => $"{uid}.{ResourceProperty.GetValueOrDefault(property, property)}")
+                .ToHashSet(StringComparer.Ordinal);
+            wanted.UnionWith(mine);
+            foreach (var name in resources.Where(name => name.StartsWith(uid + ".", StringComparison.Ordinal)))
             {
-                wanted.Add($"{uid}.{ResourceProperty.GetValueOrDefault(property, property)}");
+                if (!mine.Contains(name))
+                {
+                    unsettable.Add($"{name} would be applied to <{tag} x:Uid=\"{uid}\">, which does not set it");
+                }
             }
         }
 
-        var orphaned = ResourceNames(app)
+        var orphaned = resources
             .Where(name => name.Contains('.', StringComparison.Ordinal) && !wanted.Contains(name))
             .ToList();
         Assert.True(orphaned.Count == 0,
             "x:Uid resources with no element in ShellPage.xaml:\n  " + string.Join("\n  ", orphaned));
+        Assert.True(unsettable.Count == 0,
+            "a uid shared by elements with different properties throws when the page loads:\n  "
+            + string.Join("\n  ", unsettable));
     }
 }

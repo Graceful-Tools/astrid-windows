@@ -1033,6 +1033,36 @@ public sealed class TaskDetailViewModel : ObservableObject
     /// Mint a share link for the open task. The address, or null with the reason in
     /// <see cref="ErrorMessage"/> — a share that cannot happen offline is a failure worth a word.
     /// </summary>
+    /// <summary>
+    /// Copy the open task into a list, with or without its comments, as the web's Copy does.
+    /// </summary>
+    /// <returns>The copy's id, or null when the copy did not happen — the pane's error line says why.</returns>
+    /// <remarks>
+    /// The server makes the copy, so this needs a connection; an offline attempt is reported
+    /// rather than journalled, because a copy that does not exist yet cannot be shown.
+    /// </remarks>
+    public async Task<string?> CopyAsync(string? targetListId, bool includeComments,
+        CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return null;
+        }
+        var response = await _core.CallAsync(
+            Commands.CopyTask(TaskId, targetListId, includeComments), cancellationToken);
+        if (!response.Ok)
+        {
+            // Unlike a journalled write, an offline copy genuinely did not happen — the server
+            // makes the copy — so it is reported rather than treated as pending.
+            ErrorMessage = response.Error?.Message;
+            return null;
+        }
+        ErrorMessage = null;
+        return response.Value.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.String
+            ? id.GetString()
+            : null;
+    }
+
     public async Task<string?> ShareAsync(CancellationToken cancellationToken = default)
     {
         if (TaskId is null)

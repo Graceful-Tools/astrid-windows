@@ -839,6 +839,91 @@ public sealed partial class ShellPage : UserControl
     private void OnCopyTaskLink(object sender, RoutedEventArgs args) =>
         CopyToClipboard(Shell.Detail.Link);
 
+    // ── The bell ─────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>Opening the bell asks the server; the badge was already right from the cache.</summary>
+    private async void OnNotificationsOpening(object sender, object args) =>
+        await Shell.Notifications.RefreshAsync();
+
+    private async void OnMarkAllNotificationsRead(object sender, RoutedEventArgs args) =>
+        await Shell.Notifications.MarkAllReadAsync();
+
+    /// <summary>A row is the task it is about: mark it read, open the task.</summary>
+    private async void OnNotificationOpened(object sender, ItemClickEventArgs args)
+    {
+        if (args.ClickedItem is not NotificationItem item)
+        {
+            return;
+        }
+        NotificationsFlyout.Hide();
+        if (!item.IsRead)
+        {
+            await Shell.Notifications.MarkReadAsync(item.Id);
+        }
+        if (item.TaskId is { } taskId)
+        {
+            await Shell.OpenTaskAsync(taskId);
+        }
+    }
+
+    // ── Copy ─────────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Copy the open task: pick a list, say whether the comments come, as the web's copy dialog.
+    /// </summary>
+    /// <remarks>
+    /// Built here rather than in XAML because the lists to choose from are the sidebar's, and a
+    /// flyout declared inside the task menu cannot see them until it opens. The choices and the
+    /// words are the core's and the resource file's; this only arranges them.
+    /// </remarks>
+    private void OnCopyTask(object sender, RoutedEventArgs args)
+    {
+        var lists = new ComboBox
+        {
+            Header = Strings.Get("copy.title"),
+            DisplayMemberPath = nameof(ListSummary.Name),
+            MinWidth = 260,
+        };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(lists, "Copy target list");
+        // First choice: where the task already is. Then every place the sidebar offers.
+        var sameLists = new ListSummary { Id = string.Empty, Name = Strings.Get("copy.same_list") };
+        lists.Items.Add(sameLists);
+        foreach (var list in Shell.Sidebar.Favorites.Concat(Shell.Sidebar.Lists))
+        {
+            lists.Items.Add(list);
+        }
+        lists.SelectedIndex = 0;
+
+        var comments = new CheckBox { Content = Strings.Get("copy.include_comments") };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(comments, "Include comments");
+        var confirm = new Button
+        {
+            Content = Strings.Get("copy.button"),
+            Style = (Style)Application.Current.Resources["AccentButtonStyle"],
+        };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(confirm, "Confirm copy task");
+        var flyout = new Flyout
+        {
+            Content = new StackPanel
+            {
+                Spacing = 8,
+                Children = { lists, comments, confirm },
+            },
+        };
+        confirm.Click += async (_, _) =>
+        {
+            var target = lists.SelectedItem as ListSummary;
+            var targetId = string.IsNullOrEmpty(target?.Id) ? null : target!.Id;
+            flyout.Hide();
+            var copied = await Shell.Detail.CopyAsync(targetId, comments.IsChecked == true);
+            if (copied is not null)
+            {
+                await Shell.Tasks.RefreshAsync();
+            }
+        };
+        flyout.ShowAt(TaskActionsButton);
+    }
+
     /// <summary>
     /// Share: mint the link on the server, copy it, and show it.
     /// </summary>

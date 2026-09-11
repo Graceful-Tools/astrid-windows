@@ -107,29 +107,44 @@ against the web, from a read of the source rather than of the docs, with what ha
 - List settings open from the cache and then refresh (`listMembers` + `refreshListMembers`);
   one network call used to take the whole flyout down. The account flyout asks for its four
   server-side answers together rather than one after another.
+- A row flips on the click and flips back only if the core refuses (`TaskListViewModel`).
+- `app/dispatch.rs` is a directory, one file per domain; every literal in `ShellPage.xaml`
+  carries an `x:Uid` with a resource behind it, and two tests keep it so.
+- **The notification inbox** (`/api/v1/notifications`): a bell in the header with the unread
+  count from the cache, refreshed on every sync pass, mark-read and mark-all-read.
+- **The search grammar** (`assignee:me priority:high due:week is:open status:ready list:Work
+  label:bug AST-142`), ported from `lib/search-query-parser.ts` and locked by
+  `contracts/fixtures/search.json`; applied over the cache, which holds every task including
+  the finished ones, so the server's search adds nothing here.
+- **Task identifiers** (`AST-142`) on the model, the row and the search.
+- **Label lists** (`listType: "label"`): chips on the rows they belong to, never a sidebar entry.
+- **Copy a task** into a list, with or without its comments, from the task menu.
+- **The editing-session machine** (`astrid_core::editing`), ported from `lib/editing-session.ts`
+  and locked by `contracts/fixtures/editing.json`. The core half; the detail pane's editors are
+  not yet routed through it.
+- Two things the fuller gate found and fixed: the shell resolved the core's DLL by *last*
+  candidate, so a week-old release build beat a fresh debug one; and the account photo binding
+  threw on every fresh launch (no photo → an empty string into an image), which had broken the
+  UI smoke tests since 2026-09-09 without anybody running them.
 
 **Still open — architecture**
 
-- `ShellPage.xaml` (3.5k lines) and `ShellPage.xaml.cs` (2.8k) are one control; the settings
+- `ShellPage.xaml` (3.6k lines) and `ShellPage.xaml.cs` (2.9k) are one control; the settings
   flyout is nine sections toggled by visibility. `SettingsViewModel` (1.3k) is nine screens;
-  `TaskDetailViewModel` (1.6k) fuses fields, comments, attachments and timer.
-  `app/dispatch.rs` (5.9k) is one match plus its tests. All split along seams that already exist.
-- About 160 of ~330 user-visible strings are literals (271 attributes in `ShellPage.xaml`, five
-  section titles in `ShowSettingsSection`, toast copy in `Reminders.cs`, English ordinals in
-  `Converters.cs`).
-- Writes to task rows are "optimistic in effect" (cache write, then a re-read), not an in-memory
-  flip; only the detail's completion toggle flips first.
+  `TaskDetailViewModel` (1.7k) fuses fields, comments, attachments and timer. Split along seams
+  that already exist.
+- The detail pane's editors each keep their own flag; routing them through
+  `astrid_core::editing` is the remaining half of `PRODUCT_CONTRACT.md` §6.
 - No drift test on response shapes (`Models.cs` against the Rust `Response`s).
+- English only. The mechanism is complete — a language is a folder — but no second folder.
 
 **Still open — features the web has**
 
-Notification inbox (`/api/v1/notifications`); server-side search with the query syntax
-(`assignee:`, `priority:`, `due:`, `status:`, `list:`, `is:`, `AST-142`); the editing-session
-machine (`PRODUCT_CONTRACT.md` §6); natural-language quick-add beyond `#list` (CONTRACTS D11);
-label lists (`listType: "label"`); task copy with comments; manual drag-reorder and drag-to-list;
-transfer ownership; list image; copy-to-my-list and the public-list browser; the `@astrid` model
-selector; calendar feed settings; per-user feature flags (`project_mode`, `google_tasks`);
-full-screen detail; the localised unassigned mark; a rebindable hotkey; twelve languages.
+Natural-language quick-add beyond `#list` (CONTRACTS D11); manual drag-reorder and
+drag-to-list; transfer ownership; list image; copy-to-my-list and the public-list browser; the
+`@astrid` model selector; calendar feed settings; per-user feature flags (`project_mode`,
+`google_tasks`); full-screen detail; the localised unassigned mark; a rebindable hotkey; twelve
+languages.
 
 Not gaps, because the web has none either: multi-select, undo, calendar view, dependencies.
 

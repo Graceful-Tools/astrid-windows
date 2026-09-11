@@ -506,9 +506,12 @@ public sealed class ShellViewModelTests
         Assert.Equal("Work", shell.Sidebar.Lists[0].Name);
     }
 
-    /// <summary>A board column is a state, not a place to file a task.</summary>
+    /// <summary>
+    /// A board column is a state, not a place to file a task; a label is a tag, drawn on the
+    /// tasks that carry it and never offered as somewhere to go (the web's list flavours).
+    /// </summary>
     [Fact]
-    public async Task Board_columns_never_appear_in_the_sidebar()
+    public async Task Board_columns_and_labels_never_appear_in_the_sidebar()
     {
         var core = new FakeCore()
             .AnswerOk("isSignedIn", new { signedIn = true, waitingForCallback = false })
@@ -516,6 +519,7 @@ public sealed class ShellViewModelTests
             {
                 new { id = "l1", name = "Home" },
                 new { id = "s1", name = "Doing", listType = "status" },
+                new { id = "b1", name = "Bugs", listType = "label" },
             })
             .AnswerOk("rowsForList", EmptyWindow())
             .AnswerOk("outboxStats", new { hasUnsentWork = false })
@@ -713,6 +717,38 @@ public sealed class ShellViewModelTests
 
         Assert.Equal(before + 2, core.SentKinds().Count(kind => kind == "sync"));
         Assert.False(shell.IsSyncing);
+    }
+
+    /// <summary>
+    /// The bell is read from the cache at start, refreshed after a sync that fetched, and redrawn
+    /// when the timer's pass says the inbox moved.
+    /// </summary>
+    [Fact]
+    public async Task The_bell_loads_at_start_refreshes_after_a_sync_and_follows_the_inbox()
+    {
+        var core = new FakeCore()
+            .AnswerOk("isSignedIn", new { signedIn = true, waitingForCallback = false })
+            .AnswerOk("lists", Lists(("l1", "Home", false)))
+            .AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("outboxStats", new { hasUnsentWork = false })
+            .AnswerOk("notifications", new { unreadCount = 1, notifications = Array.Empty<object>() })
+            .AnswerOk("sync", new { fetched = true })
+            .AnswerOk("lists", Lists(("l1", "Home", false)))
+            .AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("refreshNotifications", new { unreadCount = 3, notifications = Array.Empty<object>() })
+            .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        using var shell = new ShellViewModel(core, RunInline);
+
+        await shell.StartAsync();
+
+        Assert.Contains("notifications", core.SentKinds());
+        Assert.Contains("refreshNotifications", core.SentKinds());
+        Assert.Equal(3, shell.Notifications.UnreadCount);
+
+        core.AnswerOk("notifications", new { unreadCount = 4, notifications = Array.Empty<object>() });
+        core.Notify("notifications");
+
+        Assert.Equal(4, shell.Notifications.UnreadCount);
     }
 
     /// <summary>

@@ -640,6 +640,48 @@ public sealed partial class ChipColourConverter : IValueConverter
 /// Anything unreadable comes back null and the row falls back to its chip — a half-written file in
 /// the pending directory must not take the window down.
 /// </remarks>
+/// <summary>
+/// A picture on the web, or nothing.
+/// </summary>
+/// <remarks>
+/// <c>x:Bind</c> from a <c>string</c> to <c>Image.Source</c> hands the string to the framework's
+/// converter, which throws "The parameter is incorrect" for an empty or null one — and the
+/// account photo is null on every fresh launch, so the window died at its first binding pass
+/// with nothing on screen (found by the UI smoke tests, 2026-09-11). No address means no image.
+/// </remarks>
+public sealed partial class RemoteImageConverter : IValueConverter
+{
+    public object? Convert(object value, Type targetType, object parameter, string language)
+    {
+        if (value is not string address || string.IsNullOrWhiteSpace(address)
+            || !Uri.TryCreate(address, UriKind.Absolute, out var uri))
+        {
+            return null;
+        }
+        try
+        {
+            return new BitmapImage(uri);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("an image is not read back into an address");
+}
+
+/// <summary>The mark on a list chip: a list, or a tag when the list is a label.</summary>
+public sealed partial class ChipGlyphConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is true ? "" : "";
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a glyph is not read back");
+}
+
 public sealed partial class FileThumbnailConverter : IValueConverter
 {
     /// <summary>The widest a thumbnail is drawn, and so the widest it needs decoding.</summary>

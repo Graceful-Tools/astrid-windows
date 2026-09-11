@@ -54,6 +54,11 @@ milestones; this tracks the *product*.
 | Agent Hub | ✅ | ✅ | Modes, credentials, Copilot, the webhook editor and the agents an account registers of its own |
 | Profile numbers and data export | ✅ | ✅ | JSON or CSV, written where you choose |
 | Contacts, Help & Support, Privacy, Terms | ✅ | ✅ | Contacts lists what the account imported and can clear it (no import here: Windows has no address book to read); Help, Privacy and Terms open the web's own pages in the browser |
+| Notification inbox | ❌ | ✅ | The web's bell (`/api/v1/notifications`): assigned, mentioned, replied, commented, status changed, completed. Unread count from the cache, refreshed on every sync pass; mark read and mark all read |
+| Search with the web's grammar | ❌ | ✅ | `assignee:me priority:high due:week is:open status:ready list:Work label:bug AST-142`, locked by `search.json`. Over the cache, which holds finished tasks too |
+| Task identifiers | ❌ | ✅ | `AST-142` beside the title, and a direct hit in search |
+| Label lists | ❌ | ✅ | `listType: "label"` draws as a tag on the rows that carry it and is never a sidebar entry (the web's list flavours) |
+| Copy a task | ❌ | ✅ | Into a list, with or without its comments, from the task menu — the web's Copy |
 
 ## Not yet
 

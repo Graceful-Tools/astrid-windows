@@ -270,6 +270,20 @@ internal static class Strings
         ["ordinal.nd"] = "{0}nd",
         ["ordinal.rd"] = "{0}rd",
         ["ordinal.th"] = "{0}th",
+        ["notification.assigned"] = "Assigned to you",
+        ["notification.mentioned"] = "Mentioned you",
+        ["notification.replied"] = "Replied to you",
+        ["notification.commented"] = "Commented",
+        ["notification.status_changed"] = "Status changed",
+        ["notification.completed"] = "Completed",
+        ["notifications.title"] = "Notifications",
+        ["notifications.empty"] = "Nothing new.",
+        ["notifications.mark_all_read"] = "Mark all read",
+        ["copy.title"] = "Copy to a list",
+        ["copy.same_list"] = "The same lists",
+        ["copy.include_comments"] = "Include comments",
+        ["copy.button"] = "Copy",
+        ["copy.done"] = "Copied",
     };
 
     /// <summary>The fallback table, for the tests that check every key has a string.</summary>

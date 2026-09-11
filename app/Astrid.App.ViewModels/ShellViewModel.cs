@@ -56,6 +56,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         ListSettings = new ListSettingsViewModel(core);
         Chat = new ChatViewModel(core);
         Settings = new SettingsViewModel(core);
+        Notifications = new NotificationsViewModel(core);
         _core.Changed += OnChanged;
 
         // The task-detail layout decides what the leading control does on every row and in the
@@ -135,6 +136,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     /// <summary>The account, and how it wants to be reminded.</summary>
     public SettingsViewModel Settings { get; }
+
+    /// <summary>The bell: the inbox and its unread count.</summary>
+    public NotificationsViewModel Notifications { get; }
 
     /// <summary>
     /// Whether to show the first-run tour.
@@ -469,6 +473,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         await Sidebar.LoadAsync(cancellationToken);
         await OpenSelectedAsync(cancellationToken);
         await RefreshOutboxAsync(cancellationToken);
+        // The badge from the cache, before the network: it is right the moment the window opens.
+        await Notifications.LoadAsync(cancellationToken);
         await SyncAsync(cancellationToken);
     }
 
@@ -579,6 +585,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             {
                 await Sidebar.LoadAsync(cancellationToken);
                 await Tasks.RefreshAsync(cancellationToken);
+                // The inbox rides on a person's sync the way it rides on the timer's. The web
+                // sends no live event for it, so a pass is the only time it moves.
+                await Notifications.RefreshAsync(cancellationToken);
             }
             await RefreshOutboxAsync(cancellationToken);
         }
@@ -738,6 +747,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                     break;
                 case "needsSync":
                     await SyncAsync();
+                    break;
+                case "notifications":
+                    // The timer's pass found the inbox moved and cached it; draw what it cached.
+                    await Notifications.LoadAsync();
                     break;
                 case "synced":
                     // A pass nobody asked for brought something in. The same refresh a sync

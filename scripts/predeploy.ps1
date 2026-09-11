@@ -86,7 +86,14 @@ if ($Full) {
     #
     # The Release build above is for x64 and ARM64; these run the host's, so the app is built once
     # more for the host RID in Debug, which is what the tests look for first.
-    $hostRid = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'win-arm64' } else { 'win-x64' }
+    #
+    # The MACHINE's architecture, read from the registry, not the environment's. Run from an x64
+    # shell emulated on an ARM64 machine — Git Bash, an x64 PowerShell — PROCESSOR_ARCHITECTURE
+    # says AMD64 and even .NET Framework's OSArchitecture says X64, because emulation hides the
+    # machine from the process. The registry value is the machine's own, whoever asks.
+    $machine = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment' -ErrorAction SilentlyContinue).PROCESSOR_ARCHITECTURE
+    if (-not $machine) { $machine = $env:PROCESSOR_ARCHITECTURE }
+    $hostRid = if ($machine -eq 'ARM64') { 'win-arm64' } else { 'win-x64' }
     $uiTests = Join-Path $repoRoot 'app/Astrid.App.UITests/Astrid.App.UITests.csproj'
     Invoke-Step "shell build for the UI tests ($hostRid)" {
         dotnet build (Join-Path $repoRoot 'app/Astrid.App/Astrid.App.csproj') -c Debug -r $hostRid --self-contained false

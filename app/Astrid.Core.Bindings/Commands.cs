@@ -631,6 +631,21 @@ public static class Commands
 
     public static object RefreshCapabilities() => new KindOnly("refreshCapabilities");
 
+    /// <summary>Copy a task into a list, with or without its comments. The server makes the copy.</summary>
+    public static object CopyTask(string taskId, string? targetListId, bool includeComments) =>
+        new CopyTaskRequest("copyTask", taskId, targetListId, includeComments);
+
+    /// <summary>The inbox, from the cache.</summary>
+    public static object Notifications() => new KindOnly("notifications");
+
+    /// <summary>The inbox, after asking the server.</summary>
+    public static object RefreshNotifications() => new KindOnly("refreshNotifications");
+
+    public static object MarkNotificationsRead(IReadOnlyList<string> ids) =>
+        new IdsRequest("markNotificationsRead", ids);
+
+    public static object MarkAllNotificationsRead() => new KindOnly("markAllNotificationsRead");
+
     /// <summary>
     /// The list's settings again, after the server has been asked for the roster. Follows
     /// <see cref="ListMembers"/>, which answers from the cache so the flyout opens at once.
@@ -663,6 +678,16 @@ public static class Commands
     private sealed record CommentIdRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("commentId")] string CommentId);
+
+    private sealed record CopyTaskRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("taskId")] string TaskId,
+        [property: JsonPropertyName("targetListId")] string? TargetListId,
+        [property: JsonPropertyName("includeComments")] bool IncludeComments);
+
+    private sealed record IdsRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("ids")] IReadOnlyList<string> Ids);
 
     private sealed record RowsRequest(
         [property: JsonPropertyName("kind")] string Kind,

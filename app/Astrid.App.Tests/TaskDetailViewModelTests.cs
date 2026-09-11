@@ -387,6 +387,29 @@ public sealed class TaskDetailViewModelTests
     }
 
     /// <summary>
+    /// Copy hands back the copy's id and sends where it goes and whether the comments come; an
+    /// offline attempt is reported rather than pretended, because the server makes the copy.
+    /// </summary>
+    [Fact]
+    public async Task Copy_names_the_target_and_the_comments_and_reports_a_copy_that_did_not_happen()
+    {
+        var core = OpenedTask()
+            .AnswerOk("copyTask", new { id = "t-copy", title = "Book flights" })
+            .AnswerFailure("copyTask", AstridFailureKind.Offline, "no network");
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.Equal("t-copy", await view.CopyAsync("l2", includeComments: true));
+        var sent = core.Sent.First(json => json.Contains("copyTask"));
+        Assert.Contains("\"targetListId\":\"l2\"", sent, StringComparison.Ordinal);
+        Assert.Contains("\"includeComments\":true", sent, StringComparison.Ordinal);
+        Assert.Null(view.ErrorMessage);
+
+        Assert.Null(await view.CopyAsync(null, includeComments: false));
+        Assert.Equal("no network", view.ErrorMessage);
+    }
+
+    /// <summary>
     /// Share hands back the address the core minted, and a refusal lands in the error line rather
     /// than vanishing (task 016ce981).
     /// </summary>

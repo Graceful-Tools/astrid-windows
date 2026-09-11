@@ -39,6 +39,8 @@
         <local:ChipTintConverter x:Key="ChipTint" />
         <local:ChipColourConverter x:Key="ChipColour" />
         <local:FileThumbnailConverter x:Key="FileThumbnail" />
+        <local:RemoteImageConverter x:Key="RemoteImage" />
+        <local:ChipGlyphConverter x:Key="ChipGlyph" />
         <local:BubbleAlignConverter x:Key="BubbleAlign" />
         <local:BubbleBrushConverter x:Key="BubbleBrush" />
 
@@ -1142,6 +1144,73 @@
                                 Orientation="Horizontal"
                                 Spacing="8"
                                 VerticalAlignment="Center">
+                    <!--
+                        The bell: what happened to work you are involved in - assigned, mentioned,
+                        replied to, commented on, status changed, completed - as the web's
+                        notification-bell.tsx. The badge is from the cache the moment the window
+                        opens; opening the flyout asks the server.
+                    -->
+                    <Button x:Uid="notifications_button" x:Name="NotificationsButton"
+                            AutomationProperties.Name="Notifications"
+                            ToolTipService.ToolTip="Notifications">
+                        <Grid>
+                            <TextBlock Text="&#xEA8F;" FontFamily="{ThemeResource SymbolThemeFontFamily}" />
+                            <Border Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                    CornerRadius="8" MinWidth="16" Height="16" Padding="4,0"
+                                    HorizontalAlignment="Right" VerticalAlignment="Top"
+                                    Margin="0,-8,-10,0"
+                                    Visibility="{x:Bind Shell.Notifications.HasUnread, Mode=OneWay, Converter={StaticResource Visible}}">
+                                <TextBlock Text="{x:Bind Shell.Notifications.UnreadText, Mode=OneWay}"
+                                           FontSize="10" FontWeight="SemiBold"
+                                           Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                        </Grid>
+                        <Button.Flyout>
+                            <Flyout x:Name="NotificationsFlyout" Opening="OnNotificationsOpening" Placement="BottomEdgeAlignedRight">
+                                <StackPanel Spacing="8" Width="360">
+                                    <Grid>
+                                        <TextBlock x:Uid="notifications_title" Text="Notifications"
+                                                   Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                                   VerticalAlignment="Center" />
+                                        <Button x:Uid="mark_all_read" Content="Mark all read"
+                                                AutomationProperties.Name="Mark all read"
+                                                HorizontalAlignment="Right"
+                                                Click="OnMarkAllNotificationsRead"
+                                                IsEnabled="{x:Bind Shell.Notifications.HasUnread, Mode=OneWay}" />
+                                    </Grid>
+                                    <TextBlock x:Uid="nothing_new" Text="Nothing new."
+                                               Foreground="{ThemeResource AstridTextMuted}"
+                                               Visibility="{x:Bind Shell.Notifications.IsEmpty, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                    <ListView ItemsSource="{x:Bind Shell.Notifications.Items, Mode=OneWay}"
+                                              IsItemClickEnabled="True"
+                                              SelectionMode="None"
+                                              ItemClick="OnNotificationOpened"
+                                              MaxHeight="420">
+                                        <ListView.ItemTemplate>
+                                            <DataTemplate x:DataType="bindings:NotificationItem">
+                                                <StackPanel Spacing="2" Margin="0,6"
+                                                            Opacity="{x:Bind IsRead, Converter={StaticResource CompletedOpacity}}">
+                                                    <TextBlock Text="{x:Bind LabelKey, Converter={StaticResource PickTitle}}"
+                                                               Style="{ThemeResource CaptionTextBlockStyle}"
+                                                               Foreground="{ThemeResource AstridTextSecondary}" />
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <TextBlock Text="{x:Bind TaskIdentifier}"
+                                                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                                                   Foreground="{ThemeResource AstridTextMuted}"
+                                                                   VerticalAlignment="Center" />
+                                                        <TextBlock Text="{x:Bind TaskText}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   Foreground="{ThemeResource AstridTextPrimary}" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListView.ItemTemplate>
+                                    </ListView>
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
                     <Button x:Uid="account_and_settings" AutomationProperties.Name="Account"
                             ToolTipService.ToolTip="Account and settings"
                             Content="&#xE77B;"
@@ -1219,7 +1288,7 @@
                                                                FontSize="15" Width="20"
                                                                VerticalAlignment="Center"
                                                                Foreground="{ThemeResource AstridTextMuted}" />
-                                                    <TextBlock x:Uid="account" Text="Account" VerticalAlignment="Center" />
+                                                    <TextBlock x:Uid="account_2" Text="Account" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </ListViewItem>
                                             <ListViewItem x:Uid="reminders" Tag="Reminders" AutomationProperties.Name="Reminders">
@@ -1229,7 +1298,7 @@
                                                                FontSize="15" Width="20"
                                                                VerticalAlignment="Center"
                                                                Foreground="{ThemeResource AstridTextMuted}" />
-                                                    <TextBlock x:Uid="reminders" Text="Reminders" VerticalAlignment="Center" />
+                                                    <TextBlock x:Uid="reminders_2" Text="Reminders" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </ListViewItem>
                                             <ListViewItem x:Uid="tasks" Tag="Tasks" AutomationProperties.Name="Tasks">
@@ -1249,7 +1318,7 @@
                                                                FontSize="15" Width="20"
                                                                VerticalAlignment="Center"
                                                                Foreground="{ThemeResource AstridTextMuted}" />
-                                                    <TextBlock x:Uid="appearance" Text="Appearance" VerticalAlignment="Center" />
+                                                    <TextBlock x:Uid="appearance_2" Text="Appearance" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </ListViewItem>
                                             <ListViewItem x:Uid="ai_agents" Tag="Agents" AutomationProperties.Name="AI agents">
@@ -1259,7 +1328,7 @@
                                                                FontSize="15" Width="20"
                                                                VerticalAlignment="Center"
                                                                Foreground="{ThemeResource AstridTextMuted}" />
-                                                    <TextBlock x:Uid="ai_agents" Text="AI agents" VerticalAlignment="Center" />
+                                                    <TextBlock x:Uid="ai_agents_2" Text="AI agents" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </ListViewItem>
                                             <ListViewItem x:Uid="api_access" Tag="ApiAccess" AutomationProperties.Name="API access">
@@ -1269,7 +1338,7 @@
                                                                FontSize="15" Width="20"
                                                                VerticalAlignment="Center"
                                                                Foreground="{ThemeResource AstridTextMuted}" />
-                                                    <TextBlock x:Uid="api_access" Text="API access" VerticalAlignment="Center" />
+                                                    <TextBlock x:Uid="api_access_2" Text="API access" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </ListViewItem>
                                             <ListViewItem x:Uid="integrations" Tag="Integrations" AutomationProperties.Name="Integrations">
@@ -1279,7 +1348,7 @@
                                                                FontSize="15" Width="20"
                                                                VerticalAlignment="Center"
                                                                Foreground="{ThemeResource AstridTextMuted}" />
-                                                    <TextBlock x:Uid="integrations" Text="Integrations" VerticalAlignment="Center" />
+                                                    <TextBlock x:Uid="integrations_2" Text="Integrations" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </ListViewItem>
                                             <ListViewItem x:Uid="your_data" Tag="Data" AutomationProperties.Name="Your data">
@@ -1289,7 +1358,7 @@
                                                                FontSize="15" Width="20"
                                                                VerticalAlignment="Center"
                                                                Foreground="{ThemeResource AstridTextMuted}" />
-                                                    <TextBlock x:Uid="your_data" Text="Your data" VerticalAlignment="Center" />
+                                                    <TextBlock x:Uid="your_data_2" Text="Your data" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </ListViewItem>
                                             <!--
@@ -1381,7 +1450,7 @@
                                                 <StackPanel Orientation="Horizontal" Spacing="12">
                                                     <Border Width="56" Height="56" CornerRadius="28"
                                                             Background="{ThemeResource AstridBorder}">
-                                                        <Image x:Uid="profile_photo" Source="{x:Bind Shell.Settings.PhotoUrl, Mode=OneWay}"
+                                                        <Image x:Uid="profile_photo" Source="{x:Bind Shell.Settings.PhotoUrl, Mode=OneWay, Converter={StaticResource RemoteImage}}"
                                                                Stretch="UniformToFill"
                                                                AutomationProperties.Name="Profile photo" />
                                                     </Border>
@@ -1841,7 +1910,7 @@
                                                         <TextBlock x:Uid="copy_this_now_it_is_not" Text="Copy this now — it is not shown again."
                                                                    FontSize="11"
                                                                    Foreground="{ThemeResource AstridTextMuted}" />
-                                                        <TextBox x:Uid="mcp_token" Text="{x:Bind Shell.Settings.McpToken, Mode=OneWay}"
+                                                        <TextBox x:Uid="mcp_token_2" Text="{x:Bind Shell.Settings.McpToken, Mode=OneWay}"
                                                                  AutomationProperties.Name="MCP token"
                                                                  IsReadOnly="True"
                                                                  Background="Transparent"
@@ -2299,12 +2368,26 @@
                                 </Button>
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
-                                    <TextBlock Text="{x:Bind Title}"
-                                               TextWrapping="Wrap"
-                                               MaxLines="2"
-                                               TextTrimming="CharacterEllipsis"
-                                               Foreground="{ThemeResource AstridTextPrimary}"
-                                               TextDecorations="{x:Bind Completed, Converter={StaticResource CompletedStrike}}" />
+                                    <Grid ColumnSpacing="6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <!-- AST-142, small, as the web draws it. Only when the task has one. -->
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{x:Bind Identifier}"
+                                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{ThemeResource AstridTextMuted}"
+                                                   Visibility="{x:Bind HasIdentifier, Converter={StaticResource Visible}}" />
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{x:Bind Title}"
+                                                   TextWrapping="Wrap"
+                                                   MaxLines="2"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   Foreground="{ThemeResource AstridTextPrimary}"
+                                                   TextDecorations="{x:Bind Completed, Converter={StaticResource CompletedStrike}}" />
+                                    </Grid>
 
                                     <!-- The second line only exists when there is something on it. -->
                                     <StackPanel Orientation="Horizontal" Spacing="8"
@@ -2327,7 +2410,7 @@
                                                             Padding="6,1"
                                                             Background="{x:Bind Color, Converter={StaticResource ChipTint}}">
                                                         <StackPanel Orientation="Horizontal" Spacing="4">
-                                                            <TextBlock Text="&#xE8EC;"
+                                                            <TextBlock Text="{x:Bind IsLabel, Converter={StaticResource ChipGlyph}}"
                                                                        FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                                                        FontSize="10"
                                                                        VerticalAlignment="Center"
@@ -2608,6 +2691,13 @@
                                             <FontIcon Glyph="&#xE72D;" />
                                         </MenuFlyoutItem.Icon>
                                     </MenuFlyoutItem>
+                                    <MenuFlyoutItem x:Uid="copy_to_a_list" x:Name="CopyTaskItem" Text="Copy to a list..."
+                                                    Click="OnCopyTask"
+                                                    IsEnabled="{x:Bind Shell.Detail.CanCopyLink, Mode=OneWay}">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE8C8;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
                                     <MenuFlyoutSeparator />
                                     <MenuFlyoutSubItem x:Name="StatusSubMenu">
                                         <MenuFlyoutSubItem.Icon>
@@ -2708,7 +2798,7 @@
                     <Button.Flyout>
                         <Flyout>
                             <StackPanel Spacing="4" MinWidth="200">
-                                <TextBlock x:Uid="when" Text="When" Style="{ThemeResource CaptionTextBlockStyle}" />
+                                <TextBlock x:Uid="when_2" Text="When" Style="{ThemeResource CaptionTextBlockStyle}" />
                                 <ItemsControl ItemsSource="{x:Bind Shell.Detail.DatePicks, Mode=OneWay}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="bindings:DuePick">
@@ -2925,7 +3015,7 @@
                     "Create …" when the typed name is nobody's yet. Which lists are offered, and
                     what a list made from here looks like, are the core's rules.
                 -->
-                <Button x:Uid="lists" Style="{StaticResource DetailField}"
+                <Button x:Uid="lists_2" Style="{StaticResource DetailField}"
                         AutomationProperties.Name="Lists">
                     <Grid ColumnSpacing="8">
                         <Grid.ColumnDefinitions>
@@ -3204,11 +3294,11 @@
                                                  AutomationProperties.Name="Edit comment"
                                                  KeyDown="OnCommentEditKeyDown" />
                                         <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <Button x:Uid="save" Content="Save"
+                                            <Button x:Uid="save_2" Content="Save"
                                                     AutomationProperties.Name="Save comment"
                                                     Style="{ThemeResource AccentButtonStyle}"
                                                     Click="OnCommentEditSaved" />
-                                            <Button x:Uid="cancel" Content="Cancel"
+                                            <Button x:Uid="cancel_2" Content="Cancel"
                                                     AutomationProperties.Name="Cancel edit"
                                                     Click="OnCommentEditCancelled" />
                                         </StackPanel>
@@ -3327,7 +3417,7 @@
                                                 Click="OnEditComment" />
                                         <!-- Asks first, in a flyout built in code: a flyout declared
                                              inside a row template cannot carry the row's id. -->
-                                        <Button x:Uid="delete" Content="Delete" Style="{StaticResource BubbleAction}"
+                                        <Button x:Uid="delete_2" Content="Delete" Style="{StaticResource BubbleAction}"
                                                 Tag="{x:Bind Id}"
                                                 AutomationProperties.Name="Delete comment"
                                                 Visibility="{x:Bind CanEdit, Converter={StaticResource Visible}}"
@@ -3351,7 +3441,7 @@
                                                 AutomationProperties.Name="Send reply"
                                                 Style="{ThemeResource AccentButtonStyle}"
                                                 Click="OnReplySent" />
-                                        <Button x:Uid="cancel_2" Grid.Column="2" Content="Cancel"
+                                        <Button x:Uid="cancel_3" Grid.Column="2" Content="Cancel"
                                                 AutomationProperties.Name="Cancel reply"
                                                 Click="OnReplyCancelled" />
                                     </Grid>

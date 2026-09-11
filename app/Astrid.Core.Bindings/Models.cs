@@ -17,6 +17,11 @@ public sealed record TaskRow
 
     [JsonPropertyName("title")] public string Title { get; init; } = string.Empty;
 
+    /// <summary><c>AST-142</c>, when the task has one; drawn small beside the title.</summary>
+    [JsonPropertyName("identifier")] public string? Identifier { get; init; }
+
+    public bool HasIdentifier => !string.IsNullOrEmpty(Identifier);
+
     [JsonPropertyName("completed")] public bool Completed { get; init; }
 
     [JsonPropertyName("priority")] public int Priority { get; init; }
@@ -141,6 +146,9 @@ public sealed record ListChip
     [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
 
     [JsonPropertyName("color")] public string Color { get; init; } = "#3b82f6";
+
+    /// <summary>A label rather than a place: drawn as a tag, never opened.</summary>
+    [JsonPropertyName("isLabel")] public bool IsLabel { get; init; }
 }
 
 /// <summary>One board column as the detail's Status menu offers it (task 016ce981).</summary>
@@ -259,10 +267,56 @@ public sealed record ListSummary
     /// </summary>
     public bool IsStatusList => ListType == "status";
 
+    /// <summary>
+    /// True for a label, which renders as a chip on the tasks that carry it and never as a
+    /// destination in the sidebar (the web's <c>lib/list-flavors.ts</c>).
+    /// </summary>
+    public bool IsLabelList => ListType == "label";
+
+    /// <summary>Somewhere a person can go and file a task: not a column, not a label.</summary>
+    public bool IsDomainList => !IsStatusList && !IsLabelList;
+
     public string DisplayColor => string.IsNullOrWhiteSpace(Color) ? "#3b82f6" : Color!;
 
     /// <summary>The name. See <see cref="TaskRow.ToString"/> for why this is overridden.</summary>
     public override string ToString() => Name;
+}
+
+/// <summary>One row of the inbox: what happened to work you are involved in.</summary>
+public sealed record NotificationItem
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    /// <summary><c>assigned</c>, <c>mentioned</c>, <c>replied</c>, <c>commented</c>, <c>status_changed</c>, <c>completed</c>.</summary>
+    [JsonPropertyName("kind")] public string Kind { get; init; } = string.Empty;
+
+    /// <summary>The key for the kind's word — <c>notification.assigned</c>. The shell owns the words.</summary>
+    [JsonPropertyName("labelKey")] public string LabelKey { get; init; } = string.Empty;
+
+    [JsonPropertyName("taskId")] public string? TaskId { get; init; }
+
+    [JsonPropertyName("taskTitle")] public string? TaskTitle { get; init; }
+
+    [JsonPropertyName("taskIdentifier")] public string? TaskIdentifier { get; init; }
+
+    [JsonPropertyName("taskCompleted")] public bool TaskCompleted { get; init; }
+
+    [JsonPropertyName("isRead")] public bool IsRead { get; init; }
+
+    [JsonPropertyName("createdAt")] public string? CreatedAt { get; init; }
+
+    /// <summary>What the row says about the task, never a bare id.</summary>
+    public string TaskText => string.IsNullOrEmpty(TaskTitle) ? string.Empty : TaskTitle;
+
+    public bool HasTask => !string.IsNullOrEmpty(TaskId);
+}
+
+/// <summary>The inbox as the bell draws it.</summary>
+public sealed record Inbox
+{
+    [JsonPropertyName("unreadCount")] public int UnreadCount { get; init; }
+
+    [JsonPropertyName("notifications")] public IReadOnlyList<NotificationItem> Notifications { get; init; } = [];
 }
 
 /// <summary>One quick due-date or time choice.</summary>

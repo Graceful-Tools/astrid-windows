@@ -70,8 +70,10 @@ public sealed class SidebarViewModel : ObservableObject
             }
             ErrorMessage = null;
 
+            // Places only. A board column is a state and a label is a tag; neither is somewhere
+            // to go, and the web's sidebar offers neither.
             var all = response.ReadArray<ListSummary>()
-                .Where(list => !list.IsStatusList)
+                .Where(list => list.IsDomainList)
                 .ToList();
 
             var mine = await _core.CallAsync(Commands.MyTasksList(), cancellationToken);

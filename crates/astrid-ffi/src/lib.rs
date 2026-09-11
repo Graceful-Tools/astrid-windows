@@ -402,6 +402,7 @@ fn change_json(change: &Change) -> String {
         Change::Synced { task_ids, list_ids } => serde_json::json!({
             "change": "synced", "taskIds": task_ids, "listIds": list_ids
         }),
+        Change::Notifications => serde_json::json!({ "change": "notifications" }),
     };
     value.to_string()
 }

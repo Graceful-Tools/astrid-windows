@@ -613,10 +613,10 @@
   <data name="a_pair_for_a_machine_that.Text" xml:space="preserve">
     <value>A pair for a machine that is not this one — CI, a script, a runner. Read and write on tasks and lists.</value>
   </data>
-  <data name="account.Text" xml:space="preserve">
+  <data name="account.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Account</value>
   </data>
-  <data name="account.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+  <data name="account_2.Text" xml:space="preserve">
     <value>Account</value>
   </data>
   <data name="account_and_settings.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
@@ -646,22 +646,22 @@
   <data name="agent.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>List agent</value>
   </data>
-  <data name="ai_agents.Text" xml:space="preserve">
-    <value>AI agents</value>
-  </data>
   <data name="ai_agents.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>AI agents</value>
   </data>
-  <data name="api_access.Text" xml:space="preserve">
-    <value>API access</value>
+  <data name="ai_agents_2.Text" xml:space="preserve">
+    <value>AI agents</value>
   </data>
   <data name="api_access.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>API access</value>
   </data>
-  <data name="appearance.Text" xml:space="preserve">
-    <value>Appearance</value>
+  <data name="api_access_2.Text" xml:space="preserve">
+    <value>API access</value>
   </data>
   <data name="appearance.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
+  <data name="appearance_2.Text" xml:space="preserve">
     <value>Appearance</value>
   </data>
   <data name="assignee.Header" xml:space="preserve">
@@ -694,13 +694,16 @@
   <data name="cancel.Content" xml:space="preserve">
     <value>Cancel</value>
   </data>
-  <data name="cancel.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
-    <value>Cancel edit</value>
-  </data>
   <data name="cancel_2.Content" xml:space="preserve">
     <value>Cancel</value>
   </data>
   <data name="cancel_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Cancel edit</value>
+  </data>
+  <data name="cancel_3.Content" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="cancel_3.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Cancel reply</value>
   </data>
   <data name="chat.Text" xml:space="preserve">
@@ -814,13 +817,13 @@
   <data name="defaults_for_new_tasks.Text" xml:space="preserve">
     <value>Defaults for new tasks</value>
   </data>
-  <data name="delete.Content" xml:space="preserve">
-    <value>Delete</value>
-  </data>
   <data name="delete.Text" xml:space="preserve">
     <value>Delete</value>
   </data>
-  <data name="delete.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+  <data name="delete_2.Content" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="delete_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Delete comment</value>
   </data>
   <data name="delete_confirmation_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
@@ -940,10 +943,10 @@
   <data name="help_nav_label.Text" xml:space="preserve">
     <value>Help &amp; Support</value>
   </data>
-  <data name="integrations.Text" xml:space="preserve">
+  <data name="integrations.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Integrations</value>
   </data>
-  <data name="integrations.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+  <data name="integrations_2.Text" xml:space="preserve">
     <value>Integrations</value>
   </data>
   <data name="invite.Content" xml:space="preserve">
@@ -997,7 +1000,7 @@
   <data name="lists.Text" xml:space="preserve">
     <value>Lists</value>
   </data>
-  <data name="lists.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+  <data name="lists_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Lists</value>
   </data>
   <data name="lists_every_keyboard_shortcut_they_work.Text" xml:space="preserve">
@@ -1009,7 +1012,7 @@
   <data name="mcp_token.Text" xml:space="preserve">
     <value>MCP token</value>
   </data>
-  <data name="mcp_token.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+  <data name="mcp_token_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>MCP token</value>
   </data>
   <data name="mirrored_to.Text" xml:space="preserve">
@@ -1144,10 +1147,10 @@
   <data name="reminder.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Reminder</value>
   </data>
-  <data name="reminders.Text" xml:space="preserve">
+  <data name="reminders.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Reminders</value>
   </data>
-  <data name="reminders.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+  <data name="reminders_2.Text" xml:space="preserve">
     <value>Reminders</value>
   </data>
   <data name="remove.Content" xml:space="preserve">
@@ -1222,7 +1225,10 @@
   <data name="save.Content" xml:space="preserve">
     <value>Save</value>
   </data>
-  <data name="save.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+  <data name="save_2.Content" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="save_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Save comment</value>
   </data>
   <data name="save_custom_repeat.Content" xml:space="preserve">
@@ -1363,11 +1369,11 @@
   <data name="when.Header" xml:space="preserve">
     <value>When</value>
   </data>
-  <data name="when.Text" xml:space="preserve">
-    <value>When</value>
-  </data>
   <data name="when.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Default when</value>
+  </data>
+  <data name="when_2.Text" xml:space="preserve">
+    <value>When</value>
   </data>
   <data name="when_time.Header" xml:space="preserve">
     <value>When time</value>
@@ -1381,10 +1387,10 @@
   <data name="years.Content" xml:space="preserve">
     <value>years</value>
   </data>
-  <data name="your_data.Text" xml:space="preserve">
+  <data name="your_data.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Your data</value>
   </data>
-  <data name="your_data.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+  <data name="your_data_2.Text" xml:space="preserve">
     <value>Your data</value>
   </data>
   <data name="your_own_agents.Text" xml:space="preserve">
@@ -1392,5 +1398,26 @@
   </data>
   <data name="your_tasks_on_this_machine_and.Text" xml:space="preserve">
     <value>Your tasks, on this machine and everywhere else.</value>
+  </data>
+  <data name="copy_to_a_list.Text" xml:space="preserve">
+    <value>Copy to a list...</value>
+  </data>
+  <data name="mark_all_read.Content" xml:space="preserve">
+    <value>Mark all read</value>
+  </data>
+  <data name="mark_all_read.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Mark all read</value>
+  </data>
+  <data name="nothing_new.Text" xml:space="preserve">
+    <value>Nothing new.</value>
+  </data>
+  <data name="notifications_button.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Notifications</value>
+  </data>
+  <data name="notifications_button.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Notifications</value>
+  </data>
+  <data name="notifications_title.Text" xml:space="preserve">
+    <value>Notifications</value>
   </data>
 </root>

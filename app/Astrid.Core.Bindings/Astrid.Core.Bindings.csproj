@@ -79,27 +79,23 @@
       <_AstridHostIsTarget Condition="'$(_AstridArch)' == '$(_AstridHostArch)'">true</_AstridHostIsTarget>
     </PropertyGroup>
 
-    <ItemGroup>
-      <!-- The matching triple first, in either profile: a Release shell against a debug core is an
-           ordinary thing to want, and the gate does exactly that. -->
-      <_AstridCoreCandidate Condition="'$(_AstridTriple)' != ''"
-                            Include="$(RustTargetRoot)$(_AstridTriple)\$(_RustProfile)\astrid_ffi.dll" />
-      <_AstridCoreCandidate Condition="'$(_AstridTriple)' != ''"
-                            Include="$(RustTargetRoot)$(_AstridTriple)\$(_OtherRustProfile)\astrid_ffi.dll" />
-      <_AstridCoreCandidate Condition="'$(_AstridHostIsTarget)' == 'true'"
-                            Include="$(RustTargetRoot)$(_RustProfile)\astrid_ffi.dll" />
-      <_AstridCoreCandidate Condition="'$(_AstridHostIsTarget)' == 'true'"
-                            Include="$(RustTargetRoot)$(_OtherRustProfile)\astrid_ffi.dll" />
-    </ItemGroup>
+    <!--
+      The first that exists, in this order: the matching triple in this profile, the matching
+      triple in the other profile (a Release shell against a debug core is an ordinary thing to
+      want, and the gate does exactly that), then cargo's host output when the host IS the target.
 
-    <ItemGroup>
-      <_AstridCoreFound Include="@(_AstridCoreCandidate)" Condition="Exists('%(FullPath)')" />
-    </ItemGroup>
-
+      Spelled out as one guarded property per candidate, not as a batch over an item list. The
+      batch — `%(_AstridCoreFound.FullPath)` — set the property once per item and left it holding
+      the LAST one, so a week-old `target/release` core beat the fresh `target/<triple>/debug` one
+      whenever both existed. The app then carried a stale core, and on the machine where that was
+      noticed the UI smoke tests failed with "the core did not load" for a change that had nothing
+      to do with the core.
+    -->
     <PropertyGroup>
-      <!-- The first that exists. Taking one rather than all of them, because two candidates would
-           both copy to the same `Link` and race. -->
-      <_AstridCoreLibrary>%(_AstridCoreFound.FullPath)</_AstridCoreLibrary>
+      <_AstridCoreLibrary Condition="'$(_AstridTriple)' != '' and Exists('$(RustTargetRoot)$(_AstridTriple)\$(_RustProfile)\astrid_ffi.dll')">$(RustTargetRoot)$(_AstridTriple)\$(_RustProfile)\astrid_ffi.dll</_AstridCoreLibrary>
+      <_AstridCoreLibrary Condition="'$(_AstridCoreLibrary)' == '' and '$(_AstridTriple)' != '' and Exists('$(RustTargetRoot)$(_AstridTriple)\$(_OtherRustProfile)\astrid_ffi.dll')">$(RustTargetRoot)$(_AstridTriple)\$(_OtherRustProfile)\astrid_ffi.dll</_AstridCoreLibrary>
+      <_AstridCoreLibrary Condition="'$(_AstridCoreLibrary)' == '' and '$(_AstridHostIsTarget)' == 'true' and Exists('$(RustTargetRoot)$(_RustProfile)\astrid_ffi.dll')">$(RustTargetRoot)$(_RustProfile)\astrid_ffi.dll</_AstridCoreLibrary>
+      <_AstridCoreLibrary Condition="'$(_AstridCoreLibrary)' == '' and '$(_AstridHostIsTarget)' == 'true' and Exists('$(RustTargetRoot)$(_OtherRustProfile)\astrid_ffi.dll')">$(RustTargetRoot)$(_OtherRustProfile)\astrid_ffi.dll</_AstridCoreLibrary>
     </PropertyGroup>
 
     <ItemGroup Condition="'$(_AstridCoreLibrary)' != ''">
