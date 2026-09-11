@@ -284,6 +284,12 @@ internal static class Strings
         ["copy.include_comments"] = "Include comments",
         ["copy.button"] = "Copy",
         ["copy.done"] = "Copied",
+        // The first letter of the reader's word for "unassigned": U here, 未 in Japanese, Н in
+        // Russian (PRODUCT_CONTRACT.md §4). A translator changes this, not the code.
+        ["tasks.unassigned_mark"] = "U",
+        ["appearance.hotkey"] = "Quick-add shortcut",
+        ["appearance.hotkey_hint"] = "Brings Astrid forward from anywhere, ready for a new task. Ctrl, Alt or Win, plus one letter or digit.",
+        ["appearance.apply"] = "Apply",
     };
 
     /// <summary>The fallback table, for the tests that check every key has a string.</summary>

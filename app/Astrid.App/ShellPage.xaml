@@ -41,6 +41,7 @@
         <local:FileThumbnailConverter x:Key="FileThumbnail" />
         <local:RemoteImageConverter x:Key="RemoteImage" />
         <local:ChipGlyphConverter x:Key="ChipGlyph" />
+        <local:LeadingMarkConverter x:Key="LeadingMark" />
         <local:BubbleAlignConverter x:Key="BubbleAlign" />
         <local:BubbleBrushConverter x:Key="BubbleBrush" />
 
@@ -1098,6 +1099,7 @@
                                       Content="&#xF0E2;"
                                       FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                       IsChecked="{x:Bind Shell.IsBoardView, Mode=OneWay}"
+                                      Visibility="{x:Bind Shell.ProjectModeEnabled, Mode=OneWay, Converter={StaticResource Visible}}"
                                       Click="OnToggleBoard" />
                             <!--
                                 Search collapses to its icon, which is what astrid-web does when the
@@ -1170,7 +1172,7 @@
                             <Flyout x:Name="NotificationsFlyout" Opening="OnNotificationsOpening" Placement="BottomEdgeAlignedRight">
                                 <StackPanel Spacing="8" Width="360">
                                     <Grid>
-                                        <TextBlock x:Uid="notifications_title" Text="Notifications"
+                                        <TextBlock x:Uid="notifications_heading" Text="Notifications"
                                                    Style="{ThemeResource BodyStrongTextBlockStyle}"
                                                    VerticalAlignment="Center" />
                                         <Button x:Uid="mark_all_read" Content="Mark all read"
@@ -1708,6 +1710,26 @@
                                                           SelectedItem="{x:Bind Shell.Settings.Theme, Mode=OneWay}"
                                                           SelectionChanged="OnThemeChosen" />
                                                 <!--
+                                                    The global chord, which was one fixed chord with no
+                                                    way to change it. This machine's, like the theme; the
+                                                    core judges what is a chord and the window registers
+                                                    what it accepts.
+                                                -->
+                                                <StackPanel Spacing="4">
+                                                    <TextBox x:Uid="hotkey_box" x:Name="HotkeyBox"
+                                                             Header="Quick-add shortcut"
+                                                             AutomationProperties.Name="Quick-add shortcut"
+                                                             Text="{x:Bind Shell.Settings.HotkeyChord, Mode=OneWay}" />
+                                                    <TextBlock x:Uid="hotkey_hint"
+                                                               Text="Brings Astrid forward from anywhere, ready for a new task. Ctrl, Alt or Win, plus one letter or digit."
+                                                               TextWrapping="Wrap"
+                                                               Style="{ThemeResource CaptionTextBlockStyle}"
+                                                               Foreground="{ThemeResource AstridTextMuted}" />
+                                                    <Button x:Uid="apply_hotkey" Content="Apply"
+                                                            AutomationProperties.Name="Apply shortcut"
+                                                            Click="OnApplyHotkey" />
+                                                </StackPanel>
+                                                <!--
                                                     The task-detail layout, where the web keeps it
                                                     (task c0f3db19). An account setting, so it
                                                     follows the person between devices; the theme
@@ -2011,6 +2033,7 @@
                                                           AutomationProperties.Name="Google list linking"
                                                           HorizontalAlignment="Stretch"
                                                           SelectedItem="{x:Bind Shell.Settings.GoogleSyncMode, Mode=OneWay}"
+                                                          Visibility="{x:Bind Shell.GoogleTasksEnabled, Mode=OneWay, Converter={StaticResource Visible}}"
                                                           SelectionChanged="OnGoogleSyncModeChosen">
                                                     <x:String>manual</x:String>
                                                     <x:String>all_google_to_astrid</x:String>
@@ -2364,7 +2387,24 @@
                                         AutomationProperties.Name="{x:Bind CompleteActionName}"
                                         Tag="{x:Bind Id}"
                                         Click="OnRowMarkClicked">
-                                    <Image Source="{x:Bind CheckboxAsset}" Width="32" Height="32" />
+                                    <!--
+                                        Whose task is this? Three answers, not two (PRODUCT_CONTRACT.md §4):
+                                        yours is the checkbox; somebody else's is their mark in a
+                                        priority-coloured square; nobody's is the unassigned mark in the
+                                        same square. The core decided which; the tap completes either way.
+                                    -->
+                                    <Grid Width="32" Height="32">
+                                        <Image Source="{x:Bind CheckboxAsset}" Width="32" Height="32"
+                                               Visibility="{x:Bind LeadingIsCheckbox, Converter={StaticResource Visible}}" />
+                                        <Border Width="24" Height="24" CornerRadius="6"
+                                                Background="{x:Bind Priority, Converter={StaticResource PriorityBrush}}"
+                                                Visibility="{x:Bind LeadingIsSquare, Converter={StaticResource Visible}}">
+                                            <TextBlock Text="{x:Bind (bindings:TaskRow), Converter={StaticResource LeadingMark}}"
+                                                       FontSize="12" FontWeight="SemiBold"
+                                                       Foreground="White"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                    </Grid>
                                 </Button>
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">

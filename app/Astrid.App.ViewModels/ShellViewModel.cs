@@ -34,6 +34,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// </summary>
     private int _syncsInFlight;
     private bool _needsSignIn;
+    private bool _projectModeEnabled = true;
+    private bool _googleTasksEnabled = true;
     private string? _statusMessage;
     private bool _disposed;
     private bool _isBoardView;
@@ -139,6 +141,42 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     /// <summary>The bell: the inbox and its unread count.</summary>
     public NotificationsViewModel Notifications { get; }
+
+    /// <summary>
+    /// Whether the board is offered. The web gates it on the <c>project_mode</c> flag; a flag the
+    /// server has not been asked about yet counts as on, because the web only hides what it has
+    /// been told to hide.
+    /// </summary>
+    public bool ProjectModeEnabled
+    {
+        get => _projectModeEnabled;
+        private set => Set(ref _projectModeEnabled, value);
+    }
+
+    /// <summary>Whether Google Tasks linking is offered (the <c>google_tasks</c> flag).</summary>
+    public bool GoogleTasksEnabled
+    {
+        get => _googleTasksEnabled;
+        private set => Set(ref _googleTasksEnabled, value);
+    }
+
+    /// <summary>Read the flags from the cache and gate the surfaces.</summary>
+    public async Task LoadFeaturesAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.Features(), cancellationToken);
+        if (!response.Ok || response.Read<Features>() is not { } features)
+        {
+            return;
+        }
+        ProjectModeEnabled = features.ProjectMode ?? true;
+        GoogleTasksEnabled = features.GoogleTasks ?? true;
+        // A board somebody is looking at that the server has just taken away closes; the list
+        // is still there.
+        if (!ProjectModeEnabled && IsBoardView)
+        {
+            await ShowBoardAsync(false, cancellationToken);
+        }
+    }
 
     /// <summary>
     /// Whether to show the first-run tour.
@@ -475,6 +513,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         await RefreshOutboxAsync(cancellationToken);
         // The badge from the cache, before the network: it is right the moment the window opens.
         await Notifications.LoadAsync(cancellationToken);
+        await LoadFeaturesAsync(cancellationToken);
         await SyncAsync(cancellationToken);
     }
 
@@ -586,8 +625,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 await Sidebar.LoadAsync(cancellationToken);
                 await Tasks.RefreshAsync(cancellationToken);
                 // The inbox rides on a person's sync the way it rides on the timer's. The web
-                // sends no live event for it, so a pass is the only time it moves.
+                // sends no live event for it, so a pass is the only time it moves. The flags
+                // too: the core refreshed them with the pass.
                 await Notifications.RefreshAsync(cancellationToken);
+                await LoadFeaturesAsync(cancellationToken);
             }
             await RefreshOutboxAsync(cancellationToken);
         }

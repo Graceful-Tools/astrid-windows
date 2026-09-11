@@ -1,3 +1,4 @@
+using Astrid.Core.Bindings;
 using System.Runtime.InteropServices;
 using System.Threading;
 
@@ -37,14 +38,36 @@ public sealed partial class GlobalHotkey : IDisposable
     private const uint ModNoRepeat = 0x4000;
     private const int HotkeyId = 1;
 
+    private const uint ModWin = 0x0008;
+
     private readonly Action _pressed;
     private readonly Thread _thread;
+    private readonly uint _modifiers;
+    private readonly uint _key;
     private uint _threadId;
     private bool _disposed;
 
+    /// <summary>The shipped chord, Ctrl+Shift+A. What is registered when nothing else was chosen.</summary>
     public GlobalHotkey(Action pressed)
+        : this(pressed, new Hotkey { Chord = "Ctrl+Shift+A", Ctrl = true, Shift = true, Key = "A" })
+    {
+    }
+
+    /// <summary>
+    /// A chord the core accepted. It has already refused anything without a real modifier and
+    /// anything whose key is not one letter or digit, so what arrives here can be registered.
+    /// </summary>
+    public GlobalHotkey(Action pressed, Hotkey chord)
     {
         _pressed = pressed;
+        Chord = chord.Chord;
+        _modifiers = ModNoRepeat
+            | (chord.Ctrl ? ModControl : 0)
+            | (chord.Alt ? ModAlt : 0)
+            | (chord.Shift ? ModShift : 0)
+            | (chord.Win ? ModWin : 0);
+        // A letter's or a digit's virtual-key code is its upper-case ASCII code.
+        _key = chord.Key.Length == 1 ? char.ToUpperInvariant(chord.Key[0]) : 'A';
         _thread = new Thread(Run)
         {
             IsBackground = true,
@@ -57,7 +80,7 @@ public sealed partial class GlobalHotkey : IDisposable
     public bool IsRegistered { get; private set; }
 
     /// <summary>What the combination is, for a message that has to name it.</summary>
-    public static string Chord => "Ctrl+Shift+A";
+    public string Chord { get; }
 
     public void Start()
     {
@@ -70,9 +93,9 @@ public sealed partial class GlobalHotkey : IDisposable
     private void Run()
     {
         _threadId = GetCurrentThreadId();
-        // 'A' for Astrid, with Ctrl+Shift, which is the shape Windows apps use for a global chord
-        // and is free on a default install.
-        IsRegistered = RegisterHotKey(IntPtr.Zero, HotkeyId, ModControl | ModShift | ModNoRepeat, 'A');
+        // Ctrl+Shift+A unless the person chose otherwise: 'A' for Astrid, with Ctrl+Shift, which
+        // is the shape Windows apps use for a global chord and is free on a default install.
+        IsRegistered = RegisterHotKey(IntPtr.Zero, HotkeyId, _modifiers, _key);
         if (!IsRegistered)
         {
             App.Log($"the global hotkey {Chord} is already in use by another app");

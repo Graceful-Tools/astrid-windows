@@ -1417,7 +1417,76 @@
   <data name="notifications_button.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Notifications</value>
   </data>
-  <data name="notifications_title.Text" xml:space="preserve">
+  <data name="notifications_heading.Text" xml:space="preserve">
     <value>Notifications</value>
+  </data>
+  <data name="tasks_unassigned_mark" xml:space="preserve">
+    <value>U</value>
+  </data>
+  <data name="appearance_hotkey" xml:space="preserve">
+    <value>Quick-add shortcut</value>
+  </data>
+  <data name="appearance_hotkey_hint" xml:space="preserve">
+    <value>Brings Astrid forward from anywhere, ready for a new task. Ctrl, Alt or Win, plus one letter or digit.</value>
+  </data>
+  <data name="appearance_apply" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="notification_assigned" xml:space="preserve">
+    <value>Assigned to you</value>
+  </data>
+  <data name="notification_mentioned" xml:space="preserve">
+    <value>Mentioned you</value>
+  </data>
+  <data name="notification_replied" xml:space="preserve">
+    <value>Replied to you</value>
+  </data>
+  <data name="notification_commented" xml:space="preserve">
+    <value>Commented</value>
+  </data>
+  <data name="notification_status_changed" xml:space="preserve">
+    <value>Status changed</value>
+  </data>
+  <data name="notification_completed" xml:space="preserve">
+    <value>Completed</value>
+  </data>
+  <data name="notifications_title" xml:space="preserve">
+    <value>Notifications</value>
+  </data>
+  <data name="notifications_empty" xml:space="preserve">
+    <value>Nothing new.</value>
+  </data>
+  <data name="notifications_mark_all_read" xml:space="preserve">
+    <value>Mark all read</value>
+  </data>
+  <data name="copy_title" xml:space="preserve">
+    <value>Copy to a list</value>
+  </data>
+  <data name="copy_same_list" xml:space="preserve">
+    <value>The same lists</value>
+  </data>
+  <data name="copy_include_comments" xml:space="preserve">
+    <value>Include comments</value>
+  </data>
+  <data name="copy_button" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="copy_done" xml:space="preserve">
+    <value>Copied</value>
+  </data>
+  <data name="apply_hotkey.Content" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="apply_hotkey.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Apply shortcut</value>
+  </data>
+  <data name="hotkey_box.Header" xml:space="preserve">
+    <value>Quick-add shortcut</value>
+  </data>
+  <data name="hotkey_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Quick-add shortcut</value>
+  </data>
+  <data name="hotkey_hint.Text" xml:space="preserve">
+    <value>Brings Astrid forward from anywhere, ready for a new task. Ctrl, Alt or Win, plus one letter or digit.</value>
   </data>
 </root>

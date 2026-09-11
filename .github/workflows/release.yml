@@ -52,6 +52,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The gate, before anything is built for anyone: format, lint, the core tests, the contract
+      # check. A tag is a deliberate act, but a tag on a commit that never went through the gate
+      # is still a build nobody checked — and this workflow used to publish it regardless.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.arch }}
+      - name: Gate
+        shell: pwsh
+        run: npm run predeploy:quick
+
       # ARM64 is cross-built from the x64 runner, which is what `npm run predeploy` already does
       # every run — so this is not a path that only a release exercises.
       - name: Publish

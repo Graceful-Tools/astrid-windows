@@ -631,6 +631,15 @@ public static class Commands
 
     public static object RefreshCapabilities() => new KindOnly("refreshCapabilities");
 
+    /// <summary>This user's feature flags, from the cache. Null for a flag the server has not been asked about.</summary>
+    public static object Features() => new KindOnly("features");
+
+    /// <summary>The global quick-add chord and its parts.</summary>
+    public static object Hotkey() => new KindOnly("hotkey");
+
+    /// <summary>Choose another chord. Refused with a reason when the shell could not register it.</summary>
+    public static object SetHotkey(string chord) => new ChordRequest("setHotkey", chord);
+
     /// <summary>Copy a task into a list, with or without its comments. The server makes the copy.</summary>
     public static object CopyTask(string taskId, string? targetListId, bool includeComments) =>
         new CopyTaskRequest("copyTask", taskId, targetListId, includeComments);
@@ -688,6 +697,10 @@ public static class Commands
     private sealed record IdsRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("ids")] IReadOnlyList<string> Ids);
+
+    private sealed record ChordRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("chord")] string Chord);
 
     private sealed record RowsRequest(
         [property: JsonPropertyName("kind")] string Kind,

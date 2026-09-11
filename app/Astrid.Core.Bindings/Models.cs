@@ -63,6 +63,25 @@ public sealed record TaskRow
     public string CompleteActionName => $"Complete {Title}";
 
     /// <summary>
+    /// The three answers to "whose task is this?" (PRODUCT_CONTRACT.md §4): yours is the
+    /// checkbox; somebody else's is their mark in a priority-coloured square; nobody's is the
+    /// unassigned mark in the same square. The core decides; these only say which to draw.
+    /// </summary>
+    public bool LeadingIsCheckbox => Leading.Kind == "checkbox";
+
+    public bool LeadingIsSquare => Leading.Kind != "checkbox";
+
+    /// <summary>What goes in the square for somebody else's task: the first letter of their name.</summary>
+    public string AssigneeInitial
+    {
+        get
+        {
+            var name = Assignee?.Name ?? Assignee?.Email ?? string.Empty;
+            return name.Length == 0 ? "?" : name[..1].ToUpperInvariant();
+        }
+    }
+
+    /// <summary>
     /// The mark this row wears, as an image path.
     /// </summary>
     /// <remarks>
@@ -280,6 +299,36 @@ public sealed record ListSummary
 
     /// <summary>The name. See <see cref="TaskRow.ToString"/> for why this is overridden.</summary>
     public override string ToString() => Name;
+}
+
+/// <summary>
+/// This user's feature flags. A null flag is one the server has not been asked about yet, which
+/// a surface treats as "show": the web only hides what it has been told to hide.
+/// </summary>
+public sealed record Features
+{
+    [JsonPropertyName("projectMode")] public bool? ProjectMode { get; init; }
+
+    [JsonPropertyName("googleTasks")] public bool? GoogleTasks { get; init; }
+
+    [JsonPropertyName("taskCost")] public bool? TaskCost { get; init; }
+}
+
+/// <summary>The global quick-add chord, and its parts for the registration.</summary>
+public sealed record Hotkey
+{
+    [JsonPropertyName("chord")] public string Chord { get; init; } = "Ctrl+Shift+A";
+
+    [JsonPropertyName("ctrl")] public bool Ctrl { get; init; }
+
+    [JsonPropertyName("alt")] public bool Alt { get; init; }
+
+    [JsonPropertyName("shift")] public bool Shift { get; init; }
+
+    [JsonPropertyName("win")] public bool Win { get; init; }
+
+    /// <summary>One ASCII letter or digit, upper-cased.</summary>
+    [JsonPropertyName("key")] public string Key { get; init; } = "A";
 }
 
 /// <summary>One row of the inbox: what happened to work you are involved in.</summary>

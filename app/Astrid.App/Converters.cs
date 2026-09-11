@@ -672,6 +672,22 @@ public sealed partial class RemoteImageConverter : IValueConverter
         throw new NotSupportedException("an image is not read back into an address");
 }
 
+/// <summary>
+/// What goes in the priority-coloured square at the start of a row that is not yours
+/// (PRODUCT_CONTRACT.md §4): the unassigned mark — a resource, because it is the first letter of
+/// the reader's word for "unassigned", not a literal U — or the first letter of the assignee's name.
+/// </summary>
+public sealed partial class LeadingMarkConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is TaskRow row && row.Leading.Kind == "avatar"
+            ? row.AssigneeInitial
+            : Strings.Get("tasks.unassigned_mark");
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a mark is not read back");
+}
+
 /// <summary>The mark on a list chip: a list, or a tag when the list is a label.</summary>
 public sealed partial class ChipGlyphConverter : IValueConverter
 {

@@ -791,6 +791,57 @@ public sealed class SettingsViewModel : ObservableObject
     /// <summary>Raised when the look changes, so the window can repaint itself.</summary>
     public event Action? ThemeChanged;
 
+    /// <summary>Raised when the global chord changes, so the window can register the new one.</summary>
+    public event Action<Hotkey>? HotkeyChanged;
+
+    private Hotkey _hotkey = new();
+
+    /// <summary>The global quick-add chord, as the core has it — chosen, or as shipped.</summary>
+    public Hotkey Hotkey
+    {
+        get => _hotkey;
+        private set
+        {
+            if (Set(ref _hotkey, value))
+            {
+                Raise(nameof(HotkeyChord));
+            }
+        }
+    }
+
+    /// <summary>The chord as words — <c>Ctrl+Shift+A</c> — for the box that edits it.</summary>
+    public string HotkeyChord => _hotkey.Chord;
+
+    public async Task LoadHotkeyAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.Hotkey(), cancellationToken);
+        if (response.Ok && response.Read<Hotkey>() is { } hotkey)
+        {
+            Hotkey = hotkey;
+        }
+    }
+
+    /// <summary>
+    /// Choose another chord. The core decides whether it is one — a modifier, one key — and says
+    /// why not; a chord it accepts is registered by the window at once.
+    /// </summary>
+    public async Task<bool> SetHotkeyAsync(string chord, CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.SetHotkey(chord), cancellationToken);
+        if (!response.Ok)
+        {
+            ErrorMessage = response.Error?.Message;
+            return false;
+        }
+        ErrorMessage = null;
+        if (response.Read<Hotkey>() is { } hotkey)
+        {
+            Hotkey = hotkey;
+            HotkeyChanged?.Invoke(hotkey);
+        }
+        return true;
+    }
+
     /// <summary>Read back which look this installation is set to.</summary>
     public async Task LoadThemeAsync(CancellationToken cancellationToken = default)
     {

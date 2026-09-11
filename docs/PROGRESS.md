@@ -45,7 +45,7 @@ accessibility tree by `npm run predeploy:full`.
 | Due-date quick picks | `astrid_core::rows::due_picks` → shell | done |
 | Virtual lists (Today, Not in a List, I've Assigned) | `astrid_core::filters` → shell | done |
 | Background sync and live updates | `astrid_core::app::background` | done — and since 2026-09-11 a pass that changes the cache tells the shell, and a journalled write goes out at once rather than on the next tick |
-| Localisation (`.resw`) | `app/Astrid.App/Strings/` | mechanism done — English; a language is a folder. About half the shell's strings are still literals in `ShellPage.xaml` and a few `.cs` files; see "Release readiness" |
+| Localisation (`.resw`) | `app/Astrid.App/Strings/` | done — English; a language is a folder. Every literal in `ShellPage.xaml` carries an `x:Uid` with a resource behind it, and `LocalisationTests` keeps it so |
 | UI smoke tests | `app/Astrid.App.UITests/` | done — five, in `npm run predeploy:full` |
 | Assignee picker | `astrid_core::rows::assignee` → shell | done |
 | Repeat editor | `astrid_core::rows::repeat` → shell | done |
@@ -126,6 +126,20 @@ against the web, from a read of the source rather than of the docs, with what ha
   #health", "Standup weekly mon and wed", "Rent monthly" — in twelve languages, whose keyword
   tables ride in `contracts/fixtures/smart.json` beside 220 of the web's own answers. Closes
   CONTRACTS.md D11; D12 and D13 record the two deliberate differences.
+- **Feature flags** (`/api/v1/features`): the board toggle and Google list linking follow
+  `project_mode` and `google_tasks`, refreshed with every sync pass. A flag never fetched hides
+  nothing, as on the web.
+- **A rebindable quick-add chord**: `astrid_core::keyboard::chord` judges it, Appearance edits
+  it, the window re-registers it.
+- **The row's leading control** now draws the three answers to "whose task is this?" — the
+  checkbox, someone else's initial in a priority square, or the localised unassigned mark
+  (`tasks.unassigned_mark`) — and a finished unassigned task falls back to the checkbox
+  (PRODUCT_CONTRACT.md §4). It drew the checkbox for all three before.
+- `release.yml` runs the quick gate before it publishes anything.
+
+**Blocked on the web** (no `/api/v1` route; this client refuses unversioned paths): transfer
+ownership (`/api/lists/[id]/transfer-ownership`) and manual reorder (`/api/lists/[id]/manual-order`).
+The core already reads `manualSortOrder`; the write needs a versioned route.
 - Two things the fuller gate found and fixed: the shell resolved the core's DLL by *last*
   candidate, so a week-old release build beat a fresh debug one; and the account photo binding
   threw on every fresh launch (no photo → an empty string into an image), which had broken the
@@ -144,10 +158,9 @@ against the web, from a read of the source rather than of the docs, with what ha
 
 **Still open — features the web has**
 
-Manual drag-reorder and drag-to-list; transfer ownership; list image; copy-to-my-list and the public-list browser; the
-`@astrid` model selector; calendar feed settings; per-user feature flags (`project_mode`,
-`google_tasks`); full-screen detail; the localised unassigned mark; a rebindable hotkey; twelve
-languages.
+Drag-to-list; list image; copy-to-my-list and the public-list browser; the `@astrid` model
+selector; calendar feed settings; full-screen detail; twelve languages — and the two blocked on
+the web above.
 
 Not gaps, because the web has none either: multi-select, undo, calendar view, dependencies.
 

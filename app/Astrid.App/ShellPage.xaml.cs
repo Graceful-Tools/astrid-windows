@@ -137,8 +137,11 @@ public sealed partial class ShellPage : UserControl
         // Banners before the first load: a reminder that came due while the app was closed should
         // arrive as the window opens, not a half-minute later when the loop first ticks.
         _reminders.Start();
-        _hotkey = new GlobalHotkey(QuickAdd);
-        _hotkey.Start();
+        // The chord the person chose, or the shipped one. From the cache, like the theme; and
+        // re-registered whenever it changes, from the thread that owns the registration.
+        await Shell.Settings.LoadHotkeyAsync();
+        RegisterHotkey(Shell.Settings.Hotkey);
+        Shell.Settings.HotkeyChanged += RegisterHotkey;
         // The look before the first paint, so the window does not flash the wrong one on the way
         // in. It comes from the cache, so this does not wait for a network.
         Shell.Settings.ThemeChanged += ApplyTheme;
@@ -1480,6 +1483,24 @@ public sealed partial class ShellPage : UserControl
     /// Guarded against the load that fills the box in, like the other pickers here: without it,
     /// opening the flyout would write back the theme the app is already wearing.
     /// </remarks>
+    /// <summary>Hold the chord the core accepted, letting go of the one before it.</summary>
+    private void RegisterHotkey(Hotkey chord)
+    {
+        _hotkey?.Dispose();
+        _hotkey = new GlobalHotkey(QuickAdd, chord);
+        _hotkey.Start();
+    }
+
+    /// <summary>The Apply beside the shortcut box: the core judges the chord, the window holds it.</summary>
+    private async void OnApplyHotkey(object sender, RoutedEventArgs args)
+    {
+        if (_settingsLoading)
+        {
+            return;
+        }
+        await Shell.Settings.SetHotkeyAsync(HotkeyBox.Text);
+    }
+
     private async void OnThemeChosen(object sender, SelectionChangedEventArgs args)
     {
         if (_settingsLoading
