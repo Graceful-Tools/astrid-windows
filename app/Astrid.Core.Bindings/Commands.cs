@@ -513,9 +513,9 @@ public static class Commands
     public static object CreateTask(string title, IReadOnlyList<string>? listIds = null,
         string? description = null, int? priority = null, string? dueDateTime = null,
         bool? isAllDay = null, string? assigneeId = null, string? parentTaskId = null,
-        bool quickAdd = false) =>
+        bool quickAdd = false, string? locale = null) =>
         new CreateTaskRequest("createTask", title, description, listIds ?? [], priority,
-            dueDateTime, isAllDay, assigneeId, parentTaskId, quickAdd);
+            dueDateTime, isAllDay, assigneeId, parentTaskId, quickAdd, locale);
 
     /// <summary>
     /// Edit a task. <paramref name="changes"/> carries only what changed; a property present and
@@ -710,7 +710,10 @@ public static class Commands
         // True for the quick-add box, whose `#list` tags the core reads when the account has
         // smart parsing on (task 6ac2639a). The shell says where the title came from, not what
         // to do with it.
-        [property: JsonPropertyName("quickAdd")] bool QuickAdd);
+        [property: JsonPropertyName("quickAdd")] bool QuickAdd,
+        // The reader's language tag, for the words the quick-add box reads out of a sentence —
+        // "morgen" is tomorrow in German and a plain word in English.
+        [property: JsonPropertyName("locale")] string? Locale);
 
     private sealed record UpdateRequest(
         [property: JsonPropertyName("kind")] string Kind,

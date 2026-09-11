@@ -464,7 +464,9 @@ public sealed class TaskListViewModel : ObservableObject
         // From the quick-add box, so the core may read `#list` tags out of it — or not, as the
         // account's smart parsing says (task 6ac2639a).
         var response = await _core
-            .CallAsync(Commands.CreateTask(trimmed, listIds, quickAdd: true), cancellationToken);
+            .CallAsync(Commands.CreateTask(trimmed, listIds, quickAdd: true,
+                // The reader's language decides which words are dates and priorities.
+                locale: System.Globalization.CultureInfo.CurrentUICulture.Name), cancellationToken);
         if (!Handle(response))
         {
             return false;

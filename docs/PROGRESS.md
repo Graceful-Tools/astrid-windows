@@ -122,6 +122,10 @@ against the web, from a read of the source rather than of the docs, with what ha
 - **The editing-session machine** (`astrid_core::editing`), ported from `lib/editing-session.ts`
   and locked by `contracts/fixtures/editing.json`. The core half; the detail pane's editors are
   not yet routed through it.
+- **Natural-language quick-add** (`astrid_core::parse::smart`): "Call mum tomorrow urgent
+  #health", "Standup weekly mon and wed", "Rent monthly" — in twelve languages, whose keyword
+  tables ride in `contracts/fixtures/smart.json` beside 220 of the web's own answers. Closes
+  CONTRACTS.md D11; D12 and D13 record the two deliberate differences.
 - Two things the fuller gate found and fixed: the shell resolved the core's DLL by *last*
   candidate, so a week-old release build beat a fresh debug one; and the account photo binding
   threw on every fresh launch (no photo → an empty string into an image), which had broken the
@@ -140,8 +144,7 @@ against the web, from a read of the source rather than of the docs, with what ha
 
 **Still open — features the web has**
 
-Natural-language quick-add beyond `#list` (CONTRACTS D11); manual drag-reorder and
-drag-to-list; transfer ownership; list image; copy-to-my-list and the public-list browser; the
+Manual drag-reorder and drag-to-list; transfer ownership; list image; copy-to-my-list and the public-list browser; the
 `@astrid` model selector; calendar feed settings; per-user feature flags (`project_mode`,
 `google_tasks`); full-screen detail; the localised unassigned mark; a rebindable hotkey; twelve
 languages.
