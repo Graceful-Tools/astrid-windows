@@ -27,10 +27,15 @@ regression on another platform.
    anchors on what the user sees rather than on stale cache.
 4. **Next-occurrence math lives ONLY in `repeating`.** Never inline pattern math. Mirror any change
    into `astrid-web/types/repeating.ts` and `astrid-ios/.../RepeatingTaskHandler.swift`.
-5. **Preserve offline behaviour.** Writes journal through the Outbox; local-first caching and dedup
-   must keep working. Nothing bypasses the Outbox.
-6. **All API paths are `/api/v1/...`.** New endpoints go in `api::client`, and
-   `docs/API_ENDPOINTS.md` is generated from the source and locked by a test.
+5. **Preserve offline behaviour.** Task, list, comment, chat, attachment and account-settings
+   writes journal through the Outbox; local-first caching and dedup must keep working. A few
+   writes are online-only **on purpose** — membership (an optimistic member row would fool every
+   permission check), board columns (shared configuration the server derives from), My Tasks
+   filters (a filter replayed a week later moves a screen), agents, API access, share links and
+   account deletion — and each says so in its service's doc comment and on screen. Anything
+   else that reaches `ApiClient` from a service without an Outbox entry is a bug.
+6. **All API paths are `/api/v1/...`.** Every path this client speaks is a constant or a builder
+   in `api::endpoints`, and the request guard in `api::path` refuses anything else.
 7. **TDD for bug fixes:** write a RED regression test naming the task id, watch it fail, then make
    it green. Run `npm run predeploy` before calling a task done.
 8. **For breaking API changes, add a new version** — keep the existing one working.
@@ -38,7 +43,10 @@ regression on another platform.
    If it decides anything about tasks, lists, sync, permissions or user-facing copy, it belongs in
    `astrid-core`.
 10. **Reuse before you write.** Permission helpers, i18n resources and the shared row view-model
-    already exist; never inline a role comparison or a user-facing string literal.
+    already exist; never inline a role comparison or a user-facing string literal. User-facing
+    copy lives in `app/Astrid.App/Strings/<lang>/Resources.resw` and is read through
+    `Strings.Get`. About half the shell's strings still bypass that (see `docs/PROGRESS.md`,
+    "Release readiness"); do not add to them, and take a few out when passing.
 
 ---
 
@@ -55,7 +63,8 @@ of a second set of business rules would be paid forever.
 
 ```
 app/Astrid.App          WinUI 3, C#      windows, XAML, key dispatch, platform adapters
-app/Astrid.Core.Bindings                 generated C# over the core's C ABI
+app/Astrid.Core.Bindings                 hand-written C# over the core's C ABI — partial by
+                                         design, and read against the Command enum by a test
 crates/astrid-core      Rust             models, API client, SQLite cache, Outbox, services,
                                          sync, SSE, auth, and every cross-platform contract
         |
@@ -103,9 +112,9 @@ this client, then mirror into astrid-ios. Deploy web before shipping a client th
 | Models and wire shapes | `crates/astrid-core/src/model/` | serde; lenient decoding, because the server is permissive |
 | API client | `crates/astrid-core/src/api/` | the only place that speaks HTTP; sends `x-platform: windows-app` |
 | Local cache | `crates/astrid-core/src/store/` | SQLite; the read path never waits on the network |
-| Outbox | `crates/astrid-core/src/outbox/` | the only write path: idempotent, retrying, dependency-ordered, dead-lettering |
+| Outbox | `crates/astrid-core/src/outbox/` | the write path: idempotent, retrying, dependency-ordered, dead-lettering; delivered at once by `app::background::outbox_loop`, which a command rings when it journals something |
 | Services | `crates/astrid-core/src/services/` | the canonical control points |
-| Sync + real time | `crates/astrid-core/src/{sync,realtime}/` | 60s pull, delta sync, SSE with a polling fallback |
+| Sync + real time | `crates/astrid-core/src/{sync,realtime}/` | a 60s pull that asks only for what moved since the last pass (with the server's tombstones), SSE on top, and every pass that changes the cache announces it to the shell |
 | Contracts | `crates/astrid-core/src/{repeating,permissions,filters,parse,keyboard,rows}/` | pure, fixture-locked |
 | Shell | `app/Astrid.App/` | no business logic |
 | Automation | `crates/xtask/`, `scripts/` | `cargo xtask <command>`, `npm run predeploy` |

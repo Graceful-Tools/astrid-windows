@@ -44,9 +44,9 @@ accessibility tree by `npm run predeploy:full`.
 | Board view | `astrid_core::board` (fixture-locked) → shell | done |
 | Due-date quick picks | `astrid_core::rows::due_picks` → shell | done |
 | Virtual lists (Today, Not in a List, I've Assigned) | `astrid_core::filters` → shell | done |
-| Background sync and live updates | `astrid_core::app::background` | done |
-| Localisation (`.resw`) | `app/Astrid.App/Strings/` | done — English; a language is a folder |
-| UI smoke tests | `app/Astrid.App.UITests/` | done — four, in `npm run predeploy:full` |
+| Background sync and live updates | `astrid_core::app::background` | done — and since 2026-09-11 a pass that changes the cache tells the shell, and a journalled write goes out at once rather than on the next tick |
+| Localisation (`.resw`) | `app/Astrid.App/Strings/` | mechanism done — English; a language is a folder. About half the shell's strings are still literals in `ShellPage.xaml` and a few `.cs` files; see "Release readiness" |
+| UI smoke tests | `app/Astrid.App.UITests/` | done — five, in `npm run predeploy:full` |
 | Assignee picker | `astrid_core::rows::assignee` → shell | done |
 | Repeat editor | `astrid_core::rows::repeat` → shell | done |
 | Search | `astrid_core::services::search` → shell | done |
@@ -87,6 +87,51 @@ as seconds rather than as a percentage.
 | My Tasks, and its account-wide filters | `astrid_core::filters::my_tasks` → shell | done |
 | Account and settings screens | `astrid_core::services::account` → shell | done |
 | `docs/PARITY.md` | `docs/PARITY.md` | done |
+
+## Release readiness — measured against the web app, 2026-09-11
+
+`docs/PARITY.md` measures against the Mac, and the Mac trails the web. This is the honest list
+against the web, from a read of the source rather than of the docs, with what has landed since.
+
+**Landed 2026-09-11**
+
+- The shell is built and tested in CI (`.github/workflows/ci.yml`, job `shell`); it never was.
+- `crates/astrid-core/tests/bindings_contract.rs` reads `Commands.cs` against the `Command` enum.
+- The background pass publishes what it changed; the shell redraws without a click.
+- `sync::policy` is wired: a person's refresh waits for the pass in flight instead of returning
+  having fetched nothing (task 3173727d), and the shell no longer drops the second request.
+- The pull is incremental (`updatedSince`, with the server's tombstones), stamped at pass start.
+- `app::background::outbox_loop` delivers a journalled write as soon as it is made; before, the
+  journal drained only at the top of the sixty-second pass.
+- Reminder and smart-task settings go through the Outbox; they used to be lost offline.
+- List settings open from the cache and then refresh (`listMembers` + `refreshListMembers`);
+  one network call used to take the whole flyout down. The account flyout asks for its four
+  server-side answers together rather than one after another.
+
+**Still open — architecture**
+
+- `ShellPage.xaml` (3.5k lines) and `ShellPage.xaml.cs` (2.8k) are one control; the settings
+  flyout is nine sections toggled by visibility. `SettingsViewModel` (1.3k) is nine screens;
+  `TaskDetailViewModel` (1.6k) fuses fields, comments, attachments and timer.
+  `app/dispatch.rs` (5.9k) is one match plus its tests. All split along seams that already exist.
+- About 160 of ~330 user-visible strings are literals (271 attributes in `ShellPage.xaml`, five
+  section titles in `ShowSettingsSection`, toast copy in `Reminders.cs`, English ordinals in
+  `Converters.cs`).
+- Writes to task rows are "optimistic in effect" (cache write, then a re-read), not an in-memory
+  flip; only the detail's completion toggle flips first.
+- No drift test on response shapes (`Models.cs` against the Rust `Response`s).
+
+**Still open — features the web has**
+
+Notification inbox (`/api/v1/notifications`); server-side search with the query syntax
+(`assignee:`, `priority:`, `due:`, `status:`, `list:`, `is:`, `AST-142`); the editing-session
+machine (`PRODUCT_CONTRACT.md` §6); natural-language quick-add beyond `#list` (CONTRACTS D11);
+label lists (`listType: "label"`); task copy with comments; manual drag-reorder and drag-to-list;
+transfer ownership; list image; copy-to-my-list and the public-list browser; the `@astrid` model
+selector; calendar feed settings; per-user feature flags (`project_mode`, `google_tasks`);
+full-screen detail; the localised unassigned mark; a rebindable hotkey; twelve languages.
+
+Not gaps, because the web has none either: multi-select, undo, calendar view, dependencies.
 
 ## M4 — distribution
 

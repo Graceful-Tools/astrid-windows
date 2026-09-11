@@ -631,6 +631,12 @@ public static class Commands
 
     public static object RefreshCapabilities() => new KindOnly("refreshCapabilities");
 
+    /// <summary>
+    /// The list's settings again, after the server has been asked for the roster. Follows
+    /// <see cref="ListMembers"/>, which answers from the cache so the flyout opens at once.
+    /// </summary>
+    public static object RefreshListMembers(string listId) => new WithListId("refreshListMembers", listId);
+
     /// <summary>Start signing in. Answers with the URL to open in the browser.</summary>
     public static object BeginSignIn() => new KindOnly("beginSignIn");
 

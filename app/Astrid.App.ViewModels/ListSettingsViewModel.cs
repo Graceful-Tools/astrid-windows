@@ -587,6 +587,13 @@ public sealed class ListSettingsViewModel : ObservableObject
     }
 
     /// <summary>Load one list's settings and members.</summary>
+    /// <remarks>
+    /// From the cache first, so the flyout opens at once and opens offline — the list's own
+    /// name, colour, privacy and columns never needed a connection, and one network call used to
+    /// take them all down with it. Then the server's roster, which may have moved since the last
+    /// sync; a refresh that cannot happen leaves the cached answer standing and says nothing,
+    /// because a roster a minute stale is not wrong, only as current as the last pass.
+    /// </remarks>
     public async Task LoadAsync(string listId, CancellationToken cancellationToken = default)
     {
         ListId = listId;
@@ -594,12 +601,32 @@ public sealed class ListSettingsViewModel : ObservableObject
         ErrorMessage = null;
         try
         {
-            var response = await _core.CallAsync(Commands.ListMembers(listId), cancellationToken);
-            if (!Handle(response))
+            var cached = await _core.CallAsync(Commands.ListMembers(listId), cancellationToken);
+            if (!Handle(cached))
             {
                 return;
             }
-            var settings = response.Read<ListSettings>();
+            Apply(cached.Read<ListSettings>());
+
+            var fresh = await _core.CallAsync(Commands.RefreshListMembers(listId), cancellationToken);
+            if (fresh.Ok)
+            {
+                Apply(fresh.Read<ListSettings>());
+            }
+            else if (fresh.NeedsSignIn)
+            {
+                NeedsSignIn = true;
+            }
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void Apply(ListSettings? settings)
+    {
+        {
             if (settings is null)
             {
                 return;
@@ -622,10 +649,6 @@ public sealed class ListSettingsViewModel : ObservableObject
             CanDeleteList = settings.CanDeleteList;
             CanLeave = settings.CanLeave;
             Replace(Members, settings.Members);
-        }
-        finally
-        {
-            IsLoading = false;
         }
     }
 

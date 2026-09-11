@@ -1052,12 +1052,17 @@ public sealed partial class ShellPage : UserControl
         _settingsLoading = true;
         try
         {
+            // The account reads from the cache before it asks the server, so the first section
+            // has something to draw at once. The other four answers are the server's, belong to
+            // sections further down, and do not depend on each other — so they are asked for
+            // together rather than one after another, which was four round trips of blank panel.
+            var others = Task.WhenAll(
+                Shell.Settings.LoadPasskeysAsync(),
+                Shell.Settings.LoadAgentsAsync(),
+                Shell.Settings.LoadGoogleSyncModeAsync(),
+                Shell.Settings.LoadWebhookAsync());
             await Shell.LoadSettingsAsync();
-            // The Account page is the one that opens, and its passkeys come from the server.
-            await Shell.Settings.LoadPasskeysAsync();
-            await Shell.Settings.LoadAgentsAsync();
-            await Shell.Settings.LoadGoogleSyncModeAsync();
-            await Shell.Settings.LoadWebhookAsync();
+            await others;
             var reminders = Shell.Settings.Reminders;
             DigestTimeBox.SelectedTime = ParseTime(reminders.DailyDigestTime);
             QuietStartBox.SelectedTime = ParseTime(reminders.QuietHoursStart);
@@ -1650,10 +1655,13 @@ public sealed partial class ShellPage : UserControl
 
     private async void OnListSettingsOpening(object sender, object args)
     {
+        // The settings draw from the cache and then catch up with the server. The links and
+        // the agent choices (task f44b4a0c) are the server's, independent of each other, and
+        // asked for together once the list's own facts are on screen.
         await Shell.LoadListSettingsAsync();
-        await Shell.ListSettings.LoadExternalAsync();
-        // The agents and repositories the list can be bound to (task f44b4a0c).
-        await Shell.ListSettings.LoadAgentOptionsAsync();
+        await Task.WhenAll(
+            Shell.ListSettings.LoadExternalAsync(),
+            Shell.ListSettings.LoadAgentOptionsAsync());
     }
 
     /// <summary>

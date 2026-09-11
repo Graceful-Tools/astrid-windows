@@ -2,6 +2,9 @@
 
 *What the Windows app does, what it does not yet, and what it deliberately never will.*
 
+> The Mac trails the web (`astrid-ios/docs/MAC_IOS_GAP_ASSESSMENT.md`), so a ✅ here is not a ✅
+> against the web. The gap against the web is listed in `docs/PROGRESS.md`, "Release readiness".
+
 The target is **the Mac app minus the Apple-only surfaces**. That is the honest comparison: the Mac
 and Windows apps are the two desktop clients, they read the same API, and a person moving between a
 work laptop and a home machine should not have to learn a different product.
@@ -72,7 +75,7 @@ milestones; this tracks the *product*.
 ## Where Windows is ahead
 
 - **The rules are in one place and tested.** Filters, repeats, board columns, permissions and the
-  keyboard scheme are a Rust core with 500-odd tests, and four of them are locked against
+  keyboard scheme are a Rust core with 750-odd tests, and four of them are locked against
   astrid-web's own implementation by generated fixtures. The Apple clients implement the same rules
   twice — iOS and Mac — which is where several of the divergences in `docs/CONTRACTS.md` came from.
 - **Selection opens a task.** The Mac and web both do this; Windows briefly required a double-tap,

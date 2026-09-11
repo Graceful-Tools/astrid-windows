@@ -133,6 +133,12 @@ pub unsafe extern "C" fn astrid_start(
         {
             let (app, running) = (app.clone(), running.clone());
             let keep_going = move || running.load(std::sync::atomic::Ordering::Relaxed);
+            let nudge = app.outbox_nudge().clone();
+            runtime.spawn(background::outbox_loop(app, keep_going, nudge));
+        }
+        {
+            let (app, running) = (app.clone(), running.clone());
+            let keep_going = move || running.load(std::sync::atomic::Ordering::Relaxed);
             runtime.spawn(background::reminder_loop(
                 app,
                 keep_going,

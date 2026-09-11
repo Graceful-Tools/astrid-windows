@@ -23,7 +23,7 @@ second set of business rules to keep in step forever.
 
 ```
 app/Astrid.App          WinUI 3, C#   windows, XAML, key dispatch, platform adapters
-app/Astrid.Core.Bindings              generated C# over the core's C ABI
+app/Astrid.Core.Bindings              hand-written C# over the core's C ABI, checked by a test
 crates/astrid-core      Rust          models, services, cache, Outbox, sync, contracts
         |
         v  HTTPS /api/v1/*

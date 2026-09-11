@@ -28,6 +28,66 @@ public sealed class ListSettingsViewModelTests
     };
 
     /// <summary>
+    /// The flyout opens from the cache and then catches up: the roster the server answers with
+    /// replaces the one the cache had, in one open.
+    /// </summary>
+    [Fact]
+    public async Task The_flyout_opens_from_the_cache_and_then_catches_up_with_the_server()
+    {
+        var core = new FakeCore()
+            .AnswerOk("listMembers", new
+            {
+                listId = "l1",
+                name = "Work",
+                canManageMembers = true,
+                members = new[] { new { userId = "me", role = "owner", user = new { id = "me", name = "Jon" } } },
+            })
+            .AnswerOk("refreshListMembers", Settings());
+        var view = new ListSettingsViewModel(core);
+
+        await view.LoadAsync("l1");
+
+        Assert.Equal(["listMembers", "refreshListMembers"], core.SentKinds());
+        Assert.Equal(2, view.Members.Count);
+        Assert.Null(view.ErrorMessage);
+    }
+
+    /// <summary>
+    /// Offline, the flyout shows what the cache had — the list's name, colour and the roster as
+    /// of the last pass — and says nothing about the refresh it could not make. It used to refuse
+    /// to open at all.
+    /// </summary>
+    [Fact]
+    public async Task Offline_the_flyout_shows_the_cache_and_does_not_complain()
+    {
+        var core = new FakeCore()
+            .AnswerOk("listMembers", Settings())
+            .AnswerFailure("refreshListMembers", AstridFailureKind.Offline);
+        var view = new ListSettingsViewModel(core);
+
+        await view.LoadAsync("l1");
+
+        Assert.Equal("Work", view.Name);
+        Assert.Equal(2, view.Members.Count);
+        Assert.Null(view.ErrorMessage);
+        Assert.False(view.NeedsSignIn);
+    }
+
+    /// <summary>The refresh is the first thing to notice a session has gone.</summary>
+    [Fact]
+    public async Task A_refresh_that_finds_the_session_gone_says_to_sign_in()
+    {
+        var core = new FakeCore()
+            .AnswerOk("listMembers", Settings())
+            .AnswerFailure("refreshListMembers", AstridFailureKind.Unauthorized);
+        var view = new ListSettingsViewModel(core);
+
+        await view.LoadAsync("l1");
+
+        Assert.True(view.NeedsSignIn);
+    }
+
+    /// <summary>
     /// Colour, favourite and privacy have controls (task 53780e75): each is read from the
     /// settings and each writes through the core, the colour and privacy as list edits and the
     /// favourite as its own command, since it is this account's rather than the list's.
@@ -276,17 +336,19 @@ public sealed class ListSettingsViewModelTests
 
         var unassigned = view.DefaultAssigneeChoices.First(choice => choice.Value == "unassigned");
         Assert.True(await view.ChooseDefaultAsync(unassigned));
-        Assert.Contains("\"defaultAssigneeId\":\"unassigned\"", core.Sent[2]);
+        var updates = core.Sent.Where(sent => sent.Contains("updateList")).ToList();
+        Assert.Contains("\"defaultAssigneeId\":\"unassigned\"", updates[1]);
 
         var none = view.DefaultWhenChoices.First(choice => choice.Value == "none");
         Assert.True(await view.ChooseDefaultAsync(none));
-        Assert.Contains("\"defaultDueDate\":\"none\"", core.Sent[3]);
-        Assert.Contains("\"defaultRepeating\":\"never\"", core.Sent[3]);
+        updates = core.Sent.Where(sent => sent.Contains("updateList")).ToList();
+        Assert.Contains("\"defaultDueDate\":\"none\"", updates[2]);
+        Assert.Contains("\"defaultRepeating\":\"never\"", updates[2]);
         Assert.Equal("never", view.SelectedDefaultRepeat?.Value);
 
         // The chosen one writes nothing.
         Assert.False(await view.ChooseDefaultAsync(view.SelectedDefaultWhen!));
-        Assert.Equal(4, core.Sent.Count);
+        Assert.Equal(3, core.Sent.Count(sent => sent.Contains("updateList")));
     }
 
     /// <summary>A time set on the web that is not on the hour is still shown, not rounded away.</summary>
@@ -329,7 +391,7 @@ public sealed class ListSettingsViewModelTests
         Assert.False(await view.SetFavoriteAsync(true));
         Assert.False(await view.SetPrivacyAsync("PRIVATE"));
 
-        Assert.Equal(["listMembers"], core.SentKinds());
+        Assert.Equal(["listMembers", "refreshListMembers"], core.SentKinds());
     }
 
     [Fact]
@@ -462,7 +524,7 @@ public sealed class ListSettingsViewModelTests
 
         var invite = core.Sent.First(sent => sent.Contains("inviteToList"));
         Assert.Contains("sam@example.test", invite);
-        Assert.Equal(["listMembers", "inviteToList", "listMembers"], core.SentKinds());
+        Assert.Equal(["listMembers", "refreshListMembers", "inviteToList", "listMembers", "refreshListMembers"], core.SentKinds());
     }
 
     /// <summary>A blank box is not an invitation.</summary>
