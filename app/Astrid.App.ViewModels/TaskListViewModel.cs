@@ -489,13 +489,20 @@ public sealed class TaskListViewModel : ObservableObject
     public async Task<bool> SetCompletedAsync(string taskId, bool completed,
         CancellationToken cancellationToken = default)
     {
+        // The row flips before the core is asked, and flips back only if the core refuses. The
+        // cache write is sub-millisecond, but the round trip to it and the re-read behind it
+        // are not, and a checkbox that fills a beat after the click reads as a slow app.
+        var before = Flip(taskId, row => row with { Completed = completed });
         var response = await _core
             .CallAsync(Commands.CompleteTask(taskId, completed), cancellationToken);
         if (!Handle(response))
         {
+            Unflip(before);
             return false;
         }
 
+        // The re-read is what makes the flip honest: a repeating task rolled forward rather than
+        // finishing, and only the core knows what the row looks like now.
         await RefreshAsync(cancellationToken);
         return true;
     }
@@ -504,15 +511,43 @@ public sealed class TaskListViewModel : ObservableObject
     public async Task<bool> SetPriorityAsync(string taskId, int priority,
         CancellationToken cancellationToken = default)
     {
+        var before = Flip(taskId, row => row with { Priority = priority });
         var response = await _core.CallAsync(
             Commands.UpdateTask(taskId, new Dictionary<string, object?> { ["priority"] = priority }),
             cancellationToken);
         if (!Handle(response))
         {
+            Unflip(before);
             return false;
         }
         await RefreshAsync(cancellationToken);
         return true;
+    }
+
+    /// <summary>
+    /// Change one row on screen, now, and hand back what it was so a refusal can put it back.
+    /// </summary>
+    /// <returns>The row as it was, with its position; null when the task is not on screen.</returns>
+    private (int Index, TaskRow Row)? Flip(string taskId, Func<TaskRow, TaskRow> change)
+    {
+        for (var index = 0; index < Rows.Count; index++)
+        {
+            if (Rows[index].Id == taskId)
+            {
+                var before = Rows[index];
+                Rows[index] = change(before);
+                return (index, before);
+            }
+        }
+        return null;
+    }
+
+    private void Unflip((int Index, TaskRow Row)? before)
+    {
+        if (before is { } was && was.Index < Rows.Count && Rows[was.Index].Id == was.Row.Id)
+        {
+            Rows[was.Index] = was.Row;
+        }
     }
 
     /// <summary>

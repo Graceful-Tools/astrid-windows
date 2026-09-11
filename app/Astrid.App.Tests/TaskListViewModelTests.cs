@@ -116,6 +116,63 @@ public sealed class TaskListViewModelTests
     }
 
     /// <summary>
+    /// The checkbox fills on the click, before the core has answered. The re-read that follows
+    /// is what makes that honest — a repeating task rolls forward rather than finishing.
+    /// </summary>
+    [Fact]
+    public async Task Completing_a_row_flips_it_before_the_core_answers()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(1, "Water plants"))
+            .AnswerOk("completeTask", new { id = "t0" })
+            .AnswerOk("rowsForList", Window(1, "Water plants"))
+            .Hold("completeTask");
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Home");
+
+        var completing = view.SetCompletedAsync("t0", true);
+        Assert.True(view.Rows[0].Completed, "flipped on the click, not on the answer");
+
+        core.Release("completeTask");
+        Assert.True(await completing);
+    }
+
+    /// <summary>A refusal puts the row back the way it was, so the screen never claims a change the core declined.</summary>
+    [Fact]
+    public async Task A_refused_completion_flips_the_row_back()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(1, "Water plants"))
+            .AnswerFailure("completeTask", AstridFailureKind.Refused, "not yours");
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Home");
+
+        Assert.False(await view.SetCompletedAsync("t0", true));
+
+        Assert.False(view.Rows[0].Completed);
+        Assert.NotNull(view.ErrorMessage);
+    }
+
+    /// <summary>The same for priority: the square recolours on the click.</summary>
+    [Fact]
+    public async Task Changing_priority_flips_the_row_before_the_core_answers()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(1, "Water plants"))
+            .AnswerOk("updateTask", new { id = "t0" })
+            .AnswerOk("rowsForList", Window(1, "Water plants"))
+            .Hold("updateTask");
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Home");
+
+        var changing = view.SetPriorityAsync("t0", 3);
+        Assert.Equal(3, view.Rows[0].Priority);
+
+        core.Release("updateTask");
+        Assert.True(await changing);
+    }
+
+    /// <summary>
     /// Offline is not an error. The write is in the Outbox and will go; showing a red message is
     /// how a working offline app comes to look broken.
     /// </summary>
