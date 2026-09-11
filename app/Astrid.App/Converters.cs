@@ -294,7 +294,9 @@ public sealed partial class LoggedTimeConverter : IValueConverter
         }
         var hours = timer.LoggedMinutes / 60;
         var minutes = timer.LoggedMinutes % 60;
-        var total = hours > 0 ? $"{hours}h {minutes}m" : $"{minutes}m";
+        var total = hours > 0
+            ? Strings.Get("timer.hours_minutes", hours, minutes)
+            : Strings.Get("timer.minutes", minutes);
         return Strings.Get("timer.logged", total);
     }
 
@@ -531,15 +533,25 @@ public sealed partial class RepeatSummaryConverter : IValueConverter
             ? System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month)
             : string.Empty;
 
-    private static string Ordinal(long number) => (number % 100) is >= 11 and <= 13
-        ? $"{number}th"
-        : (number % 10) switch
-        {
-            1 => $"{number}st",
-            2 => $"{number}nd",
-            3 => $"{number}rd",
-            _ => $"{number}th",
-        };
+    /// <summary>
+    /// "1st", "22nd", "13th" — the suffix rule is English, but the suffixes themselves are
+    /// resources, so a language whose ordinals are "1." or "1er" sets all four keys and gets
+    /// its own. A rule that produces the right form for every language is a bigger job than a
+    /// repeat summary is worth; this is the honest halfway.
+    /// </summary>
+    private static string Ordinal(long number)
+    {
+        var key = (number % 100) is >= 11 and <= 13
+            ? "ordinal.th"
+            : (number % 10) switch
+            {
+                1 => "ordinal.st",
+                2 => "ordinal.nd",
+                3 => "ordinal.rd",
+                _ => "ordinal.th",
+            };
+        return Strings.Get(key, number);
+    }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("a repeat is chosen from the picker");

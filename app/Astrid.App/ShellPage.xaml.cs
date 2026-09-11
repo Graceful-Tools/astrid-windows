@@ -1188,15 +1188,15 @@ public sealed partial class ShellPage : UserControl
     {
         SettingsSectionTitle.Text = section switch
         {
-            "Reminders" => "Reminders",
+            "Reminders" => Strings.Get("settings.reminders"),
             "Tasks" => Strings.Get("smart.title"),
             "Contacts" => Strings.Get("contacts.title"),
-            "Appearance" => "Appearance",
-            "Agents" => "AI agents",
-            "ApiAccess" => "API access",
-            "Integrations" => "Integrations",
-            "Data" => "Your data",
-            _ => "Account",
+            "Appearance" => Strings.Get("settings.appearance"),
+            "Agents" => Strings.Get("settings.agents"),
+            "ApiAccess" => Strings.Get("settings.api_access"),
+            "Integrations" => Strings.Get("settings.integrations"),
+            "Data" => Strings.Get("settings.data"),
+            _ => Strings.Get("settings.account"),
         };
 
         AccountSection.Visibility = Visible("Account");
@@ -2657,7 +2657,7 @@ public sealed partial class ShellPage : UserControl
         }
         var confirm = new Button
         {
-            Content = "Delete it",
+            Content = Strings.Get("comments.delete_yes"),
             Style = (Style)Application.Current.Resources["AccentButtonStyle"],
         };
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(confirm, "Confirm delete comment");
@@ -2669,7 +2669,7 @@ public sealed partial class ShellPage : UserControl
                 MaxWidth = 240,
                 Children =
                 {
-                    new TextBlock { TextWrapping = TextWrapping.Wrap, Text = "Delete this comment?" },
+                    new TextBlock { TextWrapping = TextWrapping.Wrap, Text = Strings.Get("comments.delete_confirm") },
                     confirm,
                 },
             },

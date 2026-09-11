@@ -33,6 +33,9 @@ public sealed class Reminders
     private readonly Action<Func<Task>> _post;
     private bool _registered;
 
+    /// <summary>How long the banner's snooze button puts a reminder off for.</summary>
+    private const int SnoozeMinutes = 10;
+
     public Reminders(ShellViewModel shell, Action<Func<Task>> post)
     {
         _shell = shell;
@@ -101,14 +104,14 @@ public sealed class Reminders
         }
 
         var toast = new AppNotificationBuilder()
-            .AddText("Astrid")
+            .AddText(Strings.Get("app.name"))
             .AddText(reminder.Title)
-            .AddButton(new AppNotificationButton("Complete")
+            .AddButton(new AppNotificationButton(Strings.Get("reminder.toast_complete"))
                 .AddArgument("action", "complete")
                 .AddArgument("taskId", reminder.TaskId))
-            .AddButton(new AppNotificationButton("Snooze 10 min")
+            .AddButton(new AppNotificationButton(Strings.Get("reminder.toast_snooze", SnoozeMinutes))
                 .AddArgument("action", "snooze")
-                .AddArgument("minutes", "10")
+                .AddArgument("minutes", SnoozeMinutes.ToString(System.Globalization.CultureInfo.InvariantCulture))
                 .AddArgument("taskId", reminder.TaskId))
             // The banner itself opens the task, which is what tapping a reminder means everywhere
             // else. The buttons are the shortcuts, not the only way through.

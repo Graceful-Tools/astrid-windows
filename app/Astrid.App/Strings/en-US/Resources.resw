@@ -556,4 +556,841 @@
   <data name="dialog_close" xml:space="preserve">
     <value>Close</value>
   </data>
+  <data name="app_name" xml:space="preserve">
+    <value>Astrid</value>
+  </data>
+  <data name="settings_account" xml:space="preserve">
+    <value>Account</value>
+  </data>
+  <data name="settings_reminders" xml:space="preserve">
+    <value>Reminders</value>
+  </data>
+  <data name="settings_appearance" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
+  <data name="settings_agents" xml:space="preserve">
+    <value>AI agents</value>
+  </data>
+  <data name="settings_api_access" xml:space="preserve">
+    <value>API access</value>
+  </data>
+  <data name="settings_integrations" xml:space="preserve">
+    <value>Integrations</value>
+  </data>
+  <data name="settings_data" xml:space="preserve">
+    <value>Your data</value>
+  </data>
+  <data name="comments_delete_confirm" xml:space="preserve">
+    <value>Delete this comment?</value>
+  </data>
+  <data name="comments_delete_yes" xml:space="preserve">
+    <value>Delete it</value>
+  </data>
+  <data name="reminder_toast_complete" xml:space="preserve">
+    <value>Complete</value>
+  </data>
+  <data name="reminder_toast_snooze" xml:space="preserve">
+    <value>Snooze {0} min</value>
+  </data>
+  <data name="timer_hours_minutes" xml:space="preserve">
+    <value>{0}h {1}m</value>
+  </data>
+  <data name="timer_minutes" xml:space="preserve">
+    <value>{0}m</value>
+  </data>
+  <data name="ordinal_st" xml:space="preserve">
+    <value>{0}st</value>
+  </data>
+  <data name="ordinal_nd" xml:space="preserve">
+    <value>{0}nd</value>
+  </data>
+  <data name="ordinal_rd" xml:space="preserve">
+    <value>{0}rd</value>
+  </data>
+  <data name="ordinal_th" xml:space="preserve">
+    <value>{0}th</value>
+  </data>
+  <data name="a_pair_for_a_machine_that.Text" xml:space="preserve">
+    <value>A pair for a machine that is not this one — CI, a script, a runner. Read and write on tasks and lists.</value>
+  </data>
+  <data name="account.Text" xml:space="preserve">
+    <value>Account</value>
+  </data>
+  <data name="account.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Account</value>
+  </data>
+  <data name="account_and_settings.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Account</value>
+  </data>
+  <data name="account_and_settings.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Account and settings</value>
+  </data>
+  <data name="add.Content" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="add.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Add status</value>
+  </data>
+  <data name="add_a_task.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="add_a_task.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Add a task</value>
+  </data>
+  <data name="added.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Added</value>
+  </data>
+  <data name="agent.Header" xml:space="preserve">
+    <value>Agent</value>
+  </data>
+  <data name="agent.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>List agent</value>
+  </data>
+  <data name="ai_agents.Text" xml:space="preserve">
+    <value>AI agents</value>
+  </data>
+  <data name="ai_agents.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>AI agents</value>
+  </data>
+  <data name="api_access.Text" xml:space="preserve">
+    <value>API access</value>
+  </data>
+  <data name="api_access.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>API access</value>
+  </data>
+  <data name="appearance.Text" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
+  <data name="appearance.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
+  <data name="assignee.Header" xml:space="preserve">
+    <value>Assignee</value>
+  </data>
+  <data name="assignee.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Default assignee</value>
+  </data>
+  <data name="assignee_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Assignee</value>
+  </data>
+  <data name="astrid.Text" xml:space="preserve">
+    <value>Astrid</value>
+  </data>
+  <data name="attach_a_file.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Attach a file</value>
+  </data>
+  <data name="attach_a_file.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Attach a file</value>
+  </data>
+  <data name="attachments.Text" xml:space="preserve">
+    <value>Attachments</value>
+  </data>
+  <data name="board_toggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Board view</value>
+  </data>
+  <data name="board_toggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Board view</value>
+  </data>
+  <data name="cancel.Content" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="cancel.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Cancel edit</value>
+  </data>
+  <data name="cancel_2.Content" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="cancel_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Cancel reply</value>
+  </data>
+  <data name="chat.Text" xml:space="preserve">
+    <value>Chat</value>
+  </data>
+  <data name="chat_box.PlaceholderText" xml:space="preserve">
+    <value>Say something</value>
+  </data>
+  <data name="chat_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Message</value>
+  </data>
+  <data name="chat_toggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Chat</value>
+  </data>
+  <data name="chat_toggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Chat</value>
+  </data>
+  <data name="client_credentials.Text" xml:space="preserve">
+    <value>Client credentials</value>
+  </data>
+  <data name="client_id.Header" xml:space="preserve">
+    <value>Client id</value>
+  </data>
+  <data name="client_id.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Client id</value>
+  </data>
+  <data name="client_secret.Header" xml:space="preserve">
+    <value>Client secret</value>
+  </data>
+  <data name="client_secret.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Client secret</value>
+  </data>
+  <data name="close.Text" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="coding_agent.Text" xml:space="preserve">
+    <value>Coding agent</value>
+  </data>
+  <data name="colour.Text" xml:space="preserve">
+    <value>Colour</value>
+  </data>
+  <data name="comment_box.PlaceholderText" xml:space="preserve">
+    <value>Add a comment...</value>
+  </data>
+  <data name="comments.Text" xml:space="preserve">
+    <value>Comments</value>
+  </data>
+  <data name="complete_this_task.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Complete this task</value>
+  </data>
+  <data name="connect.Content" xml:space="preserve">
+    <value>Connect</value>
+  </data>
+  <data name="connect_copilot.Content" xml:space="preserve">
+    <value>Connect Copilot</value>
+  </data>
+  <data name="connect_github_under_mirrored_to_below.Text" xml:space="preserve">
+    <value>Connect GitHub under Mirrored to, below, to choose a repository.</value>
+  </data>
+  <data name="contacts.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Contacts</value>
+  </data>
+  <data name="contacts_nav_label.Text" xml:space="preserve">
+    <value>Contacts</value>
+  </data>
+  <data name="copy.Content" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="copy_the_pair.Content" xml:space="preserve">
+    <value>Copy the pair</value>
+  </data>
+  <data name="copy_the_secret_now_it_is.Text" xml:space="preserve">
+    <value>Copy the secret now — it is not shown again.</value>
+  </data>
+  <data name="copy_this_now.Title" xml:space="preserve">
+    <value>Copy this now</value>
+  </data>
+  <data name="copy_this_now_it_is_not.Text" xml:space="preserve">
+    <value>Copy this now — it is not shown again.</value>
+  </data>
+  <data name="create_a_token.Content" xml:space="preserve">
+    <value>Create a token</value>
+  </data>
+  <data name="create_list.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Create list</value>
+  </data>
+  <data name="create_quot.Text" xml:space="preserve">
+    <value>Create "</value>
+  </data>
+  <data name="ctrl_k_finds_a_list_a.Text" xml:space="preserve">
+    <value>Ctrl+K finds a list, a task or a command.</value>
+  </data>
+  <data name="ctrl_shift_a_brings_astrid_forward.Text" xml:space="preserve">
+    <value>Ctrl+Shift+A brings Astrid forward from anywhere, ready for a new task.</value>
+  </data>
+  <data name="custom.Text" xml:space="preserve">
+    <value>Custom</value>
+  </data>
+  <data name="daily_digest.Text" xml:space="preserve">
+    <value>Daily digest</value>
+  </data>
+  <data name="days.Content" xml:space="preserve">
+    <value>days</value>
+  </data>
+  <data name="default_offset_box.Header" xml:space="preserve">
+    <value>Remind me by default</value>
+  </data>
+  <data name="default_offset_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Default reminder</value>
+  </data>
+  <data name="defaults_for_new_tasks.Text" xml:space="preserve">
+    <value>Defaults for new tasks</value>
+  </data>
+  <data name="delete.Content" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="delete.Text" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="delete.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Delete comment</value>
+  </data>
+  <data name="delete_confirmation_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Delete confirmation</value>
+  </data>
+  <data name="delete_it.Content" xml:space="preserve">
+    <value>Delete it</value>
+  </data>
+  <data name="delete_list.Content" xml:space="preserve">
+    <value>Delete list</value>
+  </data>
+  <data name="delete_this_list_and_its_tasks.Text" xml:space="preserve">
+    <value>Delete this list and its tasks, for everybody it is shared with?</value>
+  </data>
+  <data name="detail_description_box.PlaceholderText" xml:space="preserve">
+    <value>Add a description...</value>
+  </data>
+  <data name="detail_description_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Description</value>
+  </data>
+  <data name="detail_description_rendered.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Description</value>
+  </data>
+  <data name="detail_title_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Title</value>
+  </data>
+  <data name="digest_time_box.Header" xml:space="preserve">
+    <value>At</value>
+  </data>
+  <data name="digest_time_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Digest time</value>
+  </data>
+  <data name="digest_toggle.Header" xml:space="preserve">
+    <value>Send a daily digest</value>
+  </data>
+  <data name="digest_toggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Daily digest</value>
+  </data>
+  <data name="disconnect_copilot.Content" xml:space="preserve">
+    <value>Disconnect Copilot</value>
+  </data>
+  <data name="display_name_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Display name</value>
+  </data>
+  <data name="due_date.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Due date</value>
+  </data>
+  <data name="due_day_picker.PlaceholderText" xml:space="preserve">
+    <value>Pick a date</value>
+  </data>
+  <data name="due_day_picker.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Pick a date</value>
+  </data>
+  <data name="due_offset_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Default due date</value>
+  </data>
+  <data name="due_time_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Default due time</value>
+  </data>
+  <data name="edit.Content" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="edit.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Edit comment</value>
+  </data>
+  <data name="edit_comment.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Edit comment</value>
+  </data>
+  <data name="email_to_task_toggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Email-to-Task</value>
+  </data>
+  <data name="email_toggle.Header" xml:space="preserve">
+    <value>Email reminders</value>
+  </data>
+  <data name="email_toggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Email reminders</value>
+  </data>
+  <data name="ends_after.Content" xml:space="preserve">
+    <value>ends after</value>
+  </data>
+  <data name="ends_on.Content" xml:space="preserve">
+    <value>ends on</value>
+  </data>
+  <data name="export_as_csv.Content" xml:space="preserve">
+    <value>Export as CSV</value>
+  </data>
+  <data name="export_as_json.Content" xml:space="preserve">
+    <value>Export as JSON</value>
+  </data>
+  <data name="f.Content" xml:space="preserve">
+    <value>F</value>
+  </data>
+  <data name="favourites.Text" xml:space="preserve">
+    <value>Favourites</value>
+  </data>
+  <data name="filter_button_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Filters</value>
+  </data>
+  <data name="for_a_coding_agent_or_an.Text" xml:space="preserve">
+    <value>For a coding agent or an MCP client. Ninety days. Asking twice gives the same token back rather than a second one.</value>
+  </data>
+  <data name="google_sync_mode_box.Header" xml:space="preserve">
+    <value>Google lists</value>
+  </data>
+  <data name="google_sync_mode_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Google list linking</value>
+  </data>
+  <data name="got_it.Content" xml:space="preserve">
+    <value>Got it</value>
+  </data>
+  <data name="got_it.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Got it</value>
+  </data>
+  <data name="help_and_support.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Help and support</value>
+  </data>
+  <data name="help_nav_label.Text" xml:space="preserve">
+    <value>Help &amp; Support</value>
+  </data>
+  <data name="integrations.Text" xml:space="preserve">
+    <value>Integrations</value>
+  </data>
+  <data name="integrations.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Integrations</value>
+  </data>
+  <data name="invite.Content" xml:space="preserve">
+    <value>Invite</value>
+  </data>
+  <data name="invite_box.PlaceholderText" xml:space="preserve">
+    <value>Invite by email</value>
+  </data>
+  <data name="invite_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Invite by email</value>
+  </data>
+  <data name="layout_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Task detail layout</value>
+  </data>
+  <data name="leave_list.Content" xml:space="preserve">
+    <value>Leave list</value>
+  </data>
+  <data name="list_favorite_switch.Header" xml:space="preserve">
+    <value>Favourite</value>
+  </data>
+  <data name="list_favorite_switch.OffContent" xml:space="preserve">
+    <value>Not a favourite</value>
+  </data>
+  <data name="list_favorite_switch.OnContent" xml:space="preserve">
+    <value>In Favourites</value>
+  </data>
+  <data name="list_favorite_switch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Favourite</value>
+  </data>
+  <data name="list_name_box.Header" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="list_name_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>List name</value>
+  </data>
+  <data name="list_search_box.PlaceholderText" xml:space="preserve">
+    <value>Search lists...</value>
+  </data>
+  <data name="list_search_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Search lists</value>
+  </data>
+  <data name="list_settings.Text" xml:space="preserve">
+    <value>List settings</value>
+  </data>
+  <data name="list_settings_button.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>List settings</value>
+  </data>
+  <data name="list_settings_button.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>List settings</value>
+  </data>
+  <data name="lists.Text" xml:space="preserve">
+    <value>Lists</value>
+  </data>
+  <data name="lists.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Lists</value>
+  </data>
+  <data name="lists_every_keyboard_shortcut_they_work.Text" xml:space="preserve">
+    <value>? lists every keyboard shortcut. They work without a modifier: n for a new task, x to finish one.</value>
+  </data>
+  <data name="m.Content" xml:space="preserve">
+    <value>M</value>
+  </data>
+  <data name="mcp_token.Text" xml:space="preserve">
+    <value>MCP token</value>
+  </data>
+  <data name="mcp_token.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>MCP token</value>
+  </data>
+  <data name="mirrored_to.Text" xml:space="preserve">
+    <value>Mirrored to</value>
+  </data>
+  <data name="months.Content" xml:space="preserve">
+    <value>months</value>
+  </data>
+  <data name="never_ends.Content" xml:space="preserve">
+    <value>never ends</value>
+  </data>
+  <data name="new_agent_name_box.PlaceholderText" xml:space="preserve">
+    <value>a name, lowercase</value>
+  </data>
+  <data name="new_agent_name_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>New agent name</value>
+  </data>
+  <data name="new_list.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="new_list.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>New list</value>
+  </data>
+  <data name="new_list_box.PlaceholderText" xml:space="preserve">
+    <value>New list</value>
+  </data>
+  <data name="new_secret.Content" xml:space="preserve">
+    <value>New secret</value>
+  </data>
+  <data name="new_status_box.PlaceholderText" xml:space="preserve">
+    <value>New status name</value>
+  </data>
+  <data name="new_status_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>New status name</value>
+  </data>
+  <data name="not_mirrored.PlaceholderText" xml:space="preserve">
+    <value>Not mirrored</value>
+  </data>
+  <data name="not_synced_yet.Text" xml:space="preserve">
+    <value>Not synced yet</value>
+  </data>
+  <data name="nothing_here_yet.Text" xml:space="preserve">
+    <value>Nothing here yet</value>
+  </data>
+  <data name="open_task.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Open task</value>
+  </data>
+  <data name="palette_box.PlaceholderText" xml:space="preserve">
+    <value>Go to a list, open a task, run a command</value>
+  </data>
+  <data name="palette_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Command palette</value>
+  </data>
+  <data name="passkeys_google_and_magic_links_all.Text" xml:space="preserve">
+    <value>Passkeys, Google and magic links all work there. You stay signed in here afterwards.</value>
+  </data>
+  <data name="paste_a_key_then_enter.PlaceholderText" xml:space="preserve">
+    <value>Paste a key, then Enter</value>
+  </data>
+  <data name="priority.Header" xml:space="preserve">
+    <value>Priority</value>
+  </data>
+  <data name="priority.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Default priority</value>
+  </data>
+  <data name="priority_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Priority</value>
+  </data>
+  <data name="priority_high_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>High</value>
+  </data>
+  <data name="priority_low_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Low</value>
+  </data>
+  <data name="priority_medium_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Medium</value>
+  </data>
+  <data name="priority_none_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>No priority</value>
+  </data>
+  <data name="privacy.Text" xml:space="preserve">
+    <value>Privacy</value>
+  </data>
+  <data name="privacy_nav_label.Text" xml:space="preserve">
+    <value>Privacy Policy</value>
+  </data>
+  <data name="privacy_policy.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Privacy policy</value>
+  </data>
+  <data name="private.Content" xml:space="preserve">
+    <value>Private</value>
+  </data>
+  <data name="profile_photo.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Profile photo</value>
+  </data>
+  <data name="public.Content" xml:space="preserve">
+    <value>Public</value>
+  </data>
+  <data name="push_toggle.Header" xml:space="preserve">
+    <value>Push reminders</value>
+  </data>
+  <data name="push_toggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Push reminders</value>
+  </data>
+  <data name="quick_add_box.PlaceholderText" xml:space="preserve">
+    <value>Add a task</value>
+  </data>
+  <data name="quiet_end_box.Header" xml:space="preserve">
+    <value>Until</value>
+  </data>
+  <data name="quiet_end_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Quiet until</value>
+  </data>
+  <data name="quiet_hours.Text" xml:space="preserve">
+    <value>Quiet hours</value>
+  </data>
+  <data name="quiet_start_box.Header" xml:space="preserve">
+    <value>From</value>
+  </data>
+  <data name="quiet_start_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Quiet from</value>
+  </data>
+  <data name="quiet_toggle.Header" xml:space="preserve">
+    <value>No reminders overnight</value>
+  </data>
+  <data name="quiet_toggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Quiet hours</value>
+  </data>
+  <data name="register.Content" xml:space="preserve">
+    <value>Register</value>
+  </data>
+  <data name="reminder.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Reminder</value>
+  </data>
+  <data name="reminders.Text" xml:space="preserve">
+    <value>Reminders</value>
+  </data>
+  <data name="reminders.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Reminders</value>
+  </data>
+  <data name="remove.Content" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="rename_passkey.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Rename passkey</value>
+  </data>
+  <data name="repeat.Header" xml:space="preserve">
+    <value>Repeat</value>
+  </data>
+  <data name="repeat.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Default repeat</value>
+  </data>
+  <data name="repeat_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Repeat</value>
+  </data>
+  <data name="repeat_end.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Ends</value>
+  </data>
+  <data name="repeat_end_count.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Occurrences</value>
+  </data>
+  <data name="repeat_end_date.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Ends on</value>
+  </data>
+  <data name="repeat_from_due_date_2.Header" xml:space="preserve">
+    <value>Count from the due date</value>
+  </data>
+  <data name="repeat_from_due_date_2.OffContent" xml:space="preserve">
+    <value>When finished</value>
+  </data>
+  <data name="repeat_from_due_date_2.OnContent" xml:space="preserve">
+    <value>Due date</value>
+  </data>
+  <data name="repeat_interval.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Every</value>
+  </data>
+  <data name="repeat_unit.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Unit</value>
+  </data>
+  <data name="reply.Content" xml:space="preserve">
+    <value>Reply</value>
+  </data>
+  <data name="reply.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Reply to comment</value>
+  </data>
+  <data name="reply_2.PlaceholderText" xml:space="preserve">
+    <value>Reply...</value>
+  </data>
+  <data name="reply_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Reply</value>
+  </data>
+  <data name="repository.Header" xml:space="preserve">
+    <value>Repository</value>
+  </data>
+  <data name="repository.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Coding agent repository</value>
+  </data>
+  <data name="revoke.Content" xml:space="preserve">
+    <value>Revoke</value>
+  </data>
+  <data name="revoke_all.Content" xml:space="preserve">
+    <value>Revoke all</value>
+  </data>
+  <data name="revoke_passkey.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Revoke passkey</value>
+  </data>
+  <data name="s.Content" xml:space="preserve">
+    <value>S</value>
+  </data>
+  <data name="save.Content" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="save.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Save comment</value>
+  </data>
+  <data name="save_custom_repeat.Content" xml:space="preserve">
+    <value>Save custom repeat</value>
+  </data>
+  <data name="search_box.PlaceholderText" xml:space="preserve">
+    <value>Search tasks</value>
+  </data>
+  <data name="search_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Search tasks</value>
+  </data>
+  <data name="search_tasks.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Search tasks</value>
+  </data>
+  <data name="search_tasks.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Search tasks</value>
+  </data>
+  <data name="send.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Send</value>
+  </data>
+  <data name="send_2.Content" xml:space="preserve">
+    <value>Send</value>
+  </data>
+  <data name="send_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Send reply</value>
+  </data>
+  <data name="send_a_test.Content" xml:space="preserve">
+    <value>Send a test</value>
+  </data>
+  <data name="settings_section_title.Text" xml:space="preserve">
+    <value>Account</value>
+  </data>
+  <data name="settings_sections.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Settings sections</value>
+  </data>
+  <data name="shared.Content" xml:space="preserve">
+    <value>Shared</value>
+  </data>
+  <data name="shared_with.Text" xml:space="preserve">
+    <value>Shared with</value>
+  </data>
+  <data name="sign_in_button.Content" xml:space="preserve">
+    <value>Sign in with your browser</value>
+  </data>
+  <data name="sign_out.Content" xml:space="preserve">
+    <value>Sign out</value>
+  </data>
+  <data name="smart_parsing_toggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Smart task creation</value>
+  </data>
+  <data name="statuses.Text" xml:space="preserve">
+    <value>Statuses</value>
+  </data>
+  <data name="subtask_box.PlaceholderText" xml:space="preserve">
+    <value>Add a subtask</value>
+  </data>
+  <data name="subtasks.Text" xml:space="preserve">
+    <value>Subtasks</value>
+  </data>
+  <data name="subtasks_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Sub tasks</value>
+  </data>
+  <data name="sync_now.Content" xml:space="preserve">
+    <value>Sync now</value>
+  </data>
+  <data name="t.Content" xml:space="preserve">
+    <value>T</value>
+  </data>
+  <data name="task_actions_button.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Task actions</value>
+  </data>
+  <data name="tasks.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Tasks</value>
+  </data>
+  <data name="tasks_nav_label.Text" xml:space="preserve">
+    <value>Tasks</value>
+  </data>
+  <data name="terms_nav_label.Text" xml:space="preserve">
+    <value>Terms of Service</value>
+  </data>
+  <data name="terms_of_service.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Terms of service</value>
+  </data>
+  <data name="theme_box.Header" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="theme_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
+  <data name="this_list_has_no_board.Text" xml:space="preserve">
+    <value>This list has no board</value>
+  </data>
+  <data name="this_list_has_no_conversation_yet.Text" xml:space="preserve">
+    <value>This list has no conversation yet.</value>
+  </data>
+  <data name="three_things_worth_knowing.Text" xml:space="preserve">
+    <value>Three things worth knowing</value>
+  </data>
+  <data name="time.Text" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="timer_button.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Timer</value>
+  </data>
+  <data name="timer_button.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Timer</value>
+  </data>
+  <data name="turn_one_on_for_this_list.Text" xml:space="preserve">
+    <value>Turn one on for this list in astrid.app, and its columns show up here.</value>
+  </data>
+  <data name="verification_state.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Verification state</value>
+  </data>
+  <data name="w.Content" xml:space="preserve">
+    <value>W</value>
+  </data>
+  <data name="waiting_for_your_browser.Text" xml:space="preserve">
+    <value>Waiting for your browser…</value>
+  </data>
+  <data name="webhook.Text" xml:space="preserve">
+    <value>Webhook</value>
+  </data>
+  <data name="webhook_url_box.PlaceholderText" xml:space="preserve">
+    <value>https://your-server.com/webhook</value>
+  </data>
+  <data name="webhook_url_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Webhook URL</value>
+  </data>
+  <data name="weeks.Content" xml:space="preserve">
+    <value>weeks</value>
+  </data>
+  <data name="what_it_is_for.PlaceholderText" xml:space="preserve">
+    <value>what it is for</value>
+  </data>
+  <data name="what_it_is_for.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>New client name</value>
+  </data>
+  <data name="when.Header" xml:space="preserve">
+    <value>When</value>
+  </data>
+  <data name="when.Text" xml:space="preserve">
+    <value>When</value>
+  </data>
+  <data name="when.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Default when</value>
+  </data>
+  <data name="when_time.Header" xml:space="preserve">
+    <value>When time</value>
+  </data>
+  <data name="when_time.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Default when time</value>
+  </data>
+  <data name="won_t_do.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Won't do</value>
+  </data>
+  <data name="years.Content" xml:space="preserve">
+    <value>years</value>
+  </data>
+  <data name="your_data.Text" xml:space="preserve">
+    <value>Your data</value>
+  </data>
+  <data name="your_data.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Your data</value>
+  </data>
+  <data name="your_own_agents.Text" xml:space="preserve">
+    <value>Your own agents</value>
+  </data>
+  <data name="your_tasks_on_this_machine_and.Text" xml:space="preserve">
+    <value>Your tasks, on this machine and everywhere else.</value>
+  </data>
 </root>
