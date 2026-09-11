@@ -27,7 +27,12 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private string? _lastSelectedRowId;
     private readonly Action<Func<Task>> _post;
     private bool _hasUnsentWork;
-    private bool _isSyncing;
+    /// <summary>
+    /// How many sync passes have been asked for and not yet answered. A count rather than a
+    /// flag, because a second request is not refused — the core queues it behind the first
+    /// (task 3173727d) — and a flag would read "done" the moment the first came back.
+    /// </summary>
+    private int _syncsInFlight;
     private bool _needsSignIn;
     private string? _statusMessage;
     private bool _disposed;
@@ -425,11 +430,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         private set => Set(ref _hasUnsentWork, value);
     }
 
-    public bool IsSyncing
-    {
-        get => _isSyncing;
-        private set => Set(ref _isSyncing, value);
-    }
+    public bool IsSyncing => _syncsInFlight > 0;
 
     /// <summary>Set when the session has gone and the user has to sign in again.</summary>
     public bool NeedsSignIn
@@ -542,13 +543,19 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>One sync pass: push what is queued, fetch what is new.</summary>
+    /// <remarks>
+    /// Always sent, even while another pass is running. The core decides what to do with a
+    /// second request — a person's pass waits for the slot rather than being dropped — and an
+    /// early return here was exactly the bug that decision exists to prevent: a refresh that
+    /// landed during the sixty-second pass finished having fetched nothing (task 3173727d).
+    /// </remarks>
     public async Task SyncAsync(CancellationToken cancellationToken = default)
     {
-        if (IsSyncing)
+        _syncsInFlight++;
+        if (_syncsInFlight == 1)
         {
-            return;
+            Raise(nameof(IsSyncing));
         }
-        IsSyncing = true;
         try
         {
             var response = await _core.CallAsync(Commands.Sync(), cancellationToken);
@@ -577,7 +584,11 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            IsSyncing = false;
+            _syncsInFlight--;
+            if (_syncsInFlight == 0)
+            {
+                Raise(nameof(IsSyncing));
+            }
         }
     }
 
@@ -727,6 +738,21 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                     break;
                 case "needsSync":
                     await SyncAsync();
+                    break;
+                case "synced":
+                    // A pass nobody asked for brought something in. The same refresh a sync
+                    // asked for here does afterwards — the cache moved, so the screen has to.
+                    await Sidebar.LoadAsync();
+                    await Tasks.RefreshAsync();
+                    if (IsBoardView)
+                    {
+                        await Board.RefreshAsync();
+                    }
+                    if (Detail.IsOpen && notification.Touches(Detail.TaskId))
+                    {
+                        await Detail.ReloadAsync();
+                    }
+                    await RefreshOutboxAsync();
                     break;
                 default:
                     // A change this build does not draw anything for. The next sync carries it.

@@ -136,7 +136,13 @@ public sealed record AstridFailure(
 /// notification is worse than not subscribing: the stream can deliver several a second while
 /// somebody else is working in the same list.
 /// </remarks>
-public sealed record ChangeNotification(string Change, string? Id)
+/// <param name="Change">What kind of thing moved: <c>task</c>, <c>list</c>, <c>synced</c>, …</param>
+/// <param name="Id">The one thing that moved, when the change names one.</param>
+/// <param name="TaskIds">
+/// For a <c>synced</c> change, every task a background pass brought in, changed or removed.
+/// Empty when the pass could not say — which means "refresh what is on screen", not "nothing".
+/// </param>
+public sealed record ChangeNotification(string Change, string? Id, IReadOnlyList<string>? TaskIds = null)
 {
     public static ChangeNotification Parse(string json)
     {
@@ -146,12 +152,32 @@ public sealed record ChangeNotification(string Change, string? Id)
             var root = document.RootElement;
             var change = root.TryGetProperty("change", out var kind) ? kind.GetString() : null;
             var id = ReadFirst(root, "id", "taskId", "channelId");
-            return new ChangeNotification(change ?? "unknown", id);
+            var taskIds = root.TryGetProperty("taskIds", out var ids) && ids.ValueKind == JsonValueKind.Array
+                ? ids.EnumerateArray()
+                    .Where(element => element.ValueKind == JsonValueKind.String)
+                    .Select(element => element.GetString()!)
+                    .ToList()
+                : null;
+            return new ChangeNotification(change ?? "unknown", id, taskIds);
         }
         catch (JsonException)
         {
             return new ChangeNotification("unknown", null);
         }
+    }
+
+    /// <summary>Whether this change touches the task with <paramref name="taskId"/>.</summary>
+    /// <remarks>
+    /// A change that names nothing is taken to touch everything: the alternative — treating
+    /// "could not say" as "did not" — leaves an open task stale after an external pass.
+    /// </remarks>
+    public bool Touches(string? taskId)
+    {
+        if (Id is not null)
+        {
+            return Id == taskId;
+        }
+        return TaskIds is null || TaskIds.Count == 0 || (taskId is not null && TaskIds.Contains(taskId));
     }
 
     private static string? ReadFirst(JsonElement root, params string[] names)

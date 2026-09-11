@@ -614,6 +614,108 @@ public sealed class ShellViewModelTests
     }
 
     /// <summary>
+    /// A background pass that brought something in redraws what is on screen — the list, the
+    /// sidebar, and the open task when it is one of the tasks that moved. Before this, a change
+    /// that arrived while the live stream was down sat in the cache until the next click.
+    /// </summary>
+    [Fact]
+    public async Task A_synced_notification_refreshes_the_list_the_sidebar_and_the_open_task()
+    {
+        var core = StartedCore(("l1", "Home", false))
+            .AnswerOk("taskDetail", TaskDetail("t1"));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        await shell.OpenTaskAsync("t1");
+        var listsBefore = core.SentKinds().Count(kind => kind == "lists");
+        var rowsBefore = core.SentKinds().Count(kind => kind == "rowsForList");
+        var detailBefore = core.SentKinds().Count(kind => kind == "taskDetail");
+
+        core.AnswerOk("lists", Lists(("l1", "Home", false)))
+            .AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("taskDetail", TaskDetail("t1"))
+            .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        core.NotifySynced("t1", "t7");
+
+        Assert.Equal(listsBefore + 1, core.SentKinds().Count(kind => kind == "lists"));
+        Assert.Equal(rowsBefore + 1, core.SentKinds().Count(kind => kind == "rowsForList"));
+        Assert.Equal(detailBefore + 1, core.SentKinds().Count(kind => kind == "taskDetail"));
+    }
+
+    /// <summary>
+    /// The open task is reloaded only when the pass names it. Reloading it for every pass that
+    /// moved some other task would make it flicker once a minute while a colleague works.
+    /// </summary>
+    [Fact]
+    public async Task A_synced_notification_leaves_an_open_task_it_did_not_touch_alone()
+    {
+        var core = StartedCore(("l1", "Home", false))
+            .AnswerOk("taskDetail", TaskDetail("t1"));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        await shell.OpenTaskAsync("t1");
+        var detailBefore = core.SentKinds().Count(kind => kind == "taskDetail");
+
+        core.AnswerOk("lists", Lists(("l1", "Home", false)))
+            .AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        core.NotifySynced("t7");
+
+        Assert.Equal(detailBefore, core.SentKinds().Count(kind => kind == "taskDetail"));
+    }
+
+    /// <summary>
+    /// A pass that could not say what moved — the external mirroring reports counts, not ids —
+    /// reloads the open task too. "Could not say" is not "did not".
+    /// </summary>
+    [Fact]
+    public async Task A_synced_notification_naming_nothing_reloads_the_open_task()
+    {
+        var core = StartedCore(("l1", "Home", false))
+            .AnswerOk("taskDetail", TaskDetail("t1"));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        await shell.OpenTaskAsync("t1");
+        var detailBefore = core.SentKinds().Count(kind => kind == "taskDetail");
+
+        core.AnswerOk("lists", Lists(("l1", "Home", false)))
+            .AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("taskDetail", TaskDetail("t1"))
+            .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        core.NotifySynced();
+
+        Assert.Equal(detailBefore + 1, core.SentKinds().Count(kind => kind == "taskDetail"));
+    }
+
+    /// <summary>
+    /// A sync asked for while one is running is still sent. The core decides what to do with
+    /// it — a person's pass waits for the slot — and an early return here was the bug that
+    /// decision exists to prevent (task 3173727d): a refresh that landed during the background
+    /// pass finished having fetched nothing.
+    /// </summary>
+    [Fact]
+    public async Task A_sync_asked_for_during_another_is_still_sent_to_the_core()
+    {
+        var core = StartedCore(("l1", "Home", false));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        var before = core.SentKinds().Count(kind => kind == "sync");
+
+        core.AnswerOk("sync", new { fetched = false })
+            .AnswerOk("sync", new { fetched = false })
+            .AnswerOk("outboxStats", new { hasUnsentWork = false })
+            .AnswerOk("outboxStats", new { hasUnsentWork = false })
+            .Hold("sync");
+        var first = shell.SyncAsync();
+        var second = shell.SyncAsync();
+        Assert.True(shell.IsSyncing);
+        core.Release("sync");
+        await Task.WhenAll(first, second);
+
+        Assert.Equal(before + 2, core.SentKinds().Count(kind => kind == "sync"));
+        Assert.False(shell.IsSyncing);
+    }
+
+    /// <summary>
     /// A notification of a kind this build draws nothing for costs nothing. The next sync carries
     /// whatever it was about.
     /// </summary>

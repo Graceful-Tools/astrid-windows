@@ -1,8 +1,13 @@
-# The PR gate. Mirrors `npm run predeploy` so a green local run means a green CI run.
+# The PR gate. Runs the same steps as `npm run predeploy` — the Rust core and the C# shell both —
+# so a green run here means what a green local run means.
 #
 # ARM64 is a shipping architecture, so it is cross-built on every push and, where a native ARM
 # runner is available, tested natively too. A dependency that cannot target ARM64 is caught the day
 # it lands rather than the week of a release.
+#
+# The shell has its own job. It used to have none, which left 6,800 lines of C# and 200-odd tests
+# outside the gate: a compile break in the shell landed on `main` green, and the only thing that
+# would have said otherwise was somebody's local predeploy.
 
 name: CI
 
@@ -69,6 +74,39 @@ jobs:
         with:
           key: cross-arm64
       - run: cargo build --workspace --target aarch64-pc-windows-msvc
+
+  shell:
+    name: shell (build + tests)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: shell
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      # The shell carries the core's DLL and refuses to build without the one for its
+      # architecture (ASTRID001 in Astrid.Core.Bindings.csproj), so both are built first — the
+      # same order scripts/predeploy.ps1 uses, and for the same reason: a shell built against a
+      # stale core is a build that passes and an app that does not run.
+      - name: Build the core for both architectures
+        run: |
+          cargo build -p astrid-ffi --target x86_64-pc-windows-msvc
+          cargo build -p astrid-ffi --target aarch64-pc-windows-msvc
+
+      # Per project with a RID, not per solution: a solution cannot be built with a
+      # RuntimeIdentifier, and `-p:Platform=x64` is silently ignored by a WinUI SDK project.
+      - name: Build the shell (x64)
+        run: dotnet build app/Astrid.App/Astrid.App.csproj -c Release -r win-x64 --self-contained false
+      - name: Build the shell (ARM64)
+        run: dotnet build app/Astrid.App/Astrid.App.csproj -c Release -r win-arm64 --self-contained false
+
+      # The view-model tests and the C#-to-Rust boundary tests. Plain net9.0, run as the host.
+      # The UI smoke tests are not in the solution: they need a desktop session.
+      - name: Shell tests
+        run: dotnet test app/Astrid.sln -c Release
 
   contracts:
     name: cross-platform contracts

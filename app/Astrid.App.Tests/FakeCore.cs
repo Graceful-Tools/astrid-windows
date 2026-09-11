@@ -61,6 +61,10 @@ internal sealed class FakeCore : IAstridCore
     public void Notify(string change, string? id = null) =>
         Changed?.Invoke(new ChangeNotification(change, id));
 
+    /// <summary>Deliver a <c>synced</c> change naming the tasks a background pass moved.</summary>
+    public void NotifySynced(params string[] taskIds) =>
+        Changed?.Invoke(new ChangeNotification("synced", null, taskIds));
+
     /// <summary>
     /// Hold the answer to one kind of command until the test lets it go.
     /// </summary>
