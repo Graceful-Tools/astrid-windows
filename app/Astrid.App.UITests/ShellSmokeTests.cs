@@ -217,6 +217,40 @@ public sealed class ShellSmokeTests
         Assert.False(File.Exists(app.CrashLogPath), Crash(app));
     }
 
+    /// <summary>
+    /// The bell opens, offline, and says there is nothing new. Its flyout is built from a command
+    /// answer and a template with a converter in it — the shape of thing that crashes the app at
+    /// the moment it opens rather than at build time.
+    /// </summary>
+    [Fact]
+    public void The_bell_opens_and_says_nothing_is_new()
+    {
+        using var app = AstridApp.Launch(signedIn: true);
+
+        app.Invoke("Notifications");
+        Assert.True(app.Sees("Nothing new."), $"the bell did not open; saw: {string.Join(", ", app.Names())}");
+        Dismiss(app);
+
+        Assert.False(File.Exists(app.CrashLogPath), Crash(app));
+    }
+
+    /// <summary>
+    /// The account flyout opens offline. It reaches the server for four of its sections and
+    /// must draw the first from the cache regardless; and its photo binding is the one that
+    /// threw on every fresh launch until 2026-09-11.
+    /// </summary>
+    [Fact]
+    public void The_account_flyout_opens_offline()
+    {
+        using var app = AstridApp.Launch(signedIn: true);
+
+        app.Invoke("Account");
+        Assert.True(app.Sees("Display name"), $"the account flyout did not open; saw: {string.Join(", ", app.Names())}");
+        Dismiss(app);
+
+        Assert.False(File.Exists(app.CrashLogPath), Crash(app));
+    }
+
     private static void Select(AstridApp app, string name)
     {
         var row = app.Require(name);

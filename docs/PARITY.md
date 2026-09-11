@@ -43,7 +43,7 @@ milestones; this tracks the *product*.
 | Attachments | ✅ | ✅ | Open, attach from disk, paste from the clipboard; drawn in the comment they arrived on. A picture draws as a thumbnail from bytes already on this machine — the Outbox's own copy for one just posted — rather than being fetched back (AITD-308). Queued offline, with the bytes copied so the original can move away |
 | Timer on a task | ✅ | ✅ | Windows keeps a running timer across a restart; the Mac's is in memory |
 | Account screen and reminder settings | ✅ | ✅ | Push, email, default offset, digest, quiet hours. The Account page carries the web's sections: profile photo and display name, email verification with resend, account information, and account deletion behind the typed phrase the server requires. Passkeys are listed, renamed and revoked over the web's `/api/v1/users/me/passkeys`; adding one is the browser's WebAuthn ceremony |
-| Global quick-add hotkey | ✅ | ✅ | Ctrl+Shift+A; not yet rebindable |
+| Global quick-add hotkey | ✅ | ✅ | Ctrl+Shift+A by default; see the rebindable row below |
 | Command palette | ✅ | ✅ | Ctrl+K, with the Mac's own fuzzy ranking |
 | First-run tour | ✅ | ✅ | The three things nobody can discover by looking |
 | External sync: connect, link a list | ✅ | ✅ | Both providers |
@@ -59,6 +59,10 @@ milestones; this tracks the *product*.
 | Task identifiers | ❌ | ✅ | `AST-142` beside the title, and a direct hit in search |
 | Label lists | ❌ | ✅ | `listType: "label"` draws as a tag on the rows that carry it and is never a sidebar entry (the web's list flavours) |
 | Copy a task | ❌ | ✅ | Into a list, with or without its comments, from the task menu — the web's Copy |
+| Natural-language quick-add | ✅ | ✅ | "Call mum tomorrow urgent #health", "Standup weekly mon and wed" — the web's parser, in twelve languages, locked by `smart.json` (CONTRACTS D11, closed; D12 and D13 for what differs) |
+| Feature flags | ✅ | ✅ | The board and Google list linking follow `project_mode` and `google_tasks` from `/api/v1/features` |
+| Global quick-add hotkey | ✅ | ✅ | Ctrl+Shift+A, and now rebindable from Appearance; the core judges the chord |
+| The leading control's three states | ✅ | ✅ | Your checkbox, someone else's initial in a priority square, the localised unassigned mark (PRODUCT_CONTRACT §4) |
 
 ## Not yet
 
