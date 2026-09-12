@@ -92,6 +92,50 @@ public sealed class ListSettingsViewModelTests
     /// settings and each writes through the core, the colour and privacy as list edits and the
     /// favourite as its own command, since it is this account's rather than the list's.
     /// </summary>
+    /// <summary>
+    /// The list's picture (task 3a913e52): read with the settings and drawn from wherever the
+    /// core says; a file from disk goes through the core, which answers the address it stored;
+    /// removing it is an ordinary edit that clears <c>imageUrl</c>.
+    /// </summary>
+    [Fact]
+    public async Task The_list_image_is_read_set_from_disk_and_removed_task_3a913e52()
+    {
+        var core = new FakeCore()
+            .AnswerOk("listMembers", new
+            {
+                listId = "l1",
+                name = "Garden",
+                color = "#ef4444",
+                colorChoices = new[] { "#ef4444" },
+                imageUrl = "/api/v1/secure-files/f1",
+                canManageList = true,
+                members = Array.Empty<object>(),
+            })
+            .AnswerOk("listImage", new { source = @"C:\cache\list-images\f1.png", isLocal = true })
+            .AnswerOk("setListImage", new { id = "l1", imageUrl = "/api/v1/secure-files/f2" })
+            .AnswerOk("listImage", new { source = @"C:\cache\list-images\f2.png", isLocal = true })
+            .AnswerOk("updateList");
+        var view = new ListSettingsViewModel(core);
+
+        await view.LoadAsync("l1");
+        Assert.Equal("/api/v1/secure-files/f1", view.ImageUrl);
+        Assert.True(view.HasImage);
+        Assert.Equal(@"C:\cache\list-images\f1.png", view.ImageSource);
+
+        Assert.True(await view.SetImageAsync(@"C:\Pictures\garden.png"));
+        var sent = core.Sent.First(json => json.Contains("setListImage"));
+        Assert.Contains("\"listId\":\"l1\"", sent);
+        Assert.Contains("garden.png", sent);
+        Assert.Equal("/api/v1/secure-files/f2", view.ImageUrl);
+        Assert.Equal(@"C:\cache\list-images\f2.png", view.ImageSource);
+
+        Assert.True(await view.ClearImageAsync());
+        Assert.Contains("\"imageUrl\":null", core.Sent.Last(json => json.Contains("updateList")));
+        Assert.Null(view.ImageUrl);
+        Assert.False(view.HasImage);
+        Assert.Null(view.ImageSource);
+    }
+
     [Fact]
     public async Task Colour_favourite_and_privacy_are_read_and_written_task_53780e75()
     {

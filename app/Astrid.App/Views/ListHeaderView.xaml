@@ -35,16 +35,29 @@
         -->
         <Grid Grid.Column="0" ColumnSpacing="12" VerticalAlignment="Center">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" MinWidth="0" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="0"
+            <!--
+                The list's picture beside its name, as the web draws it over the list
+                (task 3a913e52). Only when the list has one: the web draws a hashed default
+                icon otherwise, which this shell does not (CONTRACTS.md D14).
+            -->
+            <Border Grid.Column="0" Width="36" Height="36" CornerRadius="10"
+                    VerticalAlignment="Center"
+                    Visibility="{x:Bind Shell.HasListImage, Mode=OneWay, Converter={StaticResource Visible}}">
+                <Image x:Uid="list_image" Stretch="UniformToFill"
+                       AutomationProperties.Name="List image"
+                       Source="{x:Bind Shell.ListImageSource, Mode=OneWay, Converter={StaticResource RemoteImage}}" />
+            </Border>
+            <TextBlock Grid.Column="1"
                        Text="{x:Bind Shell.Tasks.ListName, Mode=OneWay}"
                        Style="{ThemeResource TitleTextBlockStyle}"
                        TextTrimming="CharacterEllipsis"
                        TextWrapping="NoWrap"
                        VerticalAlignment="Center" />
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8"
                         VerticalAlignment="Center">
             <!--
                 Search replaces what the list shows rather than opening a screen of its

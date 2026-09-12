@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text.Json;
 using Astrid.Core.Bindings;
 
 namespace Astrid.App.ViewModels;
@@ -34,6 +35,8 @@ public sealed class ListSettingsViewModel : ObservableObject
     private bool _needsSignIn;
     private string _color = "#3b82f6";
     private string? _privacy;
+    private string? _imageUrl;
+    private string? _imageSource;
     private bool _isFavorite;
     private string? _projectId;
 
@@ -107,6 +110,76 @@ public sealed class ListSettingsViewModel : ObservableObject
     {
         get => _isFavorite;
         private set => Set(ref _isFavorite, value);
+    }
+
+    // ── The list's picture (task 3a913e52) ───────────────────────────────────────────────────
+
+    /// <summary>The picture as stored — a site path or an address — or null for none.</summary>
+    public string? ImageUrl
+    {
+        get => _imageUrl;
+        private set
+        {
+            if (Set(ref _imageUrl, value))
+            {
+                Raise(nameof(HasImage));
+            }
+        }
+    }
+
+    public bool HasImage => !string.IsNullOrEmpty(ImageUrl);
+
+    /// <summary>Where the picture can be drawn from, as the core answered: a cached local path or an address.</summary>
+    public string? ImageSource
+    {
+        get => _imageSource;
+        private set => Set(ref _imageSource, value);
+    }
+
+    /// <summary>
+    /// Put a picture from this machine on the list. The core sends the file and writes the
+    /// address; the settings then show what it answered.
+    /// </summary>
+    public async Task<bool> SetImageAsync(string path, CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.SetListImage(ListId, path), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        if (response.Value.TryGetProperty("imageUrl", out var url) && url.ValueKind == JsonValueKind.String)
+        {
+            ImageUrl = url.GetString();
+        }
+        await LoadImageAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>Take the picture off the list: an ordinary edit, through the Outbox.</summary>
+    public async Task<bool> ClearImageAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(
+            Commands.UpdateList(ListId, new Dictionary<string, object?> { ["imageUrl"] = null }),
+            cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        ImageUrl = null;
+        ImageSource = null;
+        return true;
+    }
+
+    /// <summary>Ask the core where the picture can be drawn from; nothing to draw when there is none.</summary>
+    public async Task LoadImageAsync(CancellationToken cancellationToken = default)
+    {
+        if (!HasImage || string.IsNullOrEmpty(ListId))
+        {
+            ImageSource = null;
+            return;
+        }
+        var response = await _core.CallAsync(Commands.ListImage(ListId), cancellationToken);
+        ImageSource = response.Ok ? response.Read<ListImage>()?.Source : null;
     }
 
     /// <summary>Give the list a colour. An ordinary edit, through the Outbox.</summary>
@@ -617,6 +690,7 @@ public sealed class ListSettingsViewModel : ObservableObject
             {
                 NeedsSignIn = true;
             }
+            await LoadImageAsync(cancellationToken);
         }
         finally
         {
@@ -637,6 +711,7 @@ public sealed class ListSettingsViewModel : ObservableObject
                 .ToList());
             Color = settings.Color;
             Privacy = settings.Privacy;
+            ImageUrl = settings.ImageUrl;
             IsFavorite = settings.IsFavorite;
             ProjectId = settings.ProjectId;
             Replace(Statuses, settings.Statuses);

@@ -80,6 +80,39 @@ public sealed partial class ListSettingsFlyout : UserControl
 
     // ── How the list looks, and who can see it (task 53780e75) ─────────────────────────────
 
+    // ── The list's picture (task 3a913e52) ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Pick a picture for the list. The kinds offered are the ones the server accepts for an
+    /// upload, as for the profile photo; the core sends the file and puts its address on the
+    /// list. The sidebar reloads so it knows the list has a picture, and the header draws it.
+    /// </summary>
+    private async void OnChooseListImage(object sender, RoutedEventArgs args)
+    {
+        var picker = new Windows.Storage.Pickers.FileOpenPicker();
+        foreach (var extension in new[] { ".png", ".jpg", ".jpeg", ".gif", ".webp" })
+        {
+            picker.FileTypeFilter.Add(extension);
+        }
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, App.MainWindowHandle);
+
+        var file = await picker.PickSingleFileAsync();
+        if (file is not null && await Shell.ListSettings.SetImageAsync(file.Path))
+        {
+            await Shell.Sidebar.LoadAsync();
+            await Shell.RefreshListImageAsync();
+        }
+    }
+
+    private async void OnRemoveListImage(object sender, RoutedEventArgs args)
+    {
+        if (await Shell.ListSettings.ClearImageAsync())
+        {
+            await Shell.Sidebar.LoadAsync();
+            await Shell.RefreshListImageAsync();
+        }
+    }
+
     /// <summary>A swatch was chosen. The sidebar mark and the chips follow on the reload.</summary>
     private async void OnListColourChosen(object sender, RoutedEventArgs args)
     {

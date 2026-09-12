@@ -65,6 +65,34 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
+        <!--
+            The list's picture (task 3a913e52). The web's admin tab shows it and opens a picker
+            with placeholders, default icons and an upload; here it is chosen from disk and sent
+            through the same secure-upload route, or removed. Drawn from wherever the core says —
+            a secure file it fetched into its cache, or an address.
+        -->
+        <TextBlock x:Uid="list_image_caption" Text="Image"
+                   Style="{ThemeResource CaptionTextBlockStyle}"
+                   Margin="0,8,0,0"
+                   Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
+        <StackPanel Orientation="Horizontal" Spacing="8"
+                    Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
+            <Border Width="48" Height="48" CornerRadius="10"
+                    Background="{ThemeResource AstridSurfaceHover}">
+                <Image x:Uid="list_image" Stretch="UniformToFill"
+                       AutomationProperties.Name="List image"
+                       Source="{x:Bind Shell.ListSettings.ImageSource, Mode=OneWay, Converter={StaticResource RemoteImage}}" />
+            </Border>
+            <Button x:Uid="choose_list_image" Content="Choose an image…"
+                    AutomationProperties.Name="Choose list image"
+                    VerticalAlignment="Center"
+                    Click="OnChooseListImage" />
+            <Button x:Uid="remove_list_image" Content="Remove image"
+                    AutomationProperties.Name="Remove list image"
+                    VerticalAlignment="Center"
+                    Visibility="{x:Bind Shell.ListSettings.HasImage, Mode=OneWay, Converter={StaticResource Visible}}"
+                    Click="OnRemoveListImage" />
+        </StackPanel>
         <ToggleSwitch x:Uid="list_favorite_switch" x:Name="ListFavoriteSwitch"
                       Header="Favourite"
                       AutomationProperties.Name="Favourite"

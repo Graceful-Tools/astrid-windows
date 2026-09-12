@@ -101,6 +101,41 @@ public sealed class ShellViewModelTests
         Assert.True(shell.IsTourOpen);
     }
 
+    // ── The open list's picture (task 3a913e52) ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Opening a list that has a picture asks the core where to draw it from; opening one without
+    /// asks nothing, since the sidebar already says.
+    /// </summary>
+    [Fact]
+    public async Task The_open_lists_picture_is_fetched_only_when_it_has_one_task_3a913e52()
+    {
+        var core = new FakeCore()
+            .AnswerOk("isSignedIn", new { signedIn = true, waitingForCallback = false })
+            .AnswerOk("lists", new object[]
+            {
+                new { id = "l1", name = "Garden", isFavorite = false, imageUrl = "/api/v1/secure-files/f1" },
+                new { id = "l2", name = "Work", isFavorite = false },
+            })
+            .AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("listImage", new { source = "https://astrid.cc/api/v1/secure-files/f1", isLocal = false })
+            .AnswerOk("outboxStats", new { pending = 0, running = 0, failed = 0, hasUnsentWork = false })
+            .AnswerOk("sync", new { fetched = false })
+            .AnswerOk("rowsForList", EmptyWindow());
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        Assert.Equal("l1", shell.Tasks.ListId);
+        Assert.True(shell.HasListImage);
+        Assert.Equal("https://astrid.cc/api/v1/secure-files/f1", shell.ListImageSource);
+        var asked = core.Sent.Count(json => json.Contains("\"kind\":\"listImage\""));
+
+        await shell.OpenListAsync("l2", "Work");
+
+        Assert.False(shell.HasListImage);
+        Assert.Equal(asked, core.Sent.Count(json => json.Contains("\"kind\":\"listImage\"")));
+    }
+
     // ── Dropping a row on a list (task 27cae198) ─────────────────────────────────────────────
 
     /// <summary>

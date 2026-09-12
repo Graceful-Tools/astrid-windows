@@ -597,6 +597,13 @@ public static class Commands
 
     public static object DeleteList(string listId) => new WithListId("deleteList", listId);
 
+    /// <summary>Put a picture from this machine on a list (task 3a913e52). Online-only, like the profile photo.</summary>
+    public static object SetListImage(string listId, string path) =>
+        new ListImageRequest("setListImage", listId, path);
+
+    /// <summary>Where a list's picture can be drawn from: a local path or an address, or null for none.</summary>
+    public static object ListImage(string listId) => new WithListId("listImage", listId);
+
     public static object SetListFavorite(string listId, bool favorite) =>
         new FavoriteRequest("setListFavorite", listId, favorite);
 
@@ -919,6 +926,11 @@ public static class Commands
     private sealed record ExportRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("format")] string Format,
+        [property: JsonPropertyName("path")] string Path);
+
+    private sealed record ListImageRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("listId")] string ListId,
         [property: JsonPropertyName("path")] string Path);
 
     private sealed record ProfileRequest(

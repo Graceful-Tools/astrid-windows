@@ -1489,4 +1489,22 @@
   <data name="hotkey_hint.Text" xml:space="preserve">
     <value>Brings Astrid forward from anywhere, ready for a new task. Ctrl, Alt or Win, plus one letter or digit.</value>
   </data>
+  <data name="list_image_caption.Text" xml:space="preserve">
+    <value>Image</value>
+  </data>
+  <data name="list_image.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>List image</value>
+  </data>
+  <data name="choose_list_image.Content" xml:space="preserve">
+    <value>Choose an image…</value>
+  </data>
+  <data name="choose_list_image.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Choose list image</value>
+  </data>
+  <data name="remove_list_image.Content" xml:space="preserve">
+    <value>Remove image</value>
+  </data>
+  <data name="remove_list_image.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Remove list image</value>
+  </data>
 </root>

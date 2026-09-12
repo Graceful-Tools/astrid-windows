@@ -39,6 +39,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private string? _statusMessage;
     private bool _disposed;
     private bool _isBoardView;
+    private string? _listImageSource;
     private bool _isChatOpen;
     private bool _isPaletteOpen;
     private bool _isTourOpen;
@@ -557,6 +558,43 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         return true;
     }
 
+    /// <summary>
+    /// The open list's picture, where the header can draw it from (task 3a913e52); null for none.
+    /// </summary>
+    public string? ListImageSource
+    {
+        get => _listImageSource;
+        private set
+        {
+            if (Set(ref _listImageSource, value))
+            {
+                Raise(nameof(HasListImage));
+            }
+        }
+    }
+
+    public bool HasListImage => !string.IsNullOrEmpty(ListImageSource);
+
+    /// <summary>
+    /// Ask the core where the open list's picture is, when the sidebar says it has one.
+    /// </summary>
+    /// <remarks>
+    /// Only then: a list without a picture is the common case, and asking the core about every
+    /// list opened would be a round trip per click for an answer the sidebar already gives.
+    /// </remarks>
+    public async Task RefreshListImageAsync(CancellationToken cancellationToken = default)
+    {
+        var open = Sidebar.Favorites.Concat(Sidebar.Lists)
+            .FirstOrDefault(list => list.Id == Tasks.ListId);
+        if (open is null || !open.HasImage)
+        {
+            ListImageSource = null;
+            return;
+        }
+        var response = await _core.CallAsync(Commands.ListImage(open.Id), cancellationToken);
+        ListImageSource = response.Ok ? response.Read<ListImage>()?.Source : null;
+    }
+
     /// <summary>Open a list by id — from the palette, or from a <c>#list</c> pill in a description.</summary>
     public async Task OpenListAsync(string listId, string name, CancellationToken cancellationToken = default)
     {
@@ -564,6 +602,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         // And the sidebar follows, so the app is not showing one list with another highlighted.
         Sidebar.Selected = Sidebar.Favorites.Concat(Sidebar.Lists)
             .FirstOrDefault(list => list.Id == listId) ?? Sidebar.Selected;
+        await RefreshListImageAsync(cancellationToken);
     }
 
     /// <summary>
@@ -620,6 +659,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         await Detail.CloseAsync(cancellationToken);
         await Tasks.OpenAsync(selected.Id, selected.Name, cancellationToken);
         NeedsSignIn |= Tasks.NeedsSignIn;
+        await RefreshListImageAsync(cancellationToken);
     }
 
     /// <summary>One sync pass: push what is queued, fetch what is new.</summary>

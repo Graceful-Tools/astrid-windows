@@ -132,6 +132,9 @@ against the web, from a read of the source rather than of the docs, with what ha
   nothing, as on the web.
 - **Drag a row onto a sidebar list** to move it there, or add it with Shift (task 27cae198), as
   the web's sidebar does.
+- **A list's picture** (task 3a913e52): chosen from disk in the list settings, sent through the
+  secure-upload route the web's picker uses, drawn beside the list's name. A secure file is
+  fetched by the core into its cache; the sidebar keeps its colour discs (CONTRACTS.md D14).
 - **A rebindable quick-add chord**: `astrid_core::keyboard::chord` judges it, Appearance edits
   it, the window re-registers it.
 - **The row's leading control** now draws the three answers to "whose task is this?" — the
@@ -162,7 +165,7 @@ The core already reads `manualSortOrder`; the write needs a versioned route.
 
 **Still open — features the web has**
 
-List image; copy-to-my-list and the public-list browser; the `@astrid` model
+Copy-to-my-list and the public-list browser; the `@astrid` model
 selector; calendar feed settings; full-screen detail; twelve languages — and the two blocked on
 the web above.
 

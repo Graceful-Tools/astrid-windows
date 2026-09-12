@@ -283,6 +283,14 @@ public sealed record ListSummary
     /// <summary>True for My Tasks, Today and the other views that are a filter rather than a list.</summary>
     [JsonPropertyName("isVirtual")] public bool? IsVirtual { get; init; }
 
+    /// <summary>The list's picture as stored, when it has one (task 3a913e52).</summary>
+    [JsonPropertyName("imageUrl")] public string? ImageUrl { get; init; }
+
+    [JsonPropertyName("coverImageUrl")] public string? CoverImageUrl { get; init; }
+
+    /// <summary>Whether there is a picture to ask the core for; the web resolves <c>imageUrl || coverImageUrl</c>.</summary>
+    public bool HasImage => !string.IsNullOrEmpty(ImageUrl) || !string.IsNullOrEmpty(CoverImageUrl);
+
     /// <summary>
     /// True for a board column, which is a state rather than a place. Never offered as somewhere
     /// to file a task.
@@ -978,6 +986,9 @@ public sealed record ListSettings
     /// <summary><c>PRIVATE</c>, <c>SHARED</c> or <c>PUBLIC</c>; null when the server never said.</summary>
     [JsonPropertyName("privacy")] public string? Privacy { get; init; }
 
+    /// <summary>The list's picture as stored (task 3a913e52); null for none. Where to draw it from is <c>listImage</c>.</summary>
+    [JsonPropertyName("imageUrl")] public string? ImageUrl { get; init; }
+
     [JsonPropertyName("isFavorite")] public bool IsFavorite { get; init; }
 
     /// <summary>What a task added to this list starts as (task c4102c67).</summary>
@@ -1387,4 +1398,13 @@ public sealed record EditingTransition
     [JsonPropertyName("commit")] public string? Commit { get; init; }
 
     [JsonPropertyName("cancel")] public string? Cancel { get; init; }
+}
+
+/// <summary>Where a list's picture can be drawn from (task 3a913e52).</summary>
+public sealed record ListImage
+{
+    /// <summary>A local path when the core fetched a secure file into its cache, otherwise an absolute address.</summary>
+    [JsonPropertyName("source")] public string Source { get; init; } = string.Empty;
+
+    [JsonPropertyName("isLocal")] public bool IsLocal { get; init; }
 }
