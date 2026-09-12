@@ -84,7 +84,7 @@
                     <StackPanel Grid.Column="1" Spacing="2">
                         <TextBox x:Uid="detail_title_box" x:Name="DetailTitleBox"
                                  AutomationProperties.Name="Title"
-                                 Text="{x:Bind Shell.Detail.Title, Mode=TwoWay}"
+                                 Text="{x:Bind Shell.Detail.Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                  FontSize="16"
                                  FontWeight="SemiBold"
                                  Background="Transparent"
@@ -93,6 +93,7 @@
                                  TextWrapping="Wrap"
                                  AcceptsReturn="False"
                                  Foreground="{ThemeResource AstridTextPrimary}"
+                                 GotFocus="OnDetailTitleFocused"
                                  LostFocus="OnDetailTitleCommitted"
                                  KeyDown="OnDetailTitleKeyDown" />
                         <!--
@@ -195,7 +196,7 @@
                     </ContentPresenter>
                 </Grid>
                 <Button.Flyout>
-                    <Flyout Opening="OnAssigneeFlyoutOpening">
+                    <Flyout Opening="OnAssigneeFlyoutOpening" Closed="OnAssigneeFlyoutClosed">
                         <ItemsControl ItemsSource="{x:Bind Shell.Detail.Assignees, Mode=OneWay}"
                                       MinWidth="220">
                             <ItemsControl.ItemTemplate>
@@ -499,7 +500,7 @@
                     </ScrollViewer>
                 </Grid>
                 <Button.Flyout>
-                    <Flyout Opening="OnListsFlyoutOpening">
+                    <Flyout Opening="OnListsFlyoutOpening" Closed="OnListsFlyoutClosed">
                         <StackPanel Spacing="8" MinWidth="260" MaxWidth="320">
                             <!-- The lists it is in, each with its ×. -->
                             <ScrollViewer HorizontalScrollMode="Auto"
@@ -626,9 +627,11 @@
                          BorderThickness="0"
                          CornerRadius="8"
                          Padding="10,8"
-                         Text="{x:Bind Shell.Detail.Description, Mode=TwoWay}"
+                         Text="{x:Bind Shell.Detail.Description, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          Visibility="{x:Bind Shell.Detail.ShowsDescriptionEditor, Mode=OneWay, Converter={StaticResource Visible}}"
-                         LostFocus="OnDetailDescriptionCommitted" />
+                         GotFocus="OnDetailDescriptionFocused"
+                         LostFocus="OnDetailDescriptionCommitted"
+                         KeyDown="OnDetailDescriptionKeyDown" />
             </Grid>
             </StackPanel>
                 <TextBlock x:Uid="subtasks" Text="Subtasks" Style="{StaticResource DetailSection}" />

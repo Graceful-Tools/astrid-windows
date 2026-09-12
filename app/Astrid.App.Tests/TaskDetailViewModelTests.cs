@@ -209,7 +209,8 @@ public sealed class TaskDetailViewModelTests
             .AnswerOk("refreshComments")
             .AnswerOk("updateTask")
             .AnswerOk("taskDetail", rendered)
-            .AnswerOk("dueDateOptions", NoDuePicks());
+            .AnswerOk("dueDateOptions", NoDuePicks())
+            .AnswerOk("beginEditing", Transition("description"));
         var view = new TaskDetailViewModel(core);
 
         await view.OpenAsync("t1");
@@ -224,7 +225,7 @@ public sealed class TaskDetailViewModelTests
         // The text is still there to edit; the drawing does not replace it.
         Assert.Equal("##title\n**bold**", view.Description);
 
-        view.BeginEditingDescription();
+        await view.BeginEditingAsync(TaskDetailViewModel.DescriptionEditor);
         Assert.True(view.ShowsDescriptionEditor);
         Assert.False(view.ShowsRenderedDescription);
 
@@ -1241,5 +1242,181 @@ public sealed class TaskDetailViewModelTests
 
         Assert.Equal("text", decided.Action);
         Assert.Empty(decided.Files);
+    }
+
+    // ── One editing session at a time (PRODUCT_CONTRACT.md §6, task e71ed760) ──────────────
+    //
+    // The machine is the core's, stepped by command; these script its answers and check that
+    // the view model does what each names — commit, revert, or nothing at all.
+
+    private static object Transition(string? active, string? commit = null, string? cancel = null) =>
+        new { active, commit, cancel };
+
+    /// <summary>Opening a second editor commits the first: the buffer goes as one write.</summary>
+    [Fact]
+    public async Task Opening_a_second_editor_commits_the_first_task_e71ed760()
+    {
+        var core = OpenedTask()
+            .AnswerOk("beginEditing", Transition("title"))
+            .AnswerOk("beginEditing", Transition("description", commit: "title"))
+            .AnswerOk("updateTask")
+            .AnswerOk("taskDetail", Detail(title: "Plan the other trip"));
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.BeginEditingAsync(TaskDetailViewModel.TitleEditor);
+        Assert.Equal("title", view.ActiveEditor);
+        view.Title = "Plan the other trip";
+        Assert.DoesNotContain("updateTask", core.SentKinds());
+
+        await view.BeginEditingAsync(TaskDetailViewModel.DescriptionEditor);
+
+        Assert.Contains(core.Sent, json =>
+            json.Contains("\"kind\":\"updateTask\"") && json.Contains("\"title\":\"Plan the other trip\""));
+        Assert.Equal("description", view.ActiveEditor);
+        Assert.True(view.IsEditingDescription, "the second editor is open");
+        Assert.Equal("Plan the other trip", view.Title);
+    }
+
+    /// <summary>Ending the open editor commits it; ending a stale one — already handed off — commits nothing.</summary>
+    [Fact]
+    public async Task Ending_commits_the_open_editor_and_a_stale_end_commits_nothing_task_e71ed760()
+    {
+        var core = OpenedTask()
+            .AnswerOk("beginEditing", Transition("title"))
+            .AnswerOk("endEditing", Transition(null, commit: "title"))
+            .AnswerOk("updateTask")
+            .AnswerOk("taskDetail", Detail(title: "Plan B"))
+            .AnswerOk("beginEditing", Transition("description"))
+            .AnswerOk("endEditing", Transition("description"));
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.BeginEditingAsync(TaskDetailViewModel.TitleEditor);
+        view.Title = "Plan B";
+        await view.EndEditingAsync(TaskDetailViewModel.TitleEditor);
+        Assert.Null(view.ActiveEditor);
+        Assert.Single(core.SentKinds(), kind => kind == "updateTask");
+
+        await view.BeginEditingAsync(TaskDetailViewModel.DescriptionEditor);
+        view.Title = "typed after the hand-off";
+        await view.EndEditingAsync(TaskDetailViewModel.TitleEditor);
+
+        Assert.Single(core.SentKinds(), kind => kind == "updateTask");
+        Assert.Equal("description", view.ActiveEditor);
+    }
+
+    /// <summary>Cancel is the only transition that reverts: the buffer goes back, nothing is written.</summary>
+    [Fact]
+    public async Task Cancel_reverts_the_buffer_and_writes_nothing_task_e71ed760()
+    {
+        var core = OpenedTask()
+            .AnswerOk("beginEditing", Transition("title"))
+            .AnswerOk("cancelEditing", Transition(null, cancel: "title"))
+            .AnswerOk("beginEditing", Transition("description"))
+            .AnswerOk("cancelEditing", Transition(null, cancel: "description"));
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.BeginEditingAsync(TaskDetailViewModel.TitleEditor);
+        view.Title = "Plan B";
+        await view.CancelEditingAsync(TaskDetailViewModel.TitleEditor);
+        Assert.Equal("Plan the trip", view.Title);
+        Assert.Null(view.ActiveEditor);
+
+        await view.BeginEditingAsync(TaskDetailViewModel.DescriptionEditor);
+        view.Description = "three weeks";
+        await view.CancelEditingAsync(TaskDetailViewModel.DescriptionEditor);
+        Assert.Equal("two weeks", view.Description);
+        Assert.False(view.IsEditingDescription, "back to the drawing");
+
+        Assert.DoesNotContain("updateTask", core.SentKinds());
+    }
+
+    /// <summary>Navigating away saves: opening another task commits what was open, on the task it was open on.</summary>
+    [Fact]
+    public async Task Opening_another_task_commits_what_was_open_task_e71ed760()
+    {
+        var core = OpenedTask()
+            .AnswerOk("beginEditing", Transition("title"))
+            .AnswerOk("commitAllEditing", Transition(null, commit: "title"))
+            .AnswerOk("updateTask")
+            .AnswerOk("taskDetail", Detail(title: "Plan B"))
+            .AnswerOk("taskDetail", new
+            {
+                task = new { id = "t2", title = "Pack", description = "", priority = 0, completed = false },
+                fieldOrder = Array.Empty<string>(),
+                listChips = Array.Empty<object>(),
+                comments = Array.Empty<object>(),
+                subtasks = Array.Empty<object>(),
+            });
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+        await view.BeginEditingAsync(TaskDetailViewModel.TitleEditor);
+        view.Title = "Plan B";
+
+        await view.OpenAsync("t2");
+
+        var update = Assert.Single(core.Sent, json => json.Contains("\"kind\":\"updateTask\""));
+        Assert.Contains("\"t1\"", update);
+        Assert.Contains("\"title\":\"Plan B\"", update);
+        Assert.Equal("t2", view.TaskId);
+        Assert.Equal("Pack", view.Title);
+        Assert.Null(view.ActiveEditor);
+    }
+
+    /// <summary>Closing the pane commits what was open; closing because the task is gone discards it.</summary>
+    [Fact]
+    public async Task Closing_commits_and_a_discarding_close_cancels_task_e71ed760()
+    {
+        var core = OpenedTask()
+            .AnswerOk("beginEditing", Transition("title"))
+            .AnswerOk("commitAllEditing", Transition(null, commit: "title"))
+            .AnswerOk("updateTask")
+            .AnswerOk("taskDetail", Detail(title: "Plan B"))
+            .AnswerOk("taskDetail", Detail())
+            .AnswerOk("beginEditing", Transition("title"))
+            .AnswerOk("cancelEditing", Transition(null, cancel: "title"));
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+        await view.BeginEditingAsync(TaskDetailViewModel.TitleEditor);
+        view.Title = "Plan B";
+
+        await view.CloseAsync();
+        Assert.False(view.IsOpen);
+        Assert.Single(core.SentKinds(), kind => kind == "updateTask");
+
+        await view.OpenAsync("t1");
+        await view.BeginEditingAsync(TaskDetailViewModel.TitleEditor);
+        view.Title = "never saved";
+        view.Close();
+
+        Assert.Null(view.ActiveEditor);
+        Assert.Contains("cancelEditing", core.SentKinds());
+        Assert.Single(core.SentKinds(), kind => kind == "updateTask");
+    }
+
+    /// <summary>
+    /// Lists and assignee save when the row is picked, so closing them commits nothing — but
+    /// opening one is still a begin, which is what commits an open title.
+    /// </summary>
+    [Fact]
+    public async Task A_selection_editor_commits_nothing_when_it_closes_task_e71ed760()
+    {
+        var core = OpenedTask()
+            .AnswerOk("beginEditing", Transition("lists"))
+            .AnswerOk("endEditing", Transition(null, commit: "lists"))
+            .AnswerOk("beginEditing", Transition("assignee"))
+            .AnswerOk("endEditing", Transition(null, commit: "assignee"));
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.BeginEditingAsync(TaskDetailViewModel.ListsEditor);
+        await view.EndEditingAsync(TaskDetailViewModel.ListsEditor);
+        await view.BeginEditingAsync(TaskDetailViewModel.AssigneeEditor);
+        await view.EndEditingAsync(TaskDetailViewModel.AssigneeEditor);
+
+        Assert.DoesNotContain("updateTask", core.SentKinds());
+        Assert.Null(view.ActiveEditor);
     }
 }

@@ -100,7 +100,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             }
             if (Board.ExpandedTaskId is null && IsBoardView && Detail.IsOpen)
             {
-                Detail.Close();
+                _ = Detail.CloseAsync();
             }
             Raise(nameof(ShowsDetailInline));
             Raise(nameof(ShowsDetailPane));
@@ -424,7 +424,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             }
             else if (Detail.IsOpen)
             {
-                Detail.Close();
+                await Detail.CloseAsync(cancellationToken);
             }
         }
         else
@@ -458,7 +458,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     {
         if (Board.ExpandedTaskId == taskId)
         {
-            Detail.Close();
+            await Detail.CloseAsync(cancellationToken);
             return;
         }
         Board.Expand(taskId);
@@ -546,8 +546,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _lastSelectedRowId = taskId;
         if (Detail.IsOpen && Detail.TaskId == taskId)
         {
-            Detail.Close();
-            return Task.CompletedTask;
+            return Detail.CloseAsync(cancellationToken);
         }
         return OpenTaskAsync(taskId, cancellationToken);
     }
@@ -582,7 +581,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         }
         // A different list means the open task probably is not in it. Closing is more honest than
         // leaving a detail pane showing something the list beside it no longer contains.
-        Detail.Close();
+        await Detail.CloseAsync(cancellationToken);
         await Tasks.OpenAsync(selected.Id, selected.Name, cancellationToken);
         NeedsSignIn |= Tasks.NeedsSignIn;
     }

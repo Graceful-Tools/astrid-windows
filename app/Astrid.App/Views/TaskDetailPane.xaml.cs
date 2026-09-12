@@ -127,7 +127,7 @@ public sealed partial class TaskDetailPane : UserControl
     /// </summary>
     internal void HideArrow() => DetailArrow.Visibility = Visibility.Collapsed;
 
-    private void OnCloseDetail(object sender, RoutedEventArgs args) => Shell.Detail.Close();
+    private async void OnCloseDetail(object sender, RoutedEventArgs args) => await Shell.Detail.CloseAsync();
 
     /// <summary>
     /// Word the task menu as the task stands, and fill its Status submenu from the core.
@@ -344,7 +344,37 @@ public sealed partial class TaskDetailPane : UserControl
     /// network came back.
     /// </remarks>
     private async void OnDetailTitleCommitted(object sender, RoutedEventArgs args) =>
-        await Shell.Detail.SaveTitleAsync(DetailTitleBox.Text);
+        await Shell.Detail.EndEditingAsync(TaskDetailViewModel.TitleEditor);
+
+    // ── One editing session at a time (PRODUCT_CONTRACT.md §6, task e71ed760) ──────────────
+    //
+    // Focus begins an editor, blur ends it, Escape cancels it; a flyout begins on Opening and
+    // ends on Closed. Which of those saves, and what a second editor does to the first, is the
+    // core's rule — see TaskDetailViewModel — and the boxes update the view model on every
+    // keystroke so what gets committed is what is on screen.
+
+    private async void OnDetailTitleFocused(object sender, RoutedEventArgs args) =>
+        await Shell.Detail.BeginEditingAsync(TaskDetailViewModel.TitleEditor);
+
+    private async void OnDetailDescriptionFocused(object sender, RoutedEventArgs args) =>
+        await Shell.Detail.BeginEditingAsync(TaskDetailViewModel.DescriptionEditor);
+
+    /// <summary>Escape in the description box: revert, and go back to the drawing.</summary>
+    private async void OnDetailDescriptionKeyDown(object sender, KeyRoutedEventArgs args)
+    {
+        if (args.Key != VirtualKey.Escape)
+        {
+            return;
+        }
+        args.Handled = true;
+        await Shell.Detail.CancelEditingAsync(TaskDetailViewModel.DescriptionEditor);
+    }
+
+    private async void OnAssigneeFlyoutClosed(object sender, object args) =>
+        await Shell.Detail.EndEditingAsync(TaskDetailViewModel.AssigneeEditor);
+
+    private async void OnListsFlyoutClosed(object sender, object args) =>
+        await Shell.Detail.EndEditingAsync(TaskDetailViewModel.ListsEditor);
 
     private async void OnToggleTimer(object sender, RoutedEventArgs args)
     {
@@ -470,6 +500,7 @@ public sealed partial class TaskDetailPane : UserControl
     /// </summary>
     private async void OnAssigneeFlyoutOpening(object sender, object args)
     {
+        await Shell.Detail.BeginEditingAsync(TaskDetailViewModel.AssigneeEditor);
         await Shell.Detail.LoadAssigneesAsync();
     }
 
@@ -482,8 +513,11 @@ public sealed partial class TaskDetailPane : UserControl
 
     // ── The lists a task is in (task d3f3b111) ──────────────────────────────────────────────
 
-    private async void OnListsFlyoutOpening(object sender, object args) =>
+    private async void OnListsFlyoutOpening(object sender, object args)
+    {
+        await Shell.Detail.BeginEditingAsync(TaskDetailViewModel.ListsEditor);
         await Shell.Detail.LoadListPicksAsync(string.Empty);
+    }
 
     private async void OnListSearchChanged(object sender, TextChangedEventArgs args)
     {
@@ -522,18 +556,33 @@ public sealed partial class TaskDetailPane : UserControl
         }
     }
 
+    /// <summary>
+    /// Enter saves the title; Escape puts back what the task had.
+    /// </summary>
+    /// <remarks>
+    /// Enter ends the session and begins it again, because the caret stays in the box: without
+    /// the second step the next blur would be a stale end and anything typed after Enter would be
+    /// lost. Escape ends it for good — the blur that follows finds nothing open, which is what
+    /// "discarded" means.
+    /// </remarks>
     private async void OnDetailTitleKeyDown(object sender, KeyRoutedEventArgs args)
     {
-        if (args.Key != VirtualKey.Enter)
+        switch (args.Key)
         {
-            return;
+            case VirtualKey.Enter:
+                args.Handled = true;
+                await Shell.Detail.EndEditingAsync(TaskDetailViewModel.TitleEditor);
+                await Shell.Detail.BeginEditingAsync(TaskDetailViewModel.TitleEditor);
+                break;
+            case VirtualKey.Escape:
+                args.Handled = true;
+                await Shell.Detail.CancelEditingAsync(TaskDetailViewModel.TitleEditor);
+                break;
         }
-        args.Handled = true;
-        await Shell.Detail.SaveTitleAsync(DetailTitleBox.Text);
     }
 
     private async void OnDetailDescriptionCommitted(object sender, RoutedEventArgs args) =>
-        await Shell.Detail.SaveDescriptionAsync(DetailDescriptionBox.Text);
+        await Shell.Detail.EndEditingAsync(TaskDetailViewModel.DescriptionEditor);
 
     // ── The description, drawn (task 11cfaf6d) ───────────────────────────────────────────────
 
@@ -569,14 +618,14 @@ public sealed partial class TaskDetailPane : UserControl
             : new SolidColorBrush(Colors.Gray);
 
     /// <summary>The rendered description was clicked: open the editor where it was.</summary>
-    private void OnDescriptionTapped(object sender, TappedRoutedEventArgs args)
+    private async void OnDescriptionTapped(object sender, TappedRoutedEventArgs args)
     {
         if (_descriptionLinkFollowed)
         {
             _descriptionLinkFollowed = false;
             return;
         }
-        Shell.Detail.BeginEditingDescription();
+        await Shell.Detail.BeginEditingAsync(TaskDetailViewModel.DescriptionEditor);
         // The box was collapsed a moment ago; it takes focus once layout has shown it.
         DispatcherQueue.TryEnqueue(() => DetailDescriptionBox.Focus(FocusState.Programmatic));
     }

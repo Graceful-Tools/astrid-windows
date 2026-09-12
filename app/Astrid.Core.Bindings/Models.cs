@@ -1366,3 +1366,16 @@ public static class ResponseReader
     public static T? Read<T>(this AstridResponse response) where T : class
         => response.Ok ? response.ValueAs<T>() : null;
 }
+
+/// <summary>
+/// What one step of the editing session asks the shell to do (PRODUCT_CONTRACT.md §6): which
+/// editor is open now, and which one — if any — to commit or to revert.
+/// </summary>
+public sealed record EditingTransition
+{
+    [JsonPropertyName("active")] public string? Active { get; init; }
+
+    [JsonPropertyName("commit")] public string? Commit { get; init; }
+
+    [JsonPropertyName("cancel")] public string? Cancel { get; init; }
+}

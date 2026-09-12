@@ -120,8 +120,9 @@ against the web, from a read of the source rather than of the docs, with what ha
 - **Label lists** (`listType: "label"`): chips on the rows they belong to, never a sidebar entry.
 - **Copy a task** into a list, with or without its comments, from the task menu.
 - **The editing-session machine** (`astrid_core::editing`), ported from `lib/editing-session.ts`
-  and locked by `contracts/fixtures/editing.json`. The core half; the detail pane's editors are
-  not yet routed through it.
+  and locked by `contracts/fixtures/editing.json`. Since 2026-09-12 the detail pane's editors
+  go through it: the core holds the session and steps it by command (`beginEditing`,
+  `endEditing`, `cancelEditing`, `commitAllEditing`), and the pane does what each answer names.
 - **Natural-language quick-add** (`astrid_core::parse::smart`): "Call mum tomorrow urgent
   #health", "Standup weekly mon and wed", "Rent monthly" — in twelve languages, whose keyword
   tables ride in `contracts/fixtures/smart.json` beside 220 of the web's own answers. Closes
@@ -154,8 +155,6 @@ The core already reads `manualSortOrder`; the write needs a versioned route.
   `Views/ShellResources.xaml`; and `SettingsViewModel` is a thin façade over one view model per
   settings page, under `app/Astrid.App.ViewModels/Settings/`, sharing a `SettingsSession` for
   the account answer and the flyout's one error line.)
-- The detail pane's editors each keep their own flag; routing them through
-  `astrid_core::editing` is the remaining half of `PRODUCT_CONTRACT.md` §6.
 - No drift test on response shapes (`Models.cs` against the Rust `Response`s).
 - English only. The mechanism is complete — a language is a folder — but no second folder.
 

@@ -214,8 +214,99 @@ public sealed class TaskDetailViewModel : ObservableObject
     /// </summary>
     public bool ShowsDescriptionEditor => !ShowsRenderedDescription;
 
-    /// <summary>The rendered description was clicked: open it for typing.</summary>
-    public void BeginEditingDescription() => IsEditingDescription = true;
+    // ── One editing session at a time (PRODUCT_CONTRACT.md §6, task e71ed760) ──────────────
+    //
+    // The machine is the core's — astrid_core::editing, locked by contracts/fixtures/editing.json
+    // — and is stepped by command; this only does what each answer names. Title and description
+    // hold a pending buffer, so they have a commit and a revert. Lists and assignee change on
+    // selection in this app — the write goes when the row is picked — so they register no commit
+    // handler, but they are on the session: opening either commits an open title or description.
+
+    public const string TitleEditor = "title";
+    public const string DescriptionEditor = "description";
+    public const string ListsEditor = "lists";
+    public const string AssigneeEditor = "assignee";
+
+    private string? _activeEditor;
+    private string _savedTitle = string.Empty;
+    private string _savedDescription = string.Empty;
+
+    /// <summary>The one open editor, as the core last said; null when none is.</summary>
+    public string? ActiveEditor
+    {
+        get => _activeEditor;
+        private set => Set(ref _activeEditor, value);
+    }
+
+    /// <summary>
+    /// Open an editor. Whatever was open is committed first — by the machine, not by the caller,
+    /// which is what makes "one at a time" a property rather than a convention.
+    /// </summary>
+    public async Task BeginEditingAsync(string editor, CancellationToken cancellationToken = default)
+    {
+        await StepAsync(Commands.BeginEditing(editor), cancellationToken);
+        if (editor == DescriptionEditor)
+        {
+            // The rendered description gives way to the box.
+            IsEditingDescription = true;
+        }
+    }
+
+    /// <summary>Close an editor, committing it. A stale end — already handed off — commits nothing.</summary>
+    public Task EndEditingAsync(string editor, CancellationToken cancellationToken = default) =>
+        StepAsync(Commands.EndEditing(editor), cancellationToken);
+
+    /// <summary>Close an editor, reverting it: the only transition that discards.</summary>
+    public Task CancelEditingAsync(string editor, CancellationToken cancellationToken = default) =>
+        StepAsync(Commands.CancelEditing(editor), cancellationToken);
+
+    /// <summary>Commit whatever is open: navigating away and backgrounding save.</summary>
+    public Task CommitAllAsync(CancellationToken cancellationToken = default) =>
+        StepAsync(Commands.CommitAllEditing(), cancellationToken);
+
+    private async Task StepAsync(object command, CancellationToken cancellationToken)
+    {
+        var response = await _core.CallAsync(command, cancellationToken);
+        if (!response.Ok || response.Read<EditingTransition>() is not { } transition)
+        {
+            // A core that cannot be asked leaves the editors as they are: nothing is saved or
+            // thrown away on a guess.
+            return;
+        }
+        ActiveEditor = transition.Active;
+        if (transition.Commit is { } commit)
+        {
+            await CommitEditorAsync(commit, cancellationToken);
+        }
+        if (transition.Cancel is { } cancel)
+        {
+            RevertEditor(cancel);
+        }
+    }
+
+    /// <summary>Save what an editor holds. The bound text is the buffer, so this reads it.</summary>
+    private Task CommitEditorAsync(string editor, CancellationToken cancellationToken) => editor switch
+    {
+        TitleEditor => SaveTitleAsync(Title, cancellationToken),
+        DescriptionEditor => SaveDescriptionAsync(Description, cancellationToken),
+        // Lists and assignee were saved when the row was picked; closing is the whole story.
+        _ => Task.CompletedTask,
+    };
+
+    /// <summary>Put back what the task had when it was opened, or last reloaded.</summary>
+    private void RevertEditor(string editor)
+    {
+        switch (editor)
+        {
+            case TitleEditor:
+                Title = _savedTitle;
+                break;
+            case DescriptionEditor:
+                Description = _savedDescription;
+                IsEditingDescription = false;
+                break;
+        }
+    }
 
     public int Priority
     {
@@ -316,8 +407,13 @@ public sealed class TaskDetailViewModel : ObservableObject
     {
         if (TaskId != taskId)
         {
-            // A different task: whatever was being typed into the last one's description is not
-            // being typed into this one's.
+            // A different task: navigating away saves, so whatever was being typed into the last
+            // one is committed before this one is read — and it was being typed into that one's
+            // description, not this one's.
+            if (ActiveEditor is not null)
+            {
+                await CommitAllAsync(cancellationToken);
+            }
             IsEditingDescription = false;
         }
         TaskId = taskId;
@@ -401,9 +497,30 @@ public sealed class TaskDetailViewModel : ObservableObject
         }
     }
 
-    /// <summary>Close the pane.</summary>
+    /// <summary>Close the pane, committing whatever was being edited: navigating away saves.</summary>
+    public async Task CloseAsync(CancellationToken cancellationToken = default)
+    {
+        if (ActiveEditor is not null)
+        {
+            await CommitAllAsync(cancellationToken);
+        }
+        Close();
+    }
+
+    /// <summary>
+    /// Close the pane without saving — the task is gone, or is being deleted.
+    /// </summary>
+    /// <remarks>
+    /// The session is emptied all the same, without a commit: an editor left open in the core
+    /// would be handed to the next task's first editor as the one to save.
+    /// </remarks>
     public void Close()
     {
+        if (ActiveEditor is { } abandoned)
+        {
+            ActiveEditor = null;
+            _ = _core.CallAsync(Commands.CancelEditing(abandoned));
+        }
         IsOpen = false;
         TaskId = null;
         Comments.Clear();
@@ -1413,6 +1530,9 @@ public sealed class TaskDetailViewModel : ObservableObject
             Description = task.TryGetProperty("description", out var description)
                 ? description.GetString() ?? string.Empty
                 : string.Empty;
+            // What a cancelled edit goes back to.
+            _savedTitle = Title;
+            _savedDescription = Description;
             DescriptionBlocks = Read<MarkdownBlock>(value, "descriptionBlocks");
             Priority = task.TryGetProperty("priority", out var priority) ? priority.GetInt32() : 0;
             Completed = task.TryGetProperty("completed", out var completed) && completed.GetBoolean();

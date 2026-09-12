@@ -640,6 +640,21 @@ public static class Commands
     /// <summary>Choose another chord. Refused with a reason when the shell could not register it.</summary>
     public static object SetHotkey(string chord) => new ChordRequest("setHotkey", chord);
 
+    /// <summary>
+    /// Open an editor in the one editing session, committing and closing whatever was open
+    /// (PRODUCT_CONTRACT.md §6). The answer names what to commit or revert.
+    /// </summary>
+    public static object BeginEditing(string editor) => new EditorRequest("beginEditing", editor);
+
+    /// <summary>Close an editor, committing it. A stale end — one already handed off — is ignored.</summary>
+    public static object EndEditing(string editor) => new EditorRequest("endEditing", editor);
+
+    /// <summary>Close an editor, reverting it: the only transition that discards.</summary>
+    public static object CancelEditing(string editor) => new EditorRequest("cancelEditing", editor);
+
+    /// <summary>Close the session, committing whatever was open: navigating away and backgrounding save.</summary>
+    public static object CommitAllEditing() => new KindOnly("commitAllEditing");
+
     /// <summary>Copy a task into a list, with or without its comments. The server makes the copy.</summary>
     public static object CopyTask(string taskId, string? targetListId, bool includeComments) =>
         new CopyTaskRequest("copyTask", taskId, targetListId, includeComments);
@@ -701,6 +716,10 @@ public static class Commands
     private sealed record ChordRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("chord")] string Chord);
+
+    private sealed record EditorRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("editor")] string Editor);
 
     private sealed record RowsRequest(
         [property: JsonPropertyName("kind")] string Kind,
