@@ -407,6 +407,28 @@ public sealed class ShellViewModelTests
         Assert.False(shell.Detail.IsFullScreen, "ended when the card took the detail");
     }
 
+    /// <summary>
+    /// The settings cover the window (task 3f5834ed): one flag, opened by the account button and
+    /// shut by its own arrow; opening shuts the palette, and a sign-in taking the window ends it.
+    /// </summary>
+    [Fact]
+    public async Task Settings_cover_the_window_one_thing_at_a_time_task_3f5834ed()
+    {
+        var core = StartedCore(("l1", "Home", false));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        await shell.ShowPaletteAsync(true);
+        Assert.True(shell.IsPaletteOpen);
+
+        shell.ShowSettings(true);
+
+        Assert.True(shell.IsSettingsOpen);
+        Assert.False(shell.IsPaletteOpen, "one thing over the window at a time");
+
+        shell.ShowSettings(false);
+        Assert.False(shell.IsSettingsOpen);
+    }
+
     /// <summary>Off the board, the detail is the side pane it always was.</summary>
     [Fact]
     public async Task In_list_view_the_detail_is_the_side_pane()

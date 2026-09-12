@@ -66,6 +66,7 @@ public sealed partial class ShellPage : UserControl
         Rows.Shell = Shell;
         Chat.Shell = Shell;
         Detail.Shell = Shell;
+        Settings.Shell = Shell;
 
         // What one part has to tell another.
         Palette.RowRun += Sidebar.SyncSelectionFromViewModel;
@@ -94,6 +95,22 @@ public sealed partial class ShellPage : UserControl
             if (changed.PropertyName == nameof(ShellViewModel.ShowsDetailFullScreen))
             {
                 PlaceDetailPane();
+            }
+        };
+        // The settings load as they open and forget their plaintexts as they close (task 3f5834ed).
+        Shell.PropertyChanged += async (_, changed) =>
+        {
+            if (changed.PropertyName != nameof(ShellViewModel.IsSettingsOpen))
+            {
+                return;
+            }
+            if (Shell.IsSettingsOpen)
+            {
+                await Settings.OpenedAsync();
+            }
+            else
+            {
+                Settings.Closed();
             }
         };
         // Every protocol activation, launch or redirected, arrives here. The core decides which
@@ -188,6 +205,15 @@ public sealed partial class ShellPage : UserControl
     /// </remarks>
     private async void OnKeyDown(object sender, KeyRoutedEventArgs args)
     {
+        // Escape leaves the settings, as it leaves every full-window thing. A flyout open inside
+        // them takes the key first, being its own root, so this only fires once those are shut.
+        if (args.Key == VirtualKey.Escape && Shell.IsSettingsOpen)
+        {
+            args.Handled = true;
+            Shell.ShowSettings(false);
+            return;
+        }
+
         var control = Microsoft.UI.Input.InputKeyboardSource
             .GetKeyStateForCurrentThread(VirtualKey.Control)
             .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);

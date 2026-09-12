@@ -275,18 +275,23 @@ public sealed class ShellSmokeTests
     }
 
     /// <summary>
-    /// The account flyout opens offline. It reaches the server for four of its sections and
-    /// must draw the first from the cache regardless; and its photo binding is the one that
-    /// threw on every fresh launch until 2026-09-11.
+    /// The settings open over the window, offline, and the arrow brings the list back
+    /// (task 3f5834ed). They reach the server for four of their pages and must draw the first
+    /// from the cache regardless; and the photo binding is the one that threw on every fresh
+    /// launch until 2026-09-11.
     /// </summary>
     [Fact]
-    public void The_account_flyout_opens_offline()
+    public void The_settings_open_over_the_window_offline_task_3f5834ed()
     {
         using var app = AstridApp.Launch(signedIn: true);
 
         app.Invoke("Account");
-        Assert.True(app.Sees("Display name"), $"the account flyout did not open; saw: {string.Join(", ", app.Names())}");
-        Dismiss(app);
+        Assert.True(app.Sees("Display name"), $"the settings did not open; saw: {string.Join(", ", app.Names())}");
+        Assert.True(app.Sees("Reminders"), "the hub's cards are missing");
+
+        app.Invoke("Back");
+        Assert.Null(app.Find("Back", 1500));
+        Assert.True(app.Sees("Add a task"), "the list did not come back");
 
         Assert.False(File.Exists(app.CrashLogPath), Crash(app));
     }

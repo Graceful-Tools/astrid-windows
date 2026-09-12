@@ -132,6 +132,11 @@ against the web, from a read of the source rather than of the docs, with what ha
   nothing, as on the web.
 - **Drag a row onto a sidebar list** to move it there, or add it with Shift (task 27cae198), as
   the web's sidebar does.
+- **Settings over the window** (task 3f5834ed): the web's layout instead of a 720×540 flyout —
+  a bar with the way back, the hub (Settings, a line under it, one card per category with its
+  icon, title and line) and the chosen page beside it under the web's page header. Same section
+  controls; `ShellViewModel.IsSettingsOpen` owns whether it is open, Escape and the arrow shut
+  it, and sign-in taking the window ends it.
 - **A second language** (task b9dd4a25): `Strings/de-DE/Resources.resw`, every English key in
   German, wording from the web's `de.json`; `tasks_unassigned_mark` N, the ordinals `{0}.`. The
   app takes its language from Windows. `ASTRID_LANGUAGE` is the smoke tests' hook, and one of

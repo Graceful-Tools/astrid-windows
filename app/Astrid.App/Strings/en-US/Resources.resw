@@ -1609,4 +1609,55 @@
   <data name="detail_exit_full_screen.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Exit full screen</value>
   </data>
+  <data name="settings_back.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="settings_back.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="settings_title.Text" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="settings_heading.Text" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="settings_subtitle.Text" xml:space="preserve">
+    <value>Manage your account and preferences</value>
+  </data>
+  <data name="settings_account_line" xml:space="preserve">
+    <value>Profile, email verification, and access settings</value>
+  </data>
+  <data name="settings_reminders_line" xml:space="preserve">
+    <value>Reminders, push notifications, and calendar sync</value>
+  </data>
+  <data name="settings_tasks_line" xml:space="preserve">
+    <value>Default task behaviour and email-to-task preferences</value>
+  </data>
+  <data name="settings_agents_line" xml:space="preserve">
+    <value>AI assistants and coding agents, with your API keys</value>
+  </data>
+  <data name="settings_api_access_line" xml:space="preserve">
+    <value>OAuth applications and API integrations</value>
+  </data>
+  <data name="settings_contacts_line" xml:space="preserve">
+    <value>Import contacts for collaborator suggestions</value>
+  </data>
+  <data name="settings_appearance_line" xml:space="preserve">
+    <value>Theme, colours, and the quick-add shortcut</value>
+  </data>
+  <data name="settings_integrations_line" xml:space="preserve">
+    <value>Google lists, the webhook, and Copilot</value>
+  </data>
+  <data name="settings_data_line" xml:space="preserve">
+    <value>Download all your tasks, lists, and account data</value>
+  </data>
+  <data name="settings_help_line" xml:space="preserve">
+    <value>Troubleshooting guides and contact support</value>
+  </data>
+  <data name="settings_privacy_line" xml:space="preserve">
+    <value>How your data is handled</value>
+  </data>
+  <data name="settings_terms_line" xml:space="preserve">
+    <value>The terms you agreed to</value>
+  </data>
 </root>

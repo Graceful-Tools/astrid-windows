@@ -12,8 +12,9 @@
     <!--
         The row above the list: its name, the tools, the bell and the account.
 
-        The two big flyouts on this row — the list's settings and the account's — are controls of
-        their own (ListSettingsFlyout, SettingsFlyout); this file holds the buttons that open them.
+        The list's settings are a flyout of their own (ListSettingsFlyout); the account's settings
+        are a screen over the window (Settings/SettingsView). This file holds the buttons that open
+        them.
     -->
 
     <Grid Margin="20,16,20,8" ColumnSpacing="12">
@@ -261,30 +262,16 @@
                 </Flyout>
             </Button.Flyout>
         </Button>
+        <!--
+            The settings used to be a flyout under this button, which the whole of a settings
+            page had to fit inside. They are a screen over the window now, laid out as the web
+            lays them (task 3f5834ed); this button only opens it.
+        -->
         <Button x:Uid="account_and_settings" AutomationProperties.Name="Account"
                 ToolTipService.ToolTip="Account and settings"
                 Content="&#xE77B;"
-                FontFamily="{ThemeResource SymbolThemeFontFamily}">
-            <Button.Flyout>
-                <!--
-                    Settings, as astrid-web lays them out: a rail of categories and one
-                    page of controls at a time.
-
-                    It used to be one column with every control in the app stacked in
-                    it - reminders, agents, the webhook, Google, appearance, export -
-                    which meant finding the theme picker was a scroll past a webhook
-                    secret. The web splits the same controls into pages behind a hub
-                    (components/Settings/SettingsHub.tsx) for the same reason, and the
-                    sections here are its pages.
-                -->
-                <Flyout Opening="OnAccountOpening"
-                        Closed="OnAccountClosed"
-                        Placement="BottomEdgeAlignedRight"
-                        ShouldConstrainToRootBounds="False">
-                    <settings:SettingsFlyout x:Name="Settings" />
-                </Flyout>
-            </Button.Flyout>
-        </Button>
+                FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                Click="OnOpenSettings" />
 
         </StackPanel>
     </Grid>

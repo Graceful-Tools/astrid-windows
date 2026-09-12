@@ -42,6 +42,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private string? _listImageSource;
     private bool _isChatOpen;
     private bool _isPaletteOpen;
+    private bool _isSettingsOpen;
     private bool _isTourOpen;
 
     /// <param name="post">
@@ -236,6 +237,31 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     {
         get => _isPaletteOpen;
         private set => Set(ref _isPaletteOpen, value);
+    }
+
+    /// <summary>
+    /// Whether the settings cover the window (task 3f5834ed).
+    /// </summary>
+    /// <remarks>
+    /// The web takes settings over its main surface — a hub of categories with the chosen page
+    /// beside it — rather than fitting them into a flyout, and so does this. One flag, read by
+    /// the page that draws it and by the tests; sign-in taking the window ends it, since a
+    /// settings screen over a sign-in screen is a screen nobody asked for.
+    /// </remarks>
+    public bool IsSettingsOpen
+    {
+        get => _isSettingsOpen;
+        private set => Set(ref _isSettingsOpen, value);
+    }
+
+    /// <summary>Open or close the settings. Opening shuts the palette: one thing over the window at a time.</summary>
+    public void ShowSettings(bool open)
+    {
+        if (open)
+        {
+            IsPaletteOpen = false;
+        }
+        IsSettingsOpen = open;
     }
 
     /// <summary>Open or close the palette. Opening fills it, so it teaches what it can do.</summary>
@@ -509,7 +535,13 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public bool NeedsSignIn
     {
         get => _needsSignIn;
-        private set => Set(ref _needsSignIn, value);
+        private set
+        {
+            if (Set(ref _needsSignIn, value) && value)
+            {
+                IsSettingsOpen = false;
+            }
+        }
     }
 
     public string? StatusMessage

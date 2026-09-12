@@ -1608,4 +1608,55 @@
   <data name="detail_exit_full_screen.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Vollbild beenden</value>
   </data>
+  <data name="settings_back.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Zurück</value>
+  </data>
+  <data name="settings_back.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Zurück</value>
+  </data>
+  <data name="settings_title.Text" xml:space="preserve">
+    <value>Einstellungen</value>
+  </data>
+  <data name="settings_heading.Text" xml:space="preserve">
+    <value>Einstellungen</value>
+  </data>
+  <data name="settings_subtitle.Text" xml:space="preserve">
+    <value>Verwalten Sie Ihr Konto und Ihre Einstellungen</value>
+  </data>
+  <data name="settings_account_line" xml:space="preserve">
+    <value>Profil, E-Mail-Verifizierung und Zugriffseinstellungen</value>
+  </data>
+  <data name="settings_reminders_line" xml:space="preserve">
+    <value>Erinnerungen, Push-Benachrichtigungen und Kalendersynchronisierung</value>
+  </data>
+  <data name="settings_tasks_line" xml:space="preserve">
+    <value>Standardverhalten für Aufgaben und E-Mail zu Aufgabe</value>
+  </data>
+  <data name="settings_agents_line" xml:space="preserve">
+    <value>KI-Assistenten und Code-Agenten, mit Ihren API-Schlüsseln</value>
+  </data>
+  <data name="settings_api_access_line" xml:space="preserve">
+    <value>OAuth-Anwendungen und API-Integrationen</value>
+  </data>
+  <data name="settings_contacts_line" xml:space="preserve">
+    <value>Kontakte für Mitarbeitervorschläge importieren</value>
+  </data>
+  <data name="settings_appearance_line" xml:space="preserve">
+    <value>Design, Farben und das Schnellzugriff-Tastenkürzel</value>
+  </data>
+  <data name="settings_integrations_line" xml:space="preserve">
+    <value>Google-Listen, der Webhook und Copilot</value>
+  </data>
+  <data name="settings_data_line" xml:space="preserve">
+    <value>Laden Sie alle Ihre Aufgaben, Listen und Kontodaten herunter</value>
+  </data>
+  <data name="settings_help_line" xml:space="preserve">
+    <value>Hilfe-Anleitungen und Kontakt zum Support</value>
+  </data>
+  <data name="settings_privacy_line" xml:space="preserve">
+    <value>Wie Ihre Daten behandelt werden</value>
+  </data>
+  <data name="settings_terms_line" xml:space="preserve">
+    <value>Die Bedingungen, denen Sie zugestimmt haben</value>
+  </data>
 </root>

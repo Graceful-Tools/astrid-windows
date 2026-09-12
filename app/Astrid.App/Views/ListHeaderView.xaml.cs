@@ -33,16 +33,11 @@ public sealed partial class ListHeaderView : UserControl
         InitializeComponent();
     }
 
-    /// <summary>The two flyouts bind to the same view model this row does.</summary>
-    private void OnShellChanged()
-    {
-        ListSettings.Shell = Shell;
-        Settings.Shell = Shell;
-    }
+    /// <summary>The list's flyout binds to the same view model this row does.</summary>
+    private void OnShellChanged() => ListSettings.Shell = Shell;
 
-    private async void OnAccountOpening(object sender, object args) => await Settings.OpenedAsync();
-
-    private void OnAccountClosed(object sender, object args) => Settings.Closed();
+    /// <summary>The account button opens the settings screen; the shell owns whether it is open.</summary>
+    private void OnOpenSettings(object sender, RoutedEventArgs args) => Shell.ShowSettings(true);
 
     /// <summary>
     /// Search as the query is typed.

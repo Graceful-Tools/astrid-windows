@@ -34,7 +34,7 @@ public sealed partial class TasksSection : UserControl
     /// <remarks>
     /// A toggle raises its change event while being set from what was just loaded, and writing then
     /// saves the value back on every open — a settings screen that keeps sending the server what it
-    /// already said. <see cref="SettingsFlyout"/> sets it on every page it holds.
+    /// already said. <see cref="SettingsView"/> sets it on every page it holds.
     /// </remarks>
     internal bool SettingsLoading { get; set; }
 
