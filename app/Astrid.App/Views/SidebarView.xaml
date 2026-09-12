@@ -11,7 +11,16 @@
 
     <UserControl.Resources>
         <DataTemplate x:Key="SidebarRowTemplate" x:DataType="bindings:ListSummary">
-            <Grid ColumnSpacing="8">
+            <!--
+                A row takes a dropped task (task 27cae198). The background is what makes the whole
+                row a target rather than only its text; which rows accept, and what a drop writes,
+                is answered in the code-behind and the view model.
+            -->
+            <Grid ColumnSpacing="8"
+                  Background="Transparent"
+                  AllowDrop="True"
+                  DragOver="OnListDragOver"
+                  Drop="OnListDrop">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />

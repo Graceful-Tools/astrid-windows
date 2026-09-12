@@ -102,6 +102,8 @@
                   Visibility="{x:Bind Shell.IsBoardView, Mode=OneWay, Converter={StaticResource NotVisible}}"
                   x:Name="TaskRows"
                   IsItemClickEnabled="True"
+                  CanDragItems="True"
+                  DragItemsStarting="OnRowDragStarting"
                   ItemClick="OnRowClicked"
                   PointerPressed="OnRowsPointerPressed"
                   Margin="12,4,12,0"

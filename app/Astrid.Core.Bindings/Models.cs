@@ -280,6 +280,9 @@ public sealed record ListSummary
 
     [JsonPropertyName("taskCount")] public int? TaskCount { get; init; }
 
+    /// <summary>True for My Tasks, Today and the other views that are a filter rather than a list.</summary>
+    [JsonPropertyName("isVirtual")] public bool? IsVirtual { get; init; }
+
     /// <summary>
     /// True for a board column, which is a state rather than a place. Never offered as somewhere
     /// to file a task.
@@ -294,6 +297,12 @@ public sealed record ListSummary
 
     /// <summary>Somewhere a person can go and file a task: not a column, not a label.</summary>
     public bool IsDomainList => !IsStatusList && !IsLabelList;
+
+    /// <summary>
+    /// Somewhere a dragged row can be dropped (task 27cae198): a real list. A virtual list is a
+    /// filter, and the web's sidebar refuses the drop too (<c>useTaskDragDrop.ts</c>).
+    /// </summary>
+    public bool IsDropTarget => IsDomainList && IsVirtual != true;
 
     public string DisplayColor => string.IsNullOrWhiteSpace(Color) ? "#3b82f6" : Color!;
 

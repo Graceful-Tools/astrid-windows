@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.ApplicationModel.DataTransfer.DragDrop;
 using Windows.System;
 
 namespace Astrid.App.Views;
@@ -39,6 +40,56 @@ public sealed partial class SidebarView : UserControl
         Restyling.Reapply(MyTasksList);
         Restyling.Reapply(FavoritesList);
         Restyling.Reapply(ListsList);
+    }
+
+    // ── A row dropped on a list (task 27cae198) ─────────────────────────────────────────────
+    //
+    // The web moves a task between lists by dragging its row onto a list in the sidebar, and
+    // adds it instead while Shift is held. What is dragged is a task id as text — the same
+    // package the board's cards carry — and what a drop writes is the view model's decision.
+
+    /// <summary>The list a row of the sidebar draws, when the sender is one.</summary>
+    private static ListSummary? ListOf(object sender) =>
+        (sender as FrameworkElement)?.DataContext as ListSummary;
+
+    private static bool ShiftHeld(DragEventArgs args) =>
+        args.Modifiers.HasFlag(DragDropModifiers.Shift);
+
+    /// <summary>A list will take a task — a real list, not a filter — as a move, or as an add with Shift.</summary>
+    private void OnListDragOver(object sender, DragEventArgs args)
+    {
+        var accepts = ListOf(sender) is { IsDropTarget: true }
+            && args.DataView.Contains(StandardDataFormats.Text);
+        args.AcceptedOperation = !accepts
+            ? DataPackageOperation.None
+            : ShiftHeld(args) ? DataPackageOperation.Copy : DataPackageOperation.Move;
+    }
+
+    /// <summary>
+    /// A task was dropped on a list. Two ids and whether Shift was held go to the view model;
+    /// the deferral keeps the package alive across the await, as the board's drop does.
+    /// </summary>
+    private async void OnListDrop(object sender, DragEventArgs args)
+    {
+        if (ListOf(sender) is not { IsDropTarget: true } list
+            || !args.DataView.Contains(StandardDataFormats.Text))
+        {
+            return;
+        }
+        var add = ShiftHeld(args);
+        var deferral = args.GetDeferral();
+        try
+        {
+            var taskId = await args.DataView.GetTextAsync();
+            if (!string.IsNullOrEmpty(taskId))
+            {
+                await Shell.DropTaskOnListAsync(taskId, list.Id, add);
+            }
+        }
+        finally
+        {
+            deferral.Complete();
+        }
     }
 
     private async void OnListSelected(object sender, SelectionChangedEventArgs args)

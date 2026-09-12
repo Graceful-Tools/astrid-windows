@@ -101,6 +101,66 @@ public sealed class ShellViewModelTests
         Assert.True(shell.IsTourOpen);
     }
 
+    // ── Dropping a row on a list (task 27cae198) ─────────────────────────────────────────────
+
+    /// <summary>
+    /// A plain drop makes the target the task's only list and redraws the rows and the sidebar;
+    /// a Shift drop adds the list instead; a virtual list, or one that is not there, takes nothing.
+    /// </summary>
+    [Fact]
+    public async Task Dropping_a_row_on_a_list_moves_it_and_shift_adds_it_task_27cae198()
+    {
+        var core = StartedCore(("l1", "Home", false), ("l2", "Work", false))
+            .AnswerOk("setTaskLists")
+            .AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("lists", Lists(("l1", "Home", false), ("l2", "Work", false)))
+            .AnswerOk("addTaskToList")
+            .AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("lists", Lists(("l1", "Home", false), ("l2", "Work", false)));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        var sentBefore = core.Sent.Count;
+
+        Assert.True(await shell.DropTaskOnListAsync("t1", "l2", add: false));
+        var moved = Assert.Single(core.Sent, json => json.Contains("\"kind\":\"setTaskLists\""));
+        Assert.Contains("\"taskId\":\"t1\"", moved);
+        Assert.Contains("\"listIds\":[\"l2\"]", moved);
+        Assert.Equal(["setTaskLists", "rowsForList", "lists"], core.SentKinds().Skip(sentBefore).Take(3));
+
+        Assert.True(await shell.DropTaskOnListAsync("t1", "l2", add: true));
+        var added = Assert.Single(core.Sent, json => json.Contains("\"kind\":\"addTaskToList\""));
+        Assert.Contains("\"listId\":\"l2\"", added);
+
+        var sentSoFar = core.Sent.Count;
+        Assert.False(await shell.DropTaskOnListAsync("t1", "no-such-list", add: false));
+        Assert.Equal(sentSoFar, core.Sent.Count);
+    }
+
+    /// <summary>My Tasks and the other views are filters, not places: a drop on one writes nothing.</summary>
+    [Fact]
+    public async Task A_virtual_list_takes_no_drop_task_27cae198()
+    {
+        var core = new FakeCore()
+            .AnswerOk("isSignedIn", new { signedIn = true, waitingForCallback = false })
+            .AnswerOk("lists", new[]
+            {
+                new { id = "today", name = "Today", isFavorite = false, isVirtual = true },
+                new { id = "l1", name = "Home", isFavorite = false, isVirtual = false },
+            })
+            .AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("outboxStats", new { pending = 0, running = 0, failed = 0, hasUnsentWork = false })
+            .AnswerOk("sync", new { fetched = false });
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        var sent = core.Sent.Count;
+
+        Assert.False(await shell.DropTaskOnListAsync("t1", "today", add: false));
+
+        Assert.Equal(sent, core.Sent.Count);
+        Assert.Contains(shell.Sidebar.Lists, list => list.Id == "today" && !list.IsDropTarget);
+        Assert.Contains(shell.Sidebar.Lists, list => list.Id == "l1" && list.IsDropTarget);
+    }
+
     // ── Tapping a row ────────────────────────────────────────────────────────────────────────
 
     /// <summary>

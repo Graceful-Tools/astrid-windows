@@ -130,6 +130,8 @@ against the web, from a read of the source rather than of the docs, with what ha
 - **Feature flags** (`/api/v1/features`): the board toggle and Google list linking follow
   `project_mode` and `google_tasks`, refreshed with every sync pass. A flag never fetched hides
   nothing, as on the web.
+- **Drag a row onto a sidebar list** to move it there, or add it with Shift (task 27cae198), as
+  the web's sidebar does.
 - **A rebindable quick-add chord**: `astrid_core::keyboard::chord` judges it, Appearance edits
   it, the window re-registers it.
 - **The row's leading control** now draws the three answers to "whose task is this?" — the
@@ -160,7 +162,7 @@ The core already reads `manualSortOrder`; the write needs a versioned route.
 
 **Still open — features the web has**
 
-Drag-to-list; list image; copy-to-my-list and the public-list browser; the `@astrid` model
+List image; copy-to-my-list and the public-list browser; the `@astrid` model
 selector; calendar feed settings; full-screen detail; twelve languages — and the two blocked on
 the web above.
 

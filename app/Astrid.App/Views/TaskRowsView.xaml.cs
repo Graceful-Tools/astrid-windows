@@ -65,6 +65,25 @@ public sealed partial class TaskRowsView : UserControl
     /// <summary>Make every live row resolve its style's theme brushes again; see <c>ShellPage.ApplyTheme</c>.</summary>
     internal void Restyle() => Restyling.Reapply(TaskRows);
 
+    /// <summary>
+    /// A row is being dragged — towards a sidebar list, which files it there (task 27cae198).
+    /// </summary>
+    /// <remarks>
+    /// The task id travels as text on the package, as the board's cards already carry it, so one
+    /// drop target reads both. Move and Copy are both offered: the sidebar answers Copy while
+    /// Shift is held, which is the web's "add to this list as well".
+    /// </remarks>
+    private void OnRowDragStarting(object sender, DragItemsStartingEventArgs args)
+    {
+        if (args.Items.Count != 1 || args.Items[0] is not TaskRow row)
+        {
+            args.Cancel = true;
+            return;
+        }
+        args.Data.SetText(row.Id);
+        args.Data.RequestedOperation = DataPackageOperation.Move | DataPackageOperation.Copy;
+    }
+
     private async void OnQuickAdd(object sender, RoutedEventArgs args) => await AddTypedTask();
 
     private async void OnQuickAddKeyDown(object sender, KeyRoutedEventArgs args)

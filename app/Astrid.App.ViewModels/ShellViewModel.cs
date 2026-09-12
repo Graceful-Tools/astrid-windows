@@ -521,6 +521,42 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public Task OpenTaskAsync(string taskId, CancellationToken cancellationToken = default)
         => Detail.OpenAsync(taskId, cancellationToken);
 
+    /// <summary>
+    /// A row was dropped on a sidebar list (task 27cae198): file the task there.
+    /// </summary>
+    /// <remarks>
+    /// The web's rule, from <c>useTaskDragDrop.ts</c>: a plain drop makes the target the task's
+    /// only list, and a Shift drop adds it to the lists it already has. A virtual list — My Tasks,
+    /// Today — is a filter, not a place, and takes nothing. The writes are the core's existing
+    /// ones; this only chooses which, then redraws what the move changed: the rows, the counts in
+    /// the sidebar, and the open task if it was the one moved.
+    /// </remarks>
+    /// <returns>Whether anything was written.</returns>
+    public async Task<bool> DropTaskOnListAsync(string taskId, string listId, bool add,
+        CancellationToken cancellationToken = default)
+    {
+        var target = Sidebar.Favorites.Concat(Sidebar.Lists).FirstOrDefault(list => list.Id == listId);
+        if (target is null || !target.IsDropTarget || string.IsNullOrEmpty(taskId))
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(
+            add ? Commands.AddTaskToList(taskId, listId) : Commands.SetTaskLists(taskId, [listId]),
+            cancellationToken);
+        if (!response.Ok && !response.IsStillPending)
+        {
+            StatusMessage = response.Error?.Message;
+            return false;
+        }
+        await Tasks.RefreshAsync(cancellationToken);
+        await Sidebar.LoadAsync(cancellationToken);
+        if (Detail.IsOpen && Detail.TaskId == taskId)
+        {
+            await Detail.ReloadAsync(cancellationToken);
+        }
+        return true;
+    }
+
     /// <summary>Open a list by id — from the palette, or from a <c>#list</c> pill in a description.</summary>
     public async Task OpenListAsync(string listId, string name, CancellationToken cancellationToken = default)
     {
