@@ -444,6 +444,12 @@ public sealed record ReminderSettings
     [JsonPropertyName("quietHoursStart")] public string? QuietHoursStart { get; init; }
 
     [JsonPropertyName("quietHoursEnd")] public string? QuietHoursEnd { get; init; }
+
+    /// <summary>Whether the account's tasks are offered to calendar apps (task 28c5c6a9).</summary>
+    [JsonPropertyName("enableCalendarSync")] public bool EnableCalendarSync { get; init; }
+
+    /// <summary><c>all</c>, <c>with_due_times</c> or <c>none</c>; null when the server never said, which reads as <c>all</c>.</summary>
+    [JsonPropertyName("calendarSyncType")] public string? CalendarSyncType { get; init; }
 }
 
 /// <summary>One AI agent, and how it is set to run.</summary>
@@ -732,6 +738,9 @@ public sealed record AccountSettings
     [JsonPropertyName("offsets")] public IReadOnlyList<ReminderOffset> Offsets { get; init; } = [];
 
     [JsonPropertyName("timezone")] public string? Timezone { get; init; }
+
+    /// <summary>The address a calendar app subscribes to for this account's tasks (task 28c5c6a9).</summary>
+    [JsonPropertyName("calendarFeedUrl")] public string? CalendarFeedUrl { get; init; }
 
     /// <summary>The task defaults and the task-detail layout, shaped by the core (task c0f3db19).</summary>
     [JsonPropertyName("smartTasks")] public SmartTaskSettings SmartTasks { get; init; } = new();

@@ -193,6 +193,13 @@ internal static class Strings
         ["reminder.none"] = "No reminder",
         ["reminder.set"] = "Reminder set",
         ["reminder.at_due_time"] = "At the time it is due",
+        // The calendar feed (task 28c5c6a9): the web's three choices and its line under each.
+        ["calendar.all"] = "All tasks",
+        ["calendar.with_due_times"] = "Only tasks with due dates or times",
+        ["calendar.none"] = "None",
+        ["calendar.all_desc"] = "All tasks will appear in your calendar, including those without due dates.",
+        ["calendar.with_due_times_desc"] = "Only tasks with due dates or times will appear in your calendar.",
+        ["calendar.none_desc"] = "No tasks will be synced to your calendar.",
         ["reminder.5_minutes_before"] = "5 minutes before",
         ["reminder.15_minutes_before"] = "15 minutes before",
         ["reminder.30_minutes_before"] = "30 minutes before",

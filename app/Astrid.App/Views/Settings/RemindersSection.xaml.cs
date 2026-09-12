@@ -114,6 +114,33 @@ public sealed partial class RemindersSection : UserControl
             Clock(QuietEndBox.SelectedTime ?? new TimeSpan(8, 0, 0)));
     }
 
+    // ── The calendar feed (task 28c5c6a9) ────────────────────────────────────────────────────
+
+    private async void OnCalendarSyncToggled(object sender, RoutedEventArgs args)
+    {
+        if (!SettingsLoading && CalendarSyncToggle.IsOn != Shell.Settings.Reminders.CalendarSyncEnabled)
+        {
+            await Shell.Settings.Reminders.SetCalendarSyncAsync(CalendarSyncToggle.IsOn);
+        }
+    }
+
+    /// <summary>A combo's selection also moves when the binding sets it, so only a choice that differs is written.</summary>
+    private async void OnCalendarSyncTypeChosen(object sender, SelectionChangedEventArgs args)
+    {
+        if (SettingsLoading
+            || sender is not ComboBox { SelectedItem: DefaultChoice choice }
+            || choice.Value is null
+            || choice.Value == Shell.Settings.Reminders.CalendarSyncType)
+        {
+            return;
+        }
+        await Shell.Settings.Reminders.SetCalendarSyncTypeAsync(choice.Value);
+    }
+
+    /// <summary>The address is on screen to be pasted into a calendar app; this saves the selecting.</summary>
+    private void OnCopyCalendarFeed(object sender, RoutedEventArgs args) =>
+        ClipboardText.Copy(Shell.Settings.Reminders.CalendarFeedUrl);
+
     private async void OnDefaultOffsetChanged(object sender, SelectionChangedEventArgs args)
     {
         if (SettingsLoading || DefaultOffsetBox.SelectedItem is not ReminderOffset offset)

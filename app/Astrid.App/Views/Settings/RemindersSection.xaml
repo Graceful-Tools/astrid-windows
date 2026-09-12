@@ -57,5 +57,54 @@
                         AutomationProperties.Name="Quiet until"
                         SelectedTimeChanged="OnQuietHoursChanged" />
         </StackPanel>
+
+        <!--
+            The calendar feed (task 28c5c6a9), as the web's Reminders page carries it: a switch,
+            what to include, and the address to paste into a calendar app. Gated as the web gates
+            it — the choice only once sync is on, the address only once something is included.
+        -->
+        <TextBlock x:Uid="calendar_heading" Text="Calendar" Style="{StaticResource DetailSection}" />
+        <ToggleSwitch x:Uid="calendar_sync_toggle" x:Name="CalendarSyncToggle"
+                      Header="Sync with your calendar"
+                      OnContent="On" OffContent="Off"
+                      AutomationProperties.Name="Calendar sync"
+                      IsOn="{x:Bind Shell.Settings.Reminders.CalendarSyncEnabled, Mode=OneWay}"
+                      Toggled="OnCalendarSyncToggled" />
+        <StackPanel Spacing="10"
+                    Visibility="{x:Bind Shell.Settings.Reminders.CalendarSyncEnabled, Mode=OneWay, Converter={StaticResource Visible}}">
+            <ComboBox x:Uid="calendar_sync_type_box" x:Name="CalendarSyncTypeBox"
+                      Header="What to include"
+                      AutomationProperties.Name="What to include in the calendar"
+                      HorizontalAlignment="Stretch"
+                      ItemsSource="{x:Bind Shell.Settings.Reminders.CalendarSyncChoices, Mode=OneWay}"
+                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                      SelectedItem="{x:Bind Shell.Settings.Reminders.SelectedCalendarSyncChoice, Mode=OneWay}"
+                      SelectionChanged="OnCalendarSyncTypeChosen" />
+            <TextBlock FontSize="11" TextWrapping="Wrap"
+                       Foreground="{ThemeResource AstridTextMuted}"
+                       Text="{x:Bind Shell.Settings.Reminders.CalendarSyncDescriptionKey, Mode=OneWay, Converter={StaticResource Words}}" />
+            <StackPanel Spacing="4"
+                        Visibility="{x:Bind Shell.Settings.Reminders.HasCalendarFeed, Mode=OneWay, Converter={StaticResource Visible}}">
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Uid="calendar_feed_box" Grid.Column="0"
+                             AutomationProperties.Name="Calendar feed address"
+                             IsReadOnly="True"
+                             FontSize="12"
+                             FontFamily="Consolas"
+                             Text="{x:Bind Shell.Settings.Reminders.CalendarFeedUrl, Mode=OneWay}" />
+                    <Button x:Uid="copy_calendar_feed" Grid.Column="1" Content="Copy"
+                            AutomationProperties.Name="Copy calendar feed"
+                            VerticalAlignment="Bottom"
+                            Click="OnCopyCalendarFeed" />
+                </Grid>
+                <TextBlock x:Uid="calendar_feed_hint" FontSize="11" TextWrapping="Wrap"
+                           Foreground="{ThemeResource AstridTextMuted}"
+                           Text="Paste this address into your calendar app to subscribe. It updates as your tasks change." />
+            </StackPanel>
+        </StackPanel>
     </StackPanel>
 </UserControl>

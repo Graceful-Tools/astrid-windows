@@ -132,6 +132,10 @@ against the web, from a read of the source rather than of the docs, with what ha
   nothing, as on the web.
 - **Drag a row onto a sidebar list** to move it there, or add it with Shift (task 27cae198), as
   the web's sidebar does.
+- **Calendar feed settings** (task 28c5c6a9): the Reminders page carries the web's calendar
+  integration — the switch, what to include, and the feed address to paste into a calendar app.
+  The two fields ride the reminder-settings blob; the address is the legacy `.ics` route, the
+  one address this client names outside `/api/v1`, and only to hand to a calendar app.
 - **The model behind `@astrid`** (task 810e1876): the AI agents page opens with the web's
   selector — the agents the server can run, minus Astrid itself, and which one answers `@astrid`
   for My Tasks and private lists — read from and written to the account's AI preferences
@@ -173,7 +177,7 @@ The core already reads `manualSortOrder`; the write needs a versioned route.
 
 **Still open — features the web has**
 
-Calendar feed settings; full-screen detail; twelve languages — and the two blocked on
+Full-screen detail; twelve languages — and the two blocked on
 the web above.
 
 Not gaps, because the web has none either: multi-select, undo, calendar view, dependencies.

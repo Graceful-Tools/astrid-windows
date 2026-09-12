@@ -1546,4 +1546,55 @@
   <data name="agent_modes.Text" xml:space="preserve">
     <value>Agents</value>
   </data>
+  <data name="calendar_heading.Text" xml:space="preserve">
+    <value>Calendar</value>
+  </data>
+  <data name="calendar_sync_toggle.Header" xml:space="preserve">
+    <value>Sync with your calendar</value>
+  </data>
+  <data name="calendar_sync_toggle.OnContent" xml:space="preserve">
+    <value>On</value>
+  </data>
+  <data name="calendar_sync_toggle.OffContent" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="calendar_sync_toggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Calendar sync</value>
+  </data>
+  <data name="calendar_sync_type_box.Header" xml:space="preserve">
+    <value>What to include</value>
+  </data>
+  <data name="calendar_sync_type_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>What to include in the calendar</value>
+  </data>
+  <data name="calendar_feed_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Calendar feed address</value>
+  </data>
+  <data name="copy_calendar_feed.Content" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="copy_calendar_feed.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Copy calendar feed</value>
+  </data>
+  <data name="calendar_feed_hint.Text" xml:space="preserve">
+    <value>Paste this address into your calendar app to subscribe. It updates as your tasks change.</value>
+  </data>
+  <data name="calendar_all" xml:space="preserve">
+    <value>All tasks</value>
+  </data>
+  <data name="calendar_with_due_times" xml:space="preserve">
+    <value>Only tasks with due dates or times</value>
+  </data>
+  <data name="calendar_none" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="calendar_all_desc" xml:space="preserve">
+    <value>All tasks will appear in your calendar, including those without due dates.</value>
+  </data>
+  <data name="calendar_with_due_times_desc" xml:space="preserve">
+    <value>Only tasks with due dates or times will appear in your calendar.</value>
+  </data>
+  <data name="calendar_none_desc" xml:space="preserve">
+    <value>No tasks will be synced to your calendar.</value>
+  </data>
 </root>
