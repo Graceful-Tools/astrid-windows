@@ -1,0 +1,374 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Astrid.App.Views.ListSettingsFlyout"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:bindings="using:Astrid.Core.Bindings"
+    xmlns:local="using:Astrid.App"
+    xmlns:views="using:Astrid.App.Views"
+    xmlns:settings="using:Astrid.App.Views.Settings"
+    xmlns:viewmodels="using:Astrid.App.ViewModels">
+
+    <!--
+        The list's own settings: its name, how it looks, who can see it, its board's columns, the
+        coding agent, the defaults for new tasks, where it is mirrored, who it is shared with, and
+        the way out of it. The content of the flyout behind the gear in the list header.
+    -->
+
+    <!-- Taller than a short window now that it carries the
+         defaults, so it scrolls rather than losing its bottom
+         — Delete is the last thing in it and the one that must
+         not vanish off the edge. -->
+    <ScrollViewer MaxHeight="640" VerticalScrollBarVisibility="Auto">
+    <StackPanel Spacing="8" MinWidth="320">
+        <TextBlock x:Uid="list_settings" Text="List settings"
+                   Style="{ThemeResource BodyStrongTextBlockStyle}" />
+        <TextBox x:Uid="list_name_box" x:Name="ListNameBox"
+                 Header="Name"
+                 AutomationProperties.Name="List name"
+                 Text="{x:Bind Shell.ListSettings.Name, Mode=OneWay}"
+                 LostFocus="OnListRenamed" />
+        <!--
+            How the list looks and who can see it (task 53780e75):
+            the web's admin tab lets an owner set a colour, mark
+            a favourite and choose the privacy. The colour reaches
+            every screen — the sidebar mark, the row chips, the
+            detail chips all draw list.color — and the swatches
+            are the web's own palette. A favourite is this
+            account's, so it is offered to every member; the
+            colour and the privacy are the list's, so they wait
+            for somebody who may manage it.
+        -->
+        <TextBlock x:Uid="colour" Text="Colour"
+                   Style="{ThemeResource CaptionTextBlockStyle}"
+                   Margin="0,8,0,0"
+                   Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
+        <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.ColorChoices, Mode=OneWay}"
+                      Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="6" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="viewmodels:ColorSwatch">
+                    <!-- The chosen one wears a ring; the rest are plain discs. -->
+                    <Button Width="28" Height="28" Padding="0"
+                            CornerRadius="14"
+                            BorderThickness="{x:Bind IsSelected, Converter={StaticResource SwatchRing}}"
+                            BorderBrush="{ThemeResource AstridTextPrimary}"
+                            Background="{x:Bind Hex, Converter={StaticResource ChipColour}}"
+                            Tag="{x:Bind Hex}"
+                            AutomationProperties.Name="{x:Bind ActionName}"
+                            ToolTipService.ToolTip="{x:Bind Hex}"
+                            Click="OnListColourChosen" />
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <ToggleSwitch x:Uid="list_favorite_switch" x:Name="ListFavoriteSwitch"
+                      Header="Favourite"
+                      AutomationProperties.Name="Favourite"
+                      OnContent="In Favourites"
+                      OffContent="Not a favourite"
+                      Margin="0,4,0,0"
+                      IsOn="{x:Bind Shell.ListSettings.IsFavorite, Mode=OneWay}"
+                      Toggled="OnListFavoriteToggled" />
+        <TextBlock x:Uid="privacy" Text="Privacy"
+                   Style="{ThemeResource CaptionTextBlockStyle}"
+                   Margin="0,4,0,0"
+                   Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
+        <StackPanel Orientation="Horizontal" Spacing="12"
+                    Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
+            <RadioButton x:Uid="private" Content="Private" GroupName="ListPrivacy" Tag="PRIVATE"
+                         MinWidth="0"
+                         IsChecked="{x:Bind Shell.ListSettings.IsPrivate, Mode=OneWay}"
+                         Click="OnListPrivacyChosen" />
+            <RadioButton x:Uid="shared" Content="Shared" GroupName="ListPrivacy" Tag="SHARED"
+                         MinWidth="0"
+                         IsChecked="{x:Bind Shell.ListSettings.IsShared, Mode=OneWay}"
+                         Click="OnListPrivacyChosen" />
+            <RadioButton x:Uid="public" Content="Public" GroupName="ListPrivacy" Tag="PUBLIC"
+                         MinWidth="0"
+                         IsChecked="{x:Bind Shell.ListSettings.IsPublic, Mode=OneWay}"
+                         Click="OnListPrivacyChosen" />
+        </StackPanel>
+        <!--
+            Where this list is mirrored. Google and GitHub work
+            differently and the rows say so, because "linked" means
+            something different for each: GitHub is synced by the
+            server whether or not this app runs, Google by this app
+            when it does.
+        -->
+        <!--
+            The board's columns (task e5214fba), when the list has
+            a board: the web's Statuses tab. Rename in place, move
+            a custom column up or down, remove it, or add one. The
+            three defaults can be renamed and nothing else — a
+            fixed order shared by every board — so their other
+            buttons are not offered. What is allowed is the core's
+            rule; a refusal shows the web's own message below.
+        -->
+        <TextBlock x:Uid="statuses" Text="Statuses"
+                   Style="{ThemeResource CaptionTextBlockStyle}"
+                   Margin="0,8,0,0"
+                   Visibility="{x:Bind Shell.ListSettings.HasBoard, Mode=OneWay, Converter={StaticResource Visible}}" />
+        <StackPanel Spacing="4"
+                    Visibility="{x:Bind Shell.ListSettings.HasBoard, Mode=OneWay, Converter={StaticResource Visible}}">
+            <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.Statuses, Mode=OneWay}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="bindings:BoardStatus">
+                        <Grid ColumnSpacing="4" Padding="0,1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0"
+                                     Text="{x:Bind Name}"
+                                     Tag="{x:Bind Id}"
+                                     AutomationProperties.Name="{x:Bind RenameActionName}"
+                                     LostFocus="OnStatusRenamed"
+                                     KeyDown="OnStatusNameKeyDown" />
+                            <Button Grid.Column="1" Padding="6"
+                                    Tag="{x:Bind Id}"
+                                    AutomationProperties.Name="{x:Bind MoveUpActionName}"
+                                    ToolTipService.ToolTip="{x:Bind MoveUpActionName}"
+                                    Visibility="{x:Bind IsCustom, Converter={StaticResource Visible}}"
+                                    Click="OnStatusMovedUp">
+                                <FontIcon Glyph="&#xE70E;" FontSize="12" />
+                            </Button>
+                            <Button Grid.Column="2" Padding="6"
+                                    Tag="{x:Bind Id}"
+                                    AutomationProperties.Name="{x:Bind MoveDownActionName}"
+                                    ToolTipService.ToolTip="{x:Bind MoveDownActionName}"
+                                    Visibility="{x:Bind IsCustom, Converter={StaticResource Visible}}"
+                                    Click="OnStatusMovedDown">
+                                <FontIcon Glyph="&#xE70D;" FontSize="12" />
+                            </Button>
+                            <Button Grid.Column="3" Padding="6"
+                                    Tag="{x:Bind Id}"
+                                    AutomationProperties.Name="{x:Bind RemoveActionName}"
+                                    ToolTipService.ToolTip="{x:Bind RemoveActionName}"
+                                    Visibility="{x:Bind IsCustom, Converter={StaticResource Visible}}"
+                                    Click="OnStatusRemoved">
+                                <FontIcon Glyph="&#xE74D;" FontSize="12" />
+                            </Button>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox x:Uid="new_status_box" x:Name="NewStatusBox" Grid.Column="0"
+                         PlaceholderText="New status name"
+                         AutomationProperties.Name="New status name"
+                         KeyDown="OnNewStatusKeyDown" />
+                <Button x:Uid="add" Grid.Column="1" Content="Add"
+                        AutomationProperties.Name="Add status"
+                        Click="OnAddStatus" />
+            </Grid>
+        </StackPanel>
+        <!--
+            The coding agent (task f44b4a0c): the web's AI Agent
+            picker and "Repository the coding agent works in".
+            Which agent picks this list's tasks up, and which
+            repository it commits to — the binding that turns a
+            board into something a fixall loop can act on. The
+            choices are the account's agents and its GitHub
+            repositories, fetched as the flyout opens.
+        -->
+        <TextBlock x:Uid="coding_agent" Text="Coding agent"
+                   Style="{ThemeResource CaptionTextBlockStyle}"
+                   Margin="0,8,0,0"
+                   Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
+        <Grid ColumnSpacing="8"
+              Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <ComboBox x:Uid="agent" Grid.Column="0" Header="Agent"
+                      HorizontalAlignment="Stretch"
+                      AutomationProperties.Name="List agent"
+                      ItemsSource="{x:Bind Shell.ListSettings.AgentChoices, Mode=OneWay}"
+                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                      SelectedItem="{x:Bind Shell.ListSettings.SelectedAgent, Mode=OneWay}"
+                      SelectionChanged="OnDefaultChosen" />
+            <ComboBox x:Uid="repository" Grid.Column="1" Header="Repository"
+                      HorizontalAlignment="Stretch"
+                      AutomationProperties.Name="Coding agent repository"
+                      ItemsSource="{x:Bind Shell.ListSettings.RepositoryChoices, Mode=OneWay}"
+                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                      SelectedItem="{x:Bind Shell.ListSettings.SelectedRepository, Mode=OneWay}"
+                      SelectionChanged="OnDefaultChosen" />
+        </Grid>
+        <TextBlock x:Uid="connect_github_under_mirrored_to_below" Text="Connect GitHub under Mirrored to, below, to choose a repository."
+                   Style="{ThemeResource CaptionTextBlockStyle}"
+                   TextWrapping="Wrap"
+                   Foreground="{ThemeResource AstridTextMuted}"
+                   Visibility="{x:Bind Shell.ListSettings.NeedsGithub, Mode=OneWay, Converter={StaticResource Visible}}" />
+        <!--
+            What a task added to this list starts as
+            (task c4102c67): the web's Default Priority, Assignee,
+            Repeating, When and When Time. The core applies them
+            to quick-add on both clients; this only writes the
+            one picked. A combo's selection also moves when the
+            binding sets it, so the code-behind writes only a
+            choice that is not the current one.
+        -->
+        <TextBlock x:Uid="defaults_for_new_tasks" Text="Defaults for new tasks"
+                   Style="{ThemeResource CaptionTextBlockStyle}"
+                   Margin="0,8,0,0"
+                   Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
+        <Grid ColumnSpacing="8" RowSpacing="6"
+              Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <ComboBox x:Uid="priority" Grid.Row="0" Grid.Column="0" Header="Priority"
+                      HorizontalAlignment="Stretch"
+                      AutomationProperties.Name="Default priority"
+                      ItemsSource="{x:Bind Shell.ListSettings.DefaultPriorityChoices, Mode=OneWay}"
+                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                      SelectedItem="{x:Bind Shell.ListSettings.SelectedDefaultPriority, Mode=OneWay}"
+                      SelectionChanged="OnDefaultChosen" />
+            <ComboBox x:Uid="assignee" Grid.Row="0" Grid.Column="1" Header="Assignee"
+                      HorizontalAlignment="Stretch"
+                      AutomationProperties.Name="Default assignee"
+                      ItemsSource="{x:Bind Shell.ListSettings.DefaultAssigneeChoices, Mode=OneWay}"
+                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                      SelectedItem="{x:Bind Shell.ListSettings.SelectedDefaultAssignee, Mode=OneWay}"
+                      SelectionChanged="OnDefaultChosen" />
+            <ComboBox x:Uid="repeat" Grid.Row="1" Grid.Column="0" Header="Repeat"
+                      HorizontalAlignment="Stretch"
+                      AutomationProperties.Name="Default repeat"
+                      ItemsSource="{x:Bind Shell.ListSettings.DefaultRepeatChoices, Mode=OneWay}"
+                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                      SelectedItem="{x:Bind Shell.ListSettings.SelectedDefaultRepeat, Mode=OneWay}"
+                      SelectionChanged="OnDefaultChosen" />
+            <ComboBox x:Uid="when" Grid.Row="1" Grid.Column="1" Header="When"
+                      HorizontalAlignment="Stretch"
+                      AutomationProperties.Name="Default when"
+                      ItemsSource="{x:Bind Shell.ListSettings.DefaultWhenChoices, Mode=OneWay}"
+                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                      SelectedItem="{x:Bind Shell.ListSettings.SelectedDefaultWhen, Mode=OneWay}"
+                      SelectionChanged="OnDefaultChosen" />
+            <ComboBox x:Uid="when_time" Grid.Row="2" Grid.Column="0" Header="When time"
+                      HorizontalAlignment="Stretch"
+                      AutomationProperties.Name="Default when time"
+                      ItemsSource="{x:Bind Shell.ListSettings.DefaultTimeChoices, Mode=OneWay}"
+                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                      SelectedItem="{x:Bind Shell.ListSettings.SelectedDefaultTime, Mode=OneWay}"
+                      SelectionChanged="OnDefaultChosen" />
+        </Grid>
+        <TextBlock x:Uid="mirrored_to" Text="Mirrored to"
+                   Style="{ThemeResource CaptionTextBlockStyle}"
+                   Margin="0,8,0,0" />
+        <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.Providers, Mode=OneWay}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="bindings:ExternalProvider">
+                    <Grid ColumnSpacing="8" Padding="0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0"
+                                   Text="{x:Bind Name}"
+                                   VerticalAlignment="Center" />
+                        <ComboBox x:Uid="not_mirrored" Grid.Column="1"
+                                  HorizontalAlignment="Stretch"
+                                  PlaceholderText="Not mirrored"
+                                  AutomationProperties.Name="{x:Bind Name}"
+                                  Tag="{x:Bind Provider}"
+                                  ItemsSource="{x:Bind Containers}"
+                                  SelectionChanged="OnMirrorChosen"
+                                  Visibility="{x:Bind Connected, Converter={StaticResource Visible}}" />
+                        <Button x:Uid="connect" Grid.Column="2"
+                                Content="Connect"
+                                Tag="{x:Bind Provider}"
+                                Click="OnConnectProvider"
+                                Visibility="{x:Bind Connected, Converter={StaticResource NotVisible}}" />
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock x:Uid="shared_with" Text="Shared with"
+                   Style="{ThemeResource CaptionTextBlockStyle}"
+                   Margin="0,8,0,0" />
+        <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.Members, Mode=OneWay}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="bindings:ListMember">
+                    <Grid ColumnSpacing="8" Padding="0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0"
+                                   Text="{x:Bind DisplayName}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1"
+                                   Text="{x:Bind RoleKey, Converter={StaticResource PickTitle}}"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   Style="{ThemeResource CaptionTextBlockStyle}" />
+                        <Button x:Uid="remove" Grid.Column="2"
+                                Content="Remove"
+                                Tag="{x:Bind UserId}"
+                                Click="OnRemoveMember" />
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <StackPanel Orientation="Horizontal" Spacing="8"
+                    Visibility="{x:Bind Shell.ListSettings.CanManageMembers, Mode=OneWay, Converter={StaticResource Visible}}">
+            <TextBox x:Uid="invite_box" x:Name="InviteBox"
+                     Width="200"
+                     PlaceholderText="Invite by email"
+                     AutomationProperties.Name="Invite by email"
+                     KeyDown="OnInviteKeyDown" />
+            <Button x:Uid="invite" Content="Invite" Click="OnInvite" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+            <Button x:Uid="leave_list" Content="Leave list"
+                    Click="OnLeaveList"
+                    Visibility="{x:Bind Shell.ListSettings.CanLeave, Mode=OneWay, Converter={StaticResource Visible}}" />
+            <!--
+                Deleting asks first. It takes the list away from
+                everybody it is shared with, and there is no undo
+                for that on any client.
+            -->
+            <Button x:Uid="delete_list" Content="Delete list"
+                    Visibility="{x:Bind Shell.ListSettings.CanDeleteList, Mode=OneWay, Converter={StaticResource Visible}}">
+                <Button.Flyout>
+                    <Flyout>
+                        <StackPanel Spacing="8" MaxWidth="260">
+                            <TextBlock x:Uid="delete_this_list_and_its_tasks" TextWrapping="Wrap"
+                                       Text="Delete this list and its tasks, for everybody it is shared with?" />
+                            <Button x:Uid="delete_it" Content="Delete it"
+                                    Click="OnDeleteList"
+                                    Style="{ThemeResource AccentButtonStyle}" />
+                        </StackPanel>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+        </StackPanel>
+        <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                   TextWrapping="Wrap"
+                   Text="{x:Bind Shell.ListSettings.ErrorMessage, Mode=OneWay}"
+                   Visibility="{x:Bind Shell.ListSettings.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
+    </StackPanel>
+    </ScrollViewer>
+</UserControl>

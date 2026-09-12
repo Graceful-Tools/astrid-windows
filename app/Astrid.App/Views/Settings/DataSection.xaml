@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Astrid.App.Views.Settings.DataSection"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:bindings="using:Astrid.Core.Bindings"
+    xmlns:local="using:Astrid.App"
+    xmlns:views="using:Astrid.App.Views"
+    xmlns:settings="using:Astrid.App.Views.Settings"
+    xmlns:viewmodels="using:Astrid.App.ViewModels">
+
+    <StackPanel Spacing="10">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button x:Uid="export_as_json" Content="Export as JSON" Tag="json"
+                    Click="OnExportAccount" />
+            <Button x:Uid="export_as_csv" Content="Export as CSV" Tag="csv"
+                    Click="OnExportAccount" />
+        </StackPanel>
+        <TextBlock FontSize="11"
+                   TextWrapping="Wrap"
+                   Foreground="{ThemeResource AstridTextMuted}"
+                   Text="{x:Bind Shell.Settings.LastExportPath, Mode=OneWay}"
+                   Visibility="{x:Bind Shell.Settings.LastExportPath, Mode=OneWay, Converter={StaticResource Visible}}" />
+    </StackPanel>
+</UserControl>

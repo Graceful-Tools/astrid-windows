@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Astrid.App.Views.Settings.IntegrationsSection"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:bindings="using:Astrid.Core.Bindings"
+    xmlns:local="using:Astrid.App"
+    xmlns:views="using:Astrid.App.Views"
+    xmlns:settings="using:Astrid.App.Views.Settings"
+    xmlns:viewmodels="using:Astrid.App.ViewModels">
+
+    <StackPanel Spacing="10">
+        <!--
+            Account-wide, not per list: the modes make
+            counterparts for every list on both sides, so
+            the choice lives beside the account rather than
+            in one list's settings.
+        -->
+        <ComboBox x:Uid="google_sync_mode_box" x:Name="GoogleSyncModeBox"
+                  Header="Google lists"
+                  AutomationProperties.Name="Google list linking"
+                  HorizontalAlignment="Stretch"
+                  SelectedItem="{x:Bind Shell.Settings.GoogleSyncMode, Mode=OneWay}"
+                  Visibility="{x:Bind Shell.GoogleTasksEnabled, Mode=OneWay, Converter={StaticResource Visible}}"
+                  SelectionChanged="OnGoogleSyncModeChosen">
+            <x:String>manual</x:String>
+            <x:String>all_google_to_astrid</x:String>
+            <x:String>all_astrid_to_google</x:String>
+            <x:String>all_bidirectional</x:String>
+        </ComboBox>
+
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button x:Uid="connect_copilot" Content="Connect Copilot"
+                    Click="OnConnectCopilot"
+                    Visibility="{x:Bind Shell.Settings.CopilotConnected, Mode=OneWay, Converter={StaticResource NotVisible}}" />
+            <Button x:Uid="disconnect_copilot" Content="Disconnect Copilot"
+                    Click="OnDisconnectCopilot"
+                    Visibility="{x:Bind Shell.Settings.CopilotConnected, Mode=OneWay, Converter={StaticResource Visible}}" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

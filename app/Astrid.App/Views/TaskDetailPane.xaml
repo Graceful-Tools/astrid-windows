@@ -1,0 +1,1006 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Astrid.App.Views.TaskDetailPane"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:bindings="using:Astrid.Core.Bindings"
+    xmlns:local="using:Astrid.App"
+    xmlns:views="using:Astrid.App.Views"
+    xmlns:settings="using:Astrid.App.Views.Settings"
+    xmlns:viewmodels="using:Astrid.App.ViewModels">
+
+    <UserControl.Resources>
+        <!-- One row of the comment box's popup: the sigil, the name, and what tells it apart. -->
+        <DataTemplate x:Key="SuggestionTemplate" x:DataType="bindings:Suggestion">
+            <StackPanel Orientation="Horizontal" Spacing="8" Padding="4,2">
+                <TextBlock Text="{x:Bind Sigil}" Width="14" TextAlignment="Center"
+                           Foreground="{ThemeResource AstridTextMuted}" />
+                <TextBlock Text="{x:Bind Label}" />
+                <TextBlock Text="{x:Bind Secondary}" FontSize="11"
+                           Foreground="{ThemeResource AstridTextMuted}"
+                           VerticalAlignment="Center"
+                           Visibility="{x:Bind HasSecondary, Converter={StaticResource Visible}}" />
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <!--
+        The task detail. Collapsed rather than merely narrow when nothing is open, so it is out
+        of the tab order as well as out of the way.
+
+        The rows are laid out in the order the core gave — Who, Date, Priority, Lists — which
+        is a product decision shared with web and both Apple clients. It is not re-decided here.
+    -->
+    <!--
+        Named, because it moves. On the board it is lifted out of this column and set inside
+        the expanded card's slot (task 91a25b8a), then put back here when that card collapses
+        or the list view returns. Its visibility is set by the same code, since where it is and
+        whether it shows are one decision.
+    -->
+    <Grid x:Name="DetailPane"
+          Width="360" Padding="0,0,0,16"
+          Background="{ThemeResource AstridSurface}"
+          BorderThickness="1,0,0,0"
+          BorderBrush="{ThemeResource AstridBorder}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!--
+            The header, as astrid-web's `TaskHeader` draws it: the mark the row already wears,
+            the title beside it, the action menu at the far right, and a rule under the lot.
+
+            It is pinned and the body scrolls under it, which is what astrid-web does: the
+            title of the thing you are reading should not scroll away from the thread you are
+            reading about it.
+
+            The 16px padding and the 32px mark are the alignment invariant that file states in
+            its own words — content starts at 16 + 32 + 8 = 56px on the header row and on every
+            field row under it, so the icons land under the mark and the values under the title.
+            Changing one without the other is what made the web's own panel drift before
+            somebody wrote the sum down.
+        -->
+        <Border Grid.Row="0"
+                Padding="16"
+                BorderThickness="0,0,0,1"
+                BorderBrush="{ThemeResource AstridBorder}">
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="32" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Button x:Uid="complete_this_task" Grid.Column="0"
+                            Background="Transparent" BorderThickness="0" Padding="0"
+                            Width="32" Height="32"
+                            VerticalAlignment="Top"
+                            AutomationProperties.Name="Complete this task"
+                            Click="OnDetailMarkClicked">
+                        <Image Source="{x:Bind Shell.Detail.CheckboxAsset, Mode=OneWay}"
+                               Width="32" Height="32" />
+                    </Button>
+                    <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBox x:Uid="detail_title_box" x:Name="DetailTitleBox"
+                                 AutomationProperties.Name="Title"
+                                 Text="{x:Bind Shell.Detail.Title, Mode=TwoWay}"
+                                 FontSize="16"
+                                 FontWeight="SemiBold"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 Padding="0,4"
+                                 TextWrapping="Wrap"
+                                 AcceptsReturn="False"
+                                 Foreground="{ThemeResource AstridTextPrimary}"
+                                 LostFocus="OnDetailTitleCommitted"
+                                 KeyDown="OnDetailTitleKeyDown" />
+                        <!--
+                            Closed as won't-do, not done: the web's chip beside the title, so a
+                            task that was abandoned does not read as finished (task 016ce981).
+                        -->
+                        <Border x:Uid="won_t_do" HorizontalAlignment="Left" Padding="6,1" CornerRadius="4"
+                                BorderThickness="1" BorderBrush="{ThemeResource AstridBorder}"
+                                AutomationProperties.Name="Won't do"
+                                Visibility="{x:Bind Shell.Detail.IsCanceled, Mode=OneWay, Converter={StaticResource Visible}}">
+                            <TextBlock x:Name="WontDoChip" FontSize="11"
+                                       Foreground="{ThemeResource AstridTextSecondary}" />
+                        </Border>
+                    </StackPanel>
+                    <Button x:Uid="task_actions_button" Grid.Column="2" x:Name="TaskActionsButton"
+                            Background="Transparent" BorderThickness="0"
+                            VerticalAlignment="Top"
+                            AutomationProperties.Name="Task actions">
+                        <TextBlock Text="&#xE712;"
+                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                   FontSize="16" />
+                        <Button.Flyout>
+                            <!--
+                                astrid-web's `TaskActionMenu`: Copy link, Share, Status,
+                                Won't do / Reopen, Delete (task 016ce981). The words and the
+                                Status rows are set when the menu opens — see
+                                OnTaskActionsOpening — because "Won't do" reads "Reopen" on a
+                                canceled task and the columns are the task's board's.
+                            -->
+                            <MenuFlyout Opening="OnTaskActionsOpening">
+                                <MenuFlyoutItem x:Name="CopyLinkItem" Click="OnCopyTaskLink"
+                                                IsEnabled="{x:Bind Shell.Detail.CanCopyLink, Mode=OneWay}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE71B;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem x:Name="ShareItem" Click="OnShareTask"
+                                                IsEnabled="{x:Bind Shell.Detail.CanCopyLink, Mode=OneWay}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE72D;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem x:Uid="copy_to_a_list" x:Name="CopyTaskItem" Text="Copy to a list..."
+                                                Click="OnCopyTask"
+                                                IsEnabled="{x:Bind Shell.Detail.CanCopyLink, Mode=OneWay}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE8C8;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutSeparator />
+                                <MenuFlyoutSubItem x:Name="StatusSubMenu">
+                                    <MenuFlyoutSubItem.Icon>
+                                        <FontIcon Glyph="&#xE8FD;" />
+                                    </MenuFlyoutSubItem.Icon>
+                                </MenuFlyoutSubItem>
+                                <MenuFlyoutSeparator />
+                                <MenuFlyoutItem x:Name="WontDoItem" Click="OnToggleWontDo" />
+                                <MenuFlyoutSeparator />
+                                <MenuFlyoutItem x:Uid="delete" Text="Delete" Click="OnDeleteOpenTask">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE74D;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutSeparator />
+                                <MenuFlyoutItem x:Uid="close" Text="Close" Click="OnCloseDetail" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                </Grid>
+        </Border>
+
+        <!--
+            The body: the fields, then the activity, then the thread, in one scroll. astrid-web
+            puts them in one `overflow-y-auto` for the same reason — with the fields pinned
+            above it, a short window left the conversation a couple of lines to live in.
+        -->
+        <ScrollViewer Grid.Row="1" Padding="16,12,16,0">
+            <StackPanel>
+            <StackPanel Spacing="2">
+
+            <!--
+                Who holds the task. First, because the field order — Who, Date, Priority,
+                Lists — is a product decision shared with web and both Apple clients.
+            -->
+            <Button x:Uid="assignee_2" Style="{StaticResource DetailField}"
+                    AutomationProperties.Name="Assignee">
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="32" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="&#xE77B;"
+                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                               FontSize="15"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Foreground="{ThemeResource AstridTextMuted}" />
+                    <ContentPresenter Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{x:Bind Shell.Detail.Assignee, Mode=OneWay, Converter={StaticResource AssigneeText}}" />
+                    </ContentPresenter>
+                </Grid>
+                <Button.Flyout>
+                    <Flyout Opening="OnAssigneeFlyoutOpening">
+                        <ItemsControl ItemsSource="{x:Bind Shell.Detail.Assignees, Mode=OneWay}"
+                                      MinWidth="220">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="bindings:AssigneeOption">
+                                    <Button HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Left"
+                                            Tag="{x:Bind UserId}"
+                                            Click="OnAssigneeChosen">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="{x:Bind Glyph}"
+                                                       Width="24" TextAlignment="Center" />
+                                            <TextBlock Text="{x:Bind TitleKey, Converter={StaticResource PickTitle}}" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+
+            <!--
+                The due date. A button rather than a label, because the date is the field a
+                task app is most often opened to change, and the quick choices behind it come
+                from the core with the instant each one means already worked out.
+            -->
+            <Button x:Uid="due_date" Style="{StaticResource DetailField}"
+                    AutomationProperties.Name="Due date">
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="32" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="&#xE787;"
+                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                               FontSize="15"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Foreground="{ThemeResource AstridTextMuted}" />
+                    <ContentPresenter Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{x:Bind Shell.Detail.Due, Mode=OneWay, Converter={StaticResource DueText}}" />
+                    </ContentPresenter>
+                </Grid>
+                <Button.Flyout>
+                    <Flyout>
+                        <StackPanel Spacing="4" MinWidth="200">
+                            <TextBlock x:Uid="when_2" Text="When" Style="{ThemeResource CaptionTextBlockStyle}" />
+                            <ItemsControl ItemsSource="{x:Bind Shell.Detail.DatePicks, Mode=OneWay}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="bindings:DuePick">
+                                        <Button HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Left"
+                                                Tag="{x:Bind TitleKey}"
+                                                Click="OnDuePickChosen"
+                                                Content="{x:Bind TitleKey, Converter={StaticResource PickTitle}}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <!--
+                                Any other day. The quick choices cover today through next
+                                week; a date beyond that had to be typed nowhere, because
+                                there was nowhere to type it (task be8fd2ff).
+
+                                What the day MEANS is asked of the core, not worked out here:
+                                an all-day task takes the date, a timed one keeps its time of
+                                day, and an all-day date written as a local midnight reads
+                                back as the day before west of UTC.
+                            -->
+                            <CalendarDatePicker x:Uid="due_day_picker" x:Name="DueDayPicker"
+                                                AutomationProperties.Name="Pick a date"
+                                                PlaceholderText="Pick a date"
+                                                HorizontalAlignment="Stretch"
+                                                Margin="0,4,0,0"
+                                                DateChanged="OnDueDayPicked" />
+
+                            <TextBlock x:Uid="time" Text="Time" Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Margin="0,8,0,0" />
+                            <ItemsControl ItemsSource="{x:Bind Shell.Detail.TimePicks, Mode=OneWay}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="bindings:DuePick">
+                                        <Button HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Left"
+                                                Tag="{x:Bind TitleKey}"
+                                                Click="OnDuePickChosen"
+                                                Content="{x:Bind TitleKey, Converter={StaticResource PickTitle}}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+
+            <!--
+                When to be reminded. The instants come from the core with the choices, so the
+                shell never subtracts an hour from a date itself.
+            -->
+            <Button x:Uid="reminder" Style="{StaticResource DetailField}"
+                    AutomationProperties.Name="Reminder">
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="32" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="&#xE91C;"
+                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                               FontSize="15"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Foreground="{ThemeResource AstridTextMuted}" />
+                    <ContentPresenter Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{x:Bind Shell.Detail.HasReminder, Mode=OneWay, Converter={StaticResource ReminderText}}" />
+                    </ContentPresenter>
+                </Grid>
+                <Button.Flyout>
+                    <Flyout Opening="OnReminderFlyoutOpening">
+                        <ItemsControl ItemsSource="{x:Bind Shell.Detail.ReminderPicks, Mode=OneWay}"
+                                      MinWidth="220">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="bindings:ReminderPick">
+                                    <Button HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Left"
+                                            Tag="{x:Bind ReminderTime}"
+                                            Click="OnReminderChosen"
+                                            Content="{x:Bind TitleKey, Converter={StaticResource PickTitle}}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+
+            <!--
+                How the task repeats. The summary is the picker's own sentence rather than a
+                chip saying "Custom", which says nothing about when the task comes back.
+            -->
+            <Button x:Uid="repeat_2" Style="{StaticResource DetailField}"
+                    AutomationProperties.Name="Repeat">
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="32" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="&#xE895;"
+                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                               FontSize="15"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Foreground="{ThemeResource AstridTextMuted}" />
+                    <ContentPresenter Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{x:Bind Shell.Detail.RepeatSummary, Mode=OneWay, Converter={StaticResource RepeatText}}" />
+                    </ContentPresenter>
+                </Grid>
+                <Button.Flyout>
+                    <Flyout Opening="OnRepeatFlyoutOpening">
+                        <StackPanel Spacing="4" MinWidth="260">
+                            <ItemsControl ItemsSource="{x:Bind Shell.Detail.RepeatPresets, Mode=OneWay}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="bindings:RepeatPreset">
+                                        <Button HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Left"
+                                                Tag="{x:Bind Value}"
+                                                Click="OnRepeatPresetChosen"
+                                                Content="{x:Bind TitleKey, Converter={StaticResource PickTitle}}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <ToggleSwitch x:Uid="repeat_from_due_date_2" x:Name="RepeatFromDueDate"
+                                          Header="Count from the due date"
+                                          OnContent="Due date" OffContent="When finished"
+                                          IsOn="{x:Bind Shell.Detail.RepeatsFromDueDate, Mode=OneWay}"
+                                          Toggled="OnRepeatFromToggled" />
+                            <TextBlock x:Uid="custom" Text="Custom" Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Margin="0,8,0,0" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <NumberBox x:Uid="repeat_interval" x:Name="RepeatInterval" Value="1" Minimum="1" Maximum="365"
+                                           Width="96" AutomationProperties.Name="Every" />
+                                <ComboBox x:Uid="repeat_unit" x:Name="RepeatUnit" SelectedIndex="0"
+                                          AutomationProperties.Name="Unit">
+                                    <ComboBoxItem x:Uid="days" Content="days" Tag="days" />
+                                    <ComboBoxItem x:Uid="weeks" Content="weeks" Tag="weeks" />
+                                    <ComboBoxItem x:Uid="months" Content="months" Tag="months" />
+                                    <ComboBoxItem x:Uid="years" Content="years" Tag="years" />
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel x:Name="RepeatWeekdays" Orientation="Horizontal" Spacing="2">
+                                <ToggleButton x:Uid="m" Content="M" Tag="monday" MinWidth="32" />
+                                <ToggleButton x:Uid="t" Content="T" Tag="tuesday" MinWidth="32" />
+                                <ToggleButton x:Uid="w" Content="W" Tag="wednesday" MinWidth="32" />
+                                <ToggleButton x:Uid="t" Content="T" Tag="thursday" MinWidth="32" />
+                                <ToggleButton x:Uid="f" Content="F" Tag="friday" MinWidth="32" />
+                                <ToggleButton x:Uid="s" Content="S" Tag="saturday" MinWidth="32" />
+                                <ToggleButton x:Uid="s" Content="S" Tag="sunday" MinWidth="32" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <ComboBox x:Uid="repeat_end" x:Name="RepeatEnd" SelectedIndex="0"
+                                          AutomationProperties.Name="Ends">
+                                    <ComboBoxItem x:Uid="never_ends" Content="never ends" Tag="never" />
+                                    <ComboBoxItem x:Uid="ends_after" Content="ends after" Tag="after_occurrences" />
+                                    <ComboBoxItem x:Uid="ends_on" Content="ends on" Tag="until_date" />
+                                </ComboBox>
+                                <NumberBox x:Uid="repeat_end_count" x:Name="RepeatEndCount" Value="10" Minimum="1" Maximum="999"
+                                           Width="86" AutomationProperties.Name="Occurrences" />
+                                <CalendarDatePicker x:Uid="repeat_end_date" x:Name="RepeatEndDate"
+                                                    AutomationProperties.Name="Ends on" />
+                            </StackPanel>
+                            <Button x:Uid="save_custom_repeat" Content="Save custom repeat" Click="OnCustomRepeatSaved" />
+                        </StackPanel>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+
+            <!--
+                Priority. astrid-web draws four squares - none, !, !!, !!! - with the chosen
+                one filled in its own colour and the rest outlined in it. A four-value field
+                hidden behind a dropdown made the reader click to find out what it was set to.
+
+                Which square is on is set in code-behind rather than by four bindings that each
+                re-derive the same comparison; see SyncDetailPriority.
+            -->
+            <Grid ColumnSpacing="8" Margin="0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="32" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Text="{x:Bind Shell.Detail.PriorityGlyph, Mode=OneWay}"
+                           FontSize="13"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="{x:Bind Shell.Detail.Priority, Mode=OneWay, Converter={StaticResource PriorityBrush}}" />
+                <StackPanel x:Uid="priority_2" Grid.Column="1" Orientation="Horizontal" Spacing="6"
+                            AutomationProperties.Name="Priority">
+                    <Button x:Uid="priority_none_2" x:Name="PriorityNone" Tag="0" Content="&#x25CB;"
+                            Style="{StaticResource PriorityChoice}"
+                            AutomationProperties.Name="No priority"
+                            Click="OnDetailPriorityPicked" />
+                    <Button x:Uid="priority_low_2" x:Name="PriorityLow" Tag="1" Content="!"
+                            Style="{StaticResource PriorityChoice}"
+                            AutomationProperties.Name="Low"
+                            Click="OnDetailPriorityPicked" />
+                    <Button x:Uid="priority_medium_2" x:Name="PriorityMedium" Tag="2" Content="!!"
+                            Style="{StaticResource PriorityChoice}"
+                            AutomationProperties.Name="Medium"
+                            Click="OnDetailPriorityPicked" />
+                    <Button x:Uid="priority_high_2" x:Name="PriorityHigh" Tag="3" Content="!!!"
+                            Style="{StaticResource PriorityChoice}"
+                            AutomationProperties.Name="High"
+                            Click="OnDetailPriorityPicked" />
+                </StackPanel>
+            </Grid>
+
+            <!--
+                Which lists hold the task, as chips in each list's own colour with white on
+                top - the same chip the web draws from list.color. The row scrolls sideways
+                rather than wrapping: WinUI has no wrapping panel in the box, and a chip that
+                scrolls off is better than a chip that stretches the pane.
+            -->
+            <!--
+                A button, because the row is an editor (task d3f3b111): the web's Lists field
+                opens to chips with an × each, a search over the account's lists, and
+                "Create …" when the typed name is nobody's yet. Which lists are offered, and
+                what a list made from here looks like, are the core's rules.
+            -->
+            <Button x:Uid="lists_2" Style="{StaticResource DetailField}"
+                    AutomationProperties.Name="Lists">
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="32" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="&#xE8FD;"
+                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                               FontSize="15"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="{ThemeResource AstridTextMuted}" />
+                    <!-- Display only: a scroller that took the pointer would keep the click
+                         from reaching the button, and the chips are the button. -->
+                    <ScrollViewer Grid.Column="1"
+                                  IsHitTestVisible="False"
+                                  HorizontalScrollMode="Auto"
+                                  HorizontalScrollBarVisibility="Hidden"
+                                  VerticalScrollMode="Disabled"
+                                  VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{x:Bind Shell.Detail.ListChips, Mode=OneWay}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="bindings:ListChip">
+                                    <Border CornerRadius="6" Padding="8,3" Margin="0,0,6,0"
+                                            Background="{x:Bind Color, Converter={StaticResource ChipColour}}">
+                                        <TextBlock Text="{x:Bind Name}"
+                                                   FontSize="12"
+                                                   Foreground="White" />
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+                <Button.Flyout>
+                    <Flyout Opening="OnListsFlyoutOpening">
+                        <StackPanel Spacing="8" MinWidth="260" MaxWidth="320">
+                            <!-- The lists it is in, each with its ×. -->
+                            <ScrollViewer HorizontalScrollMode="Auto"
+                                          HorizontalScrollBarVisibility="Hidden"
+                                          VerticalScrollMode="Disabled"
+                                          VerticalScrollBarVisibility="Disabled">
+                                <ItemsControl ItemsSource="{x:Bind Shell.Detail.SelectedLists, Mode=OneWay}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="6" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="bindings:ListPick">
+                                            <Border CornerRadius="6" Padding="8,2,4,2"
+                                                    Background="{x:Bind Color, Converter={StaticResource ChipColour}}">
+                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                    <TextBlock Text="{x:Bind Name}"
+                                                               FontSize="12"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="White" />
+                                                    <Button Padding="4" MinWidth="0" MinHeight="0"
+                                                            Background="Transparent" BorderThickness="0"
+                                                            Tag="{x:Bind Id}"
+                                                            AutomationProperties.Name="{x:Bind RemoveActionName}"
+                                                            ToolTipService.ToolTip="{x:Bind RemoveActionName}"
+                                                            Click="OnRemoveFromList">
+                                                        <FontIcon Glyph="&#xE711;" FontSize="10" Foreground="White" />
+                                                    </Button>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                            <TextBox x:Uid="list_search_box" x:Name="ListSearchBox"
+                                     AutomationProperties.Name="Search lists"
+                                     PlaceholderText="Search lists..."
+                                     Text="{x:Bind Shell.Detail.ListSearch, Mode=OneWay}"
+                                     TextChanged="OnListSearchChanged" />
+                            <ItemsControl ItemsSource="{x:Bind Shell.Detail.ListOptions, Mode=OneWay}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="bindings:ListPick">
+                                        <Button HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Left"
+                                                Background="Transparent" BorderThickness="0"
+                                                Tag="{x:Bind Id}"
+                                                AutomationProperties.Name="{x:Bind Name}"
+                                                Click="OnAddToList">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <Ellipse Width="10" Height="10"
+                                                         VerticalAlignment="Center"
+                                                         Fill="{x:Bind Color, Converter={StaticResource ChipColour}}" />
+                                                <TextBlock Text="{x:Bind Name}" />
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <!-- Offered only when what was typed is nobody's list yet. -->
+                            <Button x:Uid="create_list" HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    AutomationProperties.Name="Create list"
+                                    Visibility="{x:Bind Shell.Detail.CanCreateList, Mode=OneWay, Converter={StaticResource Visible}}"
+                                    Click="OnCreateListForTask">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE710;" FontSize="12" VerticalAlignment="Center" />
+                                    <TextBlock>
+                                        <Run x:Uid="create_quot" Text="Create &quot;" /><Run Text="{x:Bind Shell.Detail.CreateListName, Mode=OneWay}" /><Run Text="&quot;" />
+                                    </TextBlock>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+
+            <!--
+                The description, on the same 32px icon column as everything above it. Borderless
+                on a tinted ground, which is how the web draws its textarea - a boxed control
+                here read as a form field rather than as the task's own notes.
+            -->
+            <Grid ColumnSpacing="8" Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="32" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="&#xE8A5;"
+                           FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                           FontSize="15"
+                           HorizontalAlignment="Center" VerticalAlignment="Top"
+                           Margin="0,8,0,0"
+                           Foreground="{ThemeResource AstridTextMuted}" />
+                <!--
+                    The description as written, drawn (task 11cfaf6d). The web renders the
+                    markdown and opens a plain textarea when it is clicked; so does this. The
+                    blocks come from the core, and the code-behind fills this panel from them
+                    whenever they change. Its foreground is set here so every run inherits the
+                    theme's text colour without each being told.
+                -->
+                <Border x:Uid="detail_description_rendered" Grid.Column="1" x:Name="DetailDescriptionRendered"
+                        AutomationProperties.Name="Description"
+                        Background="Transparent"
+                        BorderThickness="1"
+                        BorderBrush="Transparent"
+                        CornerRadius="8"
+                        Padding="10,8"
+                        MinHeight="40"
+                        Tapped="OnDescriptionTapped"
+                        PointerEntered="OnDescriptionPointerEntered"
+                        PointerExited="OnDescriptionPointerExited"
+                        Visibility="{x:Bind Shell.Detail.ShowsRenderedDescription, Mode=OneWay, Converter={StaticResource Visible}}">
+                    <ContentControl IsTabStop="False"
+                                    HorizontalContentAlignment="Stretch"
+                                    Foreground="{ThemeResource AstridTextPrimary}">
+                        <StackPanel x:Name="DetailDescriptionBlocks" Spacing="6" />
+                    </ContentControl>
+                </Border>
+                <TextBox x:Uid="detail_description_box" Grid.Column="1" x:Name="DetailDescriptionBox"
+                         AutomationProperties.Name="Description"
+                         PlaceholderText="Add a description..."
+                         AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72"
+                         Background="{ThemeResource AstridSurfaceHover}"
+                         BorderThickness="0"
+                         CornerRadius="8"
+                         Padding="10,8"
+                         Text="{x:Bind Shell.Detail.Description, Mode=TwoWay}"
+                         Visibility="{x:Bind Shell.Detail.ShowsDescriptionEditor, Mode=OneWay, Converter={StaticResource Visible}}"
+                         LostFocus="OnDetailDescriptionCommitted" />
+            </Grid>
+            </StackPanel>
+                <TextBlock x:Uid="subtasks" Text="Subtasks" Style="{StaticResource DetailSection}" />
+                <ItemsControl ItemsSource="{x:Bind Shell.Detail.Subtasks, Mode=OneWay}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="viewmodels:SubtaskSummary">
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,3">
+                                <TextBlock Text="&#xECCA;"
+                                           FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                           FontSize="13"
+                                           VerticalAlignment="Center"
+                                           Foreground="{ThemeResource AstridTextMuted}" />
+                                <TextBlock Text="{x:Bind Title}"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{ThemeResource AstridTextSecondary}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBox x:Uid="subtask_box" x:Name="SubtaskBox" PlaceholderText="Add a subtask"
+                         Margin="0,4,0,0"
+                         Background="{ThemeResource AstridSurfaceHover}"
+                         BorderThickness="0"
+                         CornerRadius="8"
+                         Padding="10,7"
+                         KeyDown="OnSubtaskKeyDown" />
+
+                <!--
+                    Attachments. The section appears only when the task has files: the web
+                    draws no heading over an empty row, and a permanent "Attachments" over
+                    nothing reads as a section that failed to load. Attaching is done from the
+                    paperclip in the comment bar, where the file actually goes - a file reaches
+                    a task by riding a comment.
+                -->
+                <StackPanel Visibility="{x:Bind Shell.Detail.Attachments.Count, Mode=OneWay, Converter={StaticResource CountVisible}}">
+                    <TextBlock x:Uid="attachments" Text="Attachments" Style="{StaticResource DetailSection}" />
+                    <ItemsControl ItemsSource="{x:Bind Shell.Detail.Attachments, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="bindings:AttachmentSummary">
+                                <Button HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Padding="0,4"
+                                        Tag="{x:Bind Id}"
+                                        Click="OnOpenAttachment">
+                                    <Grid ColumnSpacing="8" HorizontalAlignment="Stretch">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="&#xE723;"
+                                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                   FontSize="13"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{ThemeResource AstridTextMuted}" />
+                                        <TextBlock Grid.Column="1" Text="{x:Bind Name}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2" Text="{x:Bind SizeLabel}"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="11"
+                                                   Foreground="{ThemeResource AstridTextMuted}" />
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!--
+                    The thread. Chat bubbles, sided by who wrote each one, as the web draws
+                    them: mine on the right on the selected tint, theirs on the left a shade
+                    deeper, and anything the server authored as a centred note. A thread drawn
+                    as a flat list of lines says nobody replied to anybody.
+                -->
+                <TextBlock x:Uid="comments" Text="Comments" Style="{StaticResource DetailSection}"
+                           Visibility="{x:Bind Shell.Detail.Comments.Count, Mode=OneWay, Converter={StaticResource CountVisible}}" />
+                <ItemsControl ItemsSource="{x:Bind Shell.Detail.Comments, Mode=OneWay}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="viewmodels:CommentSummary">
+                            <!--
+                                A reply steps in from its parent author's side (task 97c817dd);
+                                the margin comes from the row, which knows. Under every bubble
+                                are its quiet words — Reply on a top-level comment, Edit and
+                                Delete on your own — and, when asked for, a reply box or an
+                                editor in the bubble's place.
+                            -->
+                            <StackPanel Margin="{x:Bind IndentSide, Converter={StaticResource ReplyIndent}}"
+                                        HorizontalAlignment="{x:Bind IsMine, Converter={StaticResource BubbleAlign}}">
+                                <!-- A system note is nobody's voice, so it takes neither side. -->
+                                <TextBlock Text="{x:Bind Content}"
+                                           FontSize="11"
+                                           TextWrapping="Wrap"
+                                           TextAlignment="Center"
+                                           Foreground="{ThemeResource AstridTextMuted}"
+                                           Visibility="{x:Bind IsSystem, Converter={StaticResource Visible}}" />
+
+                                <!-- The editor, in the bubble's place. -->
+                                <StackPanel Spacing="4" MinWidth="220" MaxWidth="260"
+                                            Visibility="{x:Bind IsEditing, Converter={StaticResource Visible}}">
+                                    <TextBox x:Uid="edit_comment" Text="{x:Bind Content}"
+                                             Tag="{x:Bind Id}"
+                                             AcceptsReturn="True"
+                                             TextWrapping="Wrap"
+                                             AutomationProperties.Name="Edit comment"
+                                             KeyDown="OnCommentEditKeyDown" />
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <Button x:Uid="save_2" Content="Save"
+                                                AutomationProperties.Name="Save comment"
+                                                Style="{ThemeResource AccentButtonStyle}"
+                                                Click="OnCommentEditSaved" />
+                                        <Button x:Uid="cancel_2" Content="Cancel"
+                                                AutomationProperties.Name="Cancel edit"
+                                                Click="OnCommentEditCancelled" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <Border CornerRadius="10"
+                                        Padding="12"
+                                        MaxWidth="260"
+                                        Background="{x:Bind IsMine, Converter={StaticResource BubbleBrush}}"
+                                        Visibility="{x:Bind ShowsBubble, Converter={StaticResource Visible}}">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="{x:Bind AuthorName}"
+                                                   FontSize="11"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{ThemeResource AstridTextMuted}"
+                                                   Visibility="{x:Bind AuthorName, Converter={StaticResource Visible}}" />
+                                        <!--
+                                            A file posted without a caption draws no text
+                                            bubble: an empty bubble beside a picture is what
+                                            "it did not attach" looks like. The core decides it.
+                                        -->
+                                        <!-- Drawn through the same markdown a description gets,
+                                             so a mention is a pill and a link is a link (task
+                                             3271a0c5). The control takes the row's blocks. -->
+                                        <local:MarkdownView Blocks="{x:Bind Blocks}"
+                                                            Foreground="{ThemeResource AstridTextPrimary}"
+                                                            Visibility="{x:Bind ShowsText, Converter={StaticResource Visible}}" />
+                                        <!--
+                                            The comment's own files. Attachments reach a task
+                                            through comments, so a file hangs off the comment
+                                            rather than off the task, and the Attachments
+                                            section above cannot show it in the conversation it
+                                            belongs to.
+                                        -->
+                                        <ItemsControl ItemsSource="{x:Bind Files}"
+                                                      Visibility="{x:Bind HasFiles, Converter={StaticResource Visible}}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="viewmodels:CommentFile">
+                                                    <StackPanel>
+                                                        <!--
+                                                            The picture, when its bytes are on
+                                                            this machine. A screenshot posted
+                                                            from here draws from the copy the
+                                                            Outbox already wrote, so it appears
+                                                            at once rather than being fetched
+                                                            back from a server it has not
+                                                            reached yet.
+
+                                                            Still a button: what somebody wants
+                                                            from a thumbnail is the full-size
+                                                            file, and clicking it is how they
+                                                            say so.
+                                                        -->
+                                                        <Button Padding="0" Margin="0,2"
+                                                                HorizontalAlignment="Left"
+                                                                CornerRadius="8"
+                                                                BorderThickness="0"
+                                                                Background="Transparent"
+                                                                Tag="{x:Bind Id}"
+                                                                AutomationProperties.Name="{x:Bind Name}"
+                                                                Click="OnOpenCommentFile"
+                                                                Visibility="{x:Bind ShowsThumbnail, Converter={StaticResource Visible}}">
+                                                            <Border CornerRadius="8">
+                                                                <Image Source="{x:Bind LocalPath, Converter={StaticResource FileThumbnail}}"
+                                                                       MaxWidth="220"
+                                                                       MaxHeight="180"
+                                                                       Stretch="Uniform" />
+                                                            </Border>
+                                                        </Button>
+
+                                                        <!--
+                                                            Everything else, and anything whose
+                                                            bytes are not here yet: a chip that
+                                                            says what it is and opens it.
+                                                        -->
+                                                        <Button Padding="8,4" Margin="0,2"
+                                                                HorizontalAlignment="Left"
+                                                                CornerRadius="6"
+                                                                Tag="{x:Bind Id}"
+                                                                Click="OnOpenCommentFile"
+                                                                Visibility="{x:Bind ShowsChip, Converter={StaticResource Visible}}">
+                                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                <FontIcon FontSize="12"
+                                                                          Glyph="{x:Bind RendersInline, Converter={StaticResource FileGlyph}}" />
+                                                                <TextBlock Text="{x:Bind Name}"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           MaxWidth="160" />
+                                                                <TextBlock Text="{x:Bind SizeLabel}"
+                                                                           FontSize="11"
+                                                                           Foreground="{ThemeResource AstridTextMuted}" />
+                                                            </StackPanel>
+                                                        </Button>
+                                                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <TextBlock x:Uid="not_synced_yet" Text="Not synced yet"
+                                                   FontSize="11"
+                                                   Foreground="{ThemeResource AstridTextMuted}"
+                                                   Visibility="{x:Bind IsPending, Converter={StaticResource Visible}}" />
+                                    </StackPanel>
+                                </Border>
+                                                                <!-- The quiet words. Delete asks first: there is no undo for it on any client. -->
+                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="4,2,4,0"
+                                            HorizontalAlignment="{x:Bind IsMine, Converter={StaticResource BubbleAlign}}"
+                                            Visibility="{x:Bind ShowsBubble, Converter={StaticResource Visible}}">
+                                    <Button x:Uid="reply" Content="Reply" Style="{StaticResource BubbleAction}"
+                                            Tag="{x:Bind Id}"
+                                            AutomationProperties.Name="Reply to comment"
+                                            Visibility="{x:Bind CanReply, Converter={StaticResource Visible}}"
+                                            Click="OnReplyToComment" />
+                                    <Button x:Uid="edit" Content="Edit" Style="{StaticResource BubbleAction}"
+                                            Tag="{x:Bind Id}"
+                                            AutomationProperties.Name="Edit comment"
+                                            Visibility="{x:Bind CanEdit, Converter={StaticResource Visible}}"
+                                            Click="OnEditComment" />
+                                    <!-- Asks first, in a flyout built in code: a flyout declared
+                                         inside a row template cannot carry the row's id. -->
+                                    <Button x:Uid="delete_2" Content="Delete" Style="{StaticResource BubbleAction}"
+                                            Tag="{x:Bind Id}"
+                                            AutomationProperties.Name="Delete comment"
+                                            Visibility="{x:Bind CanEdit, Converter={StaticResource Visible}}"
+                                            Click="OnDeleteCommentAsked" />
+                                </StackPanel>
+
+                                <!-- The reply box, under the comment it answers. -->
+                                <Grid ColumnSpacing="6" Margin="0,4,0,0" MinWidth="240"
+                                      Visibility="{x:Bind IsReplying, Converter={StaticResource Visible}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Uid="reply_2" Grid.Column="0"
+                                             PlaceholderText="Reply..."
+                                             AutomationProperties.Name="Reply"
+                                             TextChanged="OnCommentTextChanged"
+                                             KeyDown="OnReplyKeyDown" />
+                                    <Button x:Uid="send_2" Grid.Column="1" Content="Send"
+                                            AutomationProperties.Name="Send reply"
+                                            Style="{ThemeResource AccentButtonStyle}"
+                                            Click="OnReplySent" />
+                                    <Button x:Uid="cancel_3" Grid.Column="2" Content="Cancel"
+                                            AutomationProperties.Name="Cancel reply"
+                                            Click="OnReplyCancelled" />
+                                </Grid>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- What the last timed run came to. The button is in the bar below. -->
+                <TextBlock Margin="0,10,0,0"
+                           TextAlignment="Center"
+                           FontSize="11"
+                           Foreground="{ThemeResource AstridTextMuted}"
+                           Text="{x:Bind Shell.Detail.Timer, Mode=OneWay, Converter={StaticResource LoggedTime}}"
+                           Visibility="{x:Bind Shell.Detail.HasLoggedTime, Mode=OneWay, Converter={StaticResource Visible}}" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <!--
+            The input bar, as astrid-web's is built: a paperclip, a rounded box on a tinted
+            ground, and one round button on the right that is the timer while there is nothing
+            to send and the send button once there is. Two buttons competing for that slot is
+            what the web avoided by swapping them, and the swap is why the timer is reachable
+            at all now that it has left the body.
+        -->
+        <Border Grid.Row="2"
+                Padding="12"
+                BorderThickness="0,1,0,0"
+                BorderBrush="{ThemeResource AstridBorder}">
+            <StackPanel Spacing="8">
+                <Grid ColumnSpacing="6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Button x:Uid="attach_a_file" Grid.Column="0"
+                            Style="{StaticResource CommentBarButton}"
+                            AutomationProperties.Name="Attach a file"
+                            ToolTipService.ToolTip="Attach a file"
+                            Click="OnAttachFile">
+                        <FontIcon FontSize="16" Glyph="&#xE723;"
+                                  Foreground="{ThemeResource AstridTextMuted}" />
+                    </Button>
+                    <TextBox x:Uid="comment_box" x:Name="CommentBox" Grid.Column="1"
+                             PlaceholderText="Add a comment..."
+                             Background="{ThemeResource AstridSurfaceHover}"
+                             BorderThickness="0"
+                             CornerRadius="12"
+                             Padding="12,7"
+                             Text="{x:Bind Shell.Detail.CommentDraft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             TextChanged="OnCommentTextChanged"
+                             KeyDown="OnCommentKeyDown" />
+                    <!--
+                        Return posted a comment and nothing else did, so the affordance for the
+                        most common action in the panel was a keystroke you had to already know
+                        about. The button and the key run the same path and agree on the same
+                        predicate.
+                    -->
+                    <Button x:Uid="timer_button" Grid.Column="2"
+                            x:Name="TimerButton"
+                            Style="{StaticResource CommentBarButton}"
+                            AutomationProperties.Name="Timer"
+                            ToolTipService.ToolTip="Timer"
+                            BorderThickness="1"
+                            BorderBrush="{ThemeResource AstridBorder}"
+                            Visibility="{x:Bind Shell.Detail.CanSendComment, Mode=OneWay, Converter={StaticResource NotVisible}}"
+                            Click="OnToggleTimer">
+                        <FontIcon FontSize="15" Glyph="&#xE916;"
+                                  Foreground="{ThemeResource AstridTextSecondary}" />
+                    </Button>
+                    <Button x:Uid="send" Grid.Column="2"
+                            AutomationProperties.Name="Send"
+                            Style="{StaticResource CommentBarButton}"
+                            Background="{ThemeResource AstridAccentBrush}"
+                            Visibility="{x:Bind Shell.Detail.CanSendComment, Mode=OneWay, Converter={StaticResource Visible}}"
+                            Click="OnSendComment">
+                        <FontIcon FontSize="14" Glyph="&#xE724;" Foreground="White" />
+                    </Button>
+                </Grid>
+                <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                           TextWrapping="Wrap"
+                           Text="{x:Bind Shell.Detail.ErrorMessage, Mode=OneWay}"
+                           Visibility="{x:Bind Shell.Detail.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
+            </StackPanel>
+        </Border>
+
+        <!--
+            The arrow joining the pane to the row it is about.
+
+            astrid-web's `.task-panel-arrow`: a square rotated 45 degrees, sitting half off the
+            pane's left edge with only its left and bottom borders drawn, so it reads as a
+            notch cut out of the panel rather than a shape stuck on it. Same surface and same
+            border colour, which is what makes the join invisible.
+
+            It spans every row of the pane and is declared last, so it draws over the border it
+            is meant to interrupt. Its Y is set in code from the selected row's position —
+            geometry the shell can measure and the view model has no business knowing.
+        -->
+        <Border x:Name="DetailArrow"
+                Grid.RowSpan="3"
+                Width="16" Height="16"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                Margin="-8,0,0,0"
+                Background="{ThemeResource AstridSurface}"
+                BorderThickness="1,0,0,1"
+                BorderBrush="{ThemeResource AstridBorder}"
+                Visibility="Collapsed">
+            <Border.RenderTransform>
+                <TransformGroup>
+                    <RotateTransform Angle="45" CenterX="8" CenterY="8" />
+                    <TranslateTransform x:Name="DetailArrowOffset" />
+                </TransformGroup>
+            </Border.RenderTransform>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Astrid.App.Views.BoardView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:bindings="using:Astrid.Core.Bindings"
+    xmlns:local="using:Astrid.App"
+    xmlns:views="using:Astrid.App.Views"
+    xmlns:settings="using:Astrid.App.Views.Settings"
+    xmlns:viewmodels="using:Astrid.App.ViewModels">
+
+    <!--
+        The board view of a list: one column per status, cards inside them, and the slot the expanded
+        card's detail is drawn in. It takes the place the quick-add and the rows take in list view.
+    -->
+
+    <UserControl.Resources>
+        <!--
+            A board card, and the slot the expanded card's detail is drawn in (task 91a25b8a).
+
+            astrid-web's board opens a tapped card IN PLACE: the task detail grows out of the card
+            inside its column rather than in the side panel the list uses. The column's items are
+            the cards with one slot among them, and the selector below draws each with the right
+            template. The slot is an empty ContentControl; the code-behind moves the page's one
+            detail pane into it when it loads, so the board and the list share one detail.
+        -->
+        <DataTemplate x:Key="BoardCardTemplate" x:DataType="bindings:TaskRow">
+            <!--
+                The same card the list draws, because it is the same task: 10px radius, a
+                hairline border, and the surface the rows sit on.
+            -->
+            <Button HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Left"
+                    Margin="0,0,0,6"
+                    Padding="10,8"
+                    CornerRadius="10"
+                    BorderThickness="1"
+                    BorderBrush="{ThemeResource AstridBorder}"
+                    Background="{ThemeResource AstridSurface}"
+                    Tag="{x:Bind Id}"
+                    AutomationProperties.Name="{x:Bind Title}"
+                    CanDrag="True"
+                    DragStarting="OnCardDragStarting"
+                    Click="OnCardOpened"
+                    RightTapped="OnCardRightTapped">
+                <StackPanel Spacing="3">
+                    <TextBlock Text="{x:Bind Title}"
+                               TextWrapping="Wrap"
+                               Foreground="{ThemeResource AstridTextPrimary}" />
+                    <TextBlock Text="{x:Bind Due, Converter={StaticResource DueText}}"
+                               FontSize="11"
+                               Foreground="{ThemeResource AstridTextMuted}" />
+                </StackPanel>
+            </Button>
+        </DataTemplate>
+        <DataTemplate x:Key="BoardDetailSlotTemplate" x:DataType="viewmodels:InlineDetailSlot">
+            <ContentControl x:Uid="open_task" HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
+                            AutomationProperties.Name="Open task"
+                            Loaded="OnInlineDetailSlotLoaded" />
+        </DataTemplate>
+        <local:BoardItemTemplateSelector x:Key="BoardItem"
+                                         Card="{StaticResource BoardCardTemplate}"
+                                         DetailSlot="{StaticResource BoardDetailSlotTemplate}" />
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!--
+            The board. One column per status, cards inside them, and a menu on each card to
+            move it — a drag is the gesture people expect, and it will come, but a card that
+            can only be dragged is a card a keyboard cannot move at all.
+        -->
+        <!--
+            A list that belongs to no board. Whether it does is only known once the board
+            has been asked for, so the toggle is offered everywhere — and a blank pane
+            behind it reads as a board that failed to load rather than one that was never
+            there.
+        -->
+        <StackPanel Grid.Row="0"
+                    Spacing="6"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Visibility="{x:Bind Shell.ShowsNoBoardNotice, Mode=OneWay, Converter={StaticResource Visible}}">
+            <TextBlock Text="&#xE80A;"
+                       FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                       FontSize="28"
+                       HorizontalAlignment="Center"
+                       Foreground="{ThemeResource AstridTextMuted}" />
+            <TextBlock x:Uid="this_list_has_no_board" Text="This list has no board"
+                       FontSize="15"
+                       FontWeight="SemiBold"
+                       HorizontalAlignment="Center"
+                       Foreground="{ThemeResource AstridTextSecondary}" />
+            <TextBlock x:Uid="turn_one_on_for_this_list" Text="Turn one on for this list in astrid.app, and its columns show up here."
+                       FontSize="12"
+                       MaxWidth="320"
+                       TextAlignment="Center"
+                       TextWrapping="Wrap"
+                       Foreground="{ThemeResource AstridTextMuted}" />
+        </StackPanel>
+
+        <!--
+            The board fills the rows the quick-add and the list would take, and is told its
+            height: VerticalScrollBarVisibility="Disabled" is what makes a ScrollViewer
+            measure its content against the viewport rather than infinity. Without it every
+            column was as tall as its cards and a long one ran off the bottom of the window
+            with nothing to scroll it. Each column scrolls its own cards instead, as the
+            web's do — which is also what makes room for a card opened in place.
+        -->
+        <ScrollViewer Grid.Row="0" Grid.RowSpan="2"
+                      HorizontalScrollBarVisibility="Auto"
+                      HorizontalScrollMode="Enabled"
+                      VerticalScrollBarVisibility="Disabled"
+                      VerticalScrollMode="Disabled"
+                      Margin="12,0,12,8"
+                      Visibility="{x:Bind Shell.IsBoardView, Mode=OneWay, Converter={StaticResource Visible}}">
+            <ItemsControl ItemsSource="{x:Bind Shell.Board.Columns, Mode=OneWay}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="12" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="viewmodels:BoardColumnView">
+                        <!--
+                            A column takes a dropped card. The menu on each card does the
+                            same thing and is what a keyboard can reach; the drag is what
+                            everybody expects from a board.
+
+                            The column holding the expanded card is wider, as the web's
+                            grows towards its upper bound, so the detail's rows keep the
+                            layout they have in the side pane.
+                        -->
+                        <Border Width="{x:Bind HoldsExpandedCard, Converter={StaticResource ColumnWidth}}"
+                                CornerRadius="8"
+                                AllowDrop="True"
+                                Tag="{x:Bind Id}"
+                                DragOver="OnCardDragOver"
+                                Drop="OnCardDropped"
+                                BorderThickness="1"
+                                BorderBrush="{ThemeResource AstridBorder}"
+                                Background="{ThemeResource AstridSurfaceHover}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <!--
+                                    The column head, as astrid-web draws it: the name, the
+                                    number in it as a pill on the right, the description
+                                    under both, and a rule below the lot.
+                                -->
+                                <Border Grid.Row="0"
+                                        Padding="12,8"
+                                        BorderThickness="0,0,0,1"
+                                        BorderBrush="{ThemeResource AstridBorder}">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <!-- The name alone: the count is the pill
+                                                 beside it, and saying it twice is how a
+                                                 column comes to read "Inbox (15) 15". -->
+                                            <TextBlock Text="{x:Bind Name}"
+                                                       FontSize="13"
+                                                       FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Foreground="{ThemeResource AstridTextPrimary}" />
+                                            <TextBlock Text="{x:Bind Description}"
+                                                       TextWrapping="Wrap"
+                                                       FontSize="11"
+                                                       Foreground="{ThemeResource AstridTextMuted}"
+                                                       Visibility="{x:Bind Description, Converter={StaticResource Visible}}" />
+                                        </StackPanel>
+                                        <Border Grid.Column="1"
+                                                CornerRadius="10"
+                                                Padding="8,1"
+                                                VerticalAlignment="Top"
+                                                Background="{ThemeResource AstridSurface}">
+                                            <!-- Every card in the column, not just the
+                                                 ones loaded — the same distinction the
+                                                 list's own total makes. -->
+                                            <TextBlock Text="{x:Bind Total}"
+                                                       FontSize="11"
+                                                       Foreground="{ThemeResource AstridTextSecondary}" />
+                                        </Border>
+                                    </Grid>
+                                </Border>
+
+                                <ScrollViewer Grid.Row="1"
+                                              VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollMode="Disabled">
+                                    <StackPanel Padding="8">
+                                        <!--
+                                            An empty column says so. A column that is
+                                            simply blank looks the same as one whose cards
+                                            did not arrive.
+                                        -->
+                                        <Border MinHeight="72"
+                                                CornerRadius="6"
+                                                BorderThickness="1"
+                                                BorderBrush="{ThemeResource AstridBorder}"
+                                                Visibility="{x:Bind Cards.Count, Converter={StaticResource CountVisible}, ConverterParameter=empty}">
+                                            <TextBlock x:Uid="nothing_here_yet" Text="Nothing here yet"
+                                                       FontSize="11"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="{ThemeResource AstridTextMuted}" />
+                                        </Border>
+
+                                        <!-- The cards, with the open one's detail among
+                                             them. Which is which is the view model's. -->
+                                        <ItemsControl ItemsSource="{x:Bind Items}"
+                                                      ItemTemplateSelector="{StaticResource BoardItem}" />
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

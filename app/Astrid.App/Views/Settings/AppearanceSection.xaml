@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Astrid.App.Views.Settings.AppearanceSection"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:bindings="using:Astrid.Core.Bindings"
+    xmlns:local="using:Astrid.App"
+    xmlns:views="using:Astrid.App.Views"
+    xmlns:settings="using:Astrid.App.Views.Settings"
+    xmlns:viewmodels="using:Astrid.App.ViewModels">
+
+    <!--
+        The look. Ocean is the brand default - a light
+        appearance behind a cyan wash - and lives on this
+        machine rather than on the account, because a laptop
+        in the evening and a desk under an office light are
+        different questions.
+    -->
+    <StackPanel Spacing="10">
+        <ComboBox x:Uid="theme_box" x:Name="ThemeBox"
+                  Header="Theme"
+                  AutomationProperties.Name="Appearance"
+                  HorizontalAlignment="Stretch"
+                  ItemsSource="{x:Bind Shell.Settings.ThemeChoices, Mode=OneWay}"
+                  SelectedItem="{x:Bind Shell.Settings.Theme, Mode=OneWay}"
+                  SelectionChanged="OnThemeChosen" />
+        <!--
+            The global chord, which was one fixed chord with no
+            way to change it. This machine's, like the theme; the
+            core judges what is a chord and the window registers
+            what it accepts.
+        -->
+        <StackPanel Spacing="4">
+            <TextBox x:Uid="hotkey_box" x:Name="HotkeyBox"
+                     Header="Quick-add shortcut"
+                     AutomationProperties.Name="Quick-add shortcut"
+                     Text="{x:Bind Shell.Settings.HotkeyChord, Mode=OneWay}" />
+            <TextBlock x:Uid="hotkey_hint"
+                       Text="Brings Astrid forward from anywhere, ready for a new task. Ctrl, Alt or Win, plus one letter or digit."
+                       TextWrapping="Wrap"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource AstridTextMuted}" />
+            <Button x:Uid="apply_hotkey" Content="Apply"
+                    AutomationProperties.Name="Apply shortcut"
+                    Click="OnApplyHotkey" />
+        </StackPanel>
+        <!--
+            The task-detail layout, where the web keeps it
+            (task c0f3db19). An account setting, so it
+            follows the person between devices; the theme
+            above is this machine's.
+        -->
+        <ComboBox x:Uid="layout_box" x:Name="LayoutBox"
+                  HorizontalAlignment="Stretch"
+                  AutomationProperties.Name="Task detail layout"
+                  ItemsSource="{x:Bind Shell.Settings.LayoutChoices, Mode=OneWay}"
+                  ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                  SelectedItem="{x:Bind Shell.Settings.SelectedLayout, Mode=OneWay}"
+                  SelectionChanged="OnSmartTaskChoiceChosen" />
+        <TextBlock FontSize="11" TextWrapping="Wrap"
+                   Foreground="{ThemeResource AstridTextMuted}"
+                   Text="{x:Bind Shell.Settings.LayoutDescriptionKey, Mode=OneWay, Converter={StaticResource Words}}" />
+        <TextBlock x:Name="LayoutHint" FontSize="11" TextWrapping="Wrap"
+                   Foreground="{ThemeResource AstridTextMuted}" />
+        <!--
+            The web's other two Appearance settings
+            (task 6ac2639a): whether the add box reads
+            #list tags, and where subtasks appear. Both
+            account settings, read by the core.
+        -->
+        <ToggleSwitch x:Uid="smart_parsing_toggle" x:Name="SmartParsingToggle" Margin="0,8,0,0"
+                      AutomationProperties.Name="Smart task creation"
+                      IsOn="{x:Bind Shell.Settings.SmartParsingEnabled, Mode=OneWay}"
+                      Toggled="OnSmartParsingToggled" />
+        <TextBlock x:Name="SmartParsingHint" FontSize="11" TextWrapping="Wrap"
+                   Foreground="{ThemeResource AstridTextMuted}" />
+        <ComboBox x:Uid="subtasks_box" x:Name="SubtasksBox" Margin="0,8,0,0"
+                  HorizontalAlignment="Stretch"
+                  AutomationProperties.Name="Sub tasks"
+                  ItemsSource="{x:Bind Shell.Settings.SubtaskChoices, Mode=OneWay}"
+                  ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                  SelectedItem="{x:Bind Shell.Settings.SelectedSubtaskDisplay, Mode=OneWay}"
+                  SelectionChanged="OnSmartTaskChoiceChosen" />
+        <TextBlock x:Name="SubtasksHint" FontSize="11" TextWrapping="Wrap"
+                   Foreground="{ThemeResource AstridTextMuted}" />
+    </StackPanel>
+</UserControl>

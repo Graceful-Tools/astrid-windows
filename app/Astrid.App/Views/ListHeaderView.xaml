@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Astrid.App.Views.ListHeaderView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:bindings="using:Astrid.Core.Bindings"
+    xmlns:local="using:Astrid.App"
+    xmlns:views="using:Astrid.App.Views"
+    xmlns:settings="using:Astrid.App.Views.Settings"
+    xmlns:viewmodels="using:Astrid.App.ViewModels">
+
+    <!--
+        The row above the list: its name, the tools, the bell and the account.
+
+        The two big flyouts on this row — the list's settings and the account's — are controls of
+        their own (ListSettingsFlyout, SettingsFlyout); this file holds the buttons that open them.
+    -->
+
+    <Grid Margin="20,16,20,8" ColumnSpacing="12">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <!--
+            The title yields, the tools do not.
+
+            This was a horizontal StackPanel, and a StackPanel never shrinks its
+            children: with the detail pane open the row wanted more width than it had
+            and the toolbar was clipped off the right — the filter, the chat, the view
+            toggles, all of them gone with nothing to say they had been there. A Grid
+            lets the list name truncate, which is the thing on that row that can afford
+            to.
+        -->
+        <Grid Grid.Column="0" ColumnSpacing="12" VerticalAlignment="Center">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="0" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0"
+                       Text="{x:Bind Shell.Tasks.ListName, Mode=OneWay}"
+                       Style="{ThemeResource TitleTextBlockStyle}"
+                       TextTrimming="CharacterEllipsis"
+                       TextWrapping="NoWrap"
+                       VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
+                        VerticalAlignment="Center">
+            <!--
+                Search replaces what the list shows rather than opening a screen of its
+                own: the results are rows like any other, and they complete and open the
+                same way. A second surface that behaved almost-but-not-quite like the
+                list is how two code paths for one thing begin.
+            -->
+            <!--
+                What the list is filtered and sorted by. The values come from the core,
+                which is the only place they are matched on — a filter set here means
+                the same thing on web and on the Mac, because it is the same string.
+            -->
+            <Button x:Uid="filter_button_2" x:Name="FilterButton"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="Filters"
+                    ToolTipService.ToolTip="{x:Bind Shell.Tasks.IsFiltered, Mode=OneWay, Converter={StaticResource FilterText}}"
+                    Content="&#xE71C;"
+                    FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                    Foreground="{x:Bind Shell.Tasks.IsFiltered, Mode=OneWay, Converter={StaticResource FilterTint}}">
+                <Button.Flyout>
+                    <Flyout Opening="OnFiltersOpening">
+                        <ScrollViewer MaxHeight="480" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{x:Bind Shell.Tasks.FilterGroups, Mode=OneWay}"
+                                          MinWidth="240">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="bindings:FilterGroup">
+                                        <StackPanel Margin="0,0,0,12">
+                                            <TextBlock Text="{x:Bind TitleKey, Converter={StaticResource PickTitle}}"
+                                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            <ItemsControl ItemsSource="{x:Bind Picks}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="bindings:FilterPick">
+                                                        <RadioButton Content="{x:Bind TitleKey, Converter={StaticResource PickTitle}}"
+                                                                     IsChecked="{x:Bind IsSelected}"
+                                                                     GroupName="{x:Bind Field}"
+                                                                     Checked="OnFilterChosen" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+            <!--
+                The conversation about this list. A panel beside the tasks rather than
+                a screen of its own: it is about the work on the left, and reading it
+                should not mean losing sight of that.
+            -->
+            <ToggleButton x:Uid="chat_toggle" x:Name="ChatToggle"
+                          VerticalAlignment="Center"
+                          AutomationProperties.Name="Chat"
+                          ToolTipService.ToolTip="Chat"
+                          Content="&#xE8BD;"
+                          FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                          IsChecked="{x:Bind Shell.IsChatOpen, Mode=OneWay}"
+                          Click="OnToggleChat" />
+            <!--
+                The list's own settings: its name, who it is shared with, and the way
+                out of it. Behind a button rather than always on screen, because it is
+                the thing somebody does once per list and never again.
+            -->
+            <Button x:Uid="list_settings_button" x:Name="ListSettingsButton"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="List settings"
+                    ToolTipService.ToolTip="List settings"
+                    Content="&#xE713;"
+                    FontFamily="{ThemeResource SymbolThemeFontFamily}">
+                <Button.Flyout>
+                    <Flyout Opening="OnListSettingsOpening">
+                        <views:ListSettingsFlyout x:Name="ListSettings" />
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+            <!--
+                The board and the list are two views of one list's work, not two
+                screens: the toggle swaps what is drawn and nothing else moves.
+            -->
+            <ToggleButton x:Uid="board_toggle" x:Name="BoardToggle"
+                          VerticalAlignment="Center"
+                          AutomationProperties.Name="Board view"
+                          ToolTipService.ToolTip="Board view"
+                          Content="&#xF0E2;"
+                          FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                          IsChecked="{x:Bind Shell.IsBoardView, Mode=OneWay}"
+                          Visibility="{x:Bind Shell.ProjectModeEnabled, Mode=OneWay, Converter={StaticResource Visible}}"
+                          Click="OnToggleBoard" />
+                <!--
+                    Search collapses to its icon, which is what astrid-web does when the
+                    row is short: a box wide enough to type in does not fit beside a
+                    list name, four tools and an open task, and a box squeezed to a
+                    sliver is worse than a button that opens one.
+                -->
+                <Button x:Uid="search_tasks" AutomationProperties.Name="Search tasks"
+                        ToolTipService.ToolTip="Search tasks"
+                        Content="&#xE721;"
+                        FontFamily="{ThemeResource SymbolThemeFontFamily}">
+                    <Button.Flyout>
+                        <Flyout>
+                            <AutoSuggestBox x:Uid="search_box" x:Name="SearchBox"
+                                            Width="280"
+                                            QueryIcon="Find"
+                                            PlaceholderText="Search tasks"
+                                            AutomationProperties.Name="Search tasks"
+                                            TextChanged="OnSearchChanged" />
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+            </StackPanel>
+        </Grid>
+        <!-- Not synced yet. Quiet, because it is a normal state and not a problem. -->
+        <TextBlock x:Uid="not_synced_yet" Grid.Column="1"
+                   Text="Not synced yet"
+                   VerticalAlignment="Center"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                   Style="{ThemeResource CaptionTextBlockStyle}"
+                   Visibility="{x:Bind Shell.HasUnsentWork, Mode=OneWay, Converter={StaticResource Visible}}" />
+        <!--
+            Account, Sync and Sign out, in one row.
+
+            They used to share a grid cell — two of them in column 2, one right-aligned
+            and one not — so they drew on top of each other and "Account" came out as
+            "Acco" with "Sync" over it. A row of buttons is a row, not three overlapping
+            claims on the same space.
+
+            The account is a flyout rather than a page: it is a name and some toggles,
+            and a screen you have to navigate back out of is a screen people avoid.
+        -->
+        <StackPanel Grid.Column="2" Grid.ColumnSpan="2"
+                    Orientation="Horizontal"
+                    Spacing="8"
+                    VerticalAlignment="Center">
+        <!--
+            The bell: what happened to work you are involved in - assigned, mentioned,
+            replied to, commented on, status changed, completed - as the web's
+            notification-bell.tsx. The badge is from the cache the moment the window
+            opens; opening the flyout asks the server.
+        -->
+        <Button x:Uid="notifications_button" x:Name="NotificationsButton"
+                AutomationProperties.Name="Notifications"
+                ToolTipService.ToolTip="Notifications">
+            <Grid>
+                <TextBlock Text="&#xEA8F;" FontFamily="{ThemeResource SymbolThemeFontFamily}" />
+                <Border Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        CornerRadius="8" MinWidth="16" Height="16" Padding="4,0"
+                        HorizontalAlignment="Right" VerticalAlignment="Top"
+                        Margin="0,-8,-10,0"
+                        Visibility="{x:Bind Shell.Notifications.HasUnread, Mode=OneWay, Converter={StaticResource Visible}}">
+                    <TextBlock Text="{x:Bind Shell.Notifications.UnreadText, Mode=OneWay}"
+                               FontSize="10" FontWeight="SemiBold"
+                               Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+            </Grid>
+            <Button.Flyout>
+                <Flyout x:Name="NotificationsFlyout" Opening="OnNotificationsOpening" Placement="BottomEdgeAlignedRight">
+                    <StackPanel Spacing="8" Width="360">
+                        <Grid>
+                            <TextBlock x:Uid="notifications_heading" Text="Notifications"
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                       VerticalAlignment="Center" />
+                            <Button x:Uid="mark_all_read" Content="Mark all read"
+                                    AutomationProperties.Name="Mark all read"
+                                    HorizontalAlignment="Right"
+                                    Click="OnMarkAllNotificationsRead"
+                                    IsEnabled="{x:Bind Shell.Notifications.HasUnread, Mode=OneWay}" />
+                        </Grid>
+                        <TextBlock x:Uid="nothing_new" Text="Nothing new."
+                                   Foreground="{ThemeResource AstridTextMuted}"
+                                   Visibility="{x:Bind Shell.Notifications.IsEmpty, Mode=OneWay, Converter={StaticResource Visible}}" />
+                        <ListView ItemsSource="{x:Bind Shell.Notifications.Items, Mode=OneWay}"
+                                  IsItemClickEnabled="True"
+                                  SelectionMode="None"
+                                  ItemClick="OnNotificationOpened"
+                                  MaxHeight="420">
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="bindings:NotificationItem">
+                                    <StackPanel Spacing="2" Margin="0,6"
+                                                Opacity="{x:Bind IsRead, Converter={StaticResource CompletedOpacity}}">
+                                        <TextBlock Text="{x:Bind LabelKey, Converter={StaticResource PickTitle}}"
+                                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                                   Foreground="{ThemeResource AstridTextSecondary}" />
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="{x:Bind TaskIdentifier}"
+                                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                                       Foreground="{ThemeResource AstridTextMuted}"
+                                                       VerticalAlignment="Center" />
+                                            <TextBlock Text="{x:Bind TaskText}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Foreground="{ThemeResource AstridTextPrimary}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </StackPanel>
+                </Flyout>
+            </Button.Flyout>
+        </Button>
+        <Button x:Uid="account_and_settings" AutomationProperties.Name="Account"
+                ToolTipService.ToolTip="Account and settings"
+                Content="&#xE77B;"
+                FontFamily="{ThemeResource SymbolThemeFontFamily}">
+            <Button.Flyout>
+                <!--
+                    Settings, as astrid-web lays them out: a rail of categories and one
+                    page of controls at a time.
+
+                    It used to be one column with every control in the app stacked in
+                    it - reminders, agents, the webhook, Google, appearance, export -
+                    which meant finding the theme picker was a scroll past a webhook
+                    secret. The web splits the same controls into pages behind a hub
+                    (components/Settings/SettingsHub.tsx) for the same reason, and the
+                    sections here are its pages.
+                -->
+                <Flyout Opening="OnAccountOpening"
+                        Closed="OnAccountClosed"
+                        Placement="BottomEdgeAlignedRight"
+                        ShouldConstrainToRootBounds="False">
+                    <settings:SettingsFlyout x:Name="Settings" />
+                </Flyout>
+            </Button.Flyout>
+        </Button>
+
+        </StackPanel>
+    </Grid>
+</UserControl>

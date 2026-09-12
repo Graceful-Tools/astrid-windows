@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Astrid.App.Views.Settings.RemindersSection"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:bindings="using:Astrid.Core.Bindings"
+    xmlns:local="using:Astrid.App"
+    xmlns:views="using:Astrid.App.Views"
+    xmlns:settings="using:Astrid.App.Views.Settings"
+    xmlns:viewmodels="using:Astrid.App.ViewModels">
+
+    <StackPanel Spacing="10">
+        <ToggleSwitch x:Uid="push_toggle" x:Name="PushToggle"
+                      Header="Push reminders"
+                      AutomationProperties.Name="Push reminders"
+                      IsOn="{x:Bind Shell.Settings.PushEnabled, Mode=OneWay}"
+                      Toggled="OnPushToggled" />
+        <ToggleSwitch x:Uid="email_toggle" x:Name="EmailToggle"
+                      Header="Email reminders"
+                      AutomationProperties.Name="Email reminders"
+                      IsOn="{x:Bind Shell.Settings.EmailEnabled, Mode=OneWay}"
+                      Toggled="OnEmailToggled" />
+        <ComboBox x:Uid="default_offset_box" x:Name="DefaultOffsetBox"
+                  Header="Remind me by default"
+                  AutomationProperties.Name="Default reminder"
+                  ItemsSource="{x:Bind Shell.Settings.Offsets, Mode=OneWay}"
+                  SelectionChanged="OnDefaultOffsetChanged">
+            <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="bindings:ReminderOffset">
+                    <TextBlock Text="{x:Bind TitleKey, Converter={StaticResource PickTitle}}" />
+                </DataTemplate>
+            </ComboBox.ItemTemplate>
+        </ComboBox>
+
+        <TextBlock x:Uid="daily_digest" Text="Daily digest" Style="{StaticResource DetailSection}" />
+        <ToggleSwitch x:Uid="digest_toggle" x:Name="DigestToggle"
+                      Header="Send a daily digest"
+                      AutomationProperties.Name="Daily digest"
+                      IsOn="{x:Bind Shell.Settings.DigestEnabled, Mode=OneWay}"
+                      Toggled="OnDigestToggled" />
+        <TimePicker x:Uid="digest_time_box" x:Name="DigestTimeBox"
+                    Header="At"
+                    AutomationProperties.Name="Digest time"
+                    SelectedTimeChanged="OnDigestTimeChanged" />
+
+        <TextBlock x:Uid="quiet_hours" Text="Quiet hours" Style="{StaticResource DetailSection}" />
+        <ToggleSwitch x:Uid="quiet_toggle" x:Name="QuietToggle"
+                      Header="No reminders overnight"
+                      AutomationProperties.Name="Quiet hours"
+                      IsOn="{x:Bind Shell.Settings.QuietHoursEnabled, Mode=OneWay}"
+                      Toggled="OnQuietHoursToggled" />
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <TimePicker x:Uid="quiet_start_box" x:Name="QuietStartBox" Header="From"
+                        AutomationProperties.Name="Quiet from"
+                        SelectedTimeChanged="OnQuietHoursChanged" />
+            <TimePicker x:Uid="quiet_end_box" x:Name="QuietEndBox" Header="Until"
+                        AutomationProperties.Name="Quiet until"
+                        SelectedTimeChanged="OnQuietHoursChanged" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

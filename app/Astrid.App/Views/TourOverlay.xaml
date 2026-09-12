@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Astrid.App.Views.TourOverlay"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:bindings="using:Astrid.Core.Bindings"
+    xmlns:local="using:Astrid.App"
+    xmlns:views="using:Astrid.App.Views"
+    xmlns:settings="using:Astrid.App.Views.Settings"
+    xmlns:viewmodels="using:Astrid.App.ViewModels">
+
+    <!--
+        The first run, once.
+
+        Three things nobody can discover by looking: the global hotkey, the palette, and that
+        the bare keys do anything. Everything else in this app is on screen, so this says those
+        three and gets out of the way.
+    -->
+    <Grid x:Name="TourLayer"
+          Background="{ThemeResource SmokeFillColorDefaultBrush}"
+          Visibility="{x:Bind Shell.IsTourOpen, Mode=OneWay, Converter={StaticResource Visible}}">
+        <Border Width="420"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Center"
+                CornerRadius="8"
+                Padding="24"
+                Background="{ThemeResource LayerFillColorAltBrush}"
+                BorderThickness="1"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+            <StackPanel Spacing="12">
+                <TextBlock x:Uid="three_things_worth_knowing" Text="Three things worth knowing"
+                           Style="{ThemeResource SubtitleTextBlockStyle}" />
+                <TextBlock x:Uid="ctrl_shift_a_brings_astrid_forward" TextWrapping="Wrap"
+                           Text="Ctrl+Shift+A brings Astrid forward from anywhere, ready for a new task." />
+                <TextBlock x:Uid="ctrl_k_finds_a_list_a" TextWrapping="Wrap"
+                           Text="Ctrl+K finds a list, a task or a command." />
+                <TextBlock x:Uid="lists_every_keyboard_shortcut_they_work" TextWrapping="Wrap"
+                           Text="? lists every keyboard shortcut. They work without a modifier: n for a new task, x to finish one." />
+                <Button x:Uid="got_it" Content="Got it"
+                        HorizontalAlignment="Right"
+                        AutomationProperties.Name="Got it"
+                        Click="OnDismissTour"
+                        Style="{ThemeResource AccentButtonStyle}" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

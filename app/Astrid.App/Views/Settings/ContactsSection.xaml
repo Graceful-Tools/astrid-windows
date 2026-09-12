@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Astrid.App.Views.Settings.ContactsSection"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:bindings="using:Astrid.Core.Bindings"
+    xmlns:local="using:Astrid.App"
+    xmlns:views="using:Astrid.App.Views"
+    xmlns:settings="using:Astrid.App.Views.Settings"
+    xmlns:viewmodels="using:Astrid.App.ViewModels">
+
+    <StackPanel Spacing="10">
+        <TextBlock x:Name="ContactsDescription" TextWrapping="Wrap"
+                   Foreground="{ThemeResource AstridTextSecondary}" />
+        <TextBlock Foreground="{ThemeResource AstridTextMuted}"
+                   Visibility="{x:Bind Shell.Settings.HasContacts, Mode=OneWay, Converter={StaticResource Visible}}">
+            <Run Text="{x:Bind Shell.Settings.ContactsTotal, Mode=OneWay}" /><Run x:Name="ContactsCountSuffix" />
+        </TextBlock>
+        <TextBlock x:Name="ContactsEmpty"
+                   Foreground="{ThemeResource AstridTextMuted}"
+                   Visibility="{x:Bind Shell.Settings.ContactsAreEmpty, Mode=OneWay, Converter={StaticResource Visible}}" />
+        <ItemsControl ItemsSource="{x:Bind Shell.Settings.Contacts, Mode=OneWay}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="bindings:ContactSummary">
+                    <StackPanel Padding="0,3">
+                        <TextBlock Text="{x:Bind Label}" />
+                        <TextBlock Text="{x:Bind Email}" FontSize="11"
+                                   Foreground="{ThemeResource AstridTextMuted}" />
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Button x:Name="ClearContactsButton" Click="OnClearContacts"
+                Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                Visibility="{x:Bind Shell.Settings.HasContacts, Mode=OneWay, Converter={StaticResource Visible}}" />
+    </StackPanel>
+</UserControl>

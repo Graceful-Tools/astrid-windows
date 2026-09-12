@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Astrid.App.Views.CommandPaletteOverlay"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:bindings="using:Astrid.Core.Bindings"
+    xmlns:local="using:Astrid.App"
+    xmlns:views="using:Astrid.App.Views"
+    xmlns:settings="using:Astrid.App.Views.Settings"
+    xmlns:viewmodels="using:Astrid.App.ViewModels">
+
+    <!--
+        The command palette, over everything.
+
+        Ctrl+K, which is what every other app with one uses. It spans the columns rather than
+        sitting in one: it is not part of the layout, it is a thing that appears over it, and a
+        palette that pushed the list sideways would be a panel.
+
+        After the column definitions, not before them: a property element cannot follow a
+        content child, and the XAML compiler answers that with exit code 1 and no message.
+    -->
+    <Grid x:Name="PaletteLayer"
+          Background="{ThemeResource SmokeFillColorDefaultBrush}"
+          Visibility="{x:Bind Shell.IsPaletteOpen, Mode=OneWay, Converter={StaticResource Visible}}">
+        <Border Width="560"
+                MaxHeight="440"
+                Margin="0,80,0,0"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Center"
+                CornerRadius="12"
+                Padding="12"
+                Background="{ThemeResource AstridSurface}"
+                BorderThickness="1"
+                BorderBrush="{ThemeResource AstridBorder}">
+            <Grid RowSpacing="8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <!-- A magnifier beside the box, as astrid-web's palette wears one. -->
+                <Grid Grid.Row="0" ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Grid.Column="0" Glyph="&#xE721;" FontSize="15"
+                              Margin="4,0,0,0"
+                              Foreground="{ThemeResource AstridTextMuted}" />
+                    <TextBox x:Uid="palette_box" x:Name="PaletteBox"
+                             Grid.Column="1"
+                             PlaceholderText="Go to a list, open a task, run a command"
+                             AutomationProperties.Name="Command palette"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             FontSize="15"
+                             Padding="4,6"
+                             TextChanged="OnPaletteChanged"
+                             KeyDown="OnPaletteKeyDown" />
+                </Grid>
+                <ListView x:Name="PaletteList"
+                          Grid.Row="1"
+                          SelectionMode="Single"
+                          IsItemClickEnabled="True"
+                          ItemClick="OnPaletteRowChosen"
+                          ItemsSource="{x:Bind Shell.PaletteRows, Mode=OneWay}">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="bindings:PaletteRow">
+                            <Grid ColumnSpacing="12" Padding="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{x:Bind Title}"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{ThemeResource AstridTextPrimary}" />
+                                <TextBlock Grid.Column="1" Text="{x:Bind Trailing}"
+                                           FontSize="11"
+                                           Foreground="{ThemeResource AstridTextMuted}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Astrid.App.Views.Settings.AgentsSection"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:bindings="using:Astrid.Core.Bindings"
+    xmlns:local="using:Astrid.App"
+    xmlns:views="using:Astrid.App.Views"
+    xmlns:settings="using:Astrid.App.Views.Settings"
+    xmlns:viewmodels="using:Astrid.App.ViewModels">
+
+    <StackPanel Spacing="10">
+        <!--
+            "api" is Astrid running them and needs nothing
+            set up; "polling" and "webhook" are the
+            account's own agent and need a key, which is why
+            the two are drawn together.
+        -->
+        <ItemsControl ItemsSource="{x:Bind Shell.Settings.Agents, Mode=OneWay}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="bindings:AgentSummary">
+                    <Grid ColumnSpacing="8" Padding="0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{x:Bind Name}"
+                                   VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1"
+                                  AutomationProperties.Name="{x:Bind Name}"
+                                  Tag="{x:Bind Id}"
+                                  SelectedItem="{x:Bind Mode}"
+                                  SelectionChanged="OnAgentModeChosen">
+                            <x:String>api</x:String>
+                            <x:String>polling</x:String>
+                            <x:String>webhook</x:String>
+                            <x:String>off</x:String>
+                        </ComboBox>
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <ItemsControl ItemsSource="{x:Bind Shell.Settings.Credentials, Mode=OneWay}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="bindings:AgentCredential">
+                    <Grid ColumnSpacing="8" Padding="0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{x:Bind Name}"
+                                   VerticalAlignment="Center" />
+                        <!--
+                            Empty even when a key is stored:
+                            the server answers with which
+                            services are set up and never
+                            with the key, so there is
+                            nothing to put in it.
+                        -->
+                        <PasswordBox x:Uid="paste_a_key_then_enter" Grid.Column="1"
+                                     PlaceholderText="Paste a key, then Enter"
+                                     AutomationProperties.Name="{x:Bind Name}"
+                                     Tag="{x:Bind ServiceId}"
+                                     KeyDown="OnCredentialKeyDown" />
+                        <TextBlock Grid.Column="2"
+                                   Text="{x:Bind Configured, Converter={StaticResource CredentialState}}"
+                                   VerticalAlignment="Center"
+                                   FontSize="11"
+                                   Foreground="{ThemeResource AstridTextMuted}" />
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!--
+            The webhook: where an account's own agent is
+            told about work. Beside the modes, because
+            "webhook" is one of them and a mode with nowhere
+            to deliver to does nothing.
+        -->
+        <TextBlock x:Uid="webhook" Text="Webhook" Style="{StaticResource DetailSection}" />
+        <TextBox x:Uid="webhook_url_box" x:Name="WebhookUrlBox"
+                 AutomationProperties.Name="Webhook URL"
+                 PlaceholderText="https://your-server.com/webhook"
+                 Text="{x:Bind Shell.Settings.WebhookUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button x:Uid="save" Content="Save" Click="OnSaveWebhook" />
+            <Button x:Uid="new_secret" Content="New secret" Click="OnRegenerateWebhookSecret" />
+            <Button x:Uid="send_a_test" Content="Send a test" Click="OnTestWebhook"
+                    IsEnabled="{x:Bind Shell.Settings.Webhook.Configured, Mode=OneWay}" />
+            <Button x:Uid="remove" Content="Remove" Click="OnDeleteWebhook"
+                    IsEnabled="{x:Bind Shell.Settings.Webhook.Configured, Mode=OneWay}" />
+        </StackPanel>
+        <!--
+            The secret signs every delivery and the server
+            shows it once. It is on screen until this panel
+            closes and is never written down here.
+        -->
+        <InfoBar x:Uid="copy_this_now" IsOpen="{x:Bind Shell.Settings.HasNewWebhookSecret, Mode=OneWay}"
+                 Severity="Warning"
+                 IsClosable="False"
+                 Title="Copy this now"
+                 Message="{x:Bind Shell.Settings.NewWebhookSecret, Mode=OneWay}" />
+        <TextBlock Text="{x:Bind Shell.Settings.WebhookTestResult, Mode=OneWay}"
+                   FontSize="11"
+                   Foreground="{ThemeResource AstridTextMuted}" />
+
+        <TextBlock x:Uid="your_own_agents" Text="Your own agents" Style="{StaticResource DetailSection}" />
+        <ItemsControl ItemsSource="{x:Bind Shell.Settings.CustomAgents, Mode=OneWay}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="bindings:CustomAgent">
+                    <Grid ColumnSpacing="8" Padding="0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{x:Bind Name}"
+                                   VerticalAlignment="Center" />
+                        <Button x:Uid="remove" Grid.Column="1" Content="Remove"
+                                Tag="{x:Bind Id}"
+                                Click="OnDeleteCustomAgent" />
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBox x:Uid="new_agent_name_box" x:Name="NewAgentNameBox"
+                     AutomationProperties.Name="New agent name"
+                     PlaceholderText="a name, lowercase"
+                     Width="180" />
+            <Button x:Uid="register" Content="Register" Click="OnRegisterCustomAgent" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

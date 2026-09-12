@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Astrid.App.Views.Settings.SettingsFlyout"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:bindings="using:Astrid.Core.Bindings"
+    xmlns:local="using:Astrid.App"
+    xmlns:views="using:Astrid.App.Views"
+    xmlns:settings="using:Astrid.App.Views.Settings"
+    xmlns:viewmodels="using:Astrid.App.ViewModels">
+
+    <!--
+        Settings, as astrid-web lays them out: a rail of categories and one page of controls at a time.
+
+        It used to be one column with every control in the app stacked in it - reminders, agents,
+        the webhook, Google, appearance, export - which meant finding the theme picker was a scroll
+        past a webhook secret. The web splits the same controls into pages behind a hub
+        (components/Settings/SettingsHub.tsx) for the same reason, and the sections here are its
+        pages — each a control of its own, shown one at a time by the code-behind.
+    -->
+
+    <Grid Width="720" Height="540">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="248" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Grid Grid.Column="0"
+              Padding="4,0,12,0"
+              BorderThickness="0,0,1,0"
+              BorderBrush="{ThemeResource AstridBorder}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0" Spacing="2" Margin="8,4,8,12">
+                <TextBlock Text="{x:Bind Shell.Settings.DisplayName, Mode=OneWay}"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{ThemeResource AstridTextPrimary}" />
+                <TextBlock Text="{x:Bind Shell.Settings.Email, Mode=OneWay}"
+                           FontSize="11"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{ThemeResource AstridTextMuted}" />
+                <!--
+                    The three numbers, from the server: they are about
+                    the whole account across every device, so a client
+                    counting its own cache would answer with whatever it
+                    happens to hold.
+                -->
+                <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,6,0,0">
+                    <TextBlock Text="{x:Bind Shell.Settings.Stats, Mode=OneWay, Converter={StaticResource StatFinished}}"
+                               FontSize="11"
+                               Foreground="{ThemeResource AstridTextMuted}" />
+                    <TextBlock Text="{x:Bind Shell.Settings.Stats, Mode=OneWay, Converter={StaticResource StatInspired}}"
+                               FontSize="11"
+                               Foreground="{ThemeResource AstridTextMuted}" />
+                    <TextBlock Text="{x:Bind Shell.Settings.Stats, Mode=OneWay, Converter={StaticResource StatSupported}}"
+                               FontSize="11"
+                               Foreground="{ThemeResource AstridTextMuted}" />
+                </StackPanel>
+            </StackPanel>
+
+            <ListView x:Uid="settings_sections" Grid.Row="1"
+                      x:Name="SettingsSections"
+                      AutomationProperties.Name="Settings sections"
+                      SelectionMode="Single"
+                      ItemContainerStyle="{StaticResource SidebarRowStyle}"
+                      SelectionChanged="OnSettingsSectionChosen">
+                <ListViewItem x:Uid="account" Tag="Account" AutomationProperties.Name="Account">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="&#xE77B;"
+                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                   FontSize="15" Width="20"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource AstridTextMuted}" />
+                        <TextBlock x:Uid="account_2" Text="Account" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem x:Uid="reminders" Tag="Reminders" AutomationProperties.Name="Reminders">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="&#xEA8F;"
+                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                   FontSize="15" Width="20"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource AstridTextMuted}" />
+                        <TextBlock x:Uid="reminders_2" Text="Reminders" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem x:Uid="tasks" Tag="Tasks" AutomationProperties.Name="Tasks">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="&#xE73A;"
+                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                   FontSize="15" Width="20"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource AstridTextMuted}" />
+                        <TextBlock x:Uid="tasks_nav_label" x:Name="TasksNavLabel" Text="Tasks" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem x:Uid="appearance" Tag="Appearance" AutomationProperties.Name="Appearance">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="&#xE790;"
+                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                   FontSize="15" Width="20"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource AstridTextMuted}" />
+                        <TextBlock x:Uid="appearance_2" Text="Appearance" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem x:Uid="ai_agents" Tag="Agents" AutomationProperties.Name="AI agents">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="&#xE99A;"
+                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                   FontSize="15" Width="20"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource AstridTextMuted}" />
+                        <TextBlock x:Uid="ai_agents_2" Text="AI agents" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem x:Uid="api_access" Tag="ApiAccess" AutomationProperties.Name="API access">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="&#xE192;"
+                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                   FontSize="15" Width="20"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource AstridTextMuted}" />
+                        <TextBlock x:Uid="api_access_2" Text="API access" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem x:Uid="integrations" Tag="Integrations" AutomationProperties.Name="Integrations">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="&#xE704;"
+                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                   FontSize="15" Width="20"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource AstridTextMuted}" />
+                        <TextBlock x:Uid="integrations_2" Text="Integrations" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem x:Uid="your_data" Tag="Data" AutomationProperties.Name="Your data">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="&#xE8B7;"
+                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                   FontSize="15" Width="20"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource AstridTextMuted}" />
+                        <TextBlock x:Uid="your_data_2" Text="Your data" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ListViewItem>
+                <!--
+                    The web's last four settings pages (task 438494c7).
+                    Contacts is a page; Help, Privacy and Terms open the
+                    web's own pages in the browser, so there is one copy
+                    of each — and the Store's checklist has its privacy
+                    policy reachable from inside the app.
+                -->
+                <ListViewItem x:Uid="contacts" Tag="Contacts" AutomationProperties.Name="Contacts">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="&#xE716;"
+                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                   FontSize="15" Width="20"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource AstridTextMuted}" />
+                        <TextBlock x:Uid="contacts_nav_label" x:Name="ContactsNavLabel" Text="Contacts" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem x:Uid="help_and_support" Tag="Help" AutomationProperties.Name="Help and support">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="&#xE897;"
+                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                   FontSize="15" Width="20"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource AstridTextMuted}" />
+                        <TextBlock x:Uid="help_nav_label" x:Name="HelpNavLabel" Text="Help &amp; Support" VerticalAlignment="Center" />
+                        <FontIcon Glyph="&#xE8A7;" FontSize="11" VerticalAlignment="Center"
+                                  Foreground="{ThemeResource AstridTextMuted}" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem x:Uid="privacy_policy" Tag="Privacy" AutomationProperties.Name="Privacy policy">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="&#xE72E;"
+                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                   FontSize="15" Width="20"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource AstridTextMuted}" />
+                        <TextBlock x:Uid="privacy_nav_label" x:Name="PrivacyNavLabel" Text="Privacy Policy" VerticalAlignment="Center" />
+                        <FontIcon Glyph="&#xE8A7;" FontSize="11" VerticalAlignment="Center"
+                                  Foreground="{ThemeResource AstridTextMuted}" />
+                    </StackPanel>
+                </ListViewItem>
+                <ListViewItem x:Uid="terms_of_service" Tag="Terms" AutomationProperties.Name="Terms of service">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="&#xE8A5;"
+                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                   FontSize="15" Width="20"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource AstridTextMuted}" />
+                        <TextBlock x:Uid="terms_nav_label" x:Name="TermsNavLabel" Text="Terms of Service" VerticalAlignment="Center" />
+                        <FontIcon Glyph="&#xE8A7;" FontSize="11" VerticalAlignment="Center"
+                                  Foreground="{ThemeResource AstridTextMuted}" />
+                    </StackPanel>
+                </ListViewItem>
+            </ListView>
+        </Grid>
+
+        <ScrollViewer Grid.Column="1" Padding="20,0,4,0">
+            <StackPanel Spacing="10">
+                <TextBlock x:Uid="settings_section_title" x:Name="SettingsSectionTitle"
+                           Text="Account"
+                           FontSize="18"
+                           FontWeight="SemiBold"
+                           Margin="0,2,0,6"
+                           Foreground="{ThemeResource AstridTextPrimary}" />
+
+                <settings:AccountSection x:Name="AccountSection" />
+                <settings:TasksSection x:Name="TasksSection" Visibility="Collapsed" />
+                <settings:ContactsSection x:Name="ContactsSection" Visibility="Collapsed" />
+                <settings:RemindersSection x:Name="RemindersSection" Visibility="Collapsed" />
+                <settings:AppearanceSection x:Name="AppearanceSection" Visibility="Collapsed" />
+                <settings:AgentsSection x:Name="AgentsSection" Visibility="Collapsed" />
+                <settings:ApiAccessSection x:Name="ApiAccessSection" Visibility="Collapsed" />
+                <settings:IntegrationsSection x:Name="IntegrationsSection" Visibility="Collapsed" />
+                <settings:DataSection x:Name="DataSection" Visibility="Collapsed" />
+
+                <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                           TextWrapping="Wrap"
+                           Text="{x:Bind Shell.Settings.ErrorMessage, Mode=OneWay}"
+                           Visibility="{x:Bind Shell.Settings.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

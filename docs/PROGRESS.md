@@ -45,7 +45,7 @@ accessibility tree by `npm run predeploy:full`.
 | Due-date quick picks | `astrid_core::rows::due_picks` → shell | done |
 | Virtual lists (Today, Not in a List, I've Assigned) | `astrid_core::filters` → shell | done |
 | Background sync and live updates | `astrid_core::app::background` | done — and since 2026-09-11 a pass that changes the cache tells the shell, and a journalled write goes out at once rather than on the next tick |
-| Localisation (`.resw`) | `app/Astrid.App/Strings/` | done — English; a language is a folder. Every literal in `ShellPage.xaml` carries an `x:Uid` with a resource behind it, and `LocalisationTests` keeps it so |
+| Localisation (`.resw`) | `app/Astrid.App/Strings/` | done — English; a language is a folder. Every literal in the window's XAML (`ShellPage.xaml` and `Views/`) carries an `x:Uid` with a resource behind it, and `LocalisationTests` keeps it so |
 | UI smoke tests | `app/Astrid.App.UITests/` | done — five, in `npm run predeploy:full` |
 | Assignee picker | `astrid_core::rows::assignee` → shell | done |
 | Repeat editor | `astrid_core::rows::repeat` → shell | done |
@@ -147,10 +147,11 @@ The core already reads `manualSortOrder`; the write needs a versioned route.
 
 **Still open — architecture**
 
-- `ShellPage.xaml` (3.6k lines) and `ShellPage.xaml.cs` (2.9k) are one control; the settings
-  flyout is nine sections toggled by visibility. `SettingsViewModel` (1.3k) is nine screens;
-  `TaskDetailViewModel` (1.7k) fuses fields, comments, attachments and timer. Split along seams
-  that already exist.
+- `SettingsViewModel` (1.3k) is nine screens; `TaskDetailViewModel` (1.7k) fuses fields,
+  comments, attachments and timer. Split along seams that already exist. (`ShellPage` itself was
+  split on 2026-09-12: the window is now the UserControls under `app/Astrid.App/Views/`, one per
+  part and one per settings page, each bound to the one `ShellViewModel` the page hands it; the
+  shared converters and styles are `Views/ShellResources.xaml`, merged from `App.xaml`.)
 - The detail pane's editors each keep their own flag; routing them through
   `astrid_core::editing` is the remaining half of `PRODUCT_CONTRACT.md` §6.
 - No drift test on response shapes (`Models.cs` against the Rust `Response`s).

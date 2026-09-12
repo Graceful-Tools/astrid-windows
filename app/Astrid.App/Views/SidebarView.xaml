@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Astrid.App.Views.SidebarView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:bindings="using:Astrid.Core.Bindings"
+    xmlns:local="using:Astrid.App"
+    xmlns:views="using:Astrid.App.Views"
+    xmlns:settings="using:Astrid.App.Views.Settings"
+    xmlns:viewmodels="using:Astrid.App.ViewModels">
+
+    <UserControl.Resources>
+        <DataTemplate x:Key="SidebarRowTemplate" x:DataType="bindings:ListSummary">
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Width="20" Height="20" CornerRadius="10"
+                        VerticalAlignment="Center"
+                        Background="{x:Bind DisplayColor, Converter={StaticResource PriorityBrush}}" />
+                <TextBlock Grid.Column="1"
+                           Text="{x:Bind Name}"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{ThemeResource AstridTextSecondary}" />
+                <!-- How many are behind it. The web puts this on every row and it is the one
+                     number that makes a sidebar worth reading. -->
+                <Border Grid.Column="2"
+                        CornerRadius="4"
+                        Padding="6,1"
+                        VerticalAlignment="Center"
+                        Background="{ThemeResource AstridSurfaceHover}"
+                        Visibility="{x:Bind TaskCount, Converter={StaticResource CountVisible}}">
+                    <TextBlock Text="{x:Bind TaskCount}"
+                               FontSize="11"
+                               Foreground="{ThemeResource AstridTextPrimary}" />
+                </Border>
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <!--
+        The sidebar: favourites, then everything else.
+
+        Collapsed while signed out rather than merely covered. An overlay hides it from the
+        eye and leaves it in the tab order and in the accessibility tree, so a keyboard or
+        screen-reader user can reach the previous session's lists from behind the sign-in
+        screen.
+    -->
+    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}"
+          Visibility="{x:Bind Shell.SignIn.IsSignedIn, Mode=OneWay, Converter={StaticResource Visible}}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!--
+            The wordmark, at astrid-web's own weight and size: 18px semibold, tight
+            tracking, beside a 28px mark.
+        -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8"
+                    Margin="12,12,12,4" VerticalAlignment="Center">
+            <Border Width="28" Height="28" CornerRadius="4"
+                    Background="{ThemeResource AstridAccentBrush}">
+                <TextBlock Text="&#xE930;"
+                           FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                           FontSize="15"
+                           Foreground="White"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <TextBlock x:Uid="astrid" Text="Astrid"
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"
+                       Foreground="{ThemeResource AstridTextPrimary}" />
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1">
+            <StackPanel Margin="12,8,12,8" Spacing="4">
+                <!--
+                    The sidebar's own selection, from astrid-web: a blue tint behind blue
+                    text, not Windows' accent bar and heavy focus box. Declared here rather
+                    than on each of the three lists — resources resolve up the tree, and the
+                    task rows set their own, so the two do not borrow each other's.
+                -->
+                <StackPanel.Resources>
+                    <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#3B82F6" Opacity="0.15" />
+                    <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#3B82F6" Opacity="0.22" />
+                    <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="#3B82F6" Opacity="0.22" />
+                    <SolidColorBrush x:Key="ListViewItemForegroundSelected" Color="#1D4ED8" />
+                    <SolidColorBrush x:Key="ListViewItemSelectionIndicatorBrush" Color="Transparent" />
+                    <StaticResource x:Key="ListViewItemBackgroundPointerOver" ResourceKey="AstridSurfaceHover" />
+                </StackPanel.Resources>
+                <!--
+                    Every entry in here is the same row: a mark, a name, and the number of
+                    tasks behind it. astrid-web draws them from one component and so does
+                    this — three collections, one template, because three copies of a row
+                    is how they drift.
+
+                    My Tasks first. It is the view the app opens on rather than one of the
+                    lists, which is why it is its own collection.
+                -->
+                <ListView x:Name="MyTasksList"
+                          ItemsSource="{x:Bind Shell.Sidebar.MyTasks, Mode=OneWay}"
+                          SelectionChanged="OnListSelected"
+                          ItemContainerStyle="{StaticResource SidebarRowStyle}"
+                          ItemTemplate="{StaticResource SidebarRowTemplate}"
+                          SelectionMode="Single" />
+
+                <TextBlock x:Uid="favourites" Text="Favourites"
+                           Margin="8,12,8,2"
+                           FontSize="11"
+                           FontWeight="Medium"
+                           Opacity="0.5"
+                           Foreground="{ThemeResource AstridTextPrimary}"
+                           Visibility="{x:Bind Shell.Sidebar.Favorites.Count, Mode=OneWay, Converter={StaticResource Visible}}" />
+                <ListView x:Name="FavoritesList"
+                          ItemsSource="{x:Bind Shell.Sidebar.Favorites, Mode=OneWay}"
+                          SelectionChanged="OnListSelected"
+                          ItemContainerStyle="{StaticResource SidebarRowStyle}"
+                          ItemTemplate="{StaticResource SidebarRowTemplate}"
+                          SelectionMode="Single" />
+
+                <TextBlock x:Uid="lists" Text="Lists"
+                           Margin="8,12,8,2"
+                           FontSize="11"
+                           FontWeight="Medium"
+                           Opacity="0.5"
+                           Foreground="{ThemeResource AstridTextPrimary}" />
+                <ListView x:Name="ListsList"
+                          ItemsSource="{x:Bind Shell.Sidebar.Lists, Mode=OneWay}"
+                          SelectionChanged="OnListSelected"
+                          ItemContainerStyle="{StaticResource SidebarRowStyle}"
+                          ItemTemplate="{StaticResource SidebarRowTemplate}"
+                          SelectionMode="Single" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- The same shape as quick add, because it is the same gesture one column over. -->
+        <Grid Grid.Row="2" Margin="12" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox x:Uid="new_list_box" x:Name="NewListBox"
+                     Grid.Column="0"
+                     PlaceholderText="New list"
+                     Background="{ThemeResource AstridSurface}"
+                     BorderThickness="1"
+                     BorderBrush="{ThemeResource AstridBorder}"
+                     CornerRadius="8"
+                     Padding="10,6"
+                     KeyDown="OnNewListKeyDown" />
+            <Button x:Uid="new_list" Grid.Column="1"
+                    Width="32" Height="32"
+                    Padding="0"
+                    CornerRadius="8"
+                    AutomationProperties.Name="Add"
+                    ToolTipService.ToolTip="New list"
+                    Click="OnAddList">
+                <FontIcon FontSize="14" Glyph="&#xE710;" />
+            </Button>
+        </Grid>
+    </Grid>
+</UserControl>

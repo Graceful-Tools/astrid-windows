@@ -54,6 +54,17 @@ public sealed class LocalisationTests
         return Path.Combine(directory.FullName, "Astrid.App");
     }
 
+    /// <summary>
+    /// Every XAML file the window's content is made of: the page, and the UserControls and the
+    /// shared resource dictionary under <c>Views/</c>. A resource applies to every element
+    /// carrying its uid whichever file that element is in, so the rules below hold across all of
+    /// them at once. The frame (<c>MainWindow.xaml</c>) carries only the product name.
+    /// </summary>
+    private static IEnumerable<string> WindowXaml(string app) =>
+        Directory.EnumerateFiles(Path.Combine(app, "Views"), "*.xaml", SearchOption.AllDirectories)
+            .Prepend(Path.Combine(app, "ShellPage.xaml"))
+            .OrderBy(path => path, StringComparer.Ordinal);
+
     private static IEnumerable<(string Tag, IReadOnlyDictionary<string, string> Attributes)> Elements(string xaml)
     {
         var stripped = Comment.Replace(xaml, string.Empty);
@@ -88,12 +99,11 @@ public sealed class LocalisationTests
     public void Every_literal_in_the_window_can_be_translated()
     {
         var app = AppDirectory();
-        var xaml = File.ReadAllText(Path.Combine(app, "ShellPage.xaml"));
         var resources = ResourceNames(app);
         var untranslatable = new List<string>();
         var unbacked = new List<string>();
 
-        foreach (var (tag, attributes) in Elements(xaml))
+        foreach (var (tag, attributes) in WindowXaml(app).SelectMany(path => Elements(File.ReadAllText(path))))
         {
             var literals = Properties.Where(p => attributes.TryGetValue(p, out var v) && IsLiteral(v)).ToList();
             if (literals.Count == 0)
@@ -138,11 +148,10 @@ public sealed class LocalisationTests
     public void Every_uid_resource_has_an_element_to_apply_to()
     {
         var app = AppDirectory();
-        var xaml = File.ReadAllText(Path.Combine(app, "ShellPage.xaml"));
         var resources = ResourceNames(app);
         var wanted = new HashSet<string>(StringComparer.Ordinal);
         var unsettable = new List<string>();
-        foreach (var (tag, attributes) in Elements(xaml))
+        foreach (var (tag, attributes) in WindowXaml(app).SelectMany(path => Elements(File.ReadAllText(path))))
         {
             if (!attributes.TryGetValue("x:Uid", out var uid))
             {

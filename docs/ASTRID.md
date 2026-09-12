@@ -116,7 +116,7 @@ this client, then mirror into astrid-ios. Deploy web before shipping a client th
 | Services | `crates/astrid-core/src/services/` | the canonical control points |
 | Sync + real time | `crates/astrid-core/src/{sync,realtime}/` | a 60s pull that asks only for what moved since the last pass (with the server's tombstones), SSE on top, and every pass that changes the cache announces it to the shell |
 | Contracts | `crates/astrid-core/src/{repeating,permissions,filters,parse,keyboard,rows}/` | pure, fixture-locked |
-| Shell | `app/Astrid.App/` | no business logic |
+| Shell | `app/Astrid.App/` | no business logic; `ShellPage` arranges the parts under `Views/`, one UserControl per part of the window and per settings page |
 | Automation | `crates/xtask/`, `scripts/` | `cargo xtask <command>`, `npm run predeploy` |
 
 ---
