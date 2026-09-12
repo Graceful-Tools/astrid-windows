@@ -35,6 +35,8 @@ public partial class App : Application
     public App(AppActivationArguments? launchActivation = null)
     {
         _launchActivation = launchActivation;
+        // Before the first XAML, so the first word asked for is already in the right language.
+        PrepareResources();
         InitializeComponent();
 
         // A WinUI app that throws during layout dies as exit code 0xC000027B with nothing on
@@ -211,6 +213,82 @@ public partial class App : Application
     /// while two of them have it open.
     /// </remarks>
     private static string CachePath() => Path.Combine(DataDirectory(), "astrid.db");
+
+    /// <summary>
+    /// The resources beside the executable: every word <see cref="Strings.Get(string)"/> answers.
+    /// </summary>
+    /// <remarks>
+    /// Null when there is no <c>.pri</c> there, in which case the XAML literals and the table in
+    /// <c>Strings.cs</c> answer, in English.
+    /// </remarks>
+    internal static Microsoft.Windows.ApplicationModel.Resources.ResourceManager? ResourceStore { get; private set; }
+
+    /// <summary>
+    /// The language <see cref="Strings.Get(string)"/> answers in when the environment chose one;
+    /// null for the machine's own.
+    /// </summary>
+    internal static Microsoft.Windows.ApplicationModel.Resources.ResourceContext? ChosenLanguage { get; private set; }
+
+    /// <summary>
+    /// Open the resources, and take the language the environment names if it names one.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The app takes its language from Windows, the way every Windows app does; nobody sets it
+    /// here. <c>ASTRID_LANGUAGE</c> exists for the UI smoke tests, which drive the app's words in
+    /// a second language to prove that a language is a folder (task b9dd4a25) without changing
+    /// the display language of whoever is running them.
+    /// </para>
+    /// <para>
+    /// It reaches what a process can reach. The .NET culture is what the quick-add box sends the
+    /// core, so "morgen" is read by the German keyword table; the resource context is what
+    /// <c>Strings.Get</c> looks words up with, so the answer comes back "Morgen". It does not
+    /// reach the <c>x:Uid</c> literals: WinUI resolves those with a context of its own whose
+    /// language it takes from <c>ApplicationLanguages.Languages</c>
+    /// (<c>dxaml/xcp/components/mrt/ModernResourceProvider.cpp</c>,
+    /// <c>UpdateLanguageAndLayoutDirectionQualifiers</c>), and without package identity that
+    /// list is the user's and <c>PrimaryLanguageOverride</c> throws. So in the unpackaged build
+    /// the chrome follows Windows, whatever this says — which for a person is exactly right.
+    /// </para>
+    /// </remarks>
+    private static void PrepareResources()
+    {
+        try
+        {
+            ResourceStore = new Microsoft.Windows.ApplicationModel.Resources.ResourceManager();
+        }
+        catch (Exception)
+        {
+            // No resource file beside the executable. English, from the literals and the table.
+            ResourceStore = null;
+        }
+
+        var chosen = Environment.GetEnvironmentVariable("ASTRID_LANGUAGE");
+        if (string.IsNullOrWhiteSpace(chosen))
+        {
+            return;
+        }
+        try
+        {
+            var culture = new System.Globalization.CultureInfo(chosen);
+            System.Globalization.CultureInfo.DefaultThreadCurrentCulture = culture;
+            System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = culture;
+            System.Globalization.CultureInfo.CurrentCulture = culture;
+            System.Globalization.CultureInfo.CurrentUICulture = culture;
+            if (ResourceStore is not null)
+            {
+                var context = ResourceStore.CreateResourceContext();
+                context.QualifierValues[Microsoft.Windows.ApplicationModel.Resources.KnownResourceQualifierName.Language] = chosen;
+                ChosenLanguage = context;
+            }
+        }
+        catch (Exception error)
+        {
+            // Logged rather than fatal: an app in the wrong language is still an app.
+            Log($"the language override '{chosen}' was not applied: {error}");
+            ChosenLanguage = null;
+        }
+    }
 
     /// <summary>
     /// Where the cache and the credential live.

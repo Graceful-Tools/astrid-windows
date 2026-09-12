@@ -43,7 +43,13 @@ public sealed class AstridApp : IDisposable
     public string CrashLogPath => Path.Combine(DataDirectory, "crash.log");
 
     /// <summary>Launch the app with an empty cache, signed in or signed out.</summary>
-    public static AstridApp Launch(bool signedIn)
+    /// <param name="signedIn">Whether a session is written first.</param>
+    /// <param name="language">
+    /// A BCP-47 tag for the app's words, or null for the machine's own. Set through the app's
+    /// <c>ASTRID_LANGUAGE</c> hook, so the machine's display language is left alone (task
+    /// b9dd4a25). The x:Uid chrome follows Windows regardless — see <c>App.PrepareResources</c>.
+    /// </param>
+    public static AstridApp Launch(bool signedIn, string? language = null)
     {
         var directory = Path.Combine(
             Path.GetTempPath(), "astrid-uitests", Guid.NewGuid().ToString("n"));
@@ -55,6 +61,10 @@ public sealed class AstridApp : IDisposable
 
         var start = new ProcessStartInfo(ExecutablePath()) { UseShellExecute = false };
         start.Environment["ASTRID_DATA_DIR"] = directory;
+        if (language is not null)
+        {
+            start.Environment["ASTRID_LANGUAGE"] = language;
+        }
         var process = Process.Start(start)
             ?? throw new InvalidOperationException("the app did not start");
 

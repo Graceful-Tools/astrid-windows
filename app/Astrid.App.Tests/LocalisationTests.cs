@@ -133,6 +133,66 @@ public sealed class LocalisationTests
     }
 
     /// <summary>
+    /// A language is a folder (task b9dd4a25): every folder beside <c>en-US</c> carries every key
+    /// <c>en-US</c> has, and nothing else.
+    /// </summary>
+    /// <remarks>
+    /// A key a translator missed falls back to English on a page that is otherwise German, which
+    /// nobody notices until a screenshot; a key <c>en-US</c> no longer has is a translation nobody
+    /// sees. Placeholders survive too — a <c>{0}</c> lost in translation throws at the moment the
+    /// string is formatted. And the two the task singled out: the unassigned mark is one letter,
+    /// and every ordinal still has its number.
+    /// </remarks>
+    [Fact]
+    public void Every_language_carries_every_key_task_b9dd4a25()
+    {
+        var app = AppDirectory();
+        var strings = Path.Combine(app, "Strings");
+        var english = Words(Path.Combine(strings, "en-US"));
+        var folders = Directory.EnumerateDirectories(strings)
+            .Where(folder => !Path.GetFileName(folder).Equals("en-US", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(folder => folder, StringComparer.Ordinal)
+            .ToList();
+        Assert.NotEmpty(folders);
+
+        foreach (var folder in folders)
+        {
+            var tag = Path.GetFileName(folder);
+            var words = Words(folder);
+
+            var missing = english.Keys.Except(words.Keys).OrderBy(key => key, StringComparer.Ordinal).ToList();
+            Assert.True(missing.Count == 0, $"{tag} is missing:\n  " + string.Join("\n  ", missing));
+            var extra = words.Keys.Except(english.Keys).OrderBy(key => key, StringComparer.Ordinal).ToList();
+            Assert.True(extra.Count == 0, $"{tag} has keys en-US does not:\n  " + string.Join("\n  ", extra));
+
+            var empty = words.Where(word => string.IsNullOrWhiteSpace(word.Value) && !string.IsNullOrWhiteSpace(english[word.Key]))
+                .Select(word => word.Key).ToList();
+            Assert.True(empty.Count == 0, $"{tag} leaves these empty:\n  " + string.Join("\n  ", empty));
+
+            var lostPlaceholders = english
+                .SelectMany(word => new[] { "{0}", "{1}", "{2}" }
+                    .Where(placeholder => word.Value.Contains(placeholder, StringComparison.Ordinal)
+                                          && !words[word.Key].Contains(placeholder, StringComparison.Ordinal))
+                    .Select(placeholder => $"{word.Key} lost {placeholder}"))
+                .ToList();
+            Assert.True(lostPlaceholders.Count == 0, $"{tag}:\n  " + string.Join("\n  ", lostPlaceholders));
+
+            Assert.Equal(1, new System.Globalization.StringInfo(words["tasks_unassigned_mark"]).LengthInTextElements);
+            foreach (var ordinal in new[] { "ordinal_st", "ordinal_nd", "ordinal_rd", "ordinal_th" })
+            {
+                Assert.Contains("{0}", words[ordinal]);
+            }
+        }
+    }
+
+    private static Dictionary<string, string> Words(string folder) =>
+        XDocument.Load(Path.Combine(folder, "Resources.resw")).Root!.Elements("data")
+            .ToDictionary(
+                data => data.Attribute("name")!.Value,
+                data => data.Element("value")!.Value,
+                StringComparer.Ordinal);
+
+    /// <summary>
     /// The other direction: a resource with nothing to apply to is a translator's wasted hour,
     /// and an <c>x:Uid</c> naming a property the element does not have throws when the page loads.
     /// </summary>

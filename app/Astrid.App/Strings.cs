@@ -29,6 +29,12 @@ internal static class Strings
 {
     private static readonly ResourceMap? Map = Load();
 
+    /// <summary>
+    /// The context every lookup uses when the app chose a language; null means the map's own
+    /// default, which is the machine's.
+    /// </summary>
+    private static readonly ResourceContext? Context = App.ChosenLanguage;
+
     /// <summary>The word for a key, in the reader's language when there is one.</summary>
     internal static string Get(string key)
     {
@@ -39,7 +45,9 @@ internal static class Strings
                 // A resource name cannot contain a dot, and a slash makes a scope — which would
                 // make filter.button both a value and the parent of filter.button.active, and the
                 // resource compiler refuses that. So the keys are stored flat, with underscores.
-                var candidate = Map.TryGetValue(key.Replace('.', '_'))?.ValueAsString;
+                var name = key.Replace('.', '_');
+                var candidate = (Context is null ? Map.TryGetValue(name) : Map.TryGetValue(name, Context))
+                    ?.ValueAsString;
                 if (!string.IsNullOrEmpty(candidate))
                 {
                     return candidate;
@@ -61,7 +69,10 @@ internal static class Strings
     {
         try
         {
-            return new ResourceManager().MainResourceMap.TryGetSubtree("Resources");
+            // The app's manager; a fresh one only when this is asked before the app has opened
+            // its resources.
+            var manager = App.ResourceStore ?? new ResourceManager();
+            return manager.MainResourceMap.TryGetSubtree("Resources");
         }
         catch (Exception)
         {

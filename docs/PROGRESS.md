@@ -45,8 +45,8 @@ accessibility tree by `npm run predeploy:full`.
 | Due-date quick picks | `astrid_core::rows::due_picks` → shell | done |
 | Virtual lists (Today, Not in a List, I've Assigned) | `astrid_core::filters` → shell | done |
 | Background sync and live updates | `astrid_core::app::background` | done — and since 2026-09-11 a pass that changes the cache tells the shell, and a journalled write goes out at once rather than on the next tick |
-| Localisation (`.resw`) | `app/Astrid.App/Strings/` | done — English; a language is a folder. Every literal in the window's XAML (`ShellPage.xaml` and `Views/`) carries an `x:Uid` with a resource behind it, and `LocalisationTests` keeps it so |
-| UI smoke tests | `app/Astrid.App.UITests/` | done — five, in `npm run predeploy:full` |
+| Localisation (`.resw`) | `app/Astrid.App/Strings/` | done — English and German (`de-DE`, task b9dd4a25); a language is a folder, and German proved it. Every literal in the window's XAML (`ShellPage.xaml` and `Views/`) carries an `x:Uid` with a resource behind it, `LocalisationTests` keeps it so, and holds every folder to the English key set |
+| UI smoke tests | `app/Astrid.App.UITests/` | done — eight, in `npm run predeploy:full`; one drives the app's words in German |
 | Assignee picker | `astrid_core::rows::assignee` → shell | done |
 | Repeat editor | `astrid_core::rows::repeat` → shell | done |
 | Search | `astrid_core::services::search` → shell | done |
@@ -132,6 +132,16 @@ against the web, from a read of the source rather than of the docs, with what ha
   nothing, as on the web.
 - **Drag a row onto a sidebar list** to move it there, or add it with Shift (task 27cae198), as
   the web's sidebar does.
+- **A second language** (task b9dd4a25): `Strings/de-DE/Resources.resw`, every English key in
+  German, wording from the web's `de.json`; `tasks_unassigned_mark` N, the ordinals `{0}.`. The
+  app takes its language from Windows. `ASTRID_LANGUAGE` is the smoke tests' hook, and one of
+  them adds a task in German — the folder read from the built `.pri`, the core's German keyword
+  table and the German answer in one row. What the hook cannot reach is the `x:Uid` chrome: in
+  an unpackaged build WinUI resolves those in the user's Windows language, full stop (its
+  `ModernResourceProvider` overwrites the context's language from `ApplicationLanguages`, and
+  `PrimaryLanguageOverride` needs package identity). `LocalisationTests` holds every folder to
+  the English key set, so a German Windows gets a German window. The packaged manifest declares
+  `de-DE`.
 - **Full-screen task detail** (task 1927c2e7): the side pane expands to fill the window and
   back, PRODUCT_CONTRACT §3's escape hatch for a long description — off by default, ended with
   the task, and never offered on a board card. The same pane in a third place, laid across the
@@ -177,11 +187,12 @@ The core already reads `manualSortOrder`; the write needs a versioned route.
   settings page, under `app/Astrid.App.ViewModels/Settings/`, sharing a `SettingsSession` for
   the account answer and the flyout's one error line.)
 - No drift test on response shapes (`Models.cs` against the Rust `Response`s).
-- English only. The mechanism is complete — a language is a folder — but no second folder.
+- Two languages. German proved the mechanism (task b9dd4a25); the web's other ten are folders
+  nobody has written, and the wording to write them from is in `astrid-web/lib/i18n/locales/`.
 
 **Still open — features the web has**
 
-Twelve languages — and the two blocked on
+Ten more languages (the web's; English and German are here) — and the two blocked on
 the web above.
 
 Not gaps, because the web has none either: multi-select, undo, calendar view, dependencies.

@@ -168,6 +168,46 @@ public sealed class ShellSmokeTests
     }
 
     /// <summary>
+    /// The app's words in a second language, end to end (task b9dd4a25).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Three things meet in the last row: the German folder beside en-US, read from the built
+    /// <c>.pri</c>; the core's German keyword table, chosen from the UI culture the quick-add
+    /// box sends, which reads "morgen"; and the German word for the key the core answers with.
+    /// Launched with the language hook the tests have, so nobody's Windows display language
+    /// changes.
+    /// </para>
+    /// <para>
+    /// The controls keep their English names here: in an unpackaged build WinUI resolves the
+    /// x:Uid literals in the user's Windows language and a process cannot say otherwise (see
+    /// <c>App.PrepareResources</c>). That every x:Uid has a German resource is
+    /// <c>LocalisationTests</c>' job; this proves the folder is built in and reached.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void The_apps_words_come_in_German_end_to_end_task_b9dd4a25()
+    {
+        using var app = AstridApp.Launch(signedIn: true, language: "de-DE");
+
+        app.Type("New list", "Einkauf");
+        app.Invoke("Add");
+        Assert.True(
+            app.Sees("Einkauf"),
+            $"the new list never appeared; saw: {string.Join(", ", app.Names())}");
+
+        app.Type("Add a task", "Milch kaufen morgen");
+        InvokeSecondAdd(app);
+        Assert.True(
+            app.Sees("Milch kaufen"),
+            $"the new task never appeared; saw: {string.Join(", ", app.Names())}");
+        Assert.True(
+            app.Sees("Morgen"),
+            $"\"morgen\" was not read as a date, or not answered in German; saw: {string.Join(", ", app.Names())}");
+        Assert.False(File.Exists(app.CrashLogPath), Crash(app));
+    }
+
+    /// <summary>
     /// Opening a task shows the panes and the pickers behind them.
     /// </summary>
     /// <remarks>
