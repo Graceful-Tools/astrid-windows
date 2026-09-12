@@ -90,6 +90,12 @@ public static class Commands
     /// </remarks>
     public static object Agents() => new KindOnly("agents");
 
+    /// <summary>The agents that could power @astrid, and which one does (task 810e1876).</summary>
+    public static object AstridModel() => new KindOnly("astridModel");
+
+    /// <summary>Choose the agent that powers @astrid; null leaves the server to pick.</summary>
+    public static object SetAstridModel(string? agentId) => new AgentIdRequest("setAstridModel", agentId);
+
     /// <summary>What is on the clipboard, and which of it was meant to be attached.</summary>
     /// <remarks>
     /// Reading the clipboard is the shell's job; deciding what it means is not — files beat a
@@ -869,7 +875,7 @@ public static class Commands
 
     private sealed record AgentIdRequest(
         [property: JsonPropertyName("kind")] string Kind,
-        [property: JsonPropertyName("agentId")] string AgentId);
+        [property: JsonPropertyName("agentId")] string? AgentId);
 
     /// <summary>A calendar day, as <c>YYYY-MM-DD</c>.</summary>
     private sealed record DayRequest(

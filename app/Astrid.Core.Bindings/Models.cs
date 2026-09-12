@@ -1454,3 +1454,27 @@ public sealed record PublicListOwner
 
     [JsonPropertyName("email")] public string? Email { get; init; }
 }
+
+/// <summary>The agents that could power @astrid, and which one does (task 810e1876).</summary>
+public sealed record AstridModelChoices
+{
+    [JsonPropertyName("options")] public IReadOnlyList<AstridModelOption> Options { get; init; } = [];
+
+    /// <summary>The chosen agent's id; null leaves the server to pick.</summary>
+    [JsonPropertyName("selected")] public string? Selected { get; init; }
+}
+
+/// <summary>One agent that could power @astrid.</summary>
+public sealed record AstridModelOption
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
+
+    [JsonPropertyName("service")] public string Service { get; init; } = string.Empty;
+
+    /// <summary>The service as the web labels it, for the "Powered by" line.</summary>
+    [JsonPropertyName("serviceLabel")] public string ServiceLabel { get; init; } = string.Empty;
+
+    [JsonPropertyName("isSelected")] public bool IsSelected { get; init; }
+}

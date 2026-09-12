@@ -55,6 +55,75 @@ public sealed class AgentSettingsViewModelTests
         Assert.Equal("off", view.Agents[0].Mode);
     }
 
+    /// <summary>
+    /// The model behind @astrid (task 810e1876): the options and the choice come from the core;
+    /// choosing sends the agent's id, choosing "let Astrid choose" sends none, and the page
+    /// redraws from what the core answers.
+    /// </summary>
+    [Fact]
+    public async Task The_model_behind_astrid_is_listed_chosen_and_cleared_task_810e1876()
+    {
+        var core = new FakeCore()
+            .AnswerOk("astridModel", new
+            {
+                options = new[]
+                {
+                    new { id = "claude-agent", name = "Claude", service = "claude", serviceLabel = "claude", isSelected = true },
+                    new { id = "own", name = "Mine", service = "openclaw", serviceLabel = "Custom Agent", isSelected = false },
+                },
+                selected = "claude-agent",
+            })
+            .AnswerOk("setAstridModel", new
+            {
+                options = new[]
+                {
+                    new { id = "claude-agent", name = "Claude", service = "claude", serviceLabel = "claude", isSelected = false },
+                    new { id = "own", name = "Mine", service = "openclaw", serviceLabel = "Custom Agent", isSelected = true },
+                },
+                selected = "own",
+            })
+            .AnswerOk("setAstridModel", new
+            {
+                options = new[]
+                {
+                    new { id = "claude-agent", name = "Claude", service = "claude", serviceLabel = "claude", isSelected = false },
+                },
+                selected = (string?)null,
+            });
+        var view = new SettingsViewModel(core).Agents;
+        Assert.False(view.NoAstridModels, "not asked yet is not none");
+
+        await view.LoadAstridModelAsync();
+        Assert.Equal(2, view.AstridModels.Count);
+        Assert.True(view.HasAstridModels);
+        Assert.Equal("claude-agent", view.SelectedAstridModelId);
+        Assert.False(view.LetsAstridChoose);
+        Assert.Equal("Custom Agent", view.AstridModels[1].ServiceLabel);
+
+        Assert.True(await view.ChooseAstridModelAsync("own"));
+        Assert.Contains(core.Sent, json => json.Contains("\"kind\":\"setAstridModel\"") && json.Contains("\"agentId\":\"own\""));
+        Assert.Equal("own", view.SelectedAstridModelId);
+        Assert.True(view.AstridModels[1].IsSelected);
+
+        Assert.True(await view.ChooseAstridModelAsync(null));
+        Assert.Null(view.SelectedAstridModelId);
+        Assert.True(view.LetsAstridChoose);
+        Assert.Single(view.AstridModels);
+    }
+
+    /// <summary>With nothing that could power it, the page says what to do rather than showing an empty list.</summary>
+    [Fact]
+    public async Task With_no_agent_to_choose_the_page_says_so_task_810e1876()
+    {
+        var core = new FakeCore().AnswerOk("astridModel", new { options = Array.Empty<object>(), selected = (string?)null });
+        var view = new SettingsViewModel(core).Agents;
+
+        await view.LoadAstridModelAsync();
+
+        Assert.True(view.NoAstridModels);
+        Assert.False(view.HasAstridModels);
+    }
+
     /// <summary>A blank box is not a key.</summary>
     [Fact]
     public async Task An_empty_key_is_not_sent()

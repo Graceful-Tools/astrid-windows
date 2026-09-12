@@ -92,6 +92,7 @@ public sealed partial class SettingsFlyout : UserControl
             var others = Task.WhenAll(
                 Shell.Settings.Account.LoadPasskeysAsync(),
                 Shell.Settings.Agents.LoadAgentsAsync(),
+                Shell.Settings.Agents.LoadAstridModelAsync(),
                 Shell.Settings.Integrations.LoadGoogleSyncModeAsync(),
                 Shell.Settings.Agents.LoadWebhookAsync());
             await Shell.LoadSettingsAsync();

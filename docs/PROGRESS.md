@@ -132,6 +132,10 @@ against the web, from a read of the source rather than of the docs, with what ha
   nothing, as on the web.
 - **Drag a row onto a sidebar list** to move it there, or add it with Shift (task 27cae198), as
   the web's sidebar does.
+- **The model behind `@astrid`** (task 810e1876): the AI agents page opens with the web's
+  selector — the agents the server can run, minus Astrid itself, and which one answers `@astrid`
+  for My Tasks and private lists — read from and written to the account's AI preferences
+  (`defaultAgentId`), so the choice made here is the one the web shows.
 - **Copy to my list, and the public-list browser** (task f6bc59e8): a task in a public list the
   reader may not edit draws the web's copy control in place of the checkbox, on its row and in its
   header, and its text is not for editing; a globe beside *New list* browses `/api/v1/public/lists`
@@ -169,8 +173,7 @@ The core already reads `manualSortOrder`; the write needs a versioned route.
 
 **Still open — features the web has**
 
-The `@astrid` model
-selector; calendar feed settings; full-screen detail; twelve languages — and the two blocked on
+Calendar feed settings; full-screen detail; twelve languages — and the two blocked on
 the web above.
 
 Not gaps, because the web has none either: multi-select, undo, calendar view, dependencies.

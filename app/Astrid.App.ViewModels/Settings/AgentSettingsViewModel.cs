@@ -31,6 +31,77 @@ public sealed class AgentSettingsViewModel : ObservableObject
     /// <summary>Which services have a key stored. Never the keys.</summary>
     public ObservableCollection<AgentCredential> Credentials { get; } = [];
 
+    // ── The model behind @astrid (task 810e1876) ─────────────────────────────────────────────
+    //
+    // The web's selector picks the account's default agent — the one that answers @astrid for
+    // My Tasks and private lists — from the agents the server can run. The rows and the choice
+    // are the core's answer; this only shows them and sends a choice back.
+
+    private string? _selectedAstridModelId;
+    private bool _astridModelsLoaded;
+
+    /// <summary>The agents that could power @astrid, minus Astrid itself.</summary>
+    public ObservableCollection<AstridModelOption> AstridModels { get; } = [];
+
+    /// <summary>The chosen agent's id; null leaves the server to pick.</summary>
+    public string? SelectedAstridModelId
+    {
+        get => _selectedAstridModelId;
+        private set
+        {
+            if (Set(ref _selectedAstridModelId, value))
+            {
+                Raise(nameof(LetsAstridChoose));
+            }
+        }
+    }
+
+    public bool LetsAstridChoose => SelectedAstridModelId is null;
+
+    public bool HasAstridModels => AstridModels.Count > 0;
+
+    /// <summary>Asked, answered, and none: the "add a key or an agent" line.</summary>
+    public bool NoAstridModels => _astridModelsLoaded && AstridModels.Count == 0;
+
+    /// <summary>Load the selector. A failure leaves it empty rather than turning the page into an error.</summary>
+    public async Task LoadAstridModelAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _session.Core.CallAsync(Commands.AstridModel(), cancellationToken);
+        if (response.Ok)
+        {
+            ApplyAstridModel(response.Read<AstridModelChoices>());
+        }
+    }
+
+    /// <summary>Choose the agent that powers @astrid, or none.</summary>
+    public async Task<bool> ChooseAstridModelAsync(string? agentId, CancellationToken cancellationToken = default)
+    {
+        var response = await _session.Core.CallAsync(Commands.SetAstridModel(agentId), cancellationToken);
+        if (!response.Ok)
+        {
+            _session.ErrorMessage = response.IsStillPending
+                ? "Choosing a model needs a connection."
+                : response.Error?.Message;
+            return false;
+        }
+        _session.ErrorMessage = null;
+        ApplyAstridModel(response.Read<AstridModelChoices>());
+        return true;
+    }
+
+    private void ApplyAstridModel(AstridModelChoices? choices)
+    {
+        AstridModels.Clear();
+        foreach (var option in choices?.Options ?? [])
+        {
+            AstridModels.Add(option);
+        }
+        SelectedAstridModelId = choices?.Selected;
+        _astridModelsLoaded = true;
+        Raise(nameof(HasAstridModels));
+        Raise(nameof(NoAstridModels));
+    }
+
     /// <summary>Load the Agent Hub.</summary>
     /// <remarks>
     /// Separately from the account, because a deployment can be without agents entirely and a

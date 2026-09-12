@@ -43,6 +43,24 @@ public sealed partial class AgentsSection : UserControl
         InitializeComponent();
     }
 
+    /// <summary>
+    /// A model was picked for @astrid (task 810e1876). The auto row carries no id, which is the
+    /// web's cleared state. Only on a click: the radios are also set from what was loaded.
+    /// </summary>
+    private async void OnAstridModelChosen(object sender, RoutedEventArgs args)
+    {
+        if (SettingsLoading)
+        {
+            return;
+        }
+        var agentId = (sender as FrameworkElement)?.Tag as string;
+        if (agentId == Shell.Settings.Agents.SelectedAstridModelId)
+        {
+            return;
+        }
+        await Shell.Settings.Agents.ChooseAstridModelAsync(agentId);
+    }
+
     private async void OnSaveWebhook(object sender, RoutedEventArgs args)
     {
         await Shell.Settings.Agents.SaveWebhookAsync();

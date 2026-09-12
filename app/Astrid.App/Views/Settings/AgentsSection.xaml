@@ -11,6 +11,51 @@
 
     <StackPanel Spacing="10">
         <!--
+            The model behind @astrid (task 810e1876), as the web's Agent Hub opens with it: the
+            agents the server can run, minus Astrid itself, and which of them answers @astrid for
+            My Tasks and private lists. "Let Astrid choose" is the web's cleared state.
+        -->
+        <TextBlock x:Uid="astrid_model_heading" Text="The model behind @astrid"
+                   Style="{StaticResource DetailSection}"
+                   Margin="0,0,0,4" />
+        <TextBlock x:Uid="astrid_model_none" Text="Add an API key or register a custom agent below to power Astrid."
+                   FontSize="12"
+                   TextWrapping="Wrap"
+                   Foreground="{ThemeResource AstridTextMuted}"
+                   Visibility="{x:Bind Shell.Settings.Agents.NoAstridModels, Mode=OneWay, Converter={StaticResource Visible}}" />
+        <StackPanel Spacing="2"
+                    Visibility="{x:Bind Shell.Settings.Agents.HasAstridModels, Mode=OneWay, Converter={StaticResource Visible}}">
+            <RadioButton x:Uid="astrid_model_auto" Content="Let Astrid choose"
+                         GroupName="AstridModel"
+                         AutomationProperties.Name="Let Astrid choose"
+                         IsChecked="{x:Bind Shell.Settings.Agents.LetsAstridChoose, Mode=OneWay}"
+                         Click="OnAstridModelChosen" />
+            <ItemsControl ItemsSource="{x:Bind Shell.Settings.Agents.AstridModels, Mode=OneWay}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="bindings:AstridModelOption">
+                        <RadioButton GroupName="AstridModel"
+                                     Tag="{x:Bind Id}"
+                                     IsChecked="{x:Bind IsSelected}"
+                                     AutomationProperties.Name="{x:Bind Name}"
+                                     Click="OnAstridModelChosen">
+                            <StackPanel>
+                                <TextBlock Text="{x:Bind Name}" />
+                                <TextBlock FontSize="11" Foreground="{ThemeResource AstridTextMuted}">
+                                    <Run x:Uid="powered_by" Text="Powered by " /><Run Text="{x:Bind ServiceLabel}" />
+                                </TextBlock>
+                            </StackPanel>
+                        </RadioButton>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+        <TextBlock x:Uid="astrid_model_hint" Text="Choose the model that powers Astrid for My Tasks and your private lists."
+                   FontSize="11"
+                   TextWrapping="Wrap"
+                   Foreground="{ThemeResource AstridTextMuted}" />
+
+        <TextBlock x:Uid="agent_modes" Text="Agents" Style="{StaticResource DetailSection}" />
+        <!--
             "api" is Astrid running them and needs nothing
             set up; "polling" and "webhook" are the
             account's own agent and need a key, which is why
