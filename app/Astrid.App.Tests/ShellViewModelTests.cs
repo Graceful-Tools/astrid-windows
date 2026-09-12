@@ -101,6 +101,27 @@ public sealed class ShellViewModelTests
         Assert.True(shell.IsTourOpen);
     }
 
+    // ── Copying a public list (task f6bc59e8) ─────────────────────────────────────────────────
+
+    /// <summary>Copying a public list reloads the sidebar and opens the copy.</summary>
+    [Fact]
+    public async Task Copying_a_public_list_opens_the_copy_task_f6bc59e8()
+    {
+        var core = StartedCore(("l1", "Home", false))
+            .AnswerOk("copyList", new { id = "l9", name = "Recipes" })
+            .AnswerOk("lists", Lists(("l1", "Home", false), ("l9", "Recipes", false)))
+            .AnswerOk("rowsForList", EmptyWindow());
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        Assert.True(await shell.CopyPublicListAsync("pub1"));
+
+        Assert.Equal("l9", shell.Tasks.ListId);
+        Assert.Equal("Recipes", shell.Tasks.ListName);
+        Assert.Contains(shell.Sidebar.Lists, list => list.Id == "l9");
+        Assert.Equal("l9", shell.Sidebar.Selected?.Id);
+    }
+
     // ── The open list's picture (task 3a913e52) ───────────────────────────────────────────────
 
     /// <summary>

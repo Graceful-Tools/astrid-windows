@@ -77,9 +77,30 @@
                             Width="32" Height="32"
                             VerticalAlignment="Top"
                             AutomationProperties.Name="Complete this task"
+                            Visibility="{x:Bind Shell.Detail.IsCopyOnly, Mode=OneWay, Converter={StaticResource NotVisible}}"
                             Click="OnDetailMarkClicked">
                         <Image Source="{x:Bind Shell.Detail.CheckboxAsset, Mode=OneWay}"
                                Width="32" Height="32" />
+                    </Button>
+                    <!--
+                        A task in a public list the reader cannot edit (task f6bc59e8): the web's
+                        header draws its copy control where the checkbox would be.
+                    -->
+                    <Button x:Uid="copy_this_task" Grid.Column="0"
+                            Background="Transparent" BorderThickness="0" Padding="0"
+                            Width="32" Height="32"
+                            VerticalAlignment="Top"
+                            AutomationProperties.Name="Copy this task"
+                            ToolTipService.ToolTip="Copy to my tasks"
+                            Visibility="{x:Bind Shell.Detail.IsCopyOnly, Mode=OneWay, Converter={StaticResource Visible}}"
+                            Click="OnDetailCopyClicked">
+                        <Border Width="24" Height="24" CornerRadius="6"
+                                BorderThickness="2"
+                                BorderBrush="{ThemeResource AstridTextMuted}">
+                            <FontIcon Glyph="&#xE8C8;" FontSize="11"
+                                      Foreground="{ThemeResource AstridTextSecondary}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
                     </Button>
                     <StackPanel Grid.Column="1" Spacing="2">
                         <TextBox x:Uid="detail_title_box" x:Name="DetailTitleBox"
@@ -92,6 +113,7 @@
                                  Padding="0,4"
                                  TextWrapping="Wrap"
                                  AcceptsReturn="False"
+                                 IsReadOnly="{x:Bind Shell.Detail.IsCopyOnly, Mode=OneWay}"
                                  Foreground="{ThemeResource AstridTextPrimary}"
                                  GotFocus="OnDetailTitleFocused"
                                  LostFocus="OnDetailTitleCommitted"
@@ -623,6 +645,7 @@
                          AutomationProperties.Name="Description"
                          PlaceholderText="Add a description..."
                          AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72"
+                         IsReadOnly="{x:Bind Shell.Detail.IsCopyOnly, Mode=OneWay}"
                          Background="{ThemeResource AstridSurfaceHover}"
                          BorderThickness="0"
                          CornerRadius="8"

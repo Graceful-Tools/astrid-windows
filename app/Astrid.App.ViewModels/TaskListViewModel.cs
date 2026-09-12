@@ -509,6 +509,22 @@ public sealed class TaskListViewModel : ObservableObject
         return true;
     }
 
+    /// <summary>
+    /// Copy a task to the reader's own tasks (task f6bc59e8): what the mark on a row in a public
+    /// list does, where the web draws its copy control in place of the checkbox.
+    /// </summary>
+    /// <remarks>
+    /// No target list, which is what the web's control sends: the copy lands with the person,
+    /// assigned to them, not in the public list it was copied from. Online-only — the server
+    /// makes the copy.
+    /// </remarks>
+    public async Task<bool> CopyAsync(string taskId, CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(
+            Commands.CopyTask(taskId, targetListId: null, includeComments: false), cancellationToken);
+        return Handle(response);
+    }
+
     /// <summary>Set a task's priority.</summary>
     public async Task<bool> SetPriorityAsync(string taskId, int priority,
         CancellationToken cancellationToken = default)

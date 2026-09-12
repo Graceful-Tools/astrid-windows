@@ -132,6 +132,10 @@ against the web, from a read of the source rather than of the docs, with what ha
   nothing, as on the web.
 - **Drag a row onto a sidebar list** to move it there, or add it with Shift (task 27cae198), as
   the web's sidebar does.
+- **Copy to my list, and the public-list browser** (task f6bc59e8): a task in a public list the
+  reader may not edit draws the web's copy control in place of the checkbox, on its row and in its
+  header, and its text is not for editing; a globe beside *New list* browses `/api/v1/public/lists`
+  and copies one into the account. The rule is the core's (`rows::copy_only`); CONTRACTS.md D15.
 - **A list's picture** (task 3a913e52): chosen from disk in the list settings, sent through the
   secure-upload route the web's picker uses, drawn beside the list's name. A secure file is
   fetched by the core into its cache; the sidebar keeps its colour discs (CONTRACTS.md D14).
@@ -165,7 +169,7 @@ The core already reads `manualSortOrder`; the write needs a versioned route.
 
 **Still open — features the web has**
 
-Copy-to-my-list and the public-list browser; the `@astrid` model
+The `@astrid` model
 selector; calendar feed settings; full-screen detail; twelve languages — and the two blocked on
 the web above.
 

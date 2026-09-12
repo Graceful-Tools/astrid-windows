@@ -40,6 +40,7 @@ public sealed class TaskDetailViewModel : ObservableObject
     private bool _hasReminder;
     private TimerState _timer = new();
     private bool _isCanceled;
+    private bool _isCopyOnly;
     private string? _link;
 
     public TaskDetailViewModel(IAstridCore core)
@@ -373,6 +374,28 @@ public sealed class TaskDetailViewModel : ObservableObject
     }
 
     public bool CanCopyLink => !string.IsNullOrEmpty(Link);
+
+    /// <summary>
+    /// A task in a public list the reader cannot edit (task f6bc59e8): the header offers a copy
+    /// where the checkbox would be, and the title and description are not for editing.
+    /// </summary>
+    public bool IsCopyOnly
+    {
+        get => _isCopyOnly;
+        private set => Set(ref _isCopyOnly, value);
+    }
+
+    /// <summary>Copy the open task to the reader's own tasks. See <c>TaskListViewModel.CopyAsync</c>.</summary>
+    public async Task<bool> CopyToMineAsync(CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(
+            Commands.CopyTask(TaskId, targetListId: null, includeComments: false), cancellationToken);
+        return Handle(response);
+    }
 
     /// <summary>The columns the Status submenu offers, filled when the menu opens.</summary>
     public ObservableCollection<StatusChoice> StatusChoices { get; } = [];
@@ -1540,6 +1563,8 @@ public sealed class TaskDetailViewModel : ObservableObject
 
         IsCanceled = value.TryGetProperty("isCanceled", out var canceled)
                      && canceled.ValueKind == JsonValueKind.True;
+        IsCopyOnly = value.TryGetProperty("isCopyOnly", out var copyOnly)
+                     && copyOnly.ValueKind == JsonValueKind.True;
         Link = value.TryGetProperty("link", out var link) && link.ValueKind == JsonValueKind.String
             ? link.GetString()
             : null;

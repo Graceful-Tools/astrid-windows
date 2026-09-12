@@ -604,6 +604,12 @@ public static class Commands
     /// <summary>Where a list's picture can be drawn from: a local path or an address, or null for none.</summary>
     public static object ListImage(string listId) => new WithListId("listImage", listId);
 
+    /// <summary>The public lists anybody may browse and copy, most copied first (task f6bc59e8). Online-only.</summary>
+    public static object PublicLists() => new KindOnly("publicLists");
+
+    /// <summary>Copy a public list, with its tasks, into this account. The server makes the copy.</summary>
+    public static object CopyList(string listId) => new WithListId("copyList", listId);
+
     public static object SetListFavorite(string listId, bool favorite) =>
         new FavoriteRequest("setListFavorite", listId, favorite);
 

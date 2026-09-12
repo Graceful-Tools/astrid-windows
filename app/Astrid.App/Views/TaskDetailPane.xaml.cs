@@ -331,6 +331,10 @@ public sealed partial class TaskDetailPane : UserControl
         }
     }
 
+    /// <summary>The copy control in the header, on a task that can only be copied (task f6bc59e8).</summary>
+    private async void OnDetailCopyClicked(object sender, RoutedEventArgs args) =>
+        await Shell.Detail.CopyToMineAsync();
+
     /// <summary>The mark in the detail header, tapped. The row's handler, one task over.</summary>
     private async void OnDetailMarkClicked(object sender, RoutedEventArgs args) =>
         await Shell.Detail.SetCompletedAsync(!Shell.Detail.Completed);

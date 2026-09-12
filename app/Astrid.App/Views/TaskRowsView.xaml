@@ -168,7 +168,7 @@
                                 Padding="0"
                                 Width="32" Height="32"
                                 VerticalAlignment="Top"
-                                AutomationProperties.Name="{x:Bind CompleteActionName}"
+                                AutomationProperties.Name="{x:Bind LeadingActionName}"
                                 Tag="{x:Bind Id}"
                                 Click="OnRowMarkClicked">
                             <!--
@@ -180,6 +180,19 @@
                             <Grid Width="32" Height="32">
                                 <Image Source="{x:Bind CheckboxAsset}" Width="32" Height="32"
                                        Visibility="{x:Bind LeadingIsCheckbox, Converter={StaticResource Visible}}" />
+                                <!--
+                                    A fourth answer (task f6bc59e8): a task in a public list the
+                                    reader cannot edit can only be copied, so the mark is the
+                                    web's copy control and the tap copies it to their own tasks.
+                                -->
+                                <Border Width="24" Height="24" CornerRadius="6"
+                                        BorderThickness="2"
+                                        BorderBrush="{ThemeResource AstridTextMuted}"
+                                        Visibility="{x:Bind LeadingIsCopy, Converter={StaticResource Visible}}">
+                                    <FontIcon Glyph="&#xE8C8;" FontSize="11"
+                                              Foreground="{ThemeResource AstridTextSecondary}"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
                                 <Border Width="24" Height="24" CornerRadius="6"
                                         Background="{x:Bind Priority, Converter={StaticResource PriorityBrush}}"
                                         Visibility="{x:Bind LeadingIsSquare, Converter={StaticResource Visible}}">

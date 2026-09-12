@@ -153,7 +153,87 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
+            <!--
+                The public lists anybody may browse and copy (task f6bc59e8), behind a globe as
+                the web keeps them in its sidebar. The catalogue is the server's and is fetched
+                as the flyout opens; copying one puts it in this account and opens it.
+            -->
+            <Button x:Uid="public_lists_button" Grid.Column="2"
+                    Width="32" Height="32"
+                    Padding="0"
+                    CornerRadius="8"
+                    AutomationProperties.Name="Public lists"
+                    ToolTipService.ToolTip="Browse public lists">
+                <FontIcon FontSize="14" Glyph="&#xE774;" />
+                <Button.Flyout>
+                    <Flyout x:Name="PublicListsFlyout" Opening="OnPublicListsOpening" Placement="Right">
+                        <StackPanel Spacing="8" Width="360">
+                            <TextBlock x:Uid="public_lists_heading" Text="Public lists"
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                            <ProgressRing Width="20" Height="20" HorizontalAlignment="Left"
+                                          IsActive="{x:Bind Shell.PublicLists.IsLoading, Mode=OneWay}"
+                                          Visibility="{x:Bind Shell.PublicLists.IsLoading, Mode=OneWay, Converter={StaticResource Visible}}" />
+                            <TextBlock x:Uid="no_public_lists" Text="Nothing to browse yet."
+                                       Foreground="{ThemeResource AstridTextMuted}"
+                                       Visibility="{x:Bind Shell.PublicLists.IsEmpty, Mode=OneWay, Converter={StaticResource Visible}}" />
+                            <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                       TextWrapping="Wrap"
+                                       Text="{x:Bind Shell.PublicLists.ErrorMessage, Mode=OneWay}"
+                                       Visibility="{x:Bind Shell.PublicLists.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
+                            <ListView ItemsSource="{x:Bind Shell.PublicLists.Lists, Mode=OneWay}"
+                                      SelectionMode="None"
+                                      MaxHeight="420">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate x:DataType="bindings:PublicListSummary">
+                                        <Grid ColumnSpacing="8" Padding="0,6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Spacing="2">
+                                                <TextBlock Text="{x:Bind Name}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Foreground="{ThemeResource AstridTextPrimary}" />
+                                                <TextBlock Text="{x:Bind Description}"
+                                                           FontSize="11"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Foreground="{ThemeResource AstridTextMuted}"
+                                                           Visibility="{x:Bind Description, Converter={StaticResource Visible}}" />
+                                                <!-- Whose, and how much is in it: the numbers wear
+                                                     glyphs rather than words, so nothing here needs
+                                                     translating. -->
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="{x:Bind OwnerName}" FontSize="11"
+                                                               Foreground="{ThemeResource AstridTextMuted}" />
+                                                    <StackPanel Orientation="Horizontal" Spacing="3">
+                                                        <FontIcon Glyph="&#xE73A;" FontSize="10"
+                                                                  Foreground="{ThemeResource AstridTextMuted}" />
+                                                        <TextBlock Text="{x:Bind TaskCount}" FontSize="11"
+                                                                   Foreground="{ThemeResource AstridTextMuted}" />
+                                                    </StackPanel>
+                                                    <StackPanel Orientation="Horizontal" Spacing="3">
+                                                        <FontIcon Glyph="&#xE716;" FontSize="10"
+                                                                  Foreground="{ThemeResource AstridTextMuted}" />
+                                                        <TextBlock Text="{x:Bind MemberCount}" FontSize="11"
+                                                                   Foreground="{ThemeResource AstridTextMuted}" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </StackPanel>
+                                            <Button x:Uid="copy" Grid.Column="1" Content="Copy"
+                                                    VerticalAlignment="Center"
+                                                    Tag="{x:Bind Id}"
+                                                    AutomationProperties.Name="{x:Bind CopyActionName}"
+                                                    Click="OnCopyPublicList" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </StackPanel>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
             <TextBox x:Uid="new_list_box" x:Name="NewListBox"
                      Grid.Column="0"
                      PlaceholderText="New list"

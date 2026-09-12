@@ -60,6 +60,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Chat = new ChatViewModel(core);
         Settings = new SettingsViewModel(core);
         Notifications = new NotificationsViewModel(core);
+        PublicLists = new PublicListsViewModel(core);
         _core.Changed += OnChanged;
 
         // The task-detail layout decides what the leading control does on every row and in the
@@ -555,6 +556,25 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         {
             await Detail.ReloadAsync(cancellationToken);
         }
+        return true;
+    }
+
+    /// <summary>The public lists anybody may browse and copy (task f6bc59e8).</summary>
+    public PublicListsViewModel PublicLists { get; }
+
+    /// <summary>
+    /// Copy a public list into this account and open the copy (task f6bc59e8). The sidebar
+    /// reloads first so the new list is there to select.
+    /// </summary>
+    public async Task<bool> CopyPublicListAsync(string listId, CancellationToken cancellationToken = default)
+    {
+        var copied = await PublicLists.CopyAsync(listId, cancellationToken);
+        if (copied is null)
+        {
+            return false;
+        }
+        await Sidebar.LoadAsync(cancellationToken);
+        await OpenListAsync(copied.Id, copied.Name, cancellationToken);
         return true;
     }
 

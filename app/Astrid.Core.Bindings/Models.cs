@@ -63,13 +63,24 @@ public sealed record TaskRow
     public string CompleteActionName => $"Complete {Title}";
 
     /// <summary>
+    /// A task in a public list the reader cannot edit (task f6bc59e8): the mark copies it rather
+    /// than completing it, as the web's copy control does.
+    /// </summary>
+    public bool IsCopyOnly => Action == "copy";
+
+    /// <summary>What the mark does, for the accessibility tree: complete, or copy.</summary>
+    public string LeadingActionName => IsCopyOnly ? $"Copy {Title}" : CompleteActionName;
+
+    public bool LeadingIsCopy => Leading.Kind == "copy";
+
+    /// <summary>
     /// The three answers to "whose task is this?" (PRODUCT_CONTRACT.md §4): yours is the
     /// checkbox; somebody else's is their mark in a priority-coloured square; nobody's is the
     /// unassigned mark in the same square. The core decides; these only say which to draw.
     /// </summary>
     public bool LeadingIsCheckbox => Leading.Kind == "checkbox";
 
-    public bool LeadingIsSquare => Leading.Kind != "checkbox";
+    public bool LeadingIsSquare => Leading.Kind is not "checkbox" and not "copy";
 
     /// <summary>What goes in the square for somebody else's task: the first letter of their name.</summary>
     public string AssigneeInitial
@@ -1407,4 +1418,39 @@ public sealed record ListImage
     [JsonPropertyName("source")] public string Source { get; init; } = string.Empty;
 
     [JsonPropertyName("isLocal")] public bool IsLocal { get; init; }
+}
+
+/// <summary>One of the public lists anybody may browse and copy (task f6bc59e8).</summary>
+public sealed record PublicListSummary
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
+
+    [JsonPropertyName("description")] public string? Description { get; init; }
+
+    [JsonPropertyName("color")] public string? Color { get; init; }
+
+    [JsonPropertyName("imageUrl")] public string? ImageUrl { get; init; }
+
+    [JsonPropertyName("owner")] public PublicListOwner? Owner { get; init; }
+
+    [JsonPropertyName("taskCount")] public int TaskCount { get; init; }
+
+    [JsonPropertyName("memberCount")] public int MemberCount { get; init; }
+
+    /// <summary>Whose it is, by name or, failing that, address.</summary>
+    public string OwnerName => Owner?.Name is { Length: > 0 } name ? name : Owner?.Email ?? string.Empty;
+
+    public string CopyActionName => $"Copy {Name}";
+}
+
+/// <summary>Who a public list belongs to.</summary>
+public sealed record PublicListOwner
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")] public string? Name { get; init; }
+
+    [JsonPropertyName("email")] public string? Email { get; init; }
 }

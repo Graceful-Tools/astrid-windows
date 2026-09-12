@@ -136,6 +136,12 @@ public sealed partial class TaskRowsView : UserControl
             return;
         }
         var row = Shell.Tasks.Rows.FirstOrDefault(candidate => candidate.Id == taskId);
+        if (row is { IsCopyOnly: true })
+        {
+            // The core drew a copy control, so the tap copies (task f6bc59e8).
+            await Shell.Tasks.CopyAsync(taskId);
+            return;
+        }
         await Shell.Tasks.SetCompletedAsync(taskId, completed: row is null || !row.Completed);
     }
 

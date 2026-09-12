@@ -1507,4 +1507,22 @@
   <data name="remove_list_image.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Remove list image</value>
   </data>
+  <data name="public_lists_button.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Public lists</value>
+  </data>
+  <data name="public_lists_button.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Browse public lists</value>
+  </data>
+  <data name="public_lists_heading.Text" xml:space="preserve">
+    <value>Public lists</value>
+  </data>
+  <data name="no_public_lists.Text" xml:space="preserve">
+    <value>Nothing to browse yet.</value>
+  </data>
+  <data name="copy_this_task.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Copy this task</value>
+  </data>
+  <data name="copy_this_task.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Copy to my tasks</value>
+  </data>
 </root>

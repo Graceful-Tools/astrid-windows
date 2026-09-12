@@ -1244,6 +1244,34 @@ public sealed class TaskDetailViewModelTests
         Assert.Empty(decided.Files);
     }
 
+    /// <summary>
+    /// A task the reader can only copy says so, and its header's control copies it rather than
+    /// completing it (task f6bc59e8).
+    /// </summary>
+    [Fact]
+    public async Task A_copy_only_task_is_copied_from_its_header_task_f6bc59e8()
+    {
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", new
+            {
+                task = new { id = "t1", title = "Bake bread", description = "", priority = 0, completed = false },
+                isCopyOnly = true,
+                fieldOrder = Array.Empty<string>(),
+                listChips = Array.Empty<object>(),
+                comments = Array.Empty<object>(),
+                subtasks = Array.Empty<object>(),
+            })
+            .AnswerOk("copyTask", new { id = "t9", title = "Bake bread" });
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.True(view.IsCopyOnly);
+        Assert.True(await view.CopyToMineAsync());
+        var copy = Assert.Single(core.Sent, json => json.Contains("\"kind\":\"copyTask\""));
+        Assert.Contains("\"taskId\":\"t1\"", copy);
+        Assert.DoesNotContain("completeTask", core.SentKinds());
+    }
+
     // ── One editing session at a time (PRODUCT_CONTRACT.md §6, task e71ed760) ──────────────
     //
     // The machine is the core's, stepped by command; these script its answers and check that

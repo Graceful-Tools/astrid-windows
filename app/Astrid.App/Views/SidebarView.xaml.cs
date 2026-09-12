@@ -42,6 +42,26 @@ public sealed partial class SidebarView : UserControl
         Restyling.Reapply(ListsList);
     }
 
+    // ── Public lists (task f6bc59e8) ─────────────────────────────────────────────────────────
+
+    /// <summary>The catalogue is the server's, fetched as the flyout opens.</summary>
+    private async void OnPublicListsOpening(object sender, object args) =>
+        await Shell.PublicLists.LoadAsync();
+
+    /// <summary>Copy one into this account; the shell opens the copy, so the flyout can go.</summary>
+    private async void OnCopyPublicList(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is not string listId)
+        {
+            return;
+        }
+        if (await Shell.CopyPublicListAsync(listId))
+        {
+            PublicListsFlyout.Hide();
+            SyncSelectionFromViewModel();
+        }
+    }
+
     // ── A row dropped on a list (task 27cae198) ─────────────────────────────────────────────
     //
     // The web moves a task between lists by dragging its row onto a list in the sidebar, and

@@ -36,6 +36,51 @@ public sealed class TaskListViewModelTests
         }).ToArray(),
     };
 
+    /// <summary>
+    /// A task in a public list the reader cannot edit draws the copy control and copies on the
+    /// tap, rather than completing (task f6bc59e8). The core decided; the row only carries it.
+    /// </summary>
+    [Fact]
+    public async Task A_row_the_reader_can_only_copy_copies_rather_than_completes_task_f6bc59e8()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", new
+            {
+                total = 1,
+                offset = 0,
+                rows = new[]
+                {
+                    new
+                    {
+                        id = "t0", title = "Bake bread", completed = false, priority = 0,
+                        due = new { key = "none" }, isOverdue = false,
+                        leading = new { kind = "copy" }, action = "copy", depth = 0,
+                        isPending = false, isPrivate = false, isRepeating = false,
+                        hasDescription = false, commentCount = 0, attachmentCount = 0,
+                        subtaskCount = 0, listChips = Array.Empty<object>(),
+                        statusRole = (string?)null,
+                    },
+                },
+            })
+            .AnswerOk("copyTask", new { id = "t9", title = "Bake bread" });
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("pub", "Recipes");
+
+        var row = Assert.Single(view.Rows);
+        Assert.True(row.IsCopyOnly);
+        Assert.True(row.LeadingIsCopy);
+        Assert.False(row.LeadingIsSquare);
+        Assert.Equal("Copy Bake bread", row.LeadingActionName);
+
+        Assert.True(await view.CopyAsync("t0"));
+
+        var copy = Assert.Single(core.Sent, json => json.Contains("\"kind\":\"copyTask\""));
+        Assert.Contains("\"taskId\":\"t0\"", copy);
+        Assert.DoesNotContain("targetListId", copy);
+        Assert.Contains("\"includeComments\":false", copy);
+        Assert.DoesNotContain("completeTask", core.SentKinds());
+    }
+
     [Fact]
     public async Task Opening_a_list_shows_the_rows_the_core_returned()
     {
