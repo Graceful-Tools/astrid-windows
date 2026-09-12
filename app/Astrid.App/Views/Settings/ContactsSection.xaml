@@ -13,13 +13,13 @@
         <TextBlock x:Name="ContactsDescription" TextWrapping="Wrap"
                    Foreground="{ThemeResource AstridTextSecondary}" />
         <TextBlock Foreground="{ThemeResource AstridTextMuted}"
-                   Visibility="{x:Bind Shell.Settings.HasContacts, Mode=OneWay, Converter={StaticResource Visible}}">
-            <Run Text="{x:Bind Shell.Settings.ContactsTotal, Mode=OneWay}" /><Run x:Name="ContactsCountSuffix" />
+                   Visibility="{x:Bind Shell.Settings.Contacts.HasContacts, Mode=OneWay, Converter={StaticResource Visible}}">
+            <Run Text="{x:Bind Shell.Settings.Contacts.ContactsTotal, Mode=OneWay}" /><Run x:Name="ContactsCountSuffix" />
         </TextBlock>
         <TextBlock x:Name="ContactsEmpty"
                    Foreground="{ThemeResource AstridTextMuted}"
-                   Visibility="{x:Bind Shell.Settings.ContactsAreEmpty, Mode=OneWay, Converter={StaticResource Visible}}" />
-        <ItemsControl ItemsSource="{x:Bind Shell.Settings.Contacts, Mode=OneWay}">
+                   Visibility="{x:Bind Shell.Settings.Contacts.ContactsAreEmpty, Mode=OneWay, Converter={StaticResource Visible}}" />
+        <ItemsControl ItemsSource="{x:Bind Shell.Settings.Contacts.Contacts, Mode=OneWay}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="bindings:ContactSummary">
                     <StackPanel Padding="0,3">
@@ -32,6 +32,6 @@
         </ItemsControl>
         <Button x:Name="ClearContactsButton" Click="OnClearContacts"
                 Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                Visibility="{x:Bind Shell.Settings.HasContacts, Mode=OneWay, Converter={StaticResource Visible}}" />
+                Visibility="{x:Bind Shell.Settings.Contacts.HasContacts, Mode=OneWay, Converter={StaticResource Visible}}" />
     </StackPanel>
 </UserControl>

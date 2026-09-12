@@ -16,7 +16,7 @@ public sealed class HotkeyAndFeaturesTests
         var core = new FakeCore()
             .AnswerOk("hotkey", new { chord = "Ctrl+Shift+A", ctrl = true, shift = true, key = "A" })
             .AnswerOk("setHotkey", new { chord = "Ctrl+Alt+Q", ctrl = true, alt = true, key = "Q" });
-        var view = new SettingsViewModel(core);
+        var view = new SettingsViewModel(core).Appearance;
         Hotkey? announced = null;
         view.HotkeyChanged += chord => announced = chord;
 
@@ -38,14 +38,15 @@ public sealed class HotkeyAndFeaturesTests
         var core = new FakeCore()
             .AnswerOk("hotkey", new { chord = "Ctrl+Shift+A", ctrl = true, shift = true, key = "A" })
             .AnswerFailure("setHotkey", AstridFailureKind.BadRequest, "a global shortcut needs Ctrl, Alt or Win");
-        var view = new SettingsViewModel(core);
+        var settings = new SettingsViewModel(core);
+        var view = settings.Appearance;
         await view.LoadHotkeyAsync();
         var announced = false;
         view.HotkeyChanged += _ => announced = true;
 
         Assert.False(await view.SetHotkeyAsync("Shift+A"));
 
-        Assert.Equal("a global shortcut needs Ctrl, Alt or Win", view.ErrorMessage);
+        Assert.Equal("a global shortcut needs Ctrl, Alt or Win", settings.ErrorMessage);
         Assert.Equal("Ctrl+Shift+A", view.HotkeyChord);
         Assert.False(announced);
     }

@@ -80,15 +80,15 @@ public sealed partial class AccountSection : UserControl
         var file = await picker.PickSingleFileAsync();
         if (file is not null)
         {
-            await Shell.Settings.SetPhotoAsync(file.Path);
+            await Shell.Settings.Account.SetPhotoAsync(file.Path);
         }
     }
 
     private async void OnSaveName(object sender, RoutedEventArgs args) =>
-        await Shell.Settings.SaveNameAsync();
+        await Shell.Settings.Account.SaveNameAsync();
 
     private async void OnResendVerification(object sender, RoutedEventArgs args) =>
-        await Shell.Settings.ResendVerificationAsync();
+        await Shell.Settings.Account.ResendVerificationAsync();
 
     /// <summary>Registering a passkey is the browser's WebAuthn ceremony; the list here follows.</summary>
     private async void OnManagePasskeys(object sender, RoutedEventArgs args) =>
@@ -101,7 +101,7 @@ public sealed partial class AccountSection : UserControl
         {
             return;
         }
-        var current = Shell.Settings.Passkeys.FirstOrDefault(key => key.Id == id);
+        var current = Shell.Settings.Account.Passkeys.FirstOrDefault(key => key.Id == id);
         var box = new TextBox
         {
             Text = current?.Name ?? string.Empty,
@@ -116,7 +116,7 @@ public sealed partial class AccountSection : UserControl
             {
                 key.Handled = true;
                 flyout.Hide();
-                await Shell.Settings.RenamePasskeyAsync(id, box.Text);
+                await Shell.Settings.Account.RenamePasskeyAsync(id, box.Text);
             }
         };
         flyout.ShowAt(anchor);
@@ -151,7 +151,7 @@ public sealed partial class AccountSection : UserControl
         confirm.Click += async (_, _) =>
         {
             flyout.Hide();
-            await Shell.Settings.RevokePasskeyAsync(id);
+            await Shell.Settings.Account.RevokePasskeyAsync(id);
         };
         flyout.ShowAt(anchor);
     }
@@ -162,7 +162,7 @@ public sealed partial class AccountSection : UserControl
     /// </summary>
     private async void OnDeleteAccount(object sender, RoutedEventArgs args)
     {
-        if (await Shell.Settings.DeleteAccountAsync())
+        if (await Shell.Settings.Account.DeleteAccountAsync())
         {
             await Shell.SignOutAsync();
         }

@@ -55,25 +55,25 @@ public sealed partial class RemindersSection : UserControl
 
     private async void OnPushToggled(object sender, RoutedEventArgs args)
     {
-        if (!SettingsLoading && PushToggle.IsOn != Shell.Settings.PushEnabled)
+        if (!SettingsLoading && PushToggle.IsOn != Shell.Settings.Reminders.PushEnabled)
         {
-            await Shell.Settings.SetAsync("enablePushReminders", PushToggle.IsOn);
+            await Shell.Settings.Reminders.SetAsync("enablePushReminders", PushToggle.IsOn);
         }
     }
 
     private async void OnEmailToggled(object sender, RoutedEventArgs args)
     {
-        if (!SettingsLoading && EmailToggle.IsOn != Shell.Settings.EmailEnabled)
+        if (!SettingsLoading && EmailToggle.IsOn != Shell.Settings.Reminders.EmailEnabled)
         {
-            await Shell.Settings.SetAsync("enableEmailReminders", EmailToggle.IsOn);
+            await Shell.Settings.Reminders.SetAsync("enableEmailReminders", EmailToggle.IsOn);
         }
     }
 
     private async void OnDigestToggled(object sender, RoutedEventArgs args)
     {
-        if (!SettingsLoading && DigestToggle.IsOn != Shell.Settings.DigestEnabled)
+        if (!SettingsLoading && DigestToggle.IsOn != Shell.Settings.Reminders.DigestEnabled)
         {
-            await Shell.Settings.SetAsync("enableDailyDigest", DigestToggle.IsOn);
+            await Shell.Settings.Reminders.SetAsync("enableDailyDigest", DigestToggle.IsOn);
         }
     }
 
@@ -81,7 +81,7 @@ public sealed partial class RemindersSection : UserControl
     {
         if (!SettingsLoading && args.NewTime is { } time)
         {
-            await Shell.Settings.SetAsync("dailyDigestTime", Clock(time));
+            await Shell.Settings.Reminders.SetAsync("dailyDigestTime", Clock(time));
         }
     }
 
@@ -95,10 +95,10 @@ public sealed partial class RemindersSection : UserControl
         {
             // Both ends cleared: the server reads their absence as "no quiet hours", and a window
             // with only one end is something nothing can act on.
-            await Shell.Settings.SetQuietHoursAsync(null, null);
+            await Shell.Settings.Reminders.SetQuietHoursAsync(null, null);
             return;
         }
-        await Shell.Settings.SetQuietHoursAsync(
+        await Shell.Settings.Reminders.SetQuietHoursAsync(
             Clock(QuietStartBox.SelectedTime ?? new TimeSpan(22, 0, 0)),
             Clock(QuietEndBox.SelectedTime ?? new TimeSpan(8, 0, 0)));
     }
@@ -109,7 +109,7 @@ public sealed partial class RemindersSection : UserControl
         {
             return;
         }
-        await Shell.Settings.SetQuietHoursAsync(
+        await Shell.Settings.Reminders.SetQuietHoursAsync(
             Clock(QuietStartBox.SelectedTime ?? new TimeSpan(22, 0, 0)),
             Clock(QuietEndBox.SelectedTime ?? new TimeSpan(8, 0, 0)));
     }
@@ -120,7 +120,7 @@ public sealed partial class RemindersSection : UserControl
         {
             return;
         }
-        await Shell.Settings.SetAsync("defaultReminderTime", offset.Minutes);
+        await Shell.Settings.Reminders.SetAsync("defaultReminderTime", offset.Minutes);
     }
 
     /// <summary>An <c>HH:MM</c> string, which is what the server stores.</summary>
@@ -131,9 +131,9 @@ public sealed partial class RemindersSection : UserControl
 
     private int IndexOfOffset(int minutes)
     {
-        for (var index = 0; index < Shell.Settings.Offsets.Count; index++)
+        for (var index = 0; index < Shell.Settings.Reminders.Offsets.Count; index++)
         {
-            if (Shell.Settings.Offsets[index].Minutes == minutes)
+            if (Shell.Settings.Reminders.Offsets[index].Minutes == minutes)
             {
                 return index;
             }

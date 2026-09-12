@@ -127,13 +127,13 @@ public sealed partial class ShellPage : UserControl
         _reminders.Start();
         // The chord the person chose, or the shipped one. From the cache, like the theme; and
         // re-registered whenever it changes, from the thread that owns the registration.
-        await Shell.Settings.LoadHotkeyAsync();
-        RegisterHotkey(Shell.Settings.Hotkey);
-        Shell.Settings.HotkeyChanged += RegisterHotkey;
+        await Shell.Settings.Appearance.LoadHotkeyAsync();
+        RegisterHotkey(Shell.Settings.Appearance.Hotkey);
+        Shell.Settings.Appearance.HotkeyChanged += RegisterHotkey;
         // The look before the first paint, so the window does not flash the wrong one on the way
         // in. It comes from the cache, so this does not wait for a network.
-        Shell.Settings.ThemeChanged += ApplyTheme;
-        await Shell.Settings.LoadThemeAsync();
+        Shell.Settings.Appearance.ThemeChanged += ApplyTheme;
+        await Shell.Settings.Appearance.LoadThemeAsync();
         await Shell.StartAsync();
         await Shell.RaiseRemindersAsync();
         await Shell.MaybeShowTourAsync();
@@ -310,7 +310,7 @@ public sealed partial class ShellPage : UserControl
     /// </remarks>
     private void ApplyTheme()
     {
-        var settings = Shell.Settings;
+        var settings = Shell.Settings.Appearance;
         if (Content is not FrameworkElement root)
         {
             return;

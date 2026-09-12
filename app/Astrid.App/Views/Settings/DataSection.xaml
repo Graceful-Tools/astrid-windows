@@ -19,7 +19,7 @@
         <TextBlock FontSize="11"
                    TextWrapping="Wrap"
                    Foreground="{ThemeResource AstridTextMuted}"
-                   Text="{x:Bind Shell.Settings.LastExportPath, Mode=OneWay}"
-                   Visibility="{x:Bind Shell.Settings.LastExportPath, Mode=OneWay, Converter={StaticResource Visible}}" />
+                   Text="{x:Bind Shell.Settings.Data.LastExportPath, Mode=OneWay}"
+                   Visibility="{x:Bind Shell.Settings.Data.LastExportPath, Mode=OneWay, Converter={StaticResource Visible}}" />
     </StackPanel>
 </UserControl>

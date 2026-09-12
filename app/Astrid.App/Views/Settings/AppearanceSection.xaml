@@ -21,8 +21,8 @@
                   Header="Theme"
                   AutomationProperties.Name="Appearance"
                   HorizontalAlignment="Stretch"
-                  ItemsSource="{x:Bind Shell.Settings.ThemeChoices, Mode=OneWay}"
-                  SelectedItem="{x:Bind Shell.Settings.Theme, Mode=OneWay}"
+                  ItemsSource="{x:Bind Shell.Settings.Appearance.ThemeChoices, Mode=OneWay}"
+                  SelectedItem="{x:Bind Shell.Settings.Appearance.Theme, Mode=OneWay}"
                   SelectionChanged="OnThemeChosen" />
         <!--
             The global chord, which was one fixed chord with no
@@ -34,7 +34,7 @@
             <TextBox x:Uid="hotkey_box" x:Name="HotkeyBox"
                      Header="Quick-add shortcut"
                      AutomationProperties.Name="Quick-add shortcut"
-                     Text="{x:Bind Shell.Settings.HotkeyChord, Mode=OneWay}" />
+                     Text="{x:Bind Shell.Settings.Appearance.HotkeyChord, Mode=OneWay}" />
             <TextBlock x:Uid="hotkey_hint"
                        Text="Brings Astrid forward from anywhere, ready for a new task. Ctrl, Alt or Win, plus one letter or digit."
                        TextWrapping="Wrap"
@@ -53,13 +53,13 @@
         <ComboBox x:Uid="layout_box" x:Name="LayoutBox"
                   HorizontalAlignment="Stretch"
                   AutomationProperties.Name="Task detail layout"
-                  ItemsSource="{x:Bind Shell.Settings.LayoutChoices, Mode=OneWay}"
+                  ItemsSource="{x:Bind Shell.Settings.Tasks.LayoutChoices, Mode=OneWay}"
                   ItemTemplate="{StaticResource DefaultChoiceTemplate}"
-                  SelectedItem="{x:Bind Shell.Settings.SelectedLayout, Mode=OneWay}"
+                  SelectedItem="{x:Bind Shell.Settings.Tasks.SelectedLayout, Mode=OneWay}"
                   SelectionChanged="OnSmartTaskChoiceChosen" />
         <TextBlock FontSize="11" TextWrapping="Wrap"
                    Foreground="{ThemeResource AstridTextMuted}"
-                   Text="{x:Bind Shell.Settings.LayoutDescriptionKey, Mode=OneWay, Converter={StaticResource Words}}" />
+                   Text="{x:Bind Shell.Settings.Tasks.LayoutDescriptionKey, Mode=OneWay, Converter={StaticResource Words}}" />
         <TextBlock x:Name="LayoutHint" FontSize="11" TextWrapping="Wrap"
                    Foreground="{ThemeResource AstridTextMuted}" />
         <!--
@@ -70,16 +70,16 @@
         -->
         <ToggleSwitch x:Uid="smart_parsing_toggle" x:Name="SmartParsingToggle" Margin="0,8,0,0"
                       AutomationProperties.Name="Smart task creation"
-                      IsOn="{x:Bind Shell.Settings.SmartParsingEnabled, Mode=OneWay}"
+                      IsOn="{x:Bind Shell.Settings.Tasks.SmartParsingEnabled, Mode=OneWay}"
                       Toggled="OnSmartParsingToggled" />
         <TextBlock x:Name="SmartParsingHint" FontSize="11" TextWrapping="Wrap"
                    Foreground="{ThemeResource AstridTextMuted}" />
         <ComboBox x:Uid="subtasks_box" x:Name="SubtasksBox" Margin="0,8,0,0"
                   HorizontalAlignment="Stretch"
                   AutomationProperties.Name="Sub tasks"
-                  ItemsSource="{x:Bind Shell.Settings.SubtaskChoices, Mode=OneWay}"
+                  ItemsSource="{x:Bind Shell.Settings.Tasks.SubtaskChoices, Mode=OneWay}"
                   ItemTemplate="{StaticResource DefaultChoiceTemplate}"
-                  SelectedItem="{x:Bind Shell.Settings.SelectedSubtaskDisplay, Mode=OneWay}"
+                  SelectedItem="{x:Bind Shell.Settings.Tasks.SelectedSubtaskDisplay, Mode=OneWay}"
                   SelectionChanged="OnSmartTaskChoiceChosen" />
         <TextBlock x:Name="SubtasksHint" FontSize="11" TextWrapping="Wrap"
                    Foreground="{ThemeResource AstridTextMuted}" />

@@ -9,7 +9,7 @@ namespace Astrid.App.Views.Settings;
 /// </summary>
 internal static class SmartTaskChoice
 {
-    internal static async Task ChosenAsync(SettingsViewModel settings, object sender)
+    internal static async Task ChosenAsync(TaskSettingsViewModel settings, object sender)
     {
         if (sender is not ComboBox { SelectedItem: DefaultChoice choice })
         {

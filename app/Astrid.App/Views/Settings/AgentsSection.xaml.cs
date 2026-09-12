@@ -45,7 +45,7 @@ public sealed partial class AgentsSection : UserControl
 
     private async void OnSaveWebhook(object sender, RoutedEventArgs args)
     {
-        await Shell.Settings.SaveWebhookAsync();
+        await Shell.Settings.Agents.SaveWebhookAsync();
     }
 
     /// <summary>Save, and ask for a new signing secret while doing it.</summary>
@@ -55,23 +55,23 @@ public sealed partial class AgentsSection : UserControl
     /// </remarks>
     private async void OnRegenerateWebhookSecret(object sender, RoutedEventArgs args)
     {
-        await Shell.Settings.SaveWebhookAsync(regenerateSecret: true);
+        await Shell.Settings.Agents.SaveWebhookAsync(regenerateSecret: true);
     }
 
     private async void OnTestWebhook(object sender, RoutedEventArgs args)
     {
-        await Shell.Settings.TestWebhookAsync();
+        await Shell.Settings.Agents.TestWebhookAsync();
     }
 
     private async void OnDeleteWebhook(object sender, RoutedEventArgs args)
     {
-        await Shell.Settings.DeleteWebhookAsync();
+        await Shell.Settings.Agents.DeleteWebhookAsync();
     }
 
     /// <summary>Register an agent, and show the credentials the server returns once.</summary>
     private async void OnRegisterCustomAgent(object sender, RoutedEventArgs args)
     {
-        var secret = await Shell.Settings.RegisterAgentAsync(NewAgentNameBox.Text);
+        var secret = await Shell.Settings.Agents.RegisterAgentAsync(NewAgentNameBox.Text);
         NewAgentNameBox.Text = string.Empty;
         if (string.IsNullOrEmpty(secret))
         {
@@ -90,7 +90,7 @@ public sealed partial class AgentsSection : UserControl
     {
         if (sender is Button { Tag: string agentId })
         {
-            await Shell.Settings.DeleteAgentAsync(agentId);
+            await Shell.Settings.Agents.DeleteAgentAsync(agentId);
         }
     }
 
@@ -103,14 +103,14 @@ public sealed partial class AgentsSection : UserControl
         {
             return;
         }
-        var current = Shell.Settings.Agents.FirstOrDefault(agent => agent.Id == agentId);
+        var current = Shell.Settings.Agents.Agents.FirstOrDefault(agent => agent.Id == agentId);
         if (current?.Mode == mode)
         {
             // The box is set from what was loaded; writing then would send the mode back to the
             // server on every open.
             return;
         }
-        await Shell.Settings.SetAgentModeAsync(agentId, mode);
+        await Shell.Settings.Agents.SetAgentModeAsync(agentId, mode);
     }
 
     /// <summary>
@@ -130,7 +130,7 @@ public sealed partial class AgentsSection : UserControl
             return;
         }
         args.Handled = true;
-        if (await Shell.Settings.SaveCredentialAsync(serviceId, box.Password))
+        if (await Shell.Settings.Agents.SaveCredentialAsync(serviceId, box.Password))
         {
             box.Password = string.Empty;
         }

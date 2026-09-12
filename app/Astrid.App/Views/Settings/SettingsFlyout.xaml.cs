@@ -90,10 +90,10 @@ public sealed partial class SettingsFlyout : UserControl
             // sections further down, and do not depend on each other — so they are asked for
             // together rather than one after another, which was four round trips of blank panel.
             var others = Task.WhenAll(
-                Shell.Settings.LoadPasskeysAsync(),
-                Shell.Settings.LoadAgentsAsync(),
-                Shell.Settings.LoadGoogleSyncModeAsync(),
-                Shell.Settings.LoadWebhookAsync());
+                Shell.Settings.Account.LoadPasskeysAsync(),
+                Shell.Settings.Agents.LoadAgentsAsync(),
+                Shell.Settings.Integrations.LoadGoogleSyncModeAsync(),
+                Shell.Settings.Agents.LoadWebhookAsync());
             await Shell.LoadSettingsAsync();
             await others;
             RemindersSection.ShowLoaded();
@@ -115,7 +115,7 @@ public sealed partial class SettingsFlyout : UserControl
     /// A minted token lives for as long as the screen showing it and no longer. That is the whole
     /// of its storage policy, and it only holds if something actually forgets.
     /// </remarks>
-    internal void Closed() => Shell.Settings.ForgetMintedCredentials();
+    internal void Closed() => Shell.Settings.ApiAccess.ForgetMintedCredentials();
 
     private async void OnSettingsSectionChosen(object sender, SelectionChangedEventArgs args)
     {
@@ -143,11 +143,11 @@ public sealed partial class SettingsFlyout : UserControl
         // trip for a page most opens never reach, and the account flyout already makes four.
         if (section == "ApiAccess")
         {
-            await Shell.Settings.LoadApiAccessAsync();
+            await Shell.Settings.ApiAccess.LoadApiAccessAsync();
         }
         if (section == "Contacts")
         {
-            await Shell.Settings.LoadContactsAsync();
+            await Shell.Settings.Contacts.LoadContactsAsync();
         }
     }
 

@@ -16,7 +16,7 @@
             account's own agent and need a key, which is why
             the two are drawn together.
         -->
-        <ItemsControl ItemsSource="{x:Bind Shell.Settings.Agents, Mode=OneWay}">
+        <ItemsControl ItemsSource="{x:Bind Shell.Settings.Agents.Agents, Mode=OneWay}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="bindings:AgentSummary">
                     <Grid ColumnSpacing="8" Padding="0,2">
@@ -40,7 +40,7 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <ItemsControl ItemsSource="{x:Bind Shell.Settings.Credentials, Mode=OneWay}">
+        <ItemsControl ItemsSource="{x:Bind Shell.Settings.Agents.Credentials, Mode=OneWay}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="bindings:AgentCredential">
                     <Grid ColumnSpacing="8" Padding="0,2">
@@ -83,31 +83,31 @@
         <TextBox x:Uid="webhook_url_box" x:Name="WebhookUrlBox"
                  AutomationProperties.Name="Webhook URL"
                  PlaceholderText="https://your-server.com/webhook"
-                 Text="{x:Bind Shell.Settings.WebhookUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                 Text="{x:Bind Shell.Settings.Agents.WebhookUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
         <StackPanel Orientation="Horizontal" Spacing="8">
             <Button x:Uid="save" Content="Save" Click="OnSaveWebhook" />
             <Button x:Uid="new_secret" Content="New secret" Click="OnRegenerateWebhookSecret" />
             <Button x:Uid="send_a_test" Content="Send a test" Click="OnTestWebhook"
-                    IsEnabled="{x:Bind Shell.Settings.Webhook.Configured, Mode=OneWay}" />
+                    IsEnabled="{x:Bind Shell.Settings.Agents.Webhook.Configured, Mode=OneWay}" />
             <Button x:Uid="remove" Content="Remove" Click="OnDeleteWebhook"
-                    IsEnabled="{x:Bind Shell.Settings.Webhook.Configured, Mode=OneWay}" />
+                    IsEnabled="{x:Bind Shell.Settings.Agents.Webhook.Configured, Mode=OneWay}" />
         </StackPanel>
         <!--
             The secret signs every delivery and the server
             shows it once. It is on screen until this panel
             closes and is never written down here.
         -->
-        <InfoBar x:Uid="copy_this_now" IsOpen="{x:Bind Shell.Settings.HasNewWebhookSecret, Mode=OneWay}"
+        <InfoBar x:Uid="copy_this_now" IsOpen="{x:Bind Shell.Settings.Agents.HasNewWebhookSecret, Mode=OneWay}"
                  Severity="Warning"
                  IsClosable="False"
                  Title="Copy this now"
-                 Message="{x:Bind Shell.Settings.NewWebhookSecret, Mode=OneWay}" />
-        <TextBlock Text="{x:Bind Shell.Settings.WebhookTestResult, Mode=OneWay}"
+                 Message="{x:Bind Shell.Settings.Agents.NewWebhookSecret, Mode=OneWay}" />
+        <TextBlock Text="{x:Bind Shell.Settings.Agents.WebhookTestResult, Mode=OneWay}"
                    FontSize="11"
                    Foreground="{ThemeResource AstridTextMuted}" />
 
         <TextBlock x:Uid="your_own_agents" Text="Your own agents" Style="{StaticResource DetailSection}" />
-        <ItemsControl ItemsSource="{x:Bind Shell.Settings.CustomAgents, Mode=OneWay}">
+        <ItemsControl ItemsSource="{x:Bind Shell.Settings.Agents.CustomAgents, Mode=OneWay}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="bindings:CustomAgent">
                     <Grid ColumnSpacing="8" Padding="0,2">

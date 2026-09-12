@@ -57,17 +57,17 @@ public sealed partial class TasksSection : UserControl
         {
             return;
         }
-        await SmartTaskChoice.ChosenAsync(Shell.Settings, sender);
+        await SmartTaskChoice.ChosenAsync(Shell.Settings.Tasks, sender);
     }
 
     private async void OnEmailToTaskToggled(object sender, RoutedEventArgs args)
     {
         if (SettingsLoading
             || sender is not ToggleSwitch toggle
-            || toggle.IsOn == Shell.Settings.EmailToTaskEnabled)
+            || toggle.IsOn == Shell.Settings.Tasks.EmailToTaskEnabled)
         {
             return;
         }
-        await Shell.Settings.SetSmartTaskAsync("emailToTaskEnabled", toggle.IsOn);
+        await Shell.Settings.Tasks.SetSmartTaskAsync("emailToTaskEnabled", toggle.IsOn);
     }
 }

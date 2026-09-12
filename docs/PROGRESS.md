@@ -147,11 +147,13 @@ The core already reads `manualSortOrder`; the write needs a versioned route.
 
 **Still open — architecture**
 
-- `SettingsViewModel` (1.3k) is nine screens; `TaskDetailViewModel` (1.7k) fuses fields,
-  comments, attachments and timer. Split along seams that already exist. (`ShellPage` itself was
-  split on 2026-09-12: the window is now the UserControls under `app/Astrid.App/Views/`, one per
-  part and one per settings page, each bound to the one `ShellViewModel` the page hands it; the
-  shared converters and styles are `Views/ShellResources.xaml`, merged from `App.xaml`.)
+- `TaskDetailViewModel` (1.7k) fuses fields, comments, attachments and timer. Split along seams
+  that already exist. (Done for the other two on 2026-09-12: `ShellPage` is the UserControls
+  under `app/Astrid.App/Views/`, one per part of the window and one per settings page, each
+  bound to the one `ShellViewModel` the page hands it, with the shared converters and styles in
+  `Views/ShellResources.xaml`; and `SettingsViewModel` is a thin façade over one view model per
+  settings page, under `app/Astrid.App.ViewModels/Settings/`, sharing a `SettingsSession` for
+  the account answer and the flyout's one error line.)
 - The detail pane's editors each keep their own flag; routing them through
   `astrid_core::editing` is the remaining half of `PRODUCT_CONTRACT.md` §6.
 - No drift test on response shapes (`Models.cs` against the Rust `Response`s).

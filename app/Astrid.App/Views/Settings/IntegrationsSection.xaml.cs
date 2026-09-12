@@ -53,16 +53,16 @@ public sealed partial class IntegrationsSection : UserControl
         if (SettingsLoading
             || sender is not ComboBox box
             || box.SelectedItem is not string mode
-            || mode == Shell.Settings.GoogleSyncMode)
+            || mode == Shell.Settings.Integrations.GoogleSyncMode)
         {
             return;
         }
-        await Shell.Settings.SetGoogleSyncModeAsync(mode);
+        await Shell.Settings.Integrations.SetGoogleSyncModeAsync(mode);
     }
 
     private async void OnConnectCopilot(object sender, RoutedEventArgs args)
     {
-        var url = await Shell.Settings.SetCopilotAsync(connect: true);
+        var url = await Shell.Settings.Agents.SetCopilotAsync(connect: true);
         if (!string.IsNullOrEmpty(url))
         {
             await Windows.System.Launcher.LaunchUriAsync(new Uri(url));
@@ -71,6 +71,6 @@ public sealed partial class IntegrationsSection : UserControl
 
     private async void OnDisconnectCopilot(object sender, RoutedEventArgs args)
     {
-        await Shell.Settings.SetCopilotAsync(connect: false);
+        await Shell.Settings.Agents.SetCopilotAsync(connect: false);
     }
 }

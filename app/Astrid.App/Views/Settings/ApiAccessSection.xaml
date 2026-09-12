@@ -40,12 +40,12 @@
         <Border CornerRadius="8"
                 Padding="10,8"
                 Background="{ThemeResource AstridSurfaceHover}"
-                Visibility="{x:Bind Shell.Settings.HasMcpToken, Mode=OneWay, Converter={StaticResource Visible}}">
+                Visibility="{x:Bind Shell.Settings.ApiAccess.HasMcpToken, Mode=OneWay, Converter={StaticResource Visible}}">
             <StackPanel Spacing="6">
                 <TextBlock x:Uid="copy_this_now_it_is_not" Text="Copy this now — it is not shown again."
                            FontSize="11"
                            Foreground="{ThemeResource AstridTextMuted}" />
-                <TextBox x:Uid="mcp_token_2" Text="{x:Bind Shell.Settings.McpToken, Mode=OneWay}"
+                <TextBox x:Uid="mcp_token_2" Text="{x:Bind Shell.Settings.ApiAccess.McpToken, Mode=OneWay}"
                          AutomationProperties.Name="MCP token"
                          IsReadOnly="True"
                          Background="Transparent"
@@ -62,7 +62,7 @@
                    FontSize="12"
                    Foreground="{ThemeResource AstridTextMuted}"
                    Text="A pair for a machine that is not this one — CI, a script, a runner. Read and write on tasks and lists." />
-        <ItemsControl ItemsSource="{x:Bind Shell.Settings.ApiClients, Mode=OneWay}">
+        <ItemsControl ItemsSource="{x:Bind Shell.Settings.ApiAccess.ApiClients, Mode=OneWay}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="bindings:OAuthClientRow">
                     <Grid ColumnSpacing="8" Padding="0,4">
@@ -97,20 +97,20 @@
             <TextBox x:Uid="what_it_is_for" AutomationProperties.Name="New client name"
                      PlaceholderText="what it is for"
                      Width="200"
-                     Text="{x:Bind Shell.Settings.NewClientName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                     Text="{x:Bind Shell.Settings.ApiAccess.NewClientName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             <Button x:Uid="register" Content="Register"
-                    IsEnabled="{x:Bind Shell.Settings.CanCreateClient, Mode=OneWay}"
+                    IsEnabled="{x:Bind Shell.Settings.ApiAccess.CanCreateClient, Mode=OneWay}"
                     Click="OnCreateOAuthClient" />
         </StackPanel>
         <Border CornerRadius="8"
                 Padding="10,8"
                 Background="{ThemeResource AstridSurfaceHover}"
-                Visibility="{x:Bind Shell.Settings.HasMintedClient, Mode=OneWay, Converter={StaticResource Visible}}">
+                Visibility="{x:Bind Shell.Settings.ApiAccess.HasMintedClient, Mode=OneWay, Converter={StaticResource Visible}}">
             <StackPanel Spacing="6">
                 <TextBlock x:Uid="copy_the_secret_now_it_is" Text="Copy the secret now — it is not shown again."
                            FontSize="11"
                            Foreground="{ThemeResource AstridTextMuted}" />
-                <TextBox x:Uid="client_id" Text="{x:Bind Shell.Settings.MintedClient.ClientId, Mode=OneWay}"
+                <TextBox x:Uid="client_id" Text="{x:Bind Shell.Settings.ApiAccess.MintedClient.ClientId, Mode=OneWay}"
                          AutomationProperties.Name="Client id"
                          Header="Client id"
                          IsReadOnly="True"
@@ -119,7 +119,7 @@
                          Padding="0"
                          FontFamily="Consolas"
                          TextWrapping="Wrap" />
-                <TextBox x:Uid="client_secret" Text="{x:Bind Shell.Settings.MintedClient.ClientSecret, Mode=OneWay}"
+                <TextBox x:Uid="client_secret" Text="{x:Bind Shell.Settings.ApiAccess.MintedClient.ClientSecret, Mode=OneWay}"
                          AutomationProperties.Name="Client secret"
                          Header="Client secret"
                          IsReadOnly="True"

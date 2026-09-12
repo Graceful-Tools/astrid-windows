@@ -35,12 +35,12 @@
             </Grid.RowDefinitions>
 
             <StackPanel Grid.Row="0" Spacing="2" Margin="8,4,8,12">
-                <TextBlock Text="{x:Bind Shell.Settings.DisplayName, Mode=OneWay}"
+                <TextBlock Text="{x:Bind Shell.Settings.Account.DisplayName, Mode=OneWay}"
                            FontSize="16"
                            FontWeight="SemiBold"
                            TextTrimming="CharacterEllipsis"
                            Foreground="{ThemeResource AstridTextPrimary}" />
-                <TextBlock Text="{x:Bind Shell.Settings.Email, Mode=OneWay}"
+                <TextBlock Text="{x:Bind Shell.Settings.Account.Email, Mode=OneWay}"
                            FontSize="11"
                            TextTrimming="CharacterEllipsis"
                            Foreground="{ThemeResource AstridTextMuted}" />
@@ -51,13 +51,13 @@
                     happens to hold.
                 -->
                 <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,6,0,0">
-                    <TextBlock Text="{x:Bind Shell.Settings.Stats, Mode=OneWay, Converter={StaticResource StatFinished}}"
+                    <TextBlock Text="{x:Bind Shell.Settings.Account.Stats, Mode=OneWay, Converter={StaticResource StatFinished}}"
                                FontSize="11"
                                Foreground="{ThemeResource AstridTextMuted}" />
-                    <TextBlock Text="{x:Bind Shell.Settings.Stats, Mode=OneWay, Converter={StaticResource StatInspired}}"
+                    <TextBlock Text="{x:Bind Shell.Settings.Account.Stats, Mode=OneWay, Converter={StaticResource StatInspired}}"
                                FontSize="11"
                                Foreground="{ThemeResource AstridTextMuted}" />
-                    <TextBlock Text="{x:Bind Shell.Settings.Stats, Mode=OneWay, Converter={StaticResource StatSupported}}"
+                    <TextBlock Text="{x:Bind Shell.Settings.Account.Stats, Mode=OneWay, Converter={StaticResource StatSupported}}"
                                FontSize="11"
                                Foreground="{ThemeResource AstridTextMuted}" />
                 </StackPanel>

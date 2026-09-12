@@ -20,7 +20,7 @@
                   Header="Google lists"
                   AutomationProperties.Name="Google list linking"
                   HorizontalAlignment="Stretch"
-                  SelectedItem="{x:Bind Shell.Settings.GoogleSyncMode, Mode=OneWay}"
+                  SelectedItem="{x:Bind Shell.Settings.Integrations.GoogleSyncMode, Mode=OneWay}"
                   Visibility="{x:Bind Shell.GoogleTasksEnabled, Mode=OneWay, Converter={StaticResource Visible}}"
                   SelectionChanged="OnGoogleSyncModeChosen">
             <x:String>manual</x:String>
@@ -32,10 +32,10 @@
         <StackPanel Orientation="Horizontal" Spacing="8">
             <Button x:Uid="connect_copilot" Content="Connect Copilot"
                     Click="OnConnectCopilot"
-                    Visibility="{x:Bind Shell.Settings.CopilotConnected, Mode=OneWay, Converter={StaticResource NotVisible}}" />
+                    Visibility="{x:Bind Shell.Settings.Agents.CopilotConnected, Mode=OneWay, Converter={StaticResource NotVisible}}" />
             <Button x:Uid="disconnect_copilot" Content="Disconnect Copilot"
                     Click="OnDisconnectCopilot"
-                    Visibility="{x:Bind Shell.Settings.CopilotConnected, Mode=OneWay, Converter={StaticResource Visible}}" />
+                    Visibility="{x:Bind Shell.Settings.Agents.CopilotConnected, Mode=OneWay, Converter={StaticResource Visible}}" />
         </StackPanel>
     </StackPanel>
 </UserControl>

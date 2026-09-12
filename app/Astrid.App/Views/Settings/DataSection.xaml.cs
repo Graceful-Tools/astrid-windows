@@ -59,7 +59,7 @@ public sealed partial class DataSection : UserControl
         var file = await picker.PickSaveFileAsync();
         if (file is not null)
         {
-            await Shell.Settings.ExportAsync(format, file.Path);
+            await Shell.Settings.Data.ExportAsync(format, file.Path);
         }
     }
 }

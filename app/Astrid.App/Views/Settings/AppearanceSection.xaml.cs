@@ -56,18 +56,18 @@ public sealed partial class AppearanceSection : UserControl
         {
             return;
         }
-        await SmartTaskChoice.ChosenAsync(Shell.Settings, sender);
+        await SmartTaskChoice.ChosenAsync(Shell.Settings.Tasks, sender);
     }
 
     private async void OnSmartParsingToggled(object sender, RoutedEventArgs args)
     {
         if (SettingsLoading
             || sender is not ToggleSwitch toggle
-            || toggle.IsOn == Shell.Settings.SmartParsingEnabled)
+            || toggle.IsOn == Shell.Settings.Tasks.SmartParsingEnabled)
         {
             return;
         }
-        await Shell.Settings.SetSmartTaskAsync("smartTaskCreationEnabled", toggle.IsOn);
+        await Shell.Settings.Tasks.SetSmartTaskAsync("smartTaskCreationEnabled", toggle.IsOn);
     }
 
     /// <summary>The Apply beside the shortcut box: the core judges the chord, the window holds it.</summary>
@@ -77,7 +77,7 @@ public sealed partial class AppearanceSection : UserControl
         {
             return;
         }
-        await Shell.Settings.SetHotkeyAsync(HotkeyBox.Text);
+        await Shell.Settings.Appearance.SetHotkeyAsync(HotkeyBox.Text);
     }
 
     private async void OnThemeChosen(object sender, SelectionChangedEventArgs args)
@@ -85,10 +85,10 @@ public sealed partial class AppearanceSection : UserControl
         if (SettingsLoading
             || sender is not ComboBox box
             || box.SelectedItem is not string theme
-            || theme == Shell.Settings.Theme)
+            || theme == Shell.Settings.Appearance.Theme)
         {
             return;
         }
-        await Shell.Settings.SetThemeAsync(theme);
+        await Shell.Settings.Appearance.SetThemeAsync(theme);
     }
 }

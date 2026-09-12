@@ -63,7 +63,7 @@ public sealed partial class ContactsSection : UserControl
         confirm.Click += async (_, _) =>
         {
             flyout.Hide();
-            await Shell.Settings.ClearContactsAsync();
+            await Shell.Settings.Contacts.ClearContactsAsync();
         };
         flyout.ShowAt(ClearContactsButton);
     }

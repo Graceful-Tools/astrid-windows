@@ -13,17 +13,17 @@
         <ToggleSwitch x:Uid="push_toggle" x:Name="PushToggle"
                       Header="Push reminders"
                       AutomationProperties.Name="Push reminders"
-                      IsOn="{x:Bind Shell.Settings.PushEnabled, Mode=OneWay}"
+                      IsOn="{x:Bind Shell.Settings.Reminders.PushEnabled, Mode=OneWay}"
                       Toggled="OnPushToggled" />
         <ToggleSwitch x:Uid="email_toggle" x:Name="EmailToggle"
                       Header="Email reminders"
                       AutomationProperties.Name="Email reminders"
-                      IsOn="{x:Bind Shell.Settings.EmailEnabled, Mode=OneWay}"
+                      IsOn="{x:Bind Shell.Settings.Reminders.EmailEnabled, Mode=OneWay}"
                       Toggled="OnEmailToggled" />
         <ComboBox x:Uid="default_offset_box" x:Name="DefaultOffsetBox"
                   Header="Remind me by default"
                   AutomationProperties.Name="Default reminder"
-                  ItemsSource="{x:Bind Shell.Settings.Offsets, Mode=OneWay}"
+                  ItemsSource="{x:Bind Shell.Settings.Reminders.Offsets, Mode=OneWay}"
                   SelectionChanged="OnDefaultOffsetChanged">
             <ComboBox.ItemTemplate>
                 <DataTemplate x:DataType="bindings:ReminderOffset">
@@ -36,7 +36,7 @@
         <ToggleSwitch x:Uid="digest_toggle" x:Name="DigestToggle"
                       Header="Send a daily digest"
                       AutomationProperties.Name="Daily digest"
-                      IsOn="{x:Bind Shell.Settings.DigestEnabled, Mode=OneWay}"
+                      IsOn="{x:Bind Shell.Settings.Reminders.DigestEnabled, Mode=OneWay}"
                       Toggled="OnDigestToggled" />
         <TimePicker x:Uid="digest_time_box" x:Name="DigestTimeBox"
                     Header="At"
@@ -47,7 +47,7 @@
         <ToggleSwitch x:Uid="quiet_toggle" x:Name="QuietToggle"
                       Header="No reminders overnight"
                       AutomationProperties.Name="Quiet hours"
-                      IsOn="{x:Bind Shell.Settings.QuietHoursEnabled, Mode=OneWay}"
+                      IsOn="{x:Bind Shell.Settings.Reminders.QuietHoursEnabled, Mode=OneWay}"
                       Toggled="OnQuietHoursToggled" />
         <StackPanel Orientation="Horizontal" Spacing="8">
             <TimePicker x:Uid="quiet_start_box" x:Name="QuietStartBox" Header="From"

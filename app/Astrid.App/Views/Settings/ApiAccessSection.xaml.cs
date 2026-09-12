@@ -36,19 +36,19 @@ public sealed partial class ApiAccessSection : UserControl
     // ── API access ───────────────────────────────────────────────────────────────────────────
 
     private async void OnCreateMcpToken(object sender, RoutedEventArgs args) =>
-        await Shell.Settings.CreateMcpTokenAsync();
+        await Shell.Settings.ApiAccess.CreateMcpTokenAsync();
 
     private async void OnRevokeMcpTokens(object sender, RoutedEventArgs args) =>
-        await Shell.Settings.RevokeMcpTokensAsync();
+        await Shell.Settings.ApiAccess.RevokeMcpTokensAsync();
 
     private async void OnCreateOAuthClient(object sender, RoutedEventArgs args) =>
-        await Shell.Settings.CreateOAuthClientAsync();
+        await Shell.Settings.ApiAccess.CreateOAuthClientAsync();
 
     private async void OnDeleteOAuthClient(object sender, RoutedEventArgs args)
     {
         if (sender is FrameworkElement { Tag: string clientId })
         {
-            await Shell.Settings.DeleteOAuthClientAsync(clientId);
+            await Shell.Settings.ApiAccess.DeleteOAuthClientAsync(clientId);
         }
     }
 
@@ -60,12 +60,12 @@ public sealed partial class ApiAccessSection : UserControl
     /// box is how somebody copies half of one and spends an afternoon on the 401 it causes.
     /// </remarks>
     private void OnCopyMcpToken(object sender, RoutedEventArgs args) =>
-        ClipboardText.Copy(Shell.Settings.McpToken);
+        ClipboardText.Copy(Shell.Settings.ApiAccess.McpToken);
 
     /// <summary>Both halves at once, labelled, because the pair is useless one at a time.</summary>
     private void OnCopyMintedClient(object sender, RoutedEventArgs args)
     {
-        if (Shell.Settings.MintedClient is not { } minted)
+        if (Shell.Settings.ApiAccess.MintedClient is not { } minted)
         {
             return;
         }

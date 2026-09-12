@@ -63,7 +63,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
         // The task-detail layout decides what the leading control does on every row and in the
         // open task (task c0f3db19). A change has to be seen at once, not after the next sync.
-        Settings.DisplayModeChanged += () => _post(async () =>
+        Settings.Tasks.DisplayModeChanged += () => _post(async () =>
         {
             await Tasks.RefreshAsync();
             if (IsBoardView)
