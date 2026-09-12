@@ -130,7 +130,32 @@
                                        Foreground="{ThemeResource AstridTextSecondary}" />
                         </Border>
                     </StackPanel>
-                    <Button x:Uid="task_actions_button" Grid.Column="2" x:Name="TaskActionsButton"
+                    <!--
+                        Full screen (task 1927c2e7, PRODUCT_CONTRACT §3): astrid-web's
+                        Maximize2 / Minimize2 pair before the action menu. Whether either is
+                        offered is the shell's decision — from the side pane only; on a board
+                        card, which is deliberately a peek, both stay collapsed.
+                    -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top">
+                        <Button x:Uid="detail_full_screen"
+                                Background="Transparent" BorderThickness="0"
+                                AutomationProperties.Name="Full screen"
+                                ToolTipService.ToolTip="Full screen"
+                                Visibility="{x:Bind Shell.CanEnterFullScreen, Mode=OneWay, Converter={StaticResource Visible}}"
+                                Click="OnToggleFullScreen">
+                            <FontIcon Glyph="&#xE740;" FontSize="14"
+                                      Foreground="{ThemeResource AstridTextMuted}" />
+                        </Button>
+                        <Button x:Uid="detail_exit_full_screen"
+                                Background="Transparent" BorderThickness="0"
+                                AutomationProperties.Name="Exit full screen"
+                                ToolTipService.ToolTip="Exit full screen"
+                                Visibility="{x:Bind Shell.CanExitFullScreen, Mode=OneWay, Converter={StaticResource Visible}}"
+                                Click="OnToggleFullScreen">
+                            <FontIcon Glyph="&#xE73F;" FontSize="14"
+                                      Foreground="{ThemeResource AstridTextMuted}" />
+                        </Button>
+                    <Button x:Uid="task_actions_button" x:Name="TaskActionsButton"
                             Background="Transparent" BorderThickness="0"
                             VerticalAlignment="Top"
                             AutomationProperties.Name="Task actions">
@@ -184,6 +209,7 @@
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
+                    </StackPanel>
                 </Grid>
         </Border>
 

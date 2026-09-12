@@ -372,6 +372,41 @@ public sealed class ShellViewModelTests
         Assert.False(shell.ShowsDetailInline);
     }
 
+    /// <summary>
+    /// Full screen (task 1927c2e7, PRODUCT_CONTRACT §3) is taken from the side pane and never
+    /// offered on a board card, which is deliberately a peek. A card that takes the detail ends
+    /// it, so the card never inherits it and the pane does not spring back to it afterwards.
+    /// </summary>
+    [Fact]
+    public async Task Full_screen_is_offered_from_the_side_pane_and_never_on_a_board_card_task_1927c2e7()
+    {
+        var core = StartedCore(("l1", "Home", false))
+            .AnswerOk("taskDetail", TaskDetail("t1"))
+            .AnswerOk("board", BoardWith("t1"));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        await shell.OpenOrCloseTaskAsync("t1");
+
+        Assert.False(shell.Detail.IsFullScreen, "off by default");
+        Assert.True(shell.CanEnterFullScreen);
+        Assert.False(shell.ShowsDetailFullScreen);
+
+        shell.Detail.ToggleFullScreen();
+
+        Assert.True(shell.ShowsDetailFullScreen);
+        Assert.True(shell.CanExitFullScreen);
+        Assert.False(shell.CanEnterFullScreen);
+
+        // The open task's card expands and takes the detail.
+        await shell.ShowBoardAsync(true);
+
+        Assert.True(shell.ShowsDetailInline);
+        Assert.False(shell.CanEnterFullScreen, "never offered on a board card");
+        Assert.False(shell.CanExitFullScreen);
+        Assert.False(shell.ShowsDetailFullScreen);
+        Assert.False(shell.Detail.IsFullScreen, "ended when the card took the detail");
+    }
+
     /// <summary>Off the board, the detail is the side pane it always was.</summary>
     [Fact]
     public async Task In_list_view_the_detail_is_the_side_pane()

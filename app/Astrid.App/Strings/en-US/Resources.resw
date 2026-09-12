@@ -1597,4 +1597,16 @@
   <data name="calendar_none_desc" xml:space="preserve">
     <value>No tasks will be synced to your calendar.</value>
   </data>
+  <data name="detail_full_screen.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Full screen</value>
+  </data>
+  <data name="detail_full_screen.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Full screen</value>
+  </data>
+  <data name="detail_exit_full_screen.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Exit full screen</value>
+  </data>
+  <data name="detail_exit_full_screen.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Exit full screen</value>
+  </data>
 </root>

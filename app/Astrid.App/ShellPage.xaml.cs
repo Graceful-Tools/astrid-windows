@@ -88,6 +88,14 @@ public sealed partial class ShellPage : UserControl
                 PlaceDetailPane();
             }
         };
+        // Full screen is a third place for the same pane (task 1927c2e7).
+        Shell.PropertyChanged += (_, changed) =>
+        {
+            if (changed.PropertyName == nameof(ShellViewModel.ShowsDetailFullScreen))
+            {
+                PlaceDetailPane();
+            }
+        };
         // Every protocol activation, launch or redirected, arrives here. The core decides which
         // are sign-in callbacks; a deep link to a task uses the same scheme.
         App.UriActivated += OnUriActivated;
@@ -267,6 +275,7 @@ public sealed partial class ShellPage : UserControl
     {
         if (!Shell.Detail.IsOpen
             || Shell.IsBoardView
+            || Shell.ShowsDetailFullScreen
             || Shell.Tasks.Selected is not { } selected
             || Rows.ContainerOf(selected) is not { } container)
         {
@@ -417,12 +426,41 @@ public sealed partial class ShellPage : UserControl
         if (Shell.Board.ExpandedTaskId is null)
         {
             DockDetailPane();
+            LayDetailPaneAcross(Shell.ShowsDetailFullScreen);
             Detail.Visibility = Shell.Detail.IsOpen ? Visibility.Visible : Visibility.Collapsed;
+            if (Shell.ShowsDetailFullScreen)
+            {
+                Detail.HideArrow();
+            }
             return;
         }
         Detail.Visibility = Shell.Detail.IsOpen && _detailHost is not null
             ? Visibility.Visible
             : Visibility.Collapsed;
+    }
+
+    /// <summary>
+    /// The docked pane's third place (task 1927c2e7): across every column of the root grid, over
+    /// the sidebar and the list and under the overlays that outrank it — the palette, sign-in and
+    /// the tour keep their z-order — or back in its own column beside the list.
+    /// </summary>
+    /// <remarks>
+    /// Only ever applied to the docked pane. Inside a card's slot the grid's attached properties
+    /// mean nothing, and the shell has already ended full screen before a card takes the pane.
+    /// </remarks>
+    private void LayDetailPaneAcross(bool fullScreen)
+    {
+        Grid.SetColumn(Detail, fullScreen ? 0 : 3);
+        Grid.SetColumnSpan(Detail, fullScreen ? 4 : 1);
+        Canvas.SetZIndex(Detail, fullScreen ? 5 : 0);
+        if (fullScreen)
+        {
+            Detail.WearAsFullScreen();
+        }
+        else
+        {
+            Detail.WearAsColumn();
+        }
     }
 
     /// <summary>Run work on the UI thread.</summary>

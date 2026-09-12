@@ -173,6 +173,24 @@ public sealed class TaskDetailViewModelTests
     }
 
     /// <summary>
+    /// Full screen (task 1927c2e7, PRODUCT_CONTRACT §3) is an escape hatch, not a layout: off
+    /// until asked for, and off again for the next task rather than remembered.
+    /// </summary>
+    [Fact]
+    public void Full_screen_is_off_by_default_and_ends_with_the_task_task_1927c2e7()
+    {
+        var view = new TaskDetailViewModel(new FakeCore());
+
+        Assert.False(view.IsFullScreen);
+
+        view.ToggleFullScreen();
+        Assert.True(view.IsFullScreen);
+
+        view.Close();
+        Assert.False(view.IsFullScreen, "the next task opens as a pane, not as the last one was left");
+    }
+
+    /// <summary>
     /// The description comes rendered, and is shown rendered until somebody clicks it
     /// (task 11cfaf6d). What the blocks MEAN was decided in the core; the view model only says
     /// which of the two — the drawing or the box — is on screen.

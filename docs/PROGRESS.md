@@ -132,6 +132,10 @@ against the web, from a read of the source rather than of the docs, with what ha
   nothing, as on the web.
 - **Drag a row onto a sidebar list** to move it there, or add it with Shift (task 27cae198), as
   the web's sidebar does.
+- **Full-screen task detail** (task 1927c2e7): the side pane expands to fill the window and
+  back, PRODUCT_CONTRACT §3's escape hatch for a long description — off by default, ended with
+  the task, and never offered on a board card. The same pane in a third place, laid across the
+  root grid by `ShellPage`; the description editor opens at a page's worth. See CONTRACTS D16.
 - **Calendar feed settings** (task 28c5c6a9): the Reminders page carries the web's calendar
   integration — the switch, what to include, and the feed address to paste into a calendar app.
   The two fields ride the reminder-settings blob; the address is the legacy `.ics` route, the
@@ -177,7 +181,7 @@ The core already reads `manualSortOrder`; the write needs a versioned route.
 
 **Still open — features the web has**
 
-Full-screen detail; twelve languages — and the two blocked on
+Twelve languages — and the two blocked on
 the web above.
 
 Not gaps, because the web has none either: multi-select, undo, calendar view, dependencies.

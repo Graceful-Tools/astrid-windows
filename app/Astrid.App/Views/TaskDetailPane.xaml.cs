@@ -73,6 +73,7 @@ public sealed partial class TaskDetailPane : UserControl
         DetailPane.BorderThickness = new Thickness(1);
         DetailPane.CornerRadius = new CornerRadius(10);
         DetailPane.Margin = new Thickness(0, 0, 0, 6);
+        DetailDescriptionBox.MinHeight = DescriptionMinHeight;
     }
 
     /// <summary>The column beside the list: one rule down its left edge, and the width it was given.</summary>
@@ -82,6 +83,29 @@ public sealed partial class TaskDetailPane : UserControl
         DetailPane.BorderThickness = new Thickness(1, 0, 0, 0);
         DetailPane.CornerRadius = new CornerRadius(0);
         DetailPane.Margin = new Thickness(0);
+        DetailDescriptionBox.MinHeight = DescriptionMinHeight;
+    }
+
+    /// <summary>The description editor's height as a pane or a card: a few lines, then it grows.</summary>
+    private const double DescriptionMinHeight = 72;
+
+    /// <summary>
+    /// And as a page. PRODUCT_CONTRACT §3 judges full screen by whether the description gained
+    /// room, so the editor opens at a page's worth rather than a pane's few lines.
+    /// </summary>
+    private const double DescriptionMinHeightFullScreen = 240;
+
+    /// <summary>
+    /// The window (task 1927c2e7): no fixed width, no rule down the side, and the description
+    /// given the room the whole exercise is for. The page lays it across the columns.
+    /// </summary>
+    internal void WearAsFullScreen()
+    {
+        DetailPane.Width = double.NaN;
+        DetailPane.BorderThickness = new Thickness(0);
+        DetailPane.CornerRadius = new CornerRadius(0);
+        DetailPane.Margin = new Thickness(0);
+        DetailDescriptionBox.MinHeight = DescriptionMinHeightFullScreen;
     }
 
     /// <summary>
@@ -128,6 +152,9 @@ public sealed partial class TaskDetailPane : UserControl
     internal void HideArrow() => DetailArrow.Visibility = Visibility.Collapsed;
 
     private async void OnCloseDetail(object sender, RoutedEventArgs args) => await Shell.Detail.CloseAsync();
+
+    /// <summary>Full screen and back (task 1927c2e7). Whether the control is offered is the shell's decision.</summary>
+    private void OnToggleFullScreen(object sender, RoutedEventArgs args) => Shell.Detail.ToggleFullScreen();
 
     /// <summary>
     /// Word the task menu as the task stands, and fill its Status submenu from the core.

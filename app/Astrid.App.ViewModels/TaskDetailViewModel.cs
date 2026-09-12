@@ -30,6 +30,7 @@ public sealed class TaskDetailViewModel : ObservableObject
     private int _priority;
     private bool _completed;
     private bool _isOpen;
+    private bool _isFullScreen;
     private bool _isLoading;
     private string? _errorMessage;
     private DueLabel _due = new();
@@ -140,6 +141,24 @@ public sealed class TaskDetailViewModel : ObservableObject
         get => _isOpen;
         private set => Set(ref _isOpen, value);
     }
+
+    /// <summary>
+    /// Whether the open task has been expanded to fill the window (task 1927c2e7).
+    /// </summary>
+    /// <remarks>
+    /// PRODUCT_CONTRACT §3: an escape hatch for a long description, not a layout — so off by
+    /// default, and off again for the next task. Where it may be taken from is the shell's call
+    /// (<c>ShellViewModel.CanEnterFullScreen</c>); this only remembers that it was.
+    /// </remarks>
+    public bool IsFullScreen
+    {
+        get => _isFullScreen;
+        private set => Set(ref _isFullScreen, value);
+    }
+
+    public void ToggleFullScreen() => IsFullScreen = !IsFullScreen;
+
+    public void LeaveFullScreen() => IsFullScreen = false;
 
     public bool IsLoading
     {
@@ -545,6 +564,7 @@ public sealed class TaskDetailViewModel : ObservableObject
             _ = _core.CallAsync(Commands.CancelEditing(abandoned));
         }
         IsOpen = false;
+        IsFullScreen = false;
         TaskId = null;
         Comments.Clear();
         Subtasks.Clear();

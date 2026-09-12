@@ -88,10 +88,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             {
                 Board.Collapse();
             }
-            if (args.PropertyName == nameof(TaskDetailViewModel.IsOpen))
+            if (args.PropertyName is nameof(TaskDetailViewModel.IsOpen) or nameof(TaskDetailViewModel.IsFullScreen))
             {
-                Raise(nameof(ShowsDetailInline));
-                Raise(nameof(ShowsDetailPane));
+                RaiseDetailPlacement();
             }
         };
         Board.PropertyChanged += (_, args) =>
@@ -104,8 +103,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             {
                 _ = Detail.CloseAsync();
             }
-            Raise(nameof(ShowsDetailInline));
-            Raise(nameof(ShowsDetailPane));
+            RaiseDetailPlacement();
         };
     }
 
@@ -389,8 +387,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             if (Set(ref _isBoardView, value))
             {
                 Raise(nameof(ShowsNoBoardNotice));
-                Raise(nameof(ShowsDetailInline));
-                Raise(nameof(ShowsDetailPane));
+                RaiseDetailPlacement();
             }
         }
     }
@@ -434,8 +431,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             Board.Collapse();
         }
         Raise(nameof(ShowsNoBoardNotice));
-        Raise(nameof(ShowsDetailInline));
-        Raise(nameof(ShowsDetailPane));
+        RaiseDetailPlacement();
     }
 
     /// <summary>
@@ -446,6 +442,39 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     /// <summary>Whether the open task is drawn in the side pane beside the list.</summary>
     public bool ShowsDetailPane => Detail.IsOpen && !ShowsDetailInline;
+
+    // ── Full screen (task 1927c2e7) ──────────────────────────────────────────────────────────
+    //
+    // PRODUCT_CONTRACT §3: an escape hatch for a long description, off by default and never
+    // offered on the inline/board panel, which is deliberately a peek and would fight the board
+    // it is embedded in. So it is a third place for the side pane, and only the side pane.
+
+    /// <summary>Whether the open task fills the window: the side pane, expanded.</summary>
+    public bool ShowsDetailFullScreen => ShowsDetailPane && Detail.IsFullScreen;
+
+    /// <summary>Whether to offer the expand control: on the side pane, while it is a pane.</summary>
+    public bool CanEnterFullScreen => ShowsDetailPane && !Detail.IsFullScreen;
+
+    /// <summary>Whether to offer the way back.</summary>
+    public bool CanExitFullScreen => ShowsDetailFullScreen;
+
+    /// <summary>
+    /// Where the detail is drawn has changed. Said once, from every place that changes it — and
+    /// a card that takes the detail also ends full screen, so the card never inherits it and the
+    /// pane does not spring back to it when the card collapses.
+    /// </summary>
+    private void RaiseDetailPlacement()
+    {
+        if (ShowsDetailInline)
+        {
+            Detail.LeaveFullScreen();
+        }
+        Raise(nameof(ShowsDetailInline));
+        Raise(nameof(ShowsDetailPane));
+        Raise(nameof(ShowsDetailFullScreen));
+        Raise(nameof(CanEnterFullScreen));
+        Raise(nameof(CanExitFullScreen));
+    }
 
     /// <summary>
     /// A card was tapped: open its task in place, or close it if that task is the open one.
