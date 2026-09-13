@@ -14,7 +14,8 @@
 
     To put a build on a machine for testing, use a Store package flight or a private audience
     rather than signing one by hand: a flight installs for named Microsoft accounts and needs no
-    certificate trusted anywhere.
+    certificate trusted anywhere. Before the Store listing exists, scripts/sign-local.ps1 signs a
+    COPY of this output with a self-signed test certificate for a local install; see packaging/README.md.
 
     makeappx comes from the Windows SDK build tools the app already depends on, so there is nothing
     extra to install.

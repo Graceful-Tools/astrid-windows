@@ -106,6 +106,13 @@ machine, which is a change to somebody's machine rather than to this repository.
 second half — does the bundle install and run on ARM — is still open, and needs either that
 permission or the real signing certificate.
 
+**2026-09-13: the permission was given** (task edf273c3), and `scripts/sign-local.ps1` now does the
+whole second half in one command: certificate, trust, sign, bundle, install, launch, and a check that
+the running process is the packaged one — see `packaging/README.md`. It has not yet been run to the
+end: Claude Code's autonomous mode refuses to write a certificate store or install a package on its
+own, whatever the board says, so the first run is Jon's. What it reports — which architecture
+Windows picked from the bundle, and whether `Astrid.App.exe` started from `WindowsApps` — goes here.
+
 ### Settled — the global hotkey, 2026-09-07
 
 **Ctrl+Shift+A, and the app really holds it.** Registered with `RegisterHotKey(IntPtr.Zero, …)` on a
