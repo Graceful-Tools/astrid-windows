@@ -49,7 +49,12 @@ public sealed class AstridApp : IDisposable
     /// <c>ASTRID_LANGUAGE</c> hook, so the machine's display language is left alone (task
     /// b9dd4a25). The x:Uid chrome follows Windows regardless — see <c>App.PrepareResources</c>.
     /// </param>
-    public static AstridApp Launch(bool signedIn, string? language = null)
+    /// <param name="seed">
+    /// Rows to put in the cache before the app draws — for what an offline app cannot make for
+    /// itself, such as a list that has a board. Runs against the cache file after a first start has
+    /// created it, so the schema is the core's own and never a copy kept here.
+    /// </param>
+    public static AstridApp Launch(bool signedIn, string? language = null, Action<string>? seed = null)
     {
         var directory = Path.Combine(
             Path.GetTempPath(), "astrid-uitests", Guid.NewGuid().ToString("n"));
@@ -59,17 +64,18 @@ public sealed class AstridApp : IDisposable
             WriteSession(directory);
         }
 
-        var start = new ProcessStartInfo(ExecutablePath()) { UseShellExecute = false };
-        start.Environment["ASTRID_DATA_DIR"] = directory;
-        if (language is not null)
+        if (seed is not null)
         {
-            start.Environment["ASTRID_LANGUAGE"] = language;
+            // The first start is only for the cache file: the core opens it and runs its
+            // migrations, which is the one way the schema exists on disk.
+            var (first, _) = Start(directory, language);
+            first.Kill();
+            first.WaitForExit(5000);
+            first.Dispose();
+            seed(Path.Combine(directory, "astrid.db"));
         }
-        var process = Process.Start(start)
-            ?? throw new InvalidOperationException("the app did not start");
 
-        var window = WaitForWindow(process.Id)
-            ?? throw new InvalidOperationException("the app started but never showed a window");
+        var (process, window) = Start(directory, language);
         // The first paint is a cache read, but the window appears before it lands.
         Thread.Sleep(1500);
         var app = new AstridApp(process, directory, window);
@@ -82,6 +88,22 @@ public sealed class AstridApp : IDisposable
             app.Invoke("Got it");
         }
         return app;
+    }
+
+    private static (Process Process, AutomationElement Window) Start(string directory, string? language)
+    {
+        var start = new ProcessStartInfo(ExecutablePath()) { UseShellExecute = false };
+        start.Environment["ASTRID_DATA_DIR"] = directory;
+        if (language is not null)
+        {
+            start.Environment["ASTRID_LANGUAGE"] = language;
+        }
+        var process = Process.Start(start)
+            ?? throw new InvalidOperationException("the app did not start");
+
+        var window = WaitForWindow(process.Id)
+            ?? throw new InvalidOperationException("the app started but never showed a window");
+        return (process, window);
     }
 
     /// <summary>Find one element by the name a screen reader would read.</summary>
@@ -115,6 +137,14 @@ public sealed class AstridApp : IDisposable
         var pattern = (InvokePattern)Require(name).GetCurrentPattern(InvokePattern.Pattern);
         pattern.Invoke();
         Thread.Sleep(600);
+    }
+
+    /// <summary>Flip a toggle button, which has no Invoke — it is on or off.</summary>
+    public void Toggle(string name)
+    {
+        var pattern = (TogglePattern)Require(name).GetCurrentPattern(TogglePattern.Pattern);
+        pattern.Toggle();
+        Thread.Sleep(800);
     }
 
     /// <summary>Type into a box, replacing what is there.</summary>

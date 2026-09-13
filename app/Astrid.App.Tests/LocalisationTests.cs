@@ -43,7 +43,7 @@ public sealed class LocalisationTests
 
     private static readonly Regex Comment = new(@"<!--.*?-->", RegexOptions.Singleline);
 
-    private static string AppDirectory()
+    internal static string AppDirectory()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Astrid.App", "ShellPage.xaml")))
@@ -60,12 +60,12 @@ public sealed class LocalisationTests
     /// carrying its uid whichever file that element is in, so the rules below hold across all of
     /// them at once. The frame (<c>MainWindow.xaml</c>) carries only the product name.
     /// </summary>
-    private static IEnumerable<string> WindowXaml(string app) =>
+    internal static IEnumerable<string> WindowXaml(string app) =>
         Directory.EnumerateFiles(Path.Combine(app, "Views"), "*.xaml", SearchOption.AllDirectories)
             .Prepend(Path.Combine(app, "ShellPage.xaml"))
             .OrderBy(path => path, StringComparer.Ordinal);
 
-    private static IEnumerable<(string Tag, IReadOnlyDictionary<string, string> Attributes)> Elements(string xaml)
+    internal static IEnumerable<(string Tag, IReadOnlyDictionary<string, string> Attributes)> Elements(string xaml)
     {
         var stripped = Comment.Replace(xaml, string.Empty);
         foreach (Match match in Tag.Matches(stripped))

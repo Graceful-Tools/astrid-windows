@@ -27,9 +27,11 @@
         <DataTemplate x:Key="BoardCardTemplate" x:DataType="bindings:TaskRow">
             <!--
                 The same card the list draws, because it is the same task: 10px radius, a
-                hairline border, and the surface the rows sit on.
+                hairline border, and the surface the rows sit on. A BoardCard rather than a
+                Button because WinUI never starts a drag from a Button (task b8e42e70); it is
+                still one, so a click, the keyboard and a screen reader keep everything.
             -->
-            <Button HorizontalAlignment="Stretch"
+            <views:BoardCard HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Left"
                     Margin="0,0,0,6"
                     Padding="10,8"
@@ -51,7 +53,7 @@
                                FontSize="11"
                                Foreground="{ThemeResource AstridTextMuted}" />
                 </StackPanel>
-            </Button>
+            </views:BoardCard>
         </DataTemplate>
         <DataTemplate x:Key="BoardDetailSlotTemplate" x:DataType="viewmodels:InlineDetailSlot">
             <ContentControl x:Uid="open_task" HorizontalAlignment="Stretch"

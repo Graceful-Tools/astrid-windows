@@ -297,6 +297,53 @@ public sealed class ShellSmokeTests
     }
 
 
+    /// <summary>
+    /// A card dragged onto a column lands in it (task b8e42e70).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// With a real mouse, because that is the only way this can fail the way it did: the drop
+    /// target, the payload and the move were all there and wired, and the card was a WinUI
+    /// Button — which the framework, by design, never starts a drag from. Every unit test of the
+    /// board passed for the fortnight in which nobody could drag a card.
+    /// </para>
+    /// <para>
+    /// The board is seeded rather than made through the window: offline, the app can create a
+    /// list but not a project, and only a list on a project has a board. Where the card sits
+    /// afterwards is read from the accessibility tree's order — a column's header comes before
+    /// its cards, and the next column's header after them.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void A_card_dragged_onto_a_column_lands_in_it_task_b8e42e70()
+    {
+        using var app = AstridApp.Launch(signedIn: true, seed: Seeds.ListWithBoard);
+
+        Select(app, Seeds.BoardListName);
+        app.Toggle("Board view");
+        Assert.True(app.Sees("Inbox"), $"the board did not open; saw: {string.Join(", ", app.Names())}");
+        Assert.True(app.Sees(Seeds.BoardCardTitle), "the seeded card is not on the board");
+
+        var card = app.Require(Seeds.BoardCardTitle).Current.BoundingRectangle;
+        var ready = app.Require("Ready").Current.BoundingRectangle;
+        Native.Drag(
+            (int)(card.Left + card.Width / 2), (int)(card.Top + card.Height / 2),
+            (int)(ready.Left + ready.Width / 2), (int)(ready.Bottom + 90));
+        Thread.Sleep(1500);
+
+        var names = app.Names().ToList();
+        var position = names.IndexOf(Seeds.BoardCardTitle);
+        var readyHeader = names.IndexOf("Ready");
+        var doingHeader = names.IndexOf("Doing");
+        Assert.True(readyHeader >= 0 && doingHeader > readyHeader, "the Ready and Doing columns are not both on screen");
+        Assert.True(
+            position > readyHeader && position < doingHeader,
+            $"the card did not move to Ready; the tree reads: {string.Join(", ", names)}");
+        // A press that becomes a drag is not also a click: the detail must not have opened.
+        Assert.DoesNotContain("Due date", names);
+        Assert.False(File.Exists(app.CrashLogPath), Crash(app));
+    }
+
     private static void Select(AstridApp app, string name)
     {
         var row = app.Require(name);

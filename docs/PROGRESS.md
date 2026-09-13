@@ -132,6 +132,12 @@ against the web, from a read of the source rather than of the docs, with what ha
   nothing, as on the web.
 - **Drag a row onto a sidebar list** to move it there, or add it with Shift (task 27cae198), as
   the web's sidebar does.
+- **Drag a board card between columns** (task b8e42e70). The drop, the payload and the move were
+  there from the start; the card was a `Button`, and WinUI never starts a drag from one — by
+  design, since a press on a button is a click. `Views/BoardCard` is a Button that starts its own
+  drag once a pressed pointer travels past the threshold, so a click still opens and a screen
+  reader still reads it. A rule test keeps `CanDrag` off any control WinUI will not drag from,
+  and a smoke test drags a card with a real mouse on a board seeded into the offline cache.
 - **The character, and the title bar** (task 4f96cbaa): the app draws its own title bar — the
   mark and the wordmark at the top left on the sidebar's layer, so the frame wears the theme
   and the Ocean wash instead of Windows' white strip — and the octopus is where the web has
