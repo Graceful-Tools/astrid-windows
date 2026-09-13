@@ -771,8 +771,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// </remarks>
     public async Task SyncAsync(CancellationToken cancellationToken = default)
     {
-        _syncsInFlight++;
-        if (_syncsInFlight == 1)
+        // Counted atomically: the two passes of an overlapping sync resume on whatever thread
+        // answers them, and a plain increment there is how the count once stuck at one and the
+        // spinner never stopped.
+        if (Interlocked.Increment(ref _syncsInFlight) == 1)
         {
             Raise(nameof(IsSyncing));
         }
@@ -809,8 +811,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            _syncsInFlight--;
-            if (_syncsInFlight == 0)
+            if (Interlocked.Decrement(ref _syncsInFlight) == 0)
             {
                 Raise(nameof(IsSyncing));
             }
