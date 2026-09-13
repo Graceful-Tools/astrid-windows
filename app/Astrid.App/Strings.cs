@@ -204,6 +204,8 @@ internal static class Strings
         ["reminder.none"] = "No reminder",
         ["reminder.set"] = "Reminder set",
         ["reminder.at_due_time"] = "At the time it is due",
+        // The empty list's word: the web's emptyState.defaultNoName.
+        ["rows.empty"] = "Time to get organized! Add your first task to get started.",
         // The settings hub's line under each card, and under each page's title (task 3f5834ed).
         ["settings.account_line"] = "Profile, email verification, and access settings",
         ["settings.reminders_line"] = "Reminders, push notifications, and calendar sync",

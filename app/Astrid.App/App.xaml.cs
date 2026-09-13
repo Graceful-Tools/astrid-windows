@@ -127,7 +127,18 @@ public partial class App : Application
         // one that owns the app.
         AppInstance.GetCurrent().Activated += (_, activation) => Deliver(activation);
 
-        _window = new MainWindow();
+        try
+        {
+            _window = new MainWindow();
+        }
+        catch (Exception error)
+        {
+            // A window that fails to build dies as a stowed exception with nothing on screen and
+            // nothing in the console. The message is the only clue there is, so it goes where the
+            // other crashes go before the process follows.
+            Log($"the window did not build: {error}");
+            throw;
+        }
         // Kept because the WinRT pickers need it: an unpackaged app has to tell a picker which
         // window it belongs to, and without that it throws rather than opening — a failure that
         // looks like the button doing nothing at all.

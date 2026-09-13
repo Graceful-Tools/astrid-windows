@@ -147,6 +147,15 @@ Save-Png -Bitmap (New-WideTile -Width 620 -Height 300) -Path (Join-Path $package
 Save-Png -Bitmap (New-WideTile -Width 620 -Height 300) -Path (Join-Path $packageAssets 'SplashScreen.png')
 Write-Host "wrote $($squares.Count + 3) package assets to packaging\Assets" -ForegroundColor Green
 
+# ── The mark inside the window ──────────────────────────────────────────────────────────────
+#
+# What the app itself draws — the title bar, the sign-in card, the empty list, a reminder — at
+# the two sizes the web uses (BRAND.icon at 512, BRAND.iconSmall at 96). From the same master as
+# everything else, so the octopus in the window is the octopus on the taskbar.
+Save-Png -Bitmap (Resize-Square -Side 512) -Path (Join-Path $appAssets 'Astrid-512.png')
+Save-Png -Bitmap (Resize-Square -Side 96) -Path (Join-Path $appAssets 'Astrid-96.png')
+Write-Host "wrote Astrid-512.png and Astrid-96.png to app\Astrid.App\Assets" -ForegroundColor Green
+
 # ── The executable's icon ───────────────────────────────────────────────────────────────────
 $icoSizes = @(16, 24, 32, 48, 64, 128, 256)
 $pngBytes = foreach ($side in $icoSizes) {

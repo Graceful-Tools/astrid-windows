@@ -37,6 +37,8 @@ public sealed partial class TaskRowsView : UserControl
     public TaskRowsView()
     {
         InitializeComponent();
+        // The empty list's word, from the strings table: the web's emptyState.defaultNoName.
+        EmptyMessage.Text = Strings.Get("rows.empty");
         AddedPrefix.Text = Strings.Get("quickadd.added");
     }
 

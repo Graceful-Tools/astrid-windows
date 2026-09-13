@@ -35,6 +35,11 @@
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
+        <!-- The title bar, then the window. -->
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
 
         <!--
             The Ocean surface: the brand look is a light appearance behind a cyan wash, so it is a
@@ -45,7 +50,7 @@
             transparent rectangle that swallowed clicks would break the sidebar it sits behind.
         -->
         <Rectangle x:Name="OceanSurface"
-                   Grid.ColumnSpan="3"
+                   Grid.ColumnSpan="3" Grid.RowSpan="2"
                    IsHitTestVisible="False"
                    Visibility="Collapsed">
             <Rectangle.Fill>
@@ -54,20 +59,26 @@
         </Rectangle>
 
         <!-- The first run, once. Over everything. -->
-        <views:TourOverlay x:Name="Tour" Grid.ColumnSpan="4" Canvas.ZIndex="20" />
+        <views:TourOverlay x:Name="Tour" Grid.ColumnSpan="4" Grid.RowSpan="2" Canvas.ZIndex="20" />
+
+        <!--
+            The title bar, drawn here so it wears the theme and the wash. The window hands its
+            drag region to Windows (MainWindow); the caption buttons sit over its right end.
+        -->
+        <views:TitleBarView x:Name="TitleBar" Grid.Row="0" Grid.ColumnSpan="4" />
 
         <!--
             The command palette, over everything. It spans the columns rather than sitting in
             one: it is not part of the layout, it is a thing that appears over it.
         -->
-        <views:CommandPaletteOverlay x:Name="Palette" Grid.ColumnSpan="4" Canvas.ZIndex="10" />
+        <views:CommandPaletteOverlay x:Name="Palette" Grid.ColumnSpan="4" Grid.RowSpan="2" Canvas.ZIndex="10" />
 
         <!--
             The settings, over the window (task 3f5834ed): the web's hub and its pages, full
             size, where a flyout under the account button used to be. Under the palette, the
             sign-in screen and the tour; over everything else, the expanded detail included.
         -->
-        <settings:SettingsView x:Name="Settings" Grid.ColumnSpan="4" Canvas.ZIndex="8" />
+        <settings:SettingsView x:Name="Settings" Grid.Row="1" Grid.ColumnSpan="4" Canvas.ZIndex="8" />
 
         <!--
             The sign-in screen. It covers the app rather than replacing it, so the window does
@@ -77,10 +88,10 @@
             a content child, and putting a child first made the XAML compiler fail with no
             message at all — an hour of bisecting to find one ordering rule.
         -->
-        <views:SignInOverlay x:Name="SignIn" Grid.Column="0" Grid.ColumnSpan="3" Canvas.ZIndex="10" />
+        <views:SignInOverlay x:Name="SignIn" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Canvas.ZIndex="10" />
 
         <!-- The sidebar: favourites, then everything else. Collapsed while signed out. -->
-        <views:SidebarView x:Name="Sidebar" Grid.Column="0" />
+        <views:SidebarView x:Name="Sidebar" Grid.Row="1" Grid.Column="0" />
 
         <!-- The list itself. Collapsed while signed out, for the reason above. -->
         <!--
@@ -91,7 +102,7 @@
             brand-coloured. Opaque on purpose: a translucent layer here let the wash back
             through and undid the point of it.
         -->
-        <Grid Grid.Column="1" Margin="0"
+        <Grid Grid.Row="1" Grid.Column="1" Margin="0"
               Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
               Visibility="{x:Bind Shell.SignIn.IsSignedIn, Mode=OneWay, Converter={StaticResource Visible}}">
             <Grid.RowDefinitions>
@@ -125,7 +136,7 @@
         </Grid>
 
         <!-- The conversation. Beside the list, and collapsed rather than narrow when it is shut. -->
-        <views:ChatPane x:Name="Chat" Grid.Column="2" />
+        <views:ChatPane x:Name="Chat" Grid.Row="1" Grid.Column="2" />
 
         <!--
             The task detail. Collapsed rather than merely narrow when nothing is open, so it is out
@@ -136,6 +147,6 @@
             or the list view returns. Its visibility is set by the same code, since where it is and
             whether it shows are one decision.
         -->
-        <views:TaskDetailPane x:Name="Detail" Grid.Column="3" Visibility="Collapsed" />
+        <views:TaskDetailPane x:Name="Detail" Grid.Row="1" Grid.Column="3" Visibility="Collapsed" />
     </Grid>
 </UserControl>

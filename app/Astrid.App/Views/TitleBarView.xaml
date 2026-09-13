@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Astrid.App.Views.TitleBarView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Astrid.App"
+    xmlns:views="using:Astrid.App.Views">
+
+    <!--
+        The title bar, drawn by the app rather than by Windows.
+
+        Windows drew a plain white strip with the word "Astrid" in it above a window that wears
+        the brand's own colours — the one part of the frame that did not match. With the content
+        extended into the title bar (MainWindow), this row is the drag region: it wears the same
+        layer the sidebar does, so the top left is one surface with it, and carries the mark and
+        the wordmark the way astrid-web's sidebar header does (Sidebar/LeftSidebar.tsx — the
+        small icon beside the name). The caption buttons stay Windows' own, at the right; they
+        take their colours from the theme the window is wearing.
+
+        A transparent background would not do: the drag region has to be hit-testable, and the
+        layer brush is what lets this strip read as part of the sidebar rather than a bar over
+        it. Nothing in here is interactive yet; the right-hand run of the strip is empty on
+        purpose, for what may move up here later.
+    -->
+    <Grid x:Name="Bar"
+          Height="36"
+          Padding="14,0,0,0"
+          ColumnSpacing="8"
+          Background="{ThemeResource LayerFillColorDefaultBrush}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Image x:Uid="title_mark" Grid.Column="0"
+               Source="{x:Bind local:Brand.SmallMark}"
+               Width="20" Height="20"
+               VerticalAlignment="Center"
+               AutomationProperties.Name="Astrid" />
+        <TextBlock x:Uid="astrid" Grid.Column="1" Text="Astrid"
+                   FontSize="13"
+                   FontWeight="SemiBold"
+                   VerticalAlignment="Center"
+                   Foreground="{ThemeResource AstridTextPrimary}" />
+    </Grid>
+</UserControl>

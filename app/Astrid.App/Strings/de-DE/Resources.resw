@@ -1659,4 +1659,10 @@
   <data name="settings_terms_line" xml:space="preserve">
     <value>Die Bedingungen, denen Sie zugestimmt haben</value>
   </data>
+  <data name="title_mark.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Astrid</value>
+  </data>
+  <data name="rows_empty" xml:space="preserve">
+    <value>Zeit, sich zu organisieren! Fügen Sie Ihre erste Aufgabe hinzu, um zu starten.</value>
+  </data>
 </root>

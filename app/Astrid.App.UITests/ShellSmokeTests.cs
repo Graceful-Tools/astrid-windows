@@ -296,6 +296,7 @@ public sealed class ShellSmokeTests
         Assert.False(File.Exists(app.CrashLogPath), Crash(app));
     }
 
+
     private static void Select(AstridApp app, string name)
     {
         var row = app.Require(name);

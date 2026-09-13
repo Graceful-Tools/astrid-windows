@@ -132,6 +132,13 @@ against the web, from a read of the source rather than of the docs, with what ha
   nothing, as on the web.
 - **Drag a row onto a sidebar list** to move it there, or add it with Shift (task 27cae198), as
   the web's sidebar does.
+- **The character, and the title bar** (task 4f96cbaa): the app draws its own title bar — the
+  mark and the wordmark at the top left on the sidebar's layer, so the frame wears the theme
+  and the Ocean wash instead of Windows' white strip — and the octopus is where the web has
+  it: the sign-in card (beside the name, as the web's sign-in page), the empty list (with the
+  web's speech bubble and its word), the reminder toast, and beside its name on the AI agents
+  page. `Assets/Astrid-512.png` and `Astrid-96.png` come from `scripts/make-icons.ps1`, the
+  same master as the taskbar icon.
 - **Settings over the window** (task 3f5834ed): the web's layout instead of a 720×540 flyout —
   a bar with the way back, the hub (Settings, a line under it, one card per category with its
   icon, title and line) and the chosen page beside it under the web's page header. Same section

@@ -29,6 +29,9 @@ namespace Astrid.App;
 /// </remarks>
 public sealed class Reminders
 {
+    /// <summary>The mark the toast wears, at the web's small size, on disk beside the executable.</summary>
+    private static string MarkPath => Path.Combine(AppContext.BaseDirectory, "Assets", "Astrid-96.png");
+
     private readonly ShellViewModel _shell;
     private readonly Action<Func<Task>> _post;
     private bool _registered;
@@ -104,6 +107,10 @@ public sealed class Reminders
         }
 
         var toast = new AppNotificationBuilder()
+            // The character beside the words, as the web's reminder popover and its push
+            // notifications carry it. A file beside the executable: the unpackaged build has no
+            // ms-appx the notification platform can read.
+            .SetAppLogoOverride(new Uri(MarkPath), AppNotificationImageCrop.Circle)
             .AddText(Strings.Get("app.name"))
             .AddText(reminder.Title)
             .AddButton(new AppNotificationButton(Strings.Get("reminder.toast_complete"))

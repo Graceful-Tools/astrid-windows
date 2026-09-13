@@ -1660,4 +1660,10 @@
   <data name="settings_terms_line" xml:space="preserve">
     <value>The terms you agreed to</value>
   </data>
+  <data name="title_mark.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Astrid</value>
+  </data>
+  <data name="rows_empty" xml:space="preserve">
+    <value>Time to get organized! Add your first task to get started.</value>
+  </data>
 </root>

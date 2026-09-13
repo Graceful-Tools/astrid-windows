@@ -38,6 +38,9 @@ public sealed partial class ShellPage : UserControl
     private readonly Reminders _reminders;
     private GlobalHotkey? _hotkey;
 
+    /// <summary>The strip the window is dragged by, for <c>Window.SetTitleBar</c>.</summary>
+    internal UIElement TitleBarDragRegion => TitleBar.DragRegion;
+
     public ShellPage()
     {
         InitializeComponent();

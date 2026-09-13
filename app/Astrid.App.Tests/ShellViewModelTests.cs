@@ -429,6 +429,27 @@ public sealed class ShellViewModelTests
         Assert.False(shell.IsSettingsOpen);
     }
 
+    /// <summary>
+    /// The empty state is the list's, not the board's: it shows when the list has nothing and
+    /// goes away on the board, which draws its own.
+    /// </summary>
+    [Fact]
+    public async Task The_empty_state_shows_off_the_board_only()
+    {
+        var core = StartedCore(("l1", "Home", false)).AnswerOk("board", BoardWith());
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        Assert.True(shell.Tasks.IsEmpty);
+        Assert.True(shell.ShowsEmptyList);
+
+        await shell.ShowBoardAsync(true);
+        Assert.False(shell.ShowsEmptyList, "the board has its own empty state");
+
+        await shell.ShowBoardAsync(false);
+        Assert.True(shell.ShowsEmptyList);
+    }
+
     /// <summary>Off the board, the detail is the side pane it always was.</summary>
     [Fact]
     public async Task In_list_view_the_detail_is_the_side_pane()

@@ -98,6 +98,52 @@
             leaves WinUI painting its own rectangle behind the web's, which is what made
             these rows look like a list box rather than Astrid.
         -->
+        <!--
+            The empty list, as astrid-web's AstridEmptyState draws it: the character, and a
+            speech bubble with a word of encouragement. Over the (empty) list, so the quick-add
+            box above keeps working; gone the moment there is a row.
+        -->
+        <Grid Grid.Row="1" x:Name="EmptyState"
+              Canvas.ZIndex="1"
+              MaxWidth="560"
+              Margin="32,40,32,0"
+              ColumnSpacing="16"
+              VerticalAlignment="Top"
+              HorizontalAlignment="Center"
+              Visibility="{x:Bind Shell.ShowsEmptyList, Mode=OneWay, Converter={StaticResource Visible}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Image x:Uid="title_mark" Grid.Column="0"
+                   Source="{x:Bind local:Brand.Mark}"
+                   Width="150" Height="150"
+                   VerticalAlignment="Top"
+                   AutomationProperties.Name="Astrid" />
+            <Grid Grid.Column="1" VerticalAlignment="Top" Margin="0,10,0,0">
+                <Border CornerRadius="16"
+                        Padding="16"
+                        BorderThickness="2"
+                        BorderBrush="{ThemeResource AstridBorderHover}"
+                        Background="{ThemeResource AstridSurfaceHover}">
+                    <TextBlock x:Name="EmptyMessage"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap"
+                               Foreground="{ThemeResource AstridTextPrimary}" />
+                </Border>
+                <!-- The bubble's pointer, toward the character: the border, then the fill over it. -->
+                <Polygon Points="0,22 18,6 18,38"
+                         Fill="{ThemeResource AstridBorderHover}"
+                         HorizontalAlignment="Left" VerticalAlignment="Top"
+                         Margin="-16,0,0,0" />
+                <Polygon Points="4,22 18,10 18,34"
+                         Fill="{ThemeResource AstridSurfaceHover}"
+                         HorizontalAlignment="Left" VerticalAlignment="Top"
+                         Margin="-16,0,0,0" />
+            </Grid>
+        </Grid>
+
         <ListView Grid.Row="1"
                   Visibility="{x:Bind Shell.IsBoardView, Mode=OneWay, Converter={StaticResource NotVisible}}"
                   x:Name="TaskRows"

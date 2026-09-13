@@ -79,6 +79,14 @@
     <Content Include="Assets\Checkboxes\*.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!--
+      The mark the window draws — title bar, sign-in, the empty list, a reminder — at the web's
+      two sizes (BRAND.icon 512, BRAND.iconSmall 96). Written by scripts/make-icons.ps1 from the
+      same master as the taskbar icon and the Store tiles.
+    -->
+    <Content Include="Assets\Astrid-*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

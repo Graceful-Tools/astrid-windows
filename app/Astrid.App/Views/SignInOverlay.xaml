@@ -39,29 +39,33 @@
                 BorderThickness="1"
                 BorderBrush="{ThemeResource AstridBorder}">
             <StackPanel Spacing="20">
-                <StackPanel Spacing="10" HorizontalAlignment="Center">
-                    <!-- The mark. The accent is the brand's, so it comes from the theme. -->
-                    <!-- The same rounded square the sidebar wears, at twice the size. -->
-                    <Border Width="52" Height="52" CornerRadius="12"
-                            HorizontalAlignment="Center"
-                            Background="{ThemeResource AstridAccentBrush}">
-                        <TextBlock Text="&#xE930;"
-                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                   FontSize="24"
-                                   Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center" />
+                <!--
+                    The character beside the name, as astrid-web's sign-in page has it
+                    (auth/signin/signin-client.tsx: the 88px mark, rounded, with the wordmark
+                    and the line beside it). It used to be a glyph in an accent square.
+                -->
+                <Grid ColumnSpacing="16" HorizontalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Width="88" Height="88" CornerRadius="16"
+                            VerticalAlignment="Center">
+                        <Image x:Uid="title_mark"
+                               Source="{x:Bind local:Brand.Mark}"
+                               Stretch="Uniform"
+                               AutomationProperties.Name="Astrid" />
                     </Border>
-                    <TextBlock x:Uid="astrid" Text="Astrid"
-                               Style="{ThemeResource TitleLargeTextBlockStyle}"
-                               Foreground="{ThemeResource AstridTextPrimary}"
-                               HorizontalAlignment="Center" />
-                    <TextBlock x:Uid="your_tasks_on_this_machine_and" Text="Your tasks, on this machine and everywhere else."
-                               Style="{ThemeResource BodyTextBlockStyle}"
-                               Foreground="{ThemeResource AstridTextSecondary}"
-                               TextWrapping="Wrap"
-                               TextAlignment="Center" />
-                </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                        <TextBlock x:Uid="astrid" Text="Astrid"
+                                   Style="{ThemeResource TitleLargeTextBlockStyle}"
+                                   Foreground="{ThemeResource AstridTextPrimary}" />
+                        <TextBlock x:Uid="your_tasks_on_this_machine_and" Text="Your tasks, on this machine and everywhere else."
+                                   Style="{ThemeResource BodyTextBlockStyle}"
+                                   Foreground="{ThemeResource AstridTextSecondary}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
 
                 <Button x:Uid="sign_in_button" x:Name="SignInButton"
                         Content="Sign in with your browser"

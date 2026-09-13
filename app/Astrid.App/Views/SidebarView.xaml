@@ -67,25 +67,10 @@
         </Grid.RowDefinitions>
 
         <!--
-            The wordmark, at astrid-web's own weight and size: 18px semibold, tight
-            tracking, beside a 28px mark.
+            The mark and the wordmark used to be here, as the web's sidebar header has them. They
+            are the title bar now (TitleBarView), which sits directly above this column and wears
+            the same layer, so the top left reads as one surface with the brand at its corner.
         -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8"
-                    Margin="12,12,12,4" VerticalAlignment="Center">
-            <Border Width="28" Height="28" CornerRadius="4"
-                    Background="{ThemeResource AstridAccentBrush}">
-                <TextBlock Text="&#xE930;"
-                           FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                           FontSize="15"
-                           Foreground="White"
-                           HorizontalAlignment="Center" VerticalAlignment="Center" />
-            </Border>
-            <TextBlock x:Uid="astrid" Text="Astrid"
-                       FontSize="18"
-                       FontWeight="SemiBold"
-                       VerticalAlignment="Center"
-                       Foreground="{ThemeResource AstridTextPrimary}" />
-        </StackPanel>
 
         <ScrollViewer Grid.Row="1">
             <StackPanel Margin="12,8,12,8" Spacing="4">

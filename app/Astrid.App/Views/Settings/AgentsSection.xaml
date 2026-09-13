@@ -15,9 +15,19 @@
             agents the server can run, minus Astrid itself, and which of them answers @astrid for
             My Tasks and private lists. "Let Astrid choose" is the web's cleared state.
         -->
-        <TextBlock x:Uid="astrid_model_heading" Text="The model behind @astrid"
-                   Style="{StaticResource DetailSection}"
-                   Margin="0,0,0,4" />
+        <!-- The character beside the heading, as the web's Agent Hub card has it (24px, round). -->
+        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,4">
+            <Border Width="24" Height="24" CornerRadius="12" VerticalAlignment="Center">
+                <Image x:Uid="title_mark"
+                       Source="{x:Bind local:Brand.SmallMark}"
+                       Stretch="UniformToFill"
+                       AutomationProperties.Name="Astrid" />
+            </Border>
+            <TextBlock x:Uid="astrid_model_heading" Text="The model behind @astrid"
+                       Style="{StaticResource DetailSection}"
+                       Margin="0"
+                       VerticalAlignment="Center" />
+        </StackPanel>
         <TextBlock x:Uid="astrid_model_none" Text="Add an API key or register a custom agent below to power Astrid."
                    FontSize="12"
                    TextWrapping="Wrap"

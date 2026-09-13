@@ -94,6 +94,25 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 RaiseDetailPlacement();
             }
         };
+        // The sign-in screen taking the window ends the settings (task 3f5834ed): a settings screen
+        // under a sign-in screen is one nobody asked for, and one that would still be there after
+        // signing back in. Keyed on the screen itself — the shell's own NeedsSignIn flag is set by
+        // any answer that says the session is stale, including one the settings screen just got,
+        // and closing on that shut the settings the moment they opened.
+        SignIn.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(SignInViewModel.NeedsSignIn) && SignIn.NeedsSignIn)
+            {
+                IsSettingsOpen = false;
+            }
+        };
+        Tasks.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(TaskListViewModel.IsEmpty))
+            {
+                Raise(nameof(ShowsEmptyList));
+            }
+        };
         Board.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName != nameof(BoardViewModel.ExpandedTaskId))
@@ -245,8 +264,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// <remarks>
     /// The web takes settings over its main surface — a hub of categories with the chosen page
     /// beside it — rather than fitting them into a flyout, and so does this. One flag, read by
-    /// the page that draws it and by the tests; sign-in taking the window ends it, since a
-    /// settings screen over a sign-in screen is a screen nobody asked for.
+    /// the page that draws it and by the tests; the sign-in screen taking the window ends it.
     /// </remarks>
     public bool IsSettingsOpen
     {
@@ -413,6 +431,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             if (Set(ref _isBoardView, value))
             {
                 Raise(nameof(ShowsNoBoardNotice));
+                Raise(nameof(ShowsEmptyList));
                 RaiseDetailPlacement();
             }
         }
@@ -468,6 +487,12 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     /// <summary>Whether the open task is drawn in the side pane beside the list.</summary>
     public bool ShowsDetailPane => Detail.IsOpen && !ShowsDetailInline;
+
+    /// <summary>
+    /// Whether the list has nothing in it to show — the web's empty state, with the character
+    /// and a word of encouragement. Off the board only: the board has its own.
+    /// </summary>
+    public bool ShowsEmptyList => !IsBoardView && Tasks.IsEmpty;
 
     // ── Full screen (task 1927c2e7) ──────────────────────────────────────────────────────────
     //
@@ -535,13 +560,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public bool NeedsSignIn
     {
         get => _needsSignIn;
-        private set
-        {
-            if (Set(ref _needsSignIn, value) && value)
-            {
-                IsSettingsOpen = false;
-            }
-        }
+        private set => Set(ref _needsSignIn, value);
     }
 
     public string? StatusMessage
