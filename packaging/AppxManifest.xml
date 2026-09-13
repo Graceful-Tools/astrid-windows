@@ -42,7 +42,7 @@
     ProcessorArchitecture="{ARCHITECTURE}" />
 
   <Properties>
-    <DisplayName>Astrid</DisplayName>
+    <DisplayName>Astrid Tasks</DisplayName>
     <PublisherDisplayName>Graceful Tools LLC</PublisherDisplayName>
     <Description>Tasks, shared with the people you share them with.</Description>
     <Logo>Assets\StoreLogo.png</Logo>
@@ -72,7 +72,7 @@
         colour of ours that would fight it.
       -->
       <uap:VisualElements
-        DisplayName="Astrid"
+        DisplayName="Astrid Tasks"
         Description="Tasks, shared with the people you share them with."
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"

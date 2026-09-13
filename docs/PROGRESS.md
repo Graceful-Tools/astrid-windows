@@ -228,9 +228,10 @@ Not gaps, because the web has none either: multi-select, undo, calendar view, de
 | Piece | Path | State |
 |---|---|---|
 | MSIX packages and a bundle over both architectures | `scripts/package.ps1`, `packaging/` | done — unsigned |
+| The Store identity | `packaging/store-identity.json`, `packaging/AppxManifest.xml` | done 2026-09-13 — `GracefulToolsLLC.AstridTasks`, publisher `CN=36A769F1-…`, reserved name "Astrid Tasks" in both display names; `package.ps1` no longer warns and its `.msixupload` is submittable |
 | Signing | — | not needed for the Store, which signs at submission |
 | A local test install with a self-signed certificate | `scripts/sign-local.ps1` | written 2026-09-13, approved by Jon; its first run on this machine is his — see `docs/M0_NOTES.md` |
-| The Store listing | — | not started |
+| The Store listing | — | collateral drafted 2026-09-13 (task f91d2f07); the submission itself is Jon's, in Partner Center |
 | The update feed (`.appinstaller`) | — | not started |
 
 ## M5 — external sync providers

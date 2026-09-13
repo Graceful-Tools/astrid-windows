@@ -36,6 +36,17 @@ which is why it took a decision (Jon approved it on 2026-09-13, task edf273c3). 
 is named "Astrid local test signing" in certmgr, and `-RemoveCertificate` takes it out again;
 `-Uninstall` removes the package.
 
+## The identity
+
+`store-identity.json` holds the two values Partner Center assigned when the name was reserved
+(2026-09-13): the package name `GracefulToolsLLC.AstridTasks` and the publisher, a `CN=` GUID.
+The reserved name is **Astrid Tasks** ("Astrid" was taken), so the manifest's
+`Package/Properties/DisplayName` and the application's `VisualElements DisplayName` both say
+that — the Store rejects a package whose display names are not reserved names. The tile's
+`ShortName` and the `astrid://` protocol's display name stay "Astrid"; neither is checked against
+the reservation. If Jon later reserves "Astrid" as an additional name, those two display names can
+go back.
+
 ## The assets
 
 `Assets/` holds three flat-colour PNGs, generated rather than drawn, so the package is valid and
