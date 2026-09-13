@@ -270,6 +270,12 @@ public sealed record RowWindow
     [JsonPropertyName("offset")] public int Offset { get; init; }
 
     [JsonPropertyName("rows")] public IReadOnlyList<TaskRow> Rows { get; init; } = [];
+
+    /// <summary>
+    /// How the rows were sorted — <c>manual</c> when by hand, which is the one order a drag may
+    /// change (task 7883f710). Absent for a window that is not a list's, such as search results.
+    /// </summary>
+    [JsonPropertyName("sortBy")] public string? SortBy { get; init; }
 }
 
 /// <summary>A list, as the sidebar needs it.</summary>

@@ -48,6 +48,17 @@ public sealed class CommandSerializationTests
     /// default naming would send <c>ListId</c> and get "bad request" back with nothing to explain
     /// it.
     /// </summary>
+    /// <summary>A reorder carries the rows' ids as an array, in order (task 7883f710).</summary>
+    [Fact]
+    public void A_manual_order_is_an_array_of_ids_task_7883f710()
+    {
+        var json = Json(Commands.SetManualOrder("l1", ["t2", "t1"]));
+
+        Assert.Contains("\"kind\":\"setManualOrder\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"listId\":\"l1\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"order\":[\"t2\",\"t1\"]", json, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Fields_are_camel_case()
     {

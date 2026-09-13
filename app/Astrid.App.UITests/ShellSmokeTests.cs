@@ -344,6 +344,41 @@ public sealed class ShellSmokeTests
         Assert.False(File.Exists(app.CrashLogPath), Crash(app));
     }
 
+    /// <summary>
+    /// A row dragged below another stays there (task 7883f710).
+    /// </summary>
+    /// <remarks>
+    /// With a real mouse, on a list sorted by hand: the list control does the moving and the
+    /// view model writes where the rows came to rest, and neither half can be seen working from
+    /// a unit test. The order afterwards is read from the accessibility tree, where the rows
+    /// appear in the order they are drawn.
+    /// </remarks>
+    [Fact]
+    public void A_row_dragged_below_another_stays_there_task_7883f710()
+    {
+        using var app = AstridApp.Launch(signedIn: true, seed: Seeds.ListSortedByHand);
+
+        Select(app, Seeds.HandSortedListName);
+        Assert.True(app.Sees(Seeds.FirstErrand), $"the seeded rows are not on screen; saw: {string.Join(", ", app.Names())}");
+        var before = app.Names().ToList();
+        Assert.True(
+            before.IndexOf(Seeds.SecondErrand) < before.IndexOf(Seeds.FirstErrand),
+            "with nothing arranged the newer errand should draw first");
+
+        var upper = app.Require(Seeds.SecondErrand).Current.BoundingRectangle;
+        var lower = app.Require(Seeds.FirstErrand).Current.BoundingRectangle;
+        Native.Drag(
+            (int)(upper.Left + upper.Width / 2), (int)(upper.Top + upper.Height / 2),
+            (int)(lower.Left + lower.Width / 2), (int)(lower.Bottom + lower.Height / 2));
+        Thread.Sleep(1500);
+
+        var after = app.Names().ToList();
+        Assert.True(
+            after.IndexOf(Seeds.FirstErrand) < after.IndexOf(Seeds.SecondErrand),
+            $"the row did not stay where it was dropped; the tree reads: {string.Join(", ", after)}");
+        Assert.False(File.Exists(app.CrashLogPath), Crash(app));
+    }
+
     private static void Select(AstridApp app, string name)
     {
         var row = app.Require(name);

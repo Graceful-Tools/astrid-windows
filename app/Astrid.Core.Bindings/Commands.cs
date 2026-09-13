@@ -619,6 +619,13 @@ public static class Commands
     public static object SetListFavorite(string listId, bool favorite) =>
         new FavoriteRequest("setListFavorite", listId, favorite);
 
+    /// <summary>
+    /// The rows were dragged into this order (task 7883f710). Only the rows that were on screen;
+    /// the core completes the list's order and journals it whole.
+    /// </summary>
+    public static object SetManualOrder(string listId, IReadOnlyList<string> order) =>
+        new ManualOrderRequest("setManualOrder", listId, order);
+
     /// <param name="parentCommentId">The comment this one answers (task 97c817dd); null for a top-level one.</param>
     public static object PostComment(string taskId, string content, string? parentCommentId = null) =>
         new PostCommentRequest("postComment", taskId, content, parentCommentId);
@@ -818,6 +825,11 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("listId")] string ListId,
         [property: JsonPropertyName("favorite")] bool Favorite);
+
+    private sealed record ManualOrderRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("listId")] string ListId,
+        [property: JsonPropertyName("order")] IReadOnlyList<string> Order);
 
     private sealed record PostCommentRequest(
         [property: JsonPropertyName("kind")] string Kind,

@@ -68,12 +68,14 @@ public sealed partial class TaskRowsView : UserControl
     internal void Restyle() => Restyling.Reapply(TaskRows);
 
     /// <summary>
-    /// A row is being dragged — towards a sidebar list, which files it there (task 27cae198).
+    /// A row is being dragged — towards a sidebar list, which files it there (task 27cae198), or
+    /// to a new place in this list, when the list is sorted by hand (task 7883f710).
     /// </summary>
     /// <remarks>
     /// The task id travels as text on the package, as the board's cards already carry it, so one
     /// drop target reads both. Move and Copy are both offered: the sidebar answers Copy while
-    /// Shift is held, which is the web's "add to this list as well".
+    /// Shift is held, which is the web's "add to this list as well". The view model notes how
+    /// the rows stood, so that when the drag ends it can tell a reorder from a filing.
     /// </remarks>
     private void OnRowDragStarting(object sender, DragItemsStartingEventArgs args)
     {
@@ -84,6 +86,16 @@ public sealed partial class TaskRowsView : UserControl
         }
         args.Data.SetText(row.Id);
         args.Data.RequestedOperation = DataPackageOperation.Move | DataPackageOperation.Copy;
+        Shell.Tasks.BeginReorder();
+    }
+
+    /// <summary>
+    /// The drag ended. The list has already moved the row if it was a reorder; the view model
+    /// decides whether anything changed and writes it if so.
+    /// </summary>
+    private async void OnRowDragCompleted(ListViewBase sender, DragItemsCompletedEventArgs args)
+    {
+        await Shell.Tasks.EndReorderAsync();
     }
 
     private async void OnQuickAdd(object sender, RoutedEventArgs args) => await AddTypedTask();

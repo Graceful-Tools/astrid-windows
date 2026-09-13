@@ -44,6 +44,40 @@ internal static class Seeds
         transaction.Commit();
     }
 
+    internal const string HandSortedListName = "Errands";
+    internal const string FirstErrand = "Post the parcel";
+    internal const string SecondErrand = "Return the library books";
+
+    /// <summary>
+    /// A list sorted by hand, with two tasks and no arrangement yet — so they draw newest first,
+    /// the second errand above the first, and a drag can put them the other way round.
+    /// </summary>
+    internal static void ListSortedByHand(string cachePath)
+    {
+        using var connection = new SqliteConnection($"Data Source={cachePath}");
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        Execute(connection,
+            "INSERT OR REPLACE INTO lists (id, name, json) VALUES ('l2', $name, $json)",
+            ("$name", HandSortedListName),
+            ("$json", $$"""{"id":"l2","name":"{{HandSortedListName}}","sortBy":"manual"}"""));
+        Execute(connection,
+            "INSERT OR REPLACE INTO tasks (id, title, created_at, json) VALUES ('e1', $title, '2026-01-01T00:00:00Z', $json)",
+            ("$title", FirstErrand),
+            ("$json", $$"""{"id":"e1","title":"{{FirstErrand}}","createdAt":"2026-01-01T00:00:00Z","lists":[{"id":"l2","name":"{{HandSortedListName}}"}]}"""));
+        Execute(connection,
+            "INSERT OR REPLACE INTO tasks (id, title, created_at, json) VALUES ('e2', $title, '2026-01-02T00:00:00Z', $json)",
+            ("$title", SecondErrand),
+            ("$json", $$"""{"id":"e2","title":"{{SecondErrand}}","createdAt":"2026-01-02T00:00:00Z","lists":[{"id":"l2","name":"{{HandSortedListName}}"}]}"""));
+        Execute(connection,
+            "INSERT OR REPLACE INTO task_lists_membership (task_id, list_id) VALUES ('e1', 'l2')");
+        Execute(connection,
+            "INSERT OR REPLACE INTO task_lists_membership (task_id, list_id) VALUES ('e2', 'l2')");
+
+        transaction.Commit();
+    }
+
     private static void Execute(SqliteConnection connection, string sql, params (string Name, string Value)[] parameters)
     {
         using var command = connection.CreateCommand();

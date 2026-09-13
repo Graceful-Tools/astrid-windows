@@ -245,6 +245,7 @@ public sealed class TaskListViewModel : ObservableObject
             }
 
             Total = window.Total;
+            IsManualSort = window.SortBy == "manual";
             foreach (var row in window.Rows)
             {
                 Rows.Add(row);
@@ -301,6 +302,7 @@ public sealed class TaskListViewModel : ObservableObject
                 return;
             }
             Total = window.Total;
+            IsManualSort = window.SortBy == "manual";
             Replace(window.Rows);
         }
         finally
@@ -326,6 +328,9 @@ public sealed class TaskListViewModel : ObservableObject
         private set => Set(ref _isFiltered, value);
     }
 
+    private bool _isManualSort;
+    private List<string>? _orderBeforeDrag;
+
     /// <summary>Fetch the filter and sort choices for this list.</summary>
     public async Task LoadFiltersAsync(CancellationToken cancellationToken = default)
     {
@@ -349,6 +354,59 @@ public sealed class TaskListViewModel : ObservableObject
         {
             FilterGroups.Add(group);
         }
+    }
+
+    /// <summary>
+    /// Whether the rows can be dragged into an order of their own (task 7883f710).
+    /// </summary>
+    /// <remarks>
+    /// True only when the list is sorted by hand — which every window of rows says of itself —
+    /// because a drag on a list sorted by date would put a row somewhere the next refresh takes
+    /// it straight back out of.
+    /// </remarks>
+    public bool IsManualSort
+    {
+        get => _isManualSort;
+        private set => Set(ref _isManualSort, value);
+    }
+
+    /// <summary>A drag of the rows is starting. Remember how they stood.</summary>
+    public void BeginReorder()
+    {
+        _orderBeforeDrag = Rows.Select(row => row.Id).ToList();
+    }
+
+    /// <summary>
+    /// The drag ended. If the rows now stand in a different order, write it.
+    /// </summary>
+    /// <remarks>
+    /// The list control moves the rows itself as they are dragged, so what is sent is simply
+    /// where they came to rest — the top-level rows only, since a subtask sits under its parent
+    /// and goes where it goes. The core completes the list's order from that and the rows are
+    /// redrawn from it, so what is on screen is what will be there after a refresh. A drag that
+    /// changed nothing, or that went to the sidebar rather than to a new place in the list,
+    /// writes nothing.
+    /// </remarks>
+    public async Task<bool> EndReorderAsync(CancellationToken cancellationToken = default)
+    {
+        var before = _orderBeforeDrag;
+        _orderBeforeDrag = null;
+        if (before is null || string.IsNullOrEmpty(ListId))
+        {
+            return false;
+        }
+        var now = Rows.Select(row => row.Id).ToList();
+        if (now.SequenceEqual(before))
+        {
+            return false;
+        }
+        var order = Rows.Where(row => row.Depth == 0).Select(row => row.Id).ToList();
+        var response = await _core.CallAsync(Commands.SetManualOrder(ListId, order), cancellationToken);
+        var written = Handle(response);
+        // Either way the rows are redrawn from the core: its order is the truth, and a refused
+        // write must not leave the screen showing an arrangement that was never kept.
+        await RefreshAsync(cancellationToken);
+        return written;
     }
 
     /// <summary>Set one filter, and redraw the list it changes.</summary>
@@ -406,6 +464,7 @@ public sealed class TaskListViewModel : ObservableObject
             }
 
             Total = window.Total;
+            IsManualSort = window.SortBy == "manual";
             var selectedId = Selected?.Id;
             Replace(window.Rows);
             // Keep the selection across a refresh, by id: the row object is replaced every time,

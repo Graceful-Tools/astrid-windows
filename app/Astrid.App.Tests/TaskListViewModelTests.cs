@@ -9,10 +9,13 @@ namespace Astrid.App.Tests;
 /// </summary>
 public sealed class TaskListViewModelTests
 {
-    private static object Window(int total, params string[] titles) => new
+    private static object Window(int total, params string[] titles) => Window("auto", total, titles);
+
+    private static object Window(string sortBy, int total, params string[] titles) => new
     {
         total,
         offset = 0,
+        sortBy,
         rows = titles.Select((title, index) => new
         {
             id = $"t{index}",
@@ -415,6 +418,65 @@ public sealed class TaskListViewModelTests
 
         Assert.False(view.IsShowingSearchResults);
         Assert.Equal(string.Empty, view.SearchQuery);
+    }
+
+    /// <summary>
+    /// Rows can be dragged into an order only when the list is sorted by hand. Whether it is comes
+    /// with every window of rows the core draws — the view does not keep a sort of its own, and
+    /// it is right from the moment the list opens, not from the moment the filter sheet does.
+    /// </summary>
+    [Fact]
+    public async Task Rows_reorder_only_when_the_sort_is_manual_task_7883f710()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window("auto", 2, "Buy milk", "Book flights"))
+            .AnswerOk("setFilter")
+            .AnswerOk("rowsForList", Window("manual", 2, "Buy milk", "Book flights"))
+            .AnswerOk("filterOptions", FilterOptions(false, "all"));
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Home");
+        Assert.False(view.IsManualSort);
+
+        Assert.True(await view.SetFilterAsync("sortBy", "manual"));
+        Assert.True(view.IsManualSort);
+    }
+
+    /// <summary>
+    /// A drag that changed the order sends the rows' ids as they now stand and redraws from the
+    /// core, whose order is the truth (task 7883f710). Only the top-level rows: a subtask sits
+    /// under its parent and travels with it.
+    /// </summary>
+    [Fact]
+    public async Task A_reordered_list_sends_the_rows_new_order_task_7883f710()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(2, "Buy milk", "Book flights"))
+            .AnswerOk("setManualOrder")
+            .AnswerOk("rowsForList", Window(2, "Book flights", "Buy milk"));
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Home");
+
+        view.BeginReorder();
+        view.Rows.Move(1, 0);
+        Assert.True(await view.EndReorderAsync());
+
+        var sent = core.Sent.First(item => item.Contains("setManualOrder"));
+        Assert.Contains("\"order\":[\"t1\",\"t0\"]", sent);
+        Assert.Equal(["rowsForList", "setManualOrder", "rowsForList"], core.SentKinds());
+    }
+
+    /// <summary>A drag that put the rows back where they were writes nothing.</summary>
+    [Fact]
+    public async Task A_drag_that_changed_nothing_sends_nothing_task_7883f710()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(2, "Buy milk", "Book flights"));
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Home");
+
+        view.BeginReorder();
+        Assert.False(await view.EndReorderAsync());
+        Assert.Equal(["rowsForList"], core.SentKinds());
     }
 
     private static object FilterOptions(bool filtered, string dueValue) => new

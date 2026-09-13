@@ -188,8 +188,16 @@ against the web, from a read of the source rather than of the docs, with what ha
 - `release.yml` runs the quick gate before it publishes anything.
 
 **Blocked on the web** (no `/api/v1` route; this client refuses unversioned paths): transfer
-ownership (`/api/lists/[id]/transfer-ownership`) and manual reorder (`/api/lists/[id]/manual-order`).
-The core already reads `manualSortOrder`; the write needs a versioned route.
+ownership (`/api/lists/[id]/transfer-ownership`). Manual reorder was the other one until
+2026-09-13, when the web added `POST /api/v1/lists/{id}/manual-order`.
+- **Drag rows into an order of your own** (task 7883f710), when the list is sorted by hand. The
+  view model sends the rows as they came to rest; `astrid_core::manual_order` completes the
+  list's order — the rest of the arrangement keeps its place, anything never arranged comes
+  last by creation, the server's own rule — and the list redraws from it at once, offline. The
+  Outbox sends it whole to `/api/v1/lists/{id}/manual-order` and keeps the `order` the server
+  answers with, which is not always the one sent. Until the web deploys the route the entry
+  dead-letters on 404, as any write to a missing route does; a release that carries this waits
+  for that deploy.
 - Two things the fuller gate found and fixed: the shell resolved the core's DLL by *last*
   candidate, so a week-old release build beat a fresh debug one; and the account photo binding
   threw on every fresh launch (no photo → an empty string into an image), which had broken the
