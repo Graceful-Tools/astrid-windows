@@ -191,6 +191,16 @@ Verified on this machine: launching the executable twice leaves one process with
 scheme is registered under HKCU on every start rather than at install time, because an unpackaged
 app can be moved and a stale registration silently stops sign-in from ever completing.
 
+**2026-09-13, task 64c02099: the callback is not always a protocol activation.** The App SDK's
+ProgId (`----ms-protocol:%1`) only wins when the shell's URL association for `astrid` names it, and
+on this machine that association did not exist, so the shell ran the plain `Classesstrid`
+command — `"Astrid.App.exe" "%1"` — and the second instance forwarded an ordinary *launch* whose
+argument was the URL. `App.Deliver` only read protocol activations, so Edge completed the hand-off
+and the app sat on "Waiting for your browser…". Both shapes are read now, through
+`SignInCallback.FromLaunchArguments`; the core still judges state and code. The "verified" above
+was true of the ProgId path and silent about the fallback, which is the one that matters when the
+association is missing.
+
 ### Settled — the credential at rest, 2026-09-07
 
 The fallback, on purpose. `PasswordVault` is a WinRT API with apartment sensitivity, called from
