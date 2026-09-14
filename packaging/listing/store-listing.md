@@ -101,15 +101,23 @@ https://astrid.cc
 
 ### Support contact info
 
-jon@gracefultools.com — **Jon: confirm.** This is the Partner Center contact address; use
-support@astrid.cc instead if that mailbox exists.
+support@astrid.cc — Jon's answer, 2026-09-14 (task 4732ef2f). Not the Partner Center account
+address, which is `jon@gracefultools.com`: certification checks that the support address works and
+that a person answers it, so it should be the one people are meant to write to.
 
 ### Privacy policy URL
 
-https://www.astrid.cc/privacy — returns 200 on 2026-09-13. Certification bounces a policy that
-does not describe the app, so read it once before submitting and check it names Astrid, the data
-collected (account, contacts if imported, task content, identifiers, usage) and the third parties
-(Google, GitHub).
+https://www.astrid.cc/privacy — read on 2026-09-14 (task 4732ef2f), not just pinged: 200, and
+genuinely about this app rather than a template, which is what certification actually checks. It
+names Astrid, the account data, task content and usage collected, the infrastructure providers
+(Neon, Vercel), and carries a full Google Tasks section covering the sync, the token handling and
+deletion.
+
+Two things it does not yet name: **GitHub**, though a list can be mirrored to GitHub Issues and the
+account stores a GitHub credential; and **imported contacts**, used for collaborator suggestions.
+The Properties page below answers "Google and GitHub sync are opt-in" — an opt-in the policy does
+not describe. Filed on the Astrid Web board as task ece00dc6, since the page lives there. It does
+not block this submission: the policy is adequate as it stands.
 
 ---
 
@@ -193,7 +201,7 @@ trailers are optional.
 | Subcategory | none (Productivity has none) |
 | Privacy policy URL | https://www.astrid.cc/privacy |
 | Website | https://astrid.cc |
-| Support contact | see above |
+| Support contact | support@astrid.cc |
 | Supports accessibility | No (do not claim it until the checklist has been walked; the app is fully keyboard- and screen-reader-driven, which is a good start) |
 | Product declarations | none of the boxes apply (no in-app purchases, no dependencies on non-Microsoft drivers or software) |
 | System requirements | Windows 10 version 1809 (build 17763) or later; x64 or ARM64; internet connection for sync |
@@ -234,5 +242,8 @@ Notes for certification (the box on the last page), so the tester can sign in:
 > created on first sign-in. Ctrl+Shift+A from any app brings Astrid forward; Ctrl+K opens the
 > command palette.
 
-Add a test account only if you would rather the tester did not create one; if so, make a fresh
-one on astrid.cc and paste the email and a magic-link-free password here before submitting.
+**No test account** — Jon's decision, 2026-09-14 (task 4732ef2f). The note above is what the
+tester gets: they create an account on first sign-in, on the real service, like any other user.
+That is normally what certification wants. If a run ever needs the tester kept off the real
+service, make a fresh account on astrid.cc and paste its email and a typable password here — a
+magic-link-only account is no use to them, since they cannot read the mailbox.
