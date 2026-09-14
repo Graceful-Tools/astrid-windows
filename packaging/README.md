@@ -36,6 +36,27 @@ which is why it took a decision (Jon approved it on 2026-09-13, task edf273c3). 
 is named "Astrid local test signing" in certmgr, and `-RemoveCertificate` takes it out again;
 `-Uninstall` removes the package.
 
+## Certifying it before the first upload
+
+`scripts/wack.ps1` runs the Windows App Certification Kit over the bundle. Partner Center runs the
+same checks at submission, so this only ever buys time — a failure found here arrives in ten
+minutes instead of days later, after certification. Worth doing once before the first upload;
+unnecessary before every later one.
+
+```powershell
+powershell -File scripts/package.ps1 -Version 0.1.0.0
+powershell -File scripts/wack.ps1 -Version 0.1.0.0     # from an ADMINISTRATOR shell
+```
+
+Elevation is not a policy of ours: the kit installs the package in order to drive it. The run takes
+about ten minutes and moves the mouse, so leave the machine alone. The report lands at `wack.xml`
+(gitignored) and opens in a browser.
+
+**The kit is not part of the build tools.** The Windows SDK that comes with the VS Build Tools
+component `Windows11SDK.26100` does not include `appcert.exe`; it is a feature of the standalone
+SDK installer, so the directory exists holding only the SupportedAPIs XML. `wack.ps1` says so and
+names the install command rather than letting Windows report a missing file.
+
 ## The identity
 
 `store-identity.json` holds the two values Partner Center assigned when the name was reserved

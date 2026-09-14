@@ -18,6 +18,8 @@
 /dist/
 *.pfx
 *.cer
+# The App Certification Kit's report, written into the repo root by scripts/wack.ps1.
+wack.xml
 
 # Tooling
 node_modules/
