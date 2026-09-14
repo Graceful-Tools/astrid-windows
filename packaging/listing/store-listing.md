@@ -101,9 +101,12 @@ https://astrid.cc
 
 ### Support contact info
 
-support@astrid.cc — Jon's answer, 2026-09-14 (task 4732ef2f). Not the Partner Center account
-address, which is `jon@gracefultools.com`: certification checks that the support address works and
-that a person answers it, so it should be the one people are meant to write to.
+support@astrid.cc — Jon's answer, 2026-09-14 (task 4732ef2f), and **the mailbox is live**; he
+confirmed it receives mail the same day. That is the half certification actually tests: it writes
+to the address and expects a person to answer, so a plausible-looking address nobody reads fails
+where no address at all would only have been a missing field. Not the Partner Center account
+address, which is `jon@gracefultools.com`; the support contact should be the one people are meant
+to write to.
 
 ### Privacy policy URL
 
