@@ -18,6 +18,10 @@
       app/Astrid.App/Assets/Astrid.ico
                            the executable's own icon, which is what the taskbar, Alt-Tab and
                            Explorer use for the UNPACKAGED build
+      packaging/listing/   the Store LISTING's logo, which is not a package asset at all: Partner
+                           Center shows it on the product page and in search results, and asks for
+                           a square of at least 300px. The tiles top out at 310, so it gets its own
+                           export rather than a reused one
 
     The .ico is written by hand because System.Drawing can only save a single image as an icon,
     which produces a 32x32 that Windows then scales badly to 256. The format is a small header, one
@@ -52,8 +56,10 @@ if (-not (Test-Path $Master)) {
 $repo = Resolve-Path "$PSScriptRoot\.."
 $packageAssets = Join-Path $repo 'packaging\Assets'
 $appAssets = Join-Path $repo 'app\Astrid.App\Assets'
+$listing = Join-Path $repo 'packaging\listing'
 New-Item -ItemType Directory -Force $packageAssets | Out-Null
 New-Item -ItemType Directory -Force $appAssets | Out-Null
+New-Item -ItemType Directory -Force $listing | Out-Null
 
 $source = [System.Drawing.Image]::FromFile((Resolve-Path $Master))
 Write-Host "master: $($source.Width)x$($source.Height)" -ForegroundColor Cyan
@@ -155,6 +161,16 @@ Write-Host "wrote $($squares.Count + 3) package assets to packaging\Assets" -For
 Save-Png -Bitmap (Resize-Square -Side 512) -Path (Join-Path $appAssets 'Astrid-512.png')
 Save-Png -Bitmap (Resize-Square -Side 96) -Path (Join-Path $appAssets 'Astrid-96.png')
 Write-Host "wrote Astrid-512.png and Astrid-96.png to app\Astrid.App\Assets" -ForegroundColor Green
+
+# ── The Store listing's logo ─────────────────────────────────────────────────
+#
+# Partner Center's minimum is 300x300. This is written at the master's own size rather than a
+# chosen one: the file is called icon-4096x4096.png but is actually 1024 square, and enlarging
+# it would put a soft logo on the product page. Not a package asset — it is uploaded on the
+# Store listing page — so it lives beside the listing copy rather than in packaging\Assets.
+$logoSide = [Math]::Min($source.Width, $source.Height)
+Save-Png -Bitmap (Resize-Square -Side $logoSide) -Path (Join-Path $listing "store-logo-$logoSide.png")
+Write-Host "wrote store-logo-$logoSide.png to packaging\listing" -ForegroundColor Green
 
 # ── The executable's icon ───────────────────────────────────────────────────────────────────
 $icoSizes = @(16, 24, 32, 48, 64, 128, 256)

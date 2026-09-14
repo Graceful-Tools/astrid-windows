@@ -177,9 +177,11 @@ Not included: the German interface. Only the core's words follow `ASTRID_LANGUAG
 chrome follows the Windows display language, so a fully German screenshot needs a machine set to
 German.
 
-Store logo: Partner Center asks for a 1:1 image of at least 300×300 for the listing; use the 512
-icon from `packaging/Assets` (`StoreLogo` scale-400 is 200×200 — export a 300 or larger from the
-artwork `scripts/make-icons.ps1` reads). Poster art (2:3, 720×1080) and trailers are optional.
+Store logo: `listing/store-logo-1024.png`, 1024×1024 with a transparent background, written by
+`scripts/make-icons.ps1` from the same master the tiles come from. Partner Center's minimum is
+300×300 and this is the master's own size — the file astrid-web calls `icon-4096x4096.png` is
+actually 1024 square, so anything larger would be an enlargement. Poster art (2:3, 720×1080) and
+trailers are optional.
 
 ---
 
