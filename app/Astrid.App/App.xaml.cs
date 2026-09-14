@@ -1,3 +1,4 @@
+using Astrid.App.ViewModels;
 using Astrid.Core.Bindings;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
@@ -160,15 +161,28 @@ public partial class App : Application
     }
 
     /// <summary>Pull the URI out of an activation and tell whoever is listening.</summary>
+    /// <remarks>
+    /// Two shapes, because Windows has two ways of starting the app for <c>astrid://</c>. The App
+    /// SDK's ProgId produces a protocol activation. The plain <c>Classesstrid</c> registration —
+    /// which is what the shell resolves when the ProgId's URL association is missing, as it was on
+    /// 2026-09-13 (task 64c02099) — runs <c>"Astrid.App.exe" "%1"</c>, so the callback arrives as
+    /// an ordinary launch with the URL as its argument. Reading only the first meant a sign-in
+    /// that Windows delivered the second way was dropped without a word.
+    /// </remarks>
     private static void Deliver(AppActivationArguments activation)
     {
-        if (activation.Kind != ExtendedActivationKind.Protocol)
+        switch (activation.Kind)
         {
-            return;
-        }
-        if (activation.Data is Windows.ApplicationModel.Activation.IProtocolActivatedEventArgs protocol)
-        {
-            UriActivated?.Invoke(protocol.Uri);
+            case ExtendedActivationKind.Protocol
+                when activation.Data is Windows.ApplicationModel.Activation.IProtocolActivatedEventArgs protocol:
+                UriActivated?.Invoke(protocol.Uri);
+                break;
+            case ExtendedActivationKind.Launch
+                when activation.Data is Windows.ApplicationModel.Activation.ILaunchActivatedEventArgs launch
+                    && SignInCallback.FromLaunchArguments(launch.Arguments) is { } url
+                    && Uri.TryCreate(url, UriKind.Absolute, out var uri):
+                UriActivated?.Invoke(uri);
+                break;
         }
     }
 
