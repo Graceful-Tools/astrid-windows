@@ -47,6 +47,15 @@ that — the Store rejects a package whose display names are not reserved names.
 the reservation. If Jon later reserves "Astrid" as an additional name, those two display names can
 go back.
 
+## The listing
+
+`listing/store-listing.md` is the Partner Center listing, drafted 2026-09-13 (task f91d2f07) to
+match the iOS App Store listing for Astrid Tasks: description, features, search terms, the
+age-rating answers, and what to put in every other field. `listing/screenshots/` holds the seven
+Store screenshots, 2538x1589 PNGs taken from the app signed in as the demo account. Take new ones
+the same way when the app changes: run the debug build into its own `ASTRID_DATA_DIR`, size the
+window to at least 1366x768 physical pixels, and capture the DWM frame bounds.
+
 ## The assets
 
 `Assets/` holds three flat-colour PNGs, generated rather than drawn, so the package is valid and
