@@ -91,13 +91,16 @@ public sealed class ShellSmokeTests
     /// <summary>The executable out of a <c>"path" args</c> command line.</summary>
     private static string FirstQuoted(string command)
     {
-        var opening = command.IndexOf('"');
-        if (opening < 0)
+        var trimmed = command.Trim();
+        if (!trimmed.StartsWith('"'))
         {
-            return command.Split(' ')[0];
+            // The App SDK writes the path bare and quotes only the argument:
+            // C:\...\Astrid.App.exe "----ms-protocol:%1".
+            var argument = trimmed.IndexOf(" \"", System.StringComparison.Ordinal);
+            return argument > 0 ? trimmed[..argument] : trimmed.Split(' ')[0];
         }
-        var closing = command.IndexOf('"', opening + 1);
-        return closing < 0 ? command : command[(opening + 1)..closing];
+        var closing = trimmed.IndexOf('"', 1);
+        return closing < 0 ? trimmed : trimmed[1..closing];
     }
 
     /// <summary>What a PE file was built for, read out of its COFF header.</summary>
