@@ -1,6 +1,7 @@
 using System.IO;
 using System.Threading;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Xunit;
 
 namespace Astrid.App.UITests;
@@ -68,31 +69,24 @@ public sealed class ShellSmokeTests
 
     /// <summary>The command Windows will actually run for <c>astrid://</c>.</summary>
     /// <remarks>
-    /// Resolved the way the shell resolves it: the user's URL association names a generated ProgId
-    /// and that ProgId carries the command; the scheme's own key is the fallback when no
-    /// association exists. Reading only the second is what let a stale association go unnoticed.
+    /// Asked of the shell itself (<c>AssocQueryString</c>) rather than reconstructed from registry
+    /// keys. The reconstruction read the user's choice and then the scheme's own key, and on
+    /// 2026-09-13 (task 64c02099) both said the right thing while the shell — with several builds
+    /// registered as claimants and no choice made — was answering <c>OpenWith.exe</c>, and after
+    /// one wrong pick in that dialog, a September build. Only the shell knows what the shell runs.
     /// </remarks>
     private static string? RegisteredProtocolCommand()
     {
-        var progId = Microsoft.Win32.Registry.CurrentUser
-            .OpenSubKey(@"SOFTWARE\Microsoft\Windows\Shell\Associations\UrlAssociations\astrid\UserChoiceLatest\ProgId")
-            ?.GetValue("ProgId") as string;
-
-        if (!string.IsNullOrEmpty(progId))
-        {
-            var viaProgId = Microsoft.Win32.Registry.CurrentUser
-                .OpenSubKey($@"Software\Classes\{progId}\shell\open\command")
-                ?.GetValue(null) as string;
-            if (!string.IsNullOrWhiteSpace(viaProgId))
-            {
-                return viaProgId;
-            }
-        }
-
-        return Microsoft.Win32.Registry.CurrentUser
-            .OpenSubKey(@"Software\Classes\astrid\shell\open\command")
-            ?.GetValue(null) as string;
+        var length = 2048u;
+        var buffer = new System.Text.StringBuilder((int)length);
+        // ASSOCSTR_COMMAND is 1; "open" is the verb; no flags.
+        var result = AssocQueryString(0, 1, "astrid", "open", buffer, ref length);
+        return result == 0 ? buffer.ToString() : null;
     }
+
+    [DllImport("shlwapi.dll", CharSet = CharSet.Unicode, EntryPoint = "AssocQueryStringW")]
+    private static extern int AssocQueryString(
+        uint flags, int str, string assoc, string? extra, System.Text.StringBuilder output, ref uint length);
 
     /// <summary>The executable out of a <c>"path" args</c> command line.</summary>
     private static string FirstQuoted(string command)

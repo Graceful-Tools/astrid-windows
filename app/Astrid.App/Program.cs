@@ -1,3 +1,4 @@
+using Astrid.App.ViewModels;
 using Microsoft.UI.Dispatching;
 using Microsoft.Windows.AppLifecycle;
 using Windows.ApplicationModel.Activation;
@@ -148,6 +149,87 @@ public static partial class Program
     private static partial int GetCurrentPackageFullName(ref int packageFullNameLength,
         char[]? packageFullName);
 
+    /// <summary>
+    /// Unregister <c>astrid://</c> for every other executable that claimed it through the App SDK.
+    /// </summary>
+    /// <remarks>
+    /// Read the way Windows reads it: <c>RegisteredApplications</c> names each claimant's
+    /// capabilities key, whose <c>URLAssociations\astrid</c> names a ProgId, whose open command
+    /// names the executable. The App SDK's own unregister call takes a registration down by that
+    /// path; what it leaves behind — the <c>RegisteredApplications</c> value and the capabilities
+    /// key, seen dangling on 2026-09-13 — is removed here too, so nothing stale can be listed as
+    /// a claimant. Best effort throughout: a registration that will not go is logged, never fatal.
+    /// </remarks>
+    private static void RemoveStaleProtocolRegistrations(string executable)
+    {
+        try
+        {
+            using var registered = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                @"Software\RegisteredApplications", writable: true);
+            if (registered is null)
+            {
+                return;
+            }
+
+            var claimants = new List<(string Name, string Capabilities, string ProgId, string? Command)>();
+            foreach (var name in registered.GetValueNames())
+            {
+                if (!name.StartsWith("App.", StringComparison.Ordinal)
+                    || registered.GetValue(name) is not string capabilities)
+                {
+                    continue;
+                }
+                using var associations = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                    $@"{capabilities}\URLAssociations");
+                if (associations?.GetValue("astrid") is not string progId)
+                {
+                    continue;
+                }
+                using var command = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                    $@"Software\Classes\{progId}\shell\open\command");
+                claimants.Add((name, capabilities, progId, command?.GetValue(null) as string));
+            }
+
+            var registrations = claimants
+                .Select(c => new ProtocolRegistrations.Registration(c.Name, c.Command))
+                .ToList();
+            var stale = ProtocolRegistrations.StaleExecutables(registrations, executable);
+            foreach (var other in stale)
+            {
+                try
+                {
+                    ActivationRegistrationManager.UnregisterForProtocolActivation("astrid", other);
+                }
+                catch (Exception error)
+                {
+                    App.Log($"could not unregister astrid:// for {other}: {error.Message}");
+                }
+            }
+
+            foreach (var claimant in claimants)
+            {
+                var itsExecutable = ProtocolRegistrations.ExecutableOf(claimant.Command);
+                var isMine = itsExecutable is not null
+                    && !stale.Contains(itsExecutable, StringComparer.OrdinalIgnoreCase);
+                if (isMine)
+                {
+                    continue;
+                }
+                registered.DeleteValue(claimant.Name, throwOnMissingValue: false);
+                // The capabilities value points one level below the app's own key.
+                var appKey = claimant.Capabilities[..claimant.Capabilities.LastIndexOf('\\')];
+                Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(appKey, throwOnMissingSubKey: false);
+                Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(
+                    $@"Software\Classes\{claimant.ProgId}", throwOnMissingSubKey: false);
+                App.Log($"removed a stale astrid:// registration {claimant.Name} ({itsExecutable ?? "no command"})");
+            }
+        }
+        catch (Exception error)
+        {
+            App.Log($"could not tidy astrid:// registrations: {error.Message}");
+        }
+    }
+
     private static void RegisterProtocol()
     {
         var executable = Environment.ProcessPath;
@@ -155,6 +237,12 @@ public static partial class Program
         {
             return;
         }
+
+        // Every build flavour that has run here registered itself by path, each named "Astrid",
+        // and Windows answers several claimants with its picker; the first choice made there
+        // sticks, and on 2026-09-13 it was a September build (task 64c02099). "Whichever ran last
+        // wins" is only true if the others are taken away first.
+        RemoveStaleProtocolRegistrations(executable);
 
         try
         {

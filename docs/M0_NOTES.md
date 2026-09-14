@@ -201,6 +201,17 @@ and the app sat on "Waiting for your browser…". Both shapes are read now, thro
 was true of the ProgId path and silent about the fallback, which is the one that matters when the
 association is missing.
 
+**And the association was missing for a reason.** Every build flavour that ever ran here — Debug,
+Release, the portable folder, the same path in two letter-cases — had left its own App SDK
+registration, each named "Astrid", so Windows had six claimants and no choice: `astrid://` resolved
+to `OpenWith.exe`, and the first pick made in that dialog (Edge's "Open", 17:17) was recorded as
+the default and pointed at the September portable build, which has a different app identity, so it
+started as its own main instance on the real data directory and swallowed the code. "Whichever ran
+last wins" is now made true at start: `Program.RemoveStaleProtocolRegistrations` unregisters every
+other executable's claim (and deletes what the App SDK's unregister leaves dangling) before
+registering this one. The smoke test asks the shell (`AssocQueryString`) what it will run instead
+of reconstructing it from registry keys, which is how six claimants went unnoticed.
+
 ### Settled — the credential at rest, 2026-09-07
 
 The fallback, on purpose. `PasswordVault` is a WinRT API with apartment sensitivity, called from
