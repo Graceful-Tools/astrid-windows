@@ -31,7 +31,7 @@ regression on another platform.
    writes journal through the Outbox; local-first caching and dedup must keep working. A few
    writes are online-only **on purpose** — membership (an optimistic member row would fool every
    permission check), board columns (shared configuration the server derives from), My Tasks
-   filters (a filter replayed a week later moves a screen), agents, API access, share links and
+   filters (a filter replayed a week later moves a screen), agents, connections and OAuth apps, share links and
    account deletion — and each says so in its service's doc comment and on screen. Anything
    else that reaches `ApiClient` from a service without an Outbox entry is a bug.
 6. **All API paths are `/api/v1/...`.** Every path this client speaks is a constant or a builder
