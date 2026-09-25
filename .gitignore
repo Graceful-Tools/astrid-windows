@@ -29,3 +29,14 @@ Thumbs.db
 # Local overrides
 .env.local
 /docs/M0_NOTES.local.md
+
+# Signing material beyond the *.pfx and *.cer covered above. scripts/sign-local.ps1
+# deliberately keeps its test certificate in Cert:\CurrentUser\My and never exports
+# one, so these should never appear — which is the point of ignoring them. The repo
+# is public.
+*.p12
+*.crt
+*.der
+*.pem
+*.key
+*.snk
