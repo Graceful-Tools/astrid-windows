@@ -467,14 +467,30 @@ public sealed record AgentSummary
 
     [JsonPropertyName("description")] public string? Description { get; init; }
 
+    /// <summary>The address comments and assignments show for it, when the server said.</summary>
+    [JsonPropertyName("email")] public string? Email { get; init; }
+
     /// <summary>
-    /// Filled in from the modes map, which the server sends separately.
+    /// How it runs, as the core resolved it from the server's answer.
     /// </summary>
     /// <remarks>
     /// <c>api</c> means Astrid runs it; <c>polling</c> and <c>webhook</c> mean the account's own
     /// agent does and needs a credential; <c>off</c> means it does not run.
     /// </remarks>
-    public string Mode { get; init; } = "off";
+    [JsonPropertyName("mode")] public string Mode { get; init; } = "off";
+
+    /// <summary>
+    /// Whether it has no server-side executor — a CLI the account runs, such as Muse — and so can
+    /// only be polled or switched off.
+    /// </summary>
+    [JsonPropertyName("locked")] public bool Locked { get; init; }
+
+    /// <summary>
+    /// The modes a chooser may offer for it. Never one the server would refuse: a locked agent
+    /// offers polling and off, and nothing else (task 42349da6).
+    /// </summary>
+    [JsonPropertyName("modes")]
+    public IReadOnlyList<string> Modes { get; init; } = ["api", "polling", "webhook", "off"];
 
     /// <summary>Whether this mode needs a credential of the account's own.</summary>
     public bool NeedsOwnCredential => Mode is "polling" or "webhook";

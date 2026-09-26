@@ -7,20 +7,22 @@ namespace Astrid.App.Tests;
 public sealed class AgentSettingsViewModelTests
 {
     /// <summary>
-    /// The mode arrives in a map beside the agents rather than on them, and joining the two in one
-    /// place keeps every control that shows an agent from doing it again.
+    /// Each row arrives from the core with its mode and the modes it may be offered resolved, so
+    /// no control that shows an agent has to join the server's map or know which are locked.
     /// </summary>
     [Fact]
-    public async Task An_agents_mode_is_joined_from_the_map_beside_it()
+    public async Task An_agents_mode_and_choices_come_resolved_from_the_core()
     {
         var core = new FakeCore().AnswerOk("agents", new
         {
             agents = new[]
             {
-                new { id = "astrid", name = "Astrid", description = (string?)"The one that answers" },
-                new { id = "claude", name = "Claude", description = (string?)null },
+                new { id = "claude", name = "Claude", email = "claude@astrid.cc", mode = "api", locked = false,
+                      modes = new[] { "api", "polling", "webhook", "off" } },
+                new { id = "gemini", name = "Gemini", email = "gemini@astrid.cc", mode = "webhook", locked = false,
+                      modes = new[] { "api", "polling", "webhook", "off" } },
             },
-            modes = new Dictionary<string, string> { ["astrid"] = "api", ["claude"] = "webhook" },
+            modes = new Dictionary<string, string> { ["claude"] = "api", ["gemini"] = "webhook" },
             credentials = new[]
             {
                 new { serviceId = "openai", name = "OpenAI", configured = true },
@@ -35,10 +37,11 @@ public sealed class AgentSettingsViewModelTests
         Assert.False(view.Agents[0].NeedsOwnCredential);
         Assert.Equal("webhook", view.Agents[1].Mode);
         Assert.True(view.Agents[1].NeedsOwnCredential);
+        Assert.Equal(4, view.Agents[1].Modes.Count);
         Assert.True(view.Credentials[0].Configured);
     }
 
-    /// <summary>An agent the modes map does not mention is off, not unknown.</summary>
+    /// <summary>An agent the core sends without a mode is off, not unknown.</summary>
     [Fact]
     public async Task An_agent_with_no_mode_is_off()
     {
@@ -53,6 +56,34 @@ public sealed class AgentSettingsViewModelTests
         await view.LoadAgentsAsync();
 
         Assert.Equal("off", view.Agents[0].Mode);
+    }
+
+    /// <summary>
+    /// A harness the account runs itself — Muse, a CLI with no executor on the server — is a row
+    /// whose chooser offers polling and off and nothing the server would refuse (task 42349da6).
+    /// The row comes from the server's list, so a new CLI needs no build here.
+    /// </summary>
+    [Fact]
+    public async Task A_locked_harness_agent_offers_only_polling_and_off()
+    {
+        var core = new FakeCore().AnswerOk("agents", new
+        {
+            agents = new[]
+            {
+                new { id = "muse", name = "Muse", email = "muse@astrid.cc", mode = "polling", locked = true,
+                      modes = new[] { "polling", "off" } },
+            },
+            modes = new Dictionary<string, string> { ["muse"] = "polling" },
+            credentials = Array.Empty<object>(),
+        });
+        var view = new SettingsViewModel(core).Agents;
+
+        await view.LoadAgentsAsync();
+
+        var muse = Assert.Single(view.Agents);
+        Assert.Equal("Muse", muse.Name);
+        Assert.True(muse.Locked);
+        Assert.Equal(new[] { "polling", "off" }, muse.Modes);
     }
 
     /// <summary>

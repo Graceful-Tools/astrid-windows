@@ -69,7 +69,11 @@
             "api" is Astrid running them and needs nothing
             set up; "polling" and "webhook" are the
             account's own agent and need a key, which is why
-            the two are drawn together.
+            the two are drawn together. The chooser offers
+            what the row says it may: a harness the account
+            runs itself (Muse, Codex) has no server executor,
+            so it offers polling and off and nothing the
+            server would refuse (task 42349da6).
         -->
         <ItemsControl ItemsSource="{x:Bind Shell.Settings.Agents.Agents, Mode=OneWay}">
             <ItemsControl.ItemTemplate>
@@ -84,13 +88,9 @@
                         <ComboBox Grid.Column="1"
                                   AutomationProperties.Name="{x:Bind Name}"
                                   Tag="{x:Bind Id}"
+                                  ItemsSource="{x:Bind Modes}"
                                   SelectedItem="{x:Bind Mode}"
-                                  SelectionChanged="OnAgentModeChosen">
-                            <x:String>api</x:String>
-                            <x:String>polling</x:String>
-                            <x:String>webhook</x:String>
-                            <x:String>off</x:String>
-                        </ComboBox>
+                                  SelectionChanged="OnAgentModeChosen" />
                     </Grid>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>

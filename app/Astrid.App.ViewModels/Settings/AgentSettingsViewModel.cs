@@ -122,12 +122,9 @@ public sealed class AgentSettingsViewModel : ObservableObject
         Agents.Clear();
         foreach (var agent in hub.Agents)
         {
-            // The mode arrives in a map beside the agents rather than on them, so it is joined
-            // here — one place, rather than in every control that shows an agent.
-            Agents.Add(agent with
-            {
-                Mode = hub.Modes.TryGetValue(agent.Id, out var mode) ? mode : "off",
-            });
+            // The core resolves each row's mode and which modes it may be offered, so no control
+            // that shows an agent has to join the server's map or know which agents are locked.
+            Agents.Add(agent);
         }
         CopilotConnected = hub.Copilot.Connected;
         Credentials.Clear();
