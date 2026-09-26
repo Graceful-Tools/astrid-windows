@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__astrid__get_agent_queue",
+      "mcp__astrid__get_lists",
+      "mcp__astrid__get_tasks",
+      "mcp__astrid__get_task",
+      "mcp__astrid__get_task_comments",
+      "mcp__astrid__get_list_messages",
+      "mcp__astrid__add_comment",
+      "mcp__astrid__update_task",
+      "mcp__astrid__create_task",
+      "Bash(cargo:*)",
+      "Bash(dotnet:*)",
+      "Bash(npm run predeploy)",
+      "Bash(npm run predeploy:*)",
+      "Bash(node:*)",
+      "Bash(npx:*)",
+      "Bash(python3:*)",
+      "Bash(cd:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git show:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git ls-files:*)",
+      "Bash(git branch:*)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+      "Bash(git checkout:*)",
+      "Bash(git switch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git merge:*)",
+      "Bash(git push origin main)",
+      "Bash(git stash:*)",
+      "Bash(git remote:*)"
+    ]
+  }
+}

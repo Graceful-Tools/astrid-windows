@@ -2,16 +2,86 @@
 
 *How work reaches this repo from the Astrid board, and what has to be configured for it to.*
 
-Two workflows, the same pair astrid-web and astrid-ios run:
+Three paths, two of them the pair astrid-web and astrid-ios run:
 
-| Workflow | What it does |
-|---|---|
-| [`.github/workflows/fixall.yml`](../.github/workflows/fixall.yml) | Every 30 minutes, works whatever the **Astrid Windows To-do** board has marked *Ready* |
-| [`.github/workflows/fixstuff.yml`](../.github/workflows/fixstuff.yml) | Run by hand against one task id |
+| Path | Harness | What it does |
+|---|---|---|
+| [`scripts/fixall-loop.ps1`](../scripts/fixall-loop.ps1) | Claude Code CLI, on this machine | Every 30 minutes at :10 and :40, works whatever the **Astrid Windows To-do** board has marked *Ready*. **This is the one that runs today** |
+| [`.github/workflows/fixall.yml`](../.github/workflows/fixall.yml) | GitHub Copilot | The same queue, on a GitHub runner. **Not running:** see *The Copilot path is switched off* below |
+| [`.github/workflows/fixstuff.yml`](../.github/workflows/fixstuff.yml) | GitHub Copilot | Run by hand against one task id |
+
+## The local loop
+
+**Assigning a task to Claude Agent in Astrid starts nothing.** In polling mode Astrid calls out to
+no one, by design (astrid-web `docs/AGENT_POLLING_MODE.md`, after the 2026-08-23 retry storm), so
+something has to poll. On the Mac that is launchd; here it is Task Scheduler, and the pass it runs
+is `scripts/fixall-loop.ps1` — a port of `astrid-web/scripts/fixall-loop.sh` with the same three
+guards and the same one-line contract.
+
+```powershell
+# install, at :10 and :40 every hour, for the logged-on user, no elevation
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-fixall-task.ps1
+
+# prove it, and read what it did
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-fixall-task.ps1 -RunNow
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-fixall-task.ps1 -Status
+
+# one pass by hand; -DryRun stops before Claude starts
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fixall-loop.ps1 -DryRun
+
+# stop it again
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-fixall-task.ps1 -Uninstall
+```
+
+It runs on the **Claude Code CLI subscription, never the Anthropic API**: `claude -p` is the whole
+runtime, no API key is read anywhere in that path, and the budget bound is a CLI safety limit
+rather than metered spend. The log is `%LOCALAPPDATA%\Astrid\logs\fixall-windows.log`, and its
+last line is always exactly one `RESULT:` line — `OK`, `SKIPPED` or `FAILED` — so a glance tells
+you what happened. **A skip is the healthy common case:** most ticks have nothing to do.
+
+Three guards, cheapest first, because the expensive thing is starting a session at all:
+
+1. **One session per working tree.** `fixall-session.ts acquire`, keyed to this repo's git
+   directory, so this tree and astrid-web's never see each other and a dead holder's lock is
+   reclaimed by liveness rather than by a timeout.
+2. **Never clobber work in progress.** A dirty tree, or a `HEAD` that is not `main`, skips. An
+   interactive session takes no lock, so this is the only thing between a tick and your
+   uncommitted work.
+3. **Is there any work?** `ready-tasks.ts windows --json`, which sweeps the lanes first, so a
+   Waiting task whose date arrived counts this tick. A queue that cannot be read is a reason to
+   run and let the agent report, never a reason to go quiet.
+
+**What the local loop needs on the machine:** the astrid-web checkout beside this one with
+`npm ci` run (its `tsx`, its `.env.local`, its OAuth pair), the `claude` CLI on `PATH`, and
+`.claude/settings.json` — committed here, because a scheduled run has no terminal to answer a
+permission prompt in, and `--permission-mode acceptEdits` pre-approves file edits only. Without
+those grants the run can read the board and change nothing.
+
+**What it does not do, unlike the Mac loop.** astrid-web's third guard calls
+`agent-queue-status.ts`, which also reports `attention` — comments and chat nobody answered — and
+keeps a seen-file so one unanswered item wakes one run rather than every tick. That script needs a
+**list id**, and this board's id is deliberately nowhere in this repo, so the guard here asks
+`ready-tasks.ts windows` instead: the queue and the lanes, both resolved by name. The inbox is
+therefore not a reason this loop wakes. Adopt the richer preflight the day it can resolve a board
+by name.
+
+## The Copilot path is switched off
+
+`fixall.yml` has failed on every scheduled tick since it was written — about seven seconds in, at
+the astrid-web checkout — because the four repository secrets in the table below were never added.
+Nothing was lost: the Copilot path has never run, and the local Claude loop above now covers the
+board.
+
+Two ways forward, and it is a decision rather than a bug:
+
+- **Add the secrets** and have two harnesses on one queue. They will not collide on a task — the
+  claim is atomic — but they will compete for it.
+- **Remove the `schedule:` block** from `fixall.yml`, leaving `workflow_dispatch` so it can still
+  be run by hand. That stops a failure notification every half hour for a path nobody is using.
 
 ## The queue is astrid-web's, on purpose
 
-Neither workflow decides which tasks are ready. Both check out astrid-web and call its task
+No path here decides which tasks are ready. All of them call astrid-web's task
 tooling — `scripts/ready-tasks.ts windows`, `scripts/claim-fixall-task.ts`,
 `scripts/post-session-link.ts`.
 
@@ -55,8 +125,16 @@ the astrid-web checkout and load astrid-web's; in CI the values come from the se
 
 ## Runners
 
-GitHub-hosted `windows-latest`, the same as `ci.yml`. The iOS loops use self-hosted runners because
-Xcode has to be there; nothing here needs a machine of its own.
+The local loop runs on this machine, as the logged-on user, at Limited run level — no elevation,
+because the Claude CLI reads the user's own credentials and settings. Three Task Scheduler settings
+are load-bearing on a laptop, and each is a way the loop would otherwise go quiet while looking
+installed and healthy: `AllowStartIfOnBatteries` and `DontStopIfGoingOnBatteries` (a task without
+them does not run unplugged), `StartWhenAvailable` (a tick missed while asleep runs once on wake),
+and `MultipleInstances = IgnoreNew` with an execution limit a little above the loop's own watchdog
+(one wedged run must not stack copies, nor outlive its watchdog).
+
+The GitHub paths use GitHub-hosted `windows-latest`, the same as `ci.yml`. The iOS loops use
+self-hosted runners because Xcode has to be there; nothing here needs a machine of its own.
 
 The shell is set to `bash` once at the top of each file rather than on every step: the task tooling
 is the same bash the other two repos run, and a Windows runner defaults to PowerShell.
