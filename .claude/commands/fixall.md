@@ -92,6 +92,15 @@ and stop until he has authorised — do not fall back to the database.
   service; complete a task only via `TaskService::complete_task`; next-occurrence math lives
   only in `astrid_core::repeating`; no business logic in `app/`; everything writes through the
   Outbox; no hardcoded user-facing strings — use the `.resw` resources.
+- **The atomic claim does not work for this board yet — do not read its 409 as "taken".**
+  `claim-fixall-task.ts` POSTs to `astrid.cc/api/v1/tasks/<id>/claim-fixall`, and the server's
+  allowlist (`lib/fixall-claim.ts`, `DEFAULT_FIXALL_CLAIM_BOARD_IDS`) names only the web and iOS
+  boards, so **every** Windows task answers `CLAIM_CONFLICT`, permanently. FIXALL_WORKFLOW.md says
+  to read a 409 as "another session got there first" and move on quietly, which would make this
+  loop no-op forever and look like a quiet board — it is how Windows `/fixall` spent weeks doing
+  nothing. Until the fix is deployed (filed on the Astrid Web board as `db965bb1`), take the task
+  with `npx tsx scripts/set-task-status.ts <taskId> Doing` instead and say on the task that you did
+  and why. Only one loop works this board, so nothing is racing you for it.
 - **A red predeploy files its own Astrid task.** If it was your own mid-refactor breakage,
   close that task with a one-line explanation rather than leaving a false alarm on the board.
 - **If a task is blocked by something outside the repo**, park it in `Waiting` with the right
