@@ -1,4 +1,16 @@
-# Work every task the Astrid Windows board has marked Ready.
+# Work every task the Astrid Windows board has marked Ready — BY HAND ONLY.
+#
+# THE SCHEDULE IS OFF (2026-09-26). It ran every 30 minutes from the day this file was written and
+# failed on every single tick, about seven seconds in, at the astrid-web checkout: the four
+# repository secrets below were never added, and none of them can be. Nothing was lost, because
+# this path has never once worked — and the board is now worked by the Claude loop on Jon's
+# machine, scripts/fixall-loop.ps1, which needs no secrets because it runs on the CLI
+# subscription. See docs/AUTOMATION.md.
+#
+# `workflow_dispatch` stays, so this is still runnable by hand the moment somebody adds the
+# secrets. To put it back on a schedule, restore the `schedule:` block below AND add the secrets
+# first — a schedule without them is a failure notification every half hour for a path nobody is
+# using.
 #
 # The same loop astrid-web and astrid-ios run, against this repo's own board. The queue, the
 # atomic claim and the trigger all come from astrid-web's task tooling rather than being copied
@@ -30,10 +42,13 @@ on:
         default: false
         type: boolean
 
-  schedule:
-    # Every 30 minutes, offset from astrid-web (:00/:30) and astrid-ios (:15/:45) so the three
-    # loops do not compete for the same quota.
-    - cron: '5,35 * * * *'
+  # Deliberately no `schedule:` — see the header. It was:
+  #
+  #   schedule:
+  #     - cron: '5,35 * * * *'
+  #
+  # :05 and :35 were chosen to interleave with astrid-web (:00/:30), astrid-ios (:15/:45) and the
+  # local Claude loop (:10/:40), so restoring it needs no new thought about the clock.
 
 env:
   NODE_VERSION: '20'

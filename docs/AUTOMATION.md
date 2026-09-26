@@ -7,7 +7,7 @@ Three paths, two of them the pair astrid-web and astrid-ios run:
 | Path | Harness | What it does |
 |---|---|---|
 | [`scripts/fixall-loop.ps1`](../scripts/fixall-loop.ps1) | Claude Code CLI, on this machine | Every 30 minutes at :10 and :40, works whatever the **Astrid Windows To-do** board has marked *Ready*. **This is the one that runs today** |
-| [`.github/workflows/fixall.yml`](../.github/workflows/fixall.yml) | GitHub Copilot | The same queue, on a GitHub runner. **Not running:** see *The Copilot path is switched off* below |
+| [`.github/workflows/fixall.yml`](../.github/workflows/fixall.yml) | GitHub Copilot | The same queue, on a GitHub runner. **By hand only** — its schedule was removed; see below |
 | [`.github/workflows/fixstuff.yml`](../.github/workflows/fixstuff.yml) | GitHub Copilot | Run by hand against one task id |
 
 ## The local loop
@@ -32,6 +32,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fixall-loop.ps1 -Dry
 # stop it again
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-fixall-task.ps1 -Uninstall
 ```
+
+One caveat on the `RESULT:` contract: it holds for every way the loop can end *itself*, including
+a watchdog kill. It cannot hold when the loop is killed from outside — `Stop-ScheduledTask`, or
+Task Scheduler's own execution limit — because the process tree goes down before the last line is
+written. A log entry that ends at `-> /fixall` with no `RESULT:` therefore means somebody stopped
+it, and the working-tree lock it held is left behind marked STALE, which the next run reclaims by
+liveness rather than by a timeout.
 
 It runs on the **Claude Code CLI subscription, never the Anthropic API**: `claude -p` is the whole
 runtime, no API key is read anywhere in that path, and the budget bound is a CLI safety limit
@@ -72,12 +79,18 @@ the astrid-web checkout — because the four repository secrets in the table bel
 Nothing was lost: the Copilot path has never run, and the local Claude loop above now covers the
 board.
 
-Two ways forward, and it is a decision rather than a bug:
+**The schedule was removed on 2026-09-26** (Jon), leaving `workflow_dispatch` so the workflow is
+still runnable by hand. A schedule that has never once succeeded is a failure notification every
+half hour for a path nobody is using, and the board is covered by the local Claude loop above.
 
-- **Add the secrets** and have two harnesses on one queue. They will not collide on a task — the
-  claim is atomic — but they will compete for it.
-- **Remove the `schedule:` block** from `fixall.yml`, leaving `workflow_dispatch` so it can still
-  be run by hand. That stops a failure notification every half hour for a path nobody is using.
+To put it back: add the four secrets **first**, then restore the `schedule:` block — the cron line
+it used is kept in a comment there, already interleaved with the other loops' clock minutes.
+
+Note that the atomic claim this path depends on cannot work for this board yet either:
+`claim-fixall-task.ts` POSTs to `astrid.cc`, whose allowlist
+(`astrid-web/lib/fixall-claim.ts`, `DEFAULT_FIXALL_CLAIM_BOARD_IDS`) names only the web and iOS
+boards, so every Windows task answers `CLAIM_CONFLICT`. Filed on the Astrid Web board as
+`db965bb1`; it needs a deploy of astrid-web, not a change here.
 
 ## The queue is astrid-web's, on purpose
 
