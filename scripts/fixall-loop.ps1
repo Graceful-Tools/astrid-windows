@@ -211,12 +211,25 @@ try {
     if ($LASTEXITCODE -ne 0) {
         Say '  WARNING: permissions on this machine will degrade this run:'
         $permissionOut | ForEach-Object { Say "     $_" }
+        # The checker is astrid-web's and looks for ITS layout, a gitignored settings.local.json.
+        # This repo grants those nine tools in a COMMITTED .claude/settings.json instead, so the
+        # "missing" list overstates it. What is true either way is the consequence it names: with no
+        # astrid MCP server registered on this machine, the run reads the board through astrid-web's
+        # OAuth scripts and cannot see `attention`.
+        Say '     (this repo grants those tools in the committed .claude/settings.json; what the'
+        Say '      run really lacks is a registered astrid MCP server, hence the scripts fallback)'
     }
 
     if ($DryRun) { Finish 'RESULT: SKIPPED - dry run, every guard passed and Claude was not started' }
 
     # ── The run ──────────────────────────────────────────────────────────────────────────────
-    $claudeArgs = @('-p', '/fixall', '--model', $Model, '--permission-mode', $PermissionMode)
+    # --add-dir is what makes the board reachable. Where no astrid MCP server is registered - the
+    # case on this machine - the documented fallback is astrid-web's OAuth scripts, and a session
+    # confined to this repo cannot run them: it refuses the sibling checkout outright, whatever the
+    # permission grants say. Proved by the first real run on 2026-09-26, which reported "this
+    # session's allowed working directory is astrid-windows only" and worked nothing.
+    $claudeArgs = @('-p', '/fixall', '--model', $Model, '--permission-mode', $PermissionMode,
+        '--add-dir', $WebRepo)
     if ($MaxUsd) { $claudeArgs += @('--max-budget-usd', $MaxUsd) }
     $runLine = '-> /fixall (' + $Model + ', watchdog ' + $MaxMinutes + 'm'
     if ($MaxUsd) { $runLine += ', cap $' + $MaxUsd }
@@ -243,14 +256,31 @@ try {
     }
     $status = $proc.ExitCode
 
+    $runText = @()
     foreach ($file in @($runOut, $runErr)) {
         if (Test-Path $file) {
-            Get-Content -Path $file -Encoding utf8 | ForEach-Object { Add-Content -Path $LogFile -Value $_ -Encoding utf8 }
+            $lines = @(Get-Content -Path $file -Encoding utf8)
+            $runText += $lines
+            $lines | ForEach-Object { Add-Content -Path $LogFile -Value $_ -Encoding utf8 }
             Remove-Item $file -Force -ErrorAction SilentlyContinue
         }
     }
 
     if ($killed) { Finish "RESULT: FAILED - killed after the ${MaxMinutes}m watchdog timeout; nothing was pushed by this run" }
+
+    # A run whose grants were ignored EXITS ZERO. It reads the board, decides it can change nothing,
+    # writes a tidy explanation nobody is watching, and the loop logs RESULT: OK - which is the
+    # quiet degradation every guard above exists to prevent, arriving at the last possible moment.
+    # The CLI names the condition precisely, so the loop reads its own child's words for it rather
+    # than guessing. Both spellings of this repo's path are trusted in ~/.claude.json; this catches
+    # the day that is undone, or a fresh checkout nobody has trusted yet.
+    $untrusted = @($runText | Where-Object { $_ -match 'has not been trusted' -or $_ -match 'Ignoring \d+ permissions\.allow' })
+    if ($untrusted.Count -gt 0) {
+        Say '  the CLI said:'
+        $untrusted | Select-Object -First 2 | ForEach-Object { Say "     $_" }
+        Finish 'RESULT: FAILED - this workspace is not trusted, so .claude/settings.json was ignored and the run could change nothing; run claude interactively here once and accept the trust dialog, or set projects[<this repo>].hasTrustDialogAccepted = true in ~/.claude.json'
+    }
+
     if ($status -eq 0) { Finish 'RESULT: OK - run finished (see the tasks for what changed)' }
     Finish "RESULT: FAILED - claude exited $status; nothing was pushed by this run"
 }
