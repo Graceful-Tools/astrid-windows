@@ -627,6 +627,49 @@
             </Button>
 
             <!--
+                BOARD STATE (task 5221e43f): the task's board's columns as chips, Done left out,
+                the current one lit — after Lists, because state belongs with where the task
+                lives, and before the description, as the web and iOS lay it out. Drawn only when
+                the core sent a row: a board task, in list mode, for a reader who may write. A
+                chip makes the very move a dragged card makes, through the same command as the
+                menu's Status.
+            -->
+            <Grid x:Uid="board_state_row" ColumnSpacing="8" Padding="0,6" MinHeight="36"
+                  AutomationProperties.Name="Board state"
+                  Visibility="{x:Bind Shell.Detail.ShowsBoardState, Mode=OneWay, Converter={StaticResource Visible}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="32" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="&#xF0E2;"
+                           FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                           FontSize="15"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="{ThemeResource AstridTextMuted}" />
+                <ItemsControl Grid.Column="1" ItemsSource="{x:Bind Shell.Detail.BoardStateChips, Mode=OneWay}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="bindings:StatusChoice">
+                            <ToggleButton Content="{x:Bind Name}"
+                                          IsChecked="{x:Bind IsCurrent}"
+                                          Tag="{x:Bind Id}"
+                                          MinHeight="30"
+                                          Padding="10,3"
+                                          Margin="0,0,6,0"
+                                          FontSize="12"
+                                          CornerRadius="8"
+                                          AutomationProperties.Name="{x:Bind Name}"
+                                          Click="OnBoardStateChosen" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Grid>
+
+            <!--
                 The description, on the same 32px icon column as everything above it. Borderless
                 on a tinted ground, which is how the web draws its textarea - a boxed control
                 here read as a form field rather than as the task's own notes.

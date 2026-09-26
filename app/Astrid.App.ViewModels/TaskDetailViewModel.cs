@@ -42,6 +42,7 @@ public sealed class TaskDetailViewModel : ObservableObject
     private TimerState _timer = new();
     private bool _isCanceled;
     private bool _isCopyOnly;
+    private bool _showsBoardState;
     private string? _link;
 
     public TaskDetailViewModel(IAstridCore core)
@@ -418,6 +419,24 @@ public sealed class TaskDetailViewModel : ObservableObject
 
     /// <summary>The columns the Status submenu offers, filled when the menu opens.</summary>
     public ObservableCollection<StatusChoice> StatusChoices { get; } = [];
+
+    /// <summary>
+    /// The BOARD STATE row's chips (task 5221e43f): the task's board's columns, Done left out,
+    /// the current one lit. They arrive with the detail, so the row can be drawn before anything
+    /// is opened.
+    /// </summary>
+    public ObservableCollection<StatusChoice> BoardStateChips { get; } = [];
+
+    /// <summary>
+    /// Whether the board-state row is drawn: a board task, in list mode, for a reader who may
+    /// write. The rule is the core's, shared with the web and both Apple clients; the pane only
+    /// says whether the core sent a row.
+    /// </summary>
+    public bool ShowsBoardState
+    {
+        get => _showsBoardState;
+        private set => Set(ref _showsBoardState, value);
+    }
 
     /// <summary>The mark that stands for this task's priority — the core's, not the shell's.</summary>
     public string PriorityGlyph
@@ -1585,6 +1604,11 @@ public sealed class TaskDetailViewModel : ObservableObject
                      && canceled.ValueKind == JsonValueKind.True;
         IsCopyOnly = value.TryGetProperty("isCopyOnly", out var copyOnly)
                      && copyOnly.ValueKind == JsonValueKind.True;
+        // `null` is "no row", which is most tasks; an object is the row and its chips.
+        var hasBoardState = value.TryGetProperty("boardState", out var boardState)
+                            && boardState.ValueKind == JsonValueKind.Object;
+        Replace(BoardStateChips, hasBoardState ? Read<StatusChoice>(boardState, "chips") : []);
+        ShowsBoardState = hasBoardState && BoardStateChips.Count > 0;
         Link = value.TryGetProperty("link", out var link) && link.ValueKind == JsonValueKind.String
             ? link.GetString()
             : null;

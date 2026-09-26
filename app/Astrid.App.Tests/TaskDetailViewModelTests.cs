@@ -8,10 +8,11 @@ public sealed class TaskDetailViewModelTests
 {
     private static object Detail(string title = "Plan the trip", int priority = 3,
         bool completed = false, string[]? subtasks = null, string[]? comments = null,
-        bool isCanceled = false) => new
+        bool isCanceled = false, object? boardState = null) => new
         {
             task = new { id = "t1", title, description = "two weeks", priority, completed },
             isCanceled,
+            boardState,
             link = "https://astrid.cc/tasks/t1",
             fieldOrder = new[] { "assignee", "when", "priority", "lists" },
             priorityGlyph = "!!!",
@@ -370,6 +371,57 @@ public sealed class TaskDetailViewModelTests
         // Nulls are not written, so a reopen carries no reason at all; the core reads absence as
         // null, which is what clears it.
         Assert.DoesNotContain("closedReason", sent[1]);
+    }
+
+    /// <summary>
+    /// The BOARD STATE row (task 5221e43f) arrives with the detail: the board's columns as chips
+    /// with the current one lit, or nothing at all for a task the core says has no row. A chip
+    /// makes the same move as the menu's Status.
+    /// </summary>
+    [Fact]
+    public async Task A_board_task_shows_its_state_as_chips_and_a_chip_moves_it_task_5221e43f()
+    {
+        var chips = new
+        {
+            current = "doing",
+            chips = new[]
+            {
+                new { id = "__virtual_inbox__", name = "Inbox", kind = "inbox", isCurrent = false },
+                new { id = "ready", name = "Ready", kind = "status", isCurrent = false },
+                new { id = "doing", name = "Doing", kind = "status", isCurrent = true },
+            },
+        };
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail(boardState: chips))
+            .AnswerOk("setTaskStatus", new { id = "t1", statusRole = "ready" })
+            .AnswerOk("taskDetail", Detail(boardState: chips));
+        var view = new TaskDetailViewModel(core);
+
+        await view.OpenAsync("t1");
+
+        Assert.True(view.ShowsBoardState);
+        Assert.Equal(new[] { "Inbox", "Ready", "Doing" }, view.BoardStateChips.Select(chip => chip.Name));
+        Assert.True(view.BoardStateChips[2].IsCurrent);
+
+        Assert.True(await view.SetStatusAsync("ready"));
+        Assert.Contains(core.Sent, json =>
+            json.Contains("\"kind\":\"setTaskStatus\"") && json.Contains("\"columnId\":\"ready\""));
+    }
+
+    /// <summary>
+    /// Most tasks are not on a board, and the core says so with no row at all; the pane draws
+    /// nothing rather than an empty strip.
+    /// </summary>
+    [Fact]
+    public async Task A_task_the_core_gives_no_board_state_draws_no_row_task_5221e43f()
+    {
+        var core = new FakeCore().AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+
+        await view.OpenAsync("t1");
+
+        Assert.False(view.ShowsBoardState);
+        Assert.Empty(view.BoardStateChips);
     }
 
     /// <summary>

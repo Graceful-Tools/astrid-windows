@@ -1665,4 +1665,7 @@
   <data name="rows_empty" xml:space="preserve">
     <value>Zeit, sich zu organisieren! Fügen Sie Ihre erste Aufgabe hinzu, um zu starten.</value>
   </data>
+  <data name="board_state_row.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Board-Status</value>
+  </data>
 </root>

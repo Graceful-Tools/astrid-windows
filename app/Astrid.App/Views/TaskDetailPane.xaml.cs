@@ -198,6 +198,22 @@ public sealed partial class TaskDetailPane : UserControl
         }
     }
 
+    /// <summary>
+    /// A board-state chip (task 5221e43f): the same move as the menu's Status, so a state set here
+    /// and a card dragged into a column cannot mean different things. The detail reloads from the
+    /// core afterwards, which is what lights the chosen chip; the toggle's own flip is undone
+    /// first so a refused move does not leave a chip lit that the task is not in.
+    /// </summary>
+    private async void OnBoardStateChosen(object sender, RoutedEventArgs args)
+    {
+        if (sender is not ToggleButton { Tag: string columnId } chip)
+        {
+            return;
+        }
+        chip.IsChecked = !chip.IsChecked;
+        await Shell.Detail.SetStatusAsync(columnId);
+    }
+
     private async void OnToggleWontDo(object sender, RoutedEventArgs args) =>
         await Shell.Detail.ToggleWontDoAsync();
 
