@@ -1517,4 +1517,34 @@ public sealed class TaskDetailViewModelTests
         Assert.DoesNotContain("updateTask", core.SentKinds());
         Assert.Null(view.ActiveEditor);
     }
+
+    /// <summary>
+    /// Picking a person finishes the picker (task a7748274).
+    /// </summary>
+    /// <remarks>
+    /// The assignee picker is a plain <c>Flyout</c> of plain <c>Button</c>s, and a button inside a
+    /// flyout does not dismiss it the way a <c>MenuFlyoutItem</c> does — so the popup used to sit
+    /// over the field it had just changed, which reads as "it did not close and it did not update".
+    /// Closing it is the shell's job; knowing that a pick ENDS the edit is a rule, and lives here,
+    /// so the code-behind only hides the flyout and dispatches.
+    /// </remarks>
+    [Fact]
+    public async Task Choosing_an_assignee_finishes_the_picker_task_a7748274()
+    {
+        var core = OpenedTask()
+            .AnswerOk("beginEditing", Transition("assignee"))
+            .AnswerOk("updateTask")
+            .AnswerOk("taskDetail", Detail())
+            .AnswerOk("endEditing", Transition(null, commit: "assignee"));
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+        await view.BeginEditingAsync(TaskDetailViewModel.AssigneeEditor);
+        Assert.Equal(TaskDetailViewModel.AssigneeEditor, view.ActiveEditor);
+
+        Assert.True(await view.ChooseAssigneeAsync("u1"));
+
+        Assert.Contains("\"assigneeId\":\"u1\"",
+            core.Sent.First(sent => sent.Contains("updateTask")));
+        Assert.Null(view.ActiveEditor);
+    }
 }

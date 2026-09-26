@@ -1144,6 +1144,24 @@ public sealed class TaskDetailViewModel : ObservableObject
         UpdateAsync(new Dictionary<string, object?> { ["assigneeId"] = userId }, cancellationToken);
 
     /// <summary>
+    /// Take the assignee picker's choice: write it, and finish the edit (task a7748274).
+    /// </summary>
+    /// <remarks>
+    /// A pick IS the end of the picker. The shell used to say so in two steps — write on click,
+    /// close the editor whenever the flyout happened to shut — and since a <c>Button</c> inside a
+    /// <c>Flyout</c> does not dismiss it the way a <c>MenuFlyoutItem</c> does, the popup stayed open
+    /// over the field it had just changed. One call, so the rule is here and the shell only hides
+    /// the flyout.
+    /// </remarks>
+    public async Task<bool> ChooseAssigneeAsync(string? userId,
+        CancellationToken cancellationToken = default)
+    {
+        var assigned = await AssignAsync(userId, cancellationToken);
+        await EndEditingAsync(AssigneeEditor, cancellationToken);
+        return assigned;
+    }
+
+    /// <summary>
     /// Won't do, or Reopen: the one menu entry, sending what the task's state calls for.
     /// </summary>
     public Task<bool> ToggleWontDoAsync(CancellationToken cancellationToken = default) =>
