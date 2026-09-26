@@ -59,10 +59,20 @@ Three guards, cheapest first, because the expensive thing is starting a session 
    run and let the agent report, never a reason to go quiet.
 
 **What the local loop needs on the machine:** the astrid-web checkout beside this one with
-`npm ci` run (its `tsx`, its `.env.local`, its OAuth pair), the `claude` CLI on `PATH`, and
-`.claude/settings.json` — committed here, because a scheduled run has no terminal to answer a
-permission prompt in, and `--permission-mode acceptEdits` pre-approves file edits only. Without
-those grants the run can read the board and change nothing.
+`npm ci` run (its `tsx`, its `.env.local`, its OAuth pair), the **astrid-core checkout beside this
+one**, the `claude` CLI on `PATH`, and `.claude/settings.json` — committed here, because a
+scheduled run has no terminal to answer a permission prompt in, and `--permission-mode acceptEdits`
+pre-approves file edits only. Without those grants the run can read the board and change nothing.
+
+**Both sibling checkouts are passed to the session with `--add-dir`, and neither is optional in
+practice.** A Claude Code session can open only the directories it was given: astrid-web because
+with no astrid MCP server registered its OAuth scripts are the only path to the board, and
+astrid-core because that is where a rule, a service, the Outbox and sync live — so a run without it
+cannot fix a core-side task, and cannot even *read* the core to decide whether the fix belongs
+there. The cargo git checkout under `~/.cargo` is no substitute; it is outside the allowed
+directories too. A missing astrid-core only warns rather than failing the tick, since a shell-only
+task is still workable, but the warning is loud: on 2026-09-26 all four Ready tasks turned out to
+bottom out in core rules and the run could not read one line of them.
 
 **What it does not do, unlike the Mac loop.** astrid-web's third guard calls
 `agent-queue-status.ts`, which also reports `attention` — comments and chat nobody answered — and

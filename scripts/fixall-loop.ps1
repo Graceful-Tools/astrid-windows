@@ -85,6 +85,11 @@ $ErrorActionPreference = 'Continue'
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $WebRepo = Join-Path (Split-Path -Parent $RepoRoot) 'astrid-web'
+# The shared core is its own repository since 2026-09-26 and is pinned by revision, so a task whose
+# fix is a rule, a service, the Outbox or sync is worked THERE and the pin bumped here. Without the
+# checkout in the session's allowed directories such a task is simply unreachable, and the run can
+# only do `app/` work - which is most of this board's backlog, but not all of it.
+$CoreRepo = Join-Path (Split-Path -Parent $RepoRoot) 'astrid-core'
 $LogDir = Join-Path $env:LOCALAPPDATA 'Astrid\logs'
 $LogFile = Join-Path $LogDir 'fixall-windows.log'
 if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
@@ -228,8 +233,26 @@ try {
     # confined to this repo cannot run them: it refuses the sibling checkout outright, whatever the
     # permission grants say. Proved by the first real run on 2026-09-26, which reported "this
     # session's allowed working directory is astrid-windows only" and worked nothing.
+    #
+    # astrid-core is here for the same reason, one layer in. CLAUDE.md and .claude/commands/fixall.md
+    # both say a rule, a service, the Outbox or sync is fixed in a checkout of astrid-core beside
+    # this one and reaches this app when the pin is bumped - and a session that cannot open that
+    # checkout cannot do it, or even READ the core to tell whether the fix belongs there. It cannot
+    # reach the sources through the cargo git checkout either: ~/.cargo is outside the allowed
+    # directories too. Found on 2026-09-26, when all four Ready tasks turned out to bottom out in
+    # core rules and the run could not read one line of them.
     $claudeArgs = @('-p', '/fixall', '--model', $Model, '--permission-mode', $PermissionMode,
         '--add-dir', $WebRepo)
+    # Only when it is actually there. A missing core checkout is a degraded run, not a failed one:
+    # a shell-only task is still workable, and --add-dir on a path that does not exist would take
+    # the whole tick down with it. Loud, like the permissions warning above, because the failure it
+    # replaces is the silent kind - a run that reports OK having worked nothing.
+    if (Test-Path $CoreRepo) {
+        $claudeArgs += @('--add-dir', $CoreRepo)
+    } else {
+        Say "  WARNING: no astrid-core checkout at $CoreRepo - any task whose fix is in the core"
+        Say '     cannot be worked or even diagnosed this run. git clone it beside this repo.'
+    }
     if ($MaxUsd) { $claudeArgs += @('--max-budget-usd', $MaxUsd) }
     $runLine = '-> /fixall (' + $Model + ', watchdog ' + $MaxMinutes + 'm'
     if ($MaxUsd) { $runLine += ', cap $' + $MaxUsd }
