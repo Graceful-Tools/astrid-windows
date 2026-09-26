@@ -32,7 +32,7 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git merge:*)",
-      "Bash(git push origin main)",
+      "Bash(git push:*)",
       "Bash(git stash:*)",
       "Bash(git remote:*)"
     ]
