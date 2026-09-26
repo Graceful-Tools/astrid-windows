@@ -3,6 +3,7 @@
 *Local Claude Code CLI workflow for the Astrid Windows app.*
 
 **Repository:** https://github.com/Graceful-Tools/astrid-windows
+**The shared core (separate repo, pinned by revision):** https://github.com/Graceful-Tools/astrid-core
 **Web app + API (separate repo):** https://github.com/Graceful-Tools/astrid-web
 **Apple apps (separate repo):** https://github.com/Graceful-Tools/astrid-ios
 
@@ -36,9 +37,15 @@ tasks, the Outbox, sync, chat, list members, permissions, or an API call.
 
 ```powershell
 npm run predeploy          # the standard gate before pushing
-cargo test --workspace     # core tests only, the inner loop
-cargo xtask check-contracts
+cargo test --workspace     # the FFI crate's tests, including the bindings contract
 ```
+
+**The core is a separate repository since 2026-09-26.** `crates/astrid-ffi/Cargo.toml` pins
+`astrid-core` by revision; a change to a rule, a service, the Outbox or sync is made in
+[astrid-core](https://github.com/Graceful-Tools/astrid-core) and reaches this app when the pin is
+bumped. Work it beside this checkout at `../astrid-core` and point the pin at a local path while
+iterating (`[patch."https://github.com/Graceful-Tools/astrid-core.git"]` in `Cargo.toml`), never
+commit the patch.
 
 First time on a machine, see [docs/context/stack.md](./docs/context/stack.md) for the three winget
 installs. The ARM64 MSVC component is required — `predeploy` cross-builds ARM64 every run.
@@ -47,18 +54,18 @@ installs. The ARM64 MSVC component is required — `predeploy` cross-builds ARM6
 
 | Command | What it runs |
 |---|---|
-| `npm run predeploy:quick` | fmt, clippy, tests, contracts (no ARM64 cross-build) |
-| `npm run predeploy` | the above plus the ARM64 cross-build and, once it exists, the shell build and tests — **the standard gate** |
+| `npm run predeploy:quick` | fmt, clippy, tests (no ARM64 cross-build) |
+| `npm run predeploy` | the above plus the ARM64 cross-build and the shell build and tests — **the standard gate** |
 | `npm run predeploy:full` | adds the UI smoke tests, which drive the built app |
 | `powershell -File scripts/package.ps1` | the MSIX packages and the bundle — unsigned, see `packaging/README.md` |
-| `npm run contracts` | regenerate `contracts/fixtures` from a local astrid-web checkout |
+| (in astrid-core) `cargo xtask check-contracts` | the fixtures against a local astrid-web checkout |
 
 ## Test locations
 
 | Type | Path |
 |---|---|
-| Core unit tests | alongside the code, in `#[cfg(test)] mod tests` |
-| Core integration tests | `crates/astrid-core/tests/` |
+| Core tests | in astrid-core, beside the code and under `crates/astrid-core/tests/` |
+| The bindings contract (`Commands.cs` against the core's command list) | `crates/astrid-ffi/tests/` |
 | Shell view-model tests | `app/Astrid.App.Tests/` (from M2) |
 | UI smoke tests | `app/Astrid.App.UITests/` (from M2) |
 
@@ -72,8 +79,8 @@ Do not improve behaviour while porting — a divergence found on the way goes in
 [docs/CONTRACTS.md](./docs/CONTRACTS.md), not into the code.
 
 **Contracts are fixtures, not prose.** Anything that must match web is locked by a generated file in
-`contracts/fixtures/`. Changing shared behaviour is a cross-repo change: web first, then regenerate,
-then here, then astrid-ios.
+astrid-core's `contracts/fixtures/`. Changing shared behaviour is a cross-repo change: web first,
+then regenerate in astrid-core, then bump the pin here, then astrid-ios.
 
 **Per-task process** (canonical, cross-repo — see `astrid-web/docs/FIXALL_WORKFLOW.md`): post a
 strategy comment, RED-GREEN-refactor with a task-id-linked regression test, run the gate, post a
@@ -107,7 +114,7 @@ manually triggered act, the same discipline astrid-web follows for production de
 | [docs/PARITY.md](./docs/PARITY.md) | What this app does against the Mac, and what it never will |
 | [docs/PROGRESS.md](./docs/PROGRESS.md) | Where the milestones stand |
 | [docs/context/stack.md](./docs/context/stack.md) | Pinned tool versions, machine setup |
-| [contracts/README.md](./contracts/README.md) | How the fixtures are generated |
+| astrid-core's `contracts/README.md` | How the fixtures are generated |
 | [docs/AUTOMATION.md](./docs/AUTOMATION.md) | The `fixall` / `fixstuff` loops and the secrets they need |
 | [README.md](./README.md) | Project overview |
 

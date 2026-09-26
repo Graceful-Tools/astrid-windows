@@ -32,6 +32,7 @@ dependencies = [
 [[package]]
 name = "astrid-core"
 version = "0.1.0"
+source = "git+https://github.com/Graceful-Tools/astrid-core.git?rev=aaeb7d02aec3c992e26635f20fa92c163d49e0ef#aaeb7d02aec3c992e26635f20fa92c163d49e0ef"
 dependencies = [
  "async-trait",
  "base64",
@@ -1889,10 +1890,6 @@ name = "writeable"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ad82d2a33cdc9674dc7465672f271e096168fcdbe0f799d9e6db8c5892679dc"
-
-[[package]]
-name = "xtask"
-version = "0.1.0"
 
 [[package]]
 name = "yoke"

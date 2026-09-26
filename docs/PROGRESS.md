@@ -11,6 +11,8 @@ shell exists (M2).
 
 ## M1 — core contracts and services
 
+*Since 2026-09-26 the core is its own repository, [astrid-core](https://github.com/Graceful-Tools/astrid-core); the paths in M1 and M3 are relative to it, and `crates/astrid-ffi/Cargo.toml` pins the revision this app builds against.*
+
 | Piece | Path | State |
 |---|---|---|
 | Wire models | `crates/astrid-core/src/model/` | done |

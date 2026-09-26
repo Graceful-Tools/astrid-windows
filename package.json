@@ -7,8 +7,6 @@
   "scripts": {
     "predeploy": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/predeploy.ps1",
     "predeploy:quick": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/predeploy.ps1 -Quick",
-    "predeploy:full": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/predeploy.ps1 -Full",
-    "contracts": "node contracts/export-from-web.mjs",
-    "contracts:check": "node contracts/export-from-web.mjs --check"
+    "predeploy:full": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/predeploy.ps1 -Full"
   }
 }

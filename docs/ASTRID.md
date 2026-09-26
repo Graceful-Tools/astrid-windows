@@ -65,7 +65,7 @@ of a second set of business rules would be paid forever.
 app/Astrid.App          WinUI 3, C#      windows, XAML, key dispatch, platform adapters
 app/Astrid.Core.Bindings                 hand-written C# over the core's C ABI — partial by
                                          design, and read against the Command enum by a test
-crates/astrid-core      Rust             models, API client, SQLite cache, Outbox, services,
+astrid-core (own repo)  Rust             models, API client, SQLite cache, Outbox, services,
                                          sync, SSE, auth, and every cross-platform contract
         |
         v  HTTPS /api/v1/*
@@ -82,10 +82,10 @@ the crate testable on any machine and keeps the platform boundary visible.
 
 Rules that must read identically on web, Apple and Windows are locked by **generated fixtures**, not
 by prose. `contracts/fixtures/*.json` is produced from the astrid-web sources by
-`contracts/export-from-web.mjs`; the Rust tests compile those files in, so a web change fails this
+astrid-core's `contracts/export-from-web.mjs`; the Rust tests compile those files in, so a web change fails that
 crate's tests instead of shipping a silent divergence.
 
-`cargo xtask check-contracts` (part of `npm run predeploy`) regenerates and diffs them.
+`cargo xtask check-contracts` in astrid-core (part of its CI) regenerates and diffs them.
 
 | Contract | Canonical | Here | Status |
 |---|---|---|---|
@@ -110,15 +110,15 @@ this client, then mirror into astrid-ios. Deploy web before shipping a client th
 
 | Area | Path | Notes |
 |---|---|---|
-| Models and wire shapes | `crates/astrid-core/src/model/` | serde; lenient decoding, because the server is permissive |
-| API client | `crates/astrid-core/src/api/` | the only place that speaks HTTP; sends `x-platform: windows-app` |
-| Local cache | `crates/astrid-core/src/store/` | SQLite; the read path never waits on the network |
-| Outbox | `crates/astrid-core/src/outbox/` | the write path: idempotent, retrying, dependency-ordered, dead-lettering; delivered at once by `app::background::outbox_loop`, which a command rings when it journals something |
-| Services | `crates/astrid-core/src/services/` | the canonical control points |
-| Sync + real time | `crates/astrid-core/src/{sync,realtime}/` | a 60s pull that asks only for what moved since the last pass (with the server's tombstones), SSE on top, and every pass that changes the cache announces it to the shell |
-| Contracts | `crates/astrid-core/src/{repeating,permissions,filters,parse,keyboard,rows}/` | pure, fixture-locked |
+| Models and wire shapes | astrid-core `src/model/` | serde; lenient decoding, because the server is permissive |
+| API client | astrid-core `src/api/` | the only place that speaks HTTP; sends `x-platform: windows-app` |
+| Local cache | astrid-core `src/store/` | SQLite; the read path never waits on the network |
+| Outbox | astrid-core `src/outbox/` | the write path: idempotent, retrying, dependency-ordered, dead-lettering; delivered at once by `app::background::outbox_loop`, which a command rings when it journals something |
+| Services | astrid-core `src/services/` | the canonical control points |
+| Sync + real time | astrid-core `src/{sync,realtime}/` | a 60s pull that asks only for what moved since the last pass (with the server's tombstones), SSE on top, and every pass that changes the cache announces it to the shell |
+| Contracts | astrid-core `src/{repeating,permissions,filters,parse,keyboard,rows}/` | pure, fixture-locked |
 | Shell | `app/Astrid.App/` | no business logic; `ShellPage` arranges the parts under `Views/`, one UserControl per part of the window and per settings page |
-| Automation | `crates/xtask/`, `scripts/` | `cargo xtask <command>`, `npm run predeploy` |
+| Automation | `scripts/` | `npm run predeploy`; `cargo xtask` lives in astrid-core |
 
 ---
 

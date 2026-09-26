@@ -1,15 +1,16 @@
 # Astrid for Windows — Rust workspace.
 #
-# `astrid-core` is the shared layer the WinUI shell sits on: models, API client,
-# SQLite cache, the Outbox write journal, sync, and every cross-platform contract
-# mirrored from astrid-web (repeating rollover, permissions, dates, shortcuts).
-# It has NO Windows dependency — platform services arrive through callback traits
-# implemented by the shell — so it also builds and tests on macOS and Linux.
+# The shared core lives in its own repository, https://github.com/Graceful-Tools/astrid-core,
+# and is pinned by revision in crates/astrid-ffi/Cargo.toml (extracted 2026-09-26; its history
+# went with it). What stays here is `astrid-ffi`: the C ABI the WinUI shell calls the core
+# through, and the Windows platform services (DPAPI for the session at rest). Bump the pin
+# deliberately, as the contract fixtures are bumped: a core change reaches this app only when
+# someone here says so.
 #
 # See docs/ASTRID.md for the rules that govern what may live where.
 [workspace]
 resolver = "2"
-members = ["crates/astrid-core", "crates/astrid-ffi", "crates/xtask"]
+members = ["crates/astrid-ffi"]
 
 [workspace.package]
 version = "0.1.0"

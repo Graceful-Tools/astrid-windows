@@ -24,7 +24,8 @@ second set of business rules to keep in step forever.
 ```
 app/Astrid.App          WinUI 3, C#   windows, XAML, key dispatch, platform adapters
 app/Astrid.Core.Bindings              hand-written C# over the core's C ABI, checked by a test
-crates/astrid-core      Rust          models, services, cache, Outbox, sync, contracts
+crates/astrid-ffi       Rust          the C ABI over the core, and the Windows platform services
+astrid-core (own repo)  Rust          models, services, cache, Outbox, sync, contracts — pinned by revision
         |
         v  HTTPS /api/v1/*
 astrid-web (astrid.cc)
@@ -58,7 +59,7 @@ cargo test --workspace  # the inner loop
 | [docs/ASTRID.md](./docs/ASTRID.md) | Architecture and the rules that govern this repo — read first |
 | [docs/CONTRACTS.md](./docs/CONTRACTS.md) | Shared rules, and where the clients currently disagree |
 | [docs/context/stack.md](./docs/context/stack.md) | Pinned versions and machine setup |
-| [contracts/README.md](./contracts/README.md) | How the contract fixtures are generated |
+| [astrid-core](https://github.com/Graceful-Tools/astrid-core) | The shared core, and how the contract fixtures are generated |
 | [docs/AUTOMATION.md](./docs/AUTOMATION.md) | The task loops, and the secrets they need |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | How to contribute |
 

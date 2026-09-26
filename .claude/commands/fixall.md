@@ -71,8 +71,9 @@ and stop until he has authorised — do not fall back to the database.
   worktree the session already created; do not run raw branch-creation commands inside it.
   Other harnesses should reuse an already-isolated task branch or create one with their native
   session/worktree workflow.
-- **Gates:** `npm run predeploy` is the standard gate (fmt, clippy, core tests, contract
-  fixtures, the ARM64 cross-build, and the shell build/tests). `cargo test --workspace` is the
+- **Gates:** `npm run predeploy` is the standard gate (fmt, clippy, the FFI crate's tests, the
+  ARM64 cross-build, and the shell build/tests; the core's own tests and the contract fixtures
+  are astrid-core's gate). `cargo test --workspace` is the
   inner loop; `npm run predeploy:quick` skips the cross-build; `npm run predeploy:full` adds the
   UI smoke tests, which drive the built app and take ~10 minutes — run it in the background.
 - **Bug fixes are TDD:** a RED regression test naming the task id, then green, then the gate.
@@ -80,9 +81,13 @@ and stop until he has authorised — do not fall back to the database.
   Rust tests RED, port GREEN, refactor. Do not improve behaviour while porting; a divergence
   found on the way goes in [docs/CONTRACTS.md](../../docs/CONTRACTS.md), not into the code.
 - **Contracts are fixtures, not prose.** Anything that must match web is locked by a generated
-  file in `contracts/fixtures/`. Changing shared behaviour is a cross-repo change: web first,
-  then regenerate (`npm run contracts`), then here, then astrid-ios. File the other repos'
-  halves as tasks on their boards rather than editing them from this run.
+  file in astrid-core's `contracts/fixtures/`. Changing shared behaviour is a cross-repo change:
+  web first, then astrid-core (regenerate there), then bump the pin in `crates/astrid-ffi`, then
+  astrid-ios. File the other repos' halves as tasks on their boards rather than editing them
+  from this run.
+- **A rule, a service, the Outbox or sync lives in astrid-core, not here.** A task whose fix is
+  in the core is worked in a checkout of that repo beside this one, pushed there, and the pin
+  bumped here; say both revisions in the completion report.
 - **Critical rules from CLAUDE.md still hold inside the loop:** backend writes go through a
   service; complete a task only via `TaskService::complete_task`; next-occurrence math lives
   only in `astrid_core::repeating`; no business logic in `app/`; everything writes through the

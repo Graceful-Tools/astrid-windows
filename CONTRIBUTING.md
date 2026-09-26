@@ -7,13 +7,13 @@ Thanks for helping. Two documents matter before you write code:
 
 ## The short version
 
-1. **Business logic lives in `crates/astrid-core`, never in `app/`.** The WinUI shell renders and
+1. **Business logic lives in the core — [astrid-core](https://github.com/Graceful-Tools/astrid-core), pinned by revision in `crates/astrid-ffi` — never in `app/`.** The WinUI shell renders and
    dispatches; if your change decides something about tasks, lists, sync, permissions or the words a
    user reads, it belongs in the core.
 2. **Write the failing test first.** For a bug fix that is not optional: a RED test that reproduces
    it, named for the task id, then the fix. The test is the proof the bug existed and that you
    addressed it.
-3. **Shared behaviour changes on web first.** Anything covered by a fixture in `contracts/fixtures`
+3. **Shared behaviour changes on web first.** Anything covered by a fixture in astrid-core's `contracts/fixtures`
    is canonical in astrid-web. Change it there with its tests, regenerate the fixtures, then update
    this repo, then astrid-ios.
 4. **Run the gate before pushing:** `npm run predeploy`. It formats, lints, tests, cross-builds for

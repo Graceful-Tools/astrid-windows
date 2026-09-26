@@ -1,2 +1,2 @@
+# `cargo xtask` moved with the core to astrid-core; the contract check runs there.
 [alias]
-xtask = "run --package xtask --"

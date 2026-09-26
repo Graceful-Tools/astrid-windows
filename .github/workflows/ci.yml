@@ -1,5 +1,7 @@
-# The PR gate. Runs the same steps as `npm run predeploy` — the Rust core and the C# shell both —
-# so a green run here means what a green local run means.
+# The PR gate. Runs the same steps as `npm run predeploy` — the Rust FFI crate over the pinned
+# core, and the C# shell — so a green run here means what a green local run means. The core's own
+# gate, and the cross-platform contract check against astrid-web, run in
+# https://github.com/Graceful-Tools/astrid-core; what this repo pins is a revision that passed.
 #
 # ARM64 is a shipping architecture, so it is cross-built on every push and, where a native ARM
 # runner is available, tested natively too. A dependency that cannot target ARM64 is caught the day
@@ -27,7 +29,7 @@ concurrency:
 
 jobs:
   core:
-    name: core (${{ matrix.name }})
+    name: ffi over the pinned core (${{ matrix.name }})
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -107,32 +109,3 @@ jobs:
       # The UI smoke tests are not in the solution: they need a desktop session.
       - name: Shell tests
         run: dotnet test app/Astrid.sln -c Release
-
-  contracts:
-    name: cross-platform contracts
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          path: astrid-windows
-
-      # The fixtures are generated from astrid-web. Checking them against that repo's default
-      # branch is what turns a shared-behaviour change into a failing build here instead of a
-      # divergence a user reports later.
-      #
-      # Needs a repo secret `ASTRID_WEB_READ_TOKEN` with read access to astrid-web (a fine-grained
-      # PAT with Contents: read is enough). Without it this job cannot check out the canonical
-      # source and the check is meaningless, so it fails rather than passing vacuously.
-      - uses: actions/checkout@v4
-        with:
-          repository: Graceful-Tools/astrid-web
-          path: astrid-web
-          token: ${{ secrets.ASTRID_WEB_READ_TOKEN }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
-      - name: Check fixtures against astrid-web
-        working-directory: astrid-windows
-        run: node contracts/export-from-web.mjs --check --web ../astrid-web

@@ -1,6 +1,6 @@
 # The standard gate. Run it before pushing; CI runs the same steps.
 #
-#   npm run predeploy         format, lint, test, cross-build, contracts
+#   npm run predeploy         format, lint, test, cross-build
 #   npm run predeploy:quick   skip the ARM64 cross-build (fast inner loop)
 #   npm run predeploy:full    adds the packaged-app build and UI smoke tests
 #
@@ -42,7 +42,8 @@ Invoke-Step 'core tests' { cargo test --workspace }
 # The contract fixtures are generated from astrid-web. This fails when web has moved and the
 # fixtures here have not, which is the moment to make it a cross-repo change rather than a
 # surprise in production.
-Invoke-Step 'cross-platform contracts' { cargo xtask check-contracts }
+# The cross-platform contract check moved with the core to astrid-core, whose CI runs it
+# against astrid-web on every push. What this repo pins is a revision that passed it.
 
 if (-not $Quick) {
     # BOTH shipping architectures are built by name on every run, rather than trusting that the
