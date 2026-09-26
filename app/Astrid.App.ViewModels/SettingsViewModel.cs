@@ -35,7 +35,7 @@ public sealed class SettingsViewModel : ObservableObject
         Reminders = new ReminderSettingsViewModel(_session);
         Appearance = new AppearanceSettingsViewModel(_session);
         Agents = new AgentSettingsViewModel(_session);
-        ApiAccess = new ApiAccessViewModel(_session);
+        Connections = new ConnectionsViewModel(_session);
         Integrations = new IntegrationsSettingsViewModel(_session);
         Data = new DataSettingsViewModel(_session);
         // The error line and the sign-in flag are the session's; the flyout binds to them here.
@@ -60,8 +60,8 @@ public sealed class SettingsViewModel : ObservableObject
     /// <summary>The AI agents page: the hub, the credentials, Copilot, the webhook, custom agents.</summary>
     public AgentSettingsViewModel Agents { get; }
 
-    /// <summary>The API access page.</summary>
-    public ApiAccessViewModel ApiAccess { get; }
+    /// <summary>The Connections page: what can act as the account, and the OAuth clients made by hand.</summary>
+    public ConnectionsViewModel Connections { get; }
 
     /// <summary>The Integrations page's own setting: how Google lists get linked.</summary>
     public IntegrationsSettingsViewModel Integrations { get; }

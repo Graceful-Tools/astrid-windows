@@ -268,6 +268,35 @@ public sealed partial class ListSettingsFlyout : UserControl
         await Shell.LeaveListAsync();
     }
 
+    /// <summary>Ask who the list may be handed to, every time the control opens: the roster moves.</summary>
+    private async void OnTransferFlyoutOpening(object sender, object args) =>
+        await Shell.ListSettings.ProbeTransferAsync();
+
+    /// <summary>
+    /// Hand the list over, after asking: the caller leaves in the same call, and there is no undo
+    /// for that on any client.
+    /// </summary>
+    private async void OnTransferTo(object sender, RoutedEventArgs args)
+    {
+        if (sender is not FrameworkElement { Tag: UserSummary newOwner })
+        {
+            return;
+        }
+        var dialog = new ContentDialog
+        {
+            XamlRoot = Content.XamlRoot,
+            Title = Strings.Get("list.transfer_title"),
+            Content = Strings.Get("list.transfer_confirm", newOwner.DisplayName),
+            PrimaryButtonText = Strings.Get("list.transfer_yes"),
+            CloseButtonText = Strings.Get("dialog.close"),
+            DefaultButton = ContentDialogButton.Close,
+        };
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        {
+            await Shell.TransferListOwnershipAsync(newOwner.Id);
+        }
+    }
+
     private async void OnDeleteList(object sender, RoutedEventArgs args)
     {
         await Shell.DeleteListAsync();

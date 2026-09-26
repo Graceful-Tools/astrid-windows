@@ -187,9 +187,29 @@ against the web, from a read of the source rather than of the docs, with what ha
   (PRODUCT_CONTRACT.md §4). It drew the checkbox for all three before.
 - `release.yml` runs the quick gate before it publishes anything.
 
-**Blocked on the web** (no `/api/v1` route; this client refuses unversioned paths): transfer
-ownership (`/api/lists/[id]/transfer-ownership`). Manual reorder was the other one until
-2026-09-13, when the web added `POST /api/v1/lists/{id}/manual-order`.
+**Landed 2026-09-26 — the comparison against Mac and web since the 2026-09-13 build**
+
+The last Windows build was the Store package of 2026-09-13. Between then and 2026-09-25 the web
+took 131 commits and the Apple clients 58. Read commit by commit, the user-facing changes were
+these, and each is now here; everything else on either side was server-only (agent attribution,
+scope reconciliation, Core Web Vitals, cache metrics, tombstone pruning), tooling for the
+`/fixall` loops, or an iOS-only fix.
+
+| What changed on web / Mac | Where it landed here |
+|---|---|
+| **API Access became Connections** (web #285, AWTD-981/983; Mac #517, AITD-419/420): one list of everything that can act as the account — OAuth clients, approved apps, Custom Agents, access tokens, the webhook server — grouped as the three things they are (apps with an owner badge, tokens, the webhook), each reviewed for looking unused, revocable one at a time; an OAuth client made and edited by hand. The mobile MCP token endpoint this client minted from was **deleted** — the old page would have 404ed on its first button | `astrid_core::services::connections` (the rows, the facets, the sections, the review, the draft rules and the grant pairing, ported from the Swift tests), `ConnectionsViewModel`, `Views/Settings/ConnectionsSection`; `apiAccess`/`createMcpToken`/`revokeMcpTokens` are gone from the command set |
+| **Agents mint their own credentials** (web #285): the webhook server's client-credentials pair comes from a preset the agents page asks for, not the developer console | `mintTransportCredentials { preset, agent }` and a *Create credentials* button beside the webhook |
+| **Muse Code**, Meta's terminal coding agent, joins the harness agents (web AWTD-937, Mac AITD-423/424/428), and **a harness agent can be switched off** without a 400 on every other button (web task 42349da6) | The Agent Hub reads the server's list, so Muse arrived without a build — except that the shell had been reading `id` and `name` off rows the server describes as `{ mailbox, email, mode, locked }`, so every agent drew nameless and off. `rows::agent` projects them; a locked row offers polling and off only |
+| **Board state on a board task's detail** (web task 5221e43f; the Mac and iOS already had it): the columns as chips, Done left out, list mode only, never for a read-only viewer | `rows::detail::shows_board_state` beside the field order; `boardState` rides with `taskDetail`; the pane draws it after Lists |
+| **Transfer list ownership** reached `/api/v1` (web tasks f4b40af3, 359ca48f), which this client had listed as blocked | The owner is offered *Transfer ownership* where a member is offered *Leave*; the probe's four answers (people, nobody yet, not the owner, not deployed) stay four; the handover is one call that drops the list here |
+| **Delta sync cursors are capped at 24 hours** (web AWTD-993/990): tombstones are pruned after a retention window, so an older cursor would never hear of the deletions in between | `sync::max_delta_age`: a stamp older than a day pulls everything |
+| Reopening a task returns it to the lane it left, or to Ready for an agent (web AWTD-964/985) | Server-side, and the sync pass carries the answer; nothing to hold here |
+| Task blocking dependencies (web AWTD-1002) | A spec (`docs/specs/TASK_BLOCKING_DEPENDENCIES.md`), not yet a route or a field; nothing to port until it is |
+| The iOS/Mac *Update available* card (`/api/v1/app-version`) | The server knows `ios` and `mac`; Windows updates through the Store, which needs no card |
+
+**Blocked on the web**: nothing at present. Manual reorder unblocked on 2026-09-13
+(`POST /api/v1/lists/{id}/manual-order`) and transfer ownership on 2026-09-13
+(`/api/v1/lists/{id}/transfer-ownership`, landed here 2026-09-26).
 - **Drag rows into an order of your own** (task 7883f710), when the list is sorted by hand. The
   view model sends the rows as they came to rest; `astrid_core::manual_order` completes the
   list's order — the rest of the arrangement keeps its place, anything never arranged comes
@@ -218,10 +238,11 @@ ownership (`/api/lists/[id]/transfer-ownership`). Manual reorder was the other o
 
 **Still open — features the web has**
 
-Ten more languages (the web's; English and German are here) — and the two blocked on
-the web above.
+Ten more languages (the web's; English and German are here).
 
-Not gaps, because the web has none either: multi-select, undo, calendar view, dependencies.
+Not gaps, because the web has none either: multi-select, undo, calendar view. Task blocking
+dependencies are a web spec (AWTD-1002) with no route yet; they become a gap the day the route
+lands.
 
 ## M4 — distribution
 

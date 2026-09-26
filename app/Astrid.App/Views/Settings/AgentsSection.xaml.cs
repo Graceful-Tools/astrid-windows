@@ -81,6 +81,22 @@ public sealed partial class AgentsSection : UserControl
         await Shell.Settings.Agents.TestWebhookAsync();
     }
 
+    /// <summary>Mint the pair the webhook server calls back with. Shown once, below the button.</summary>
+    private async void OnMintWebhookCredentials(object sender, RoutedEventArgs args) =>
+        await Shell.Settings.Agents.MintWebhookCredentialsAsync();
+
+    /// <summary>Both halves at once, labelled, because the pair is useless one at a time.</summary>
+    private void OnCopyWebhookCredentials(object sender, RoutedEventArgs args)
+    {
+        if (Shell.Settings.Agents.WebhookCredentials is not { } minted)
+        {
+            return;
+        }
+        ClipboardText.Copy(
+            $"ASTRID_OAUTH_CLIENT_ID={minted.ClientId}{Environment.NewLine}"
+            + $"ASTRID_OAUTH_CLIENT_SECRET={minted.ClientSecret}");
+    }
+
     private async void OnDeleteWebhook(object sender, RoutedEventArgs args)
     {
         await Shell.Settings.Agents.DeleteWebhookAsync();

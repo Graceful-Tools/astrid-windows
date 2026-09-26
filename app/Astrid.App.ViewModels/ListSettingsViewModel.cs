@@ -30,6 +30,8 @@ public sealed class ListSettingsViewModel : ObservableObject
     private bool _canManageList;
     private bool _canDeleteList;
     private bool _canLeave;
+    private bool _canTransferOwnership;
+    private string? _transferAvailability;
     private bool _isLoading;
     private string? _errorMessage;
     private bool _needsSignIn;
@@ -575,6 +577,62 @@ public sealed class ListSettingsViewModel : ObservableObject
         private set => Set(ref _canLeave, value);
     }
 
+    /// <summary>
+    /// The owner is offered a handover instead of Leave (Apple AITD-392). Whether there is anybody
+    /// to hand the list to is the server's answer, asked when the control opens.
+    /// </summary>
+    public bool CanTransferOwnership
+    {
+        get => _canTransferOwnership;
+        private set => Set(ref _canTransferOwnership, value);
+    }
+
+    /// <summary>
+    /// What the probe said: <c>available</c>, <c>noEligibleOwners</c>, <c>notPermitted</c> or
+    /// <c>unavailable</c>; null before it has been asked. Four states kept apart on purpose — a
+    /// 403 and an empty roster want different words.
+    /// </summary>
+    public string? TransferAvailability
+    {
+        get => _transferAvailability;
+        private set
+        {
+            if (Set(ref _transferAvailability, value))
+            {
+                Raise(nameof(HasEligibleOwners));
+                Raise(nameof(NoEligibleOwners));
+                Raise(nameof(TransferUnavailable));
+            }
+        }
+    }
+
+    public bool HasEligibleOwners => TransferAvailability == "available";
+
+    /// <summary>You may, but there is nobody yet — invite someone first.</summary>
+    public bool NoEligibleOwners => TransferAvailability == "noEligibleOwners";
+
+    /// <summary>The route is not deployed, or the network failed: not from here, use the web.</summary>
+    public bool TransferUnavailable => TransferAvailability == "unavailable";
+
+    /// <summary>The members the list may be handed to, as the server listed them.</summary>
+    public ObservableCollection<UserSummary> EligibleOwners { get; } = [];
+
+    /// <summary>Ask who the list may be handed to. Called when the Transfer control opens.</summary>
+    public async Task ProbeTransferAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.EligibleNewOwners(ListId), cancellationToken);
+        var probe = response.Ok ? response.Read<TransferAvailability>() : null;
+        Replace(EligibleOwners, probe?.Owners ?? []);
+        TransferAvailability = probe?.Availability ?? "unavailable";
+    }
+
+    /// <summary>Hand the list to a member and leave it, in one call.</summary>
+    public async Task<bool> TransferOwnershipAsync(string newOwnerId, CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.TransferListOwnership(ListId, newOwnerId), cancellationToken);
+        return Handle(response);
+    }
+
     public bool IsLoading
     {
         get => _isLoading;
@@ -723,6 +781,7 @@ public sealed class ListSettingsViewModel : ObservableObject
             CanManageList = settings.CanManageList;
             CanDeleteList = settings.CanDeleteList;
             CanLeave = settings.CanLeave;
+            CanTransferOwnership = settings.CanTransferOwnership;
             Replace(Members, settings.Members);
         }
     }

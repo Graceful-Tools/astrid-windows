@@ -39,6 +39,12 @@
     <local:StatConverter x:Key="StatSupported" Key="stats.supported" />
     <local:LoggedTimeConverter x:Key="LoggedTime" />
     <local:CredentialStateConverter x:Key="CredentialState" />
+    <local:PrefixedWordsConverter x:Key="ConnectionOwner" Prefix="connections.owner" />
+    <local:PrefixedWordsConverter x:Key="ConnectionStatus" Prefix="connections.status" />
+    <local:ActsAsConverter x:Key="ActsAs" />
+    <local:IsoDayConverter x:Key="IsoDay" />
+    <local:ReviewLineConverter x:Key="ReviewLine" />
+    <local:RowOpacityConverter x:Key="RowOpacity" />
     <local:FileGlyphConverter x:Key="FileGlyph" />
     <local:ChipTintConverter x:Key="ChipTint" />
     <local:ChipColourConverter x:Key="ChipColour" />

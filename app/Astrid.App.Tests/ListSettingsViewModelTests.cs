@@ -10,7 +10,7 @@ namespace Astrid.App.Tests;
 public sealed class ListSettingsViewModelTests
 {
     private static object Settings(bool canManage = true, bool canLeave = false,
-        bool canDelete = true) => new
+        bool canDelete = true, bool canTransfer = true) => new
     {
         listId = "l1",
         name = "Work",
@@ -19,6 +19,7 @@ public sealed class ListSettingsViewModelTests
         canManageList = canManage,
         canDeleteList = canDelete,
         canLeave,
+        canTransferOwnership = canTransfer,
         currentUserId = "me",
         members = new[]
         {
@@ -659,5 +660,62 @@ public sealed class ListSettingsViewModelTests
         Assert.False(await view.RenameAsync("  "));
 
         Assert.DoesNotContain("updateList", core.SentKinds());
+    }
+
+    // ── Handing a list over (web tasks f4b40af3, 359ca48f; Apple AITD-392) ──────────────────
+
+    /// <summary>
+    /// The owner is offered a handover where a member is offered Leave; opening the control asks
+    /// the server who is eligible, and the four answers stay four.
+    /// </summary>
+    [Fact]
+    public async Task The_owner_is_offered_a_handover_and_the_probe_lists_who_may_take_it()
+    {
+        var core = new FakeCore()
+            .AnswerOk("listMembers", Settings())
+            .AnswerOk("refreshListMembers", Settings())
+            .AnswerOk("eligibleNewOwners", new
+            {
+                availability = "available",
+                owners = new[] { new { id = "dana", name = "Dana", email = "dana@x.io" } },
+            })
+            .AnswerOk("eligibleNewOwners", new { availability = "noEligibleOwners", owners = Array.Empty<object>() })
+            .AnswerOk("eligibleNewOwners", new { availability = "unavailable", owners = Array.Empty<object>() });
+        var view = new ListSettingsViewModel(core);
+        await view.LoadAsync("l1");
+
+        Assert.True(view.CanTransferOwnership);
+        Assert.False(view.CanLeave, "an owner is not offered a plain Leave");
+
+        await view.ProbeTransferAsync();
+        Assert.True(view.HasEligibleOwners);
+        Assert.Equal(["Dana"], view.EligibleOwners.Select(owner => owner.DisplayName));
+
+        await view.ProbeTransferAsync();
+        Assert.True(view.NoEligibleOwners, "an empty roster is a state, not an error");
+        Assert.Empty(view.EligibleOwners);
+
+        await view.ProbeTransferAsync();
+        Assert.True(view.TransferUnavailable, "a route the server has not deployed reads as not from here");
+    }
+
+    /// <summary>The handover is one call, by the new owner's id, and its failure is reported like any other.</summary>
+    [Fact]
+    public async Task Handing_the_list_over_sends_the_new_owner_in_one_call()
+    {
+        var core = new FakeCore()
+            .AnswerOk("listMembers", Settings())
+            .AnswerOk("refreshListMembers", Settings())
+            .AnswerOk("transferListOwnership");
+        var view = new ListSettingsViewModel(core);
+        await view.LoadAsync("l1");
+
+        Assert.True(await view.TransferOwnershipAsync("dana"));
+
+        Assert.Contains(core.Sent, json =>
+            json.Contains("\"kind\":\"transferListOwnership\"")
+            && json.Contains("\"listId\":\"l1\"")
+            && json.Contains("\"newOwnerId\":\"dana\""));
+        Assert.DoesNotContain("leaveList", core.SentKinds());
     }
 }

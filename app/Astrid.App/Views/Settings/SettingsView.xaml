@@ -245,7 +245,7 @@
                             <FontIcon Grid.Column="2" Style="{StaticResource CardChevron}" />
                         </Grid>
                     </ListViewItem>
-                    <ListViewItem x:Uid="api_access" Tag="ApiAccess" AutomationProperties.Name="API access">
+                    <ListViewItem x:Uid="connections" Tag="Connections" AutomationProperties.Name="Connections">
                         <Grid ColumnSpacing="12">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -253,11 +253,11 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
-                                <FontIcon Glyph="&#xE192;" Style="{StaticResource CardIcon}" Foreground="#2563EB" />
+                                <FontIcon Glyph="&#xE71B;" Style="{StaticResource CardIcon}" Foreground="#2563EB" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                <TextBlock x:Uid="api_access_2" Text="API access" Style="{StaticResource CardTitle}" />
-                                <TextBlock x:Name="ApiAccessCardLine" Style="{StaticResource CardLine}" />
+                                <TextBlock x:Uid="connections_2" Text="Connections" Style="{StaticResource CardTitle}" />
+                                <TextBlock x:Name="ConnectionsCardLine" Style="{StaticResource CardLine}" />
                             </StackPanel>
                             <FontIcon Grid.Column="2" Style="{StaticResource CardChevron}" />
                         </Grid>
@@ -424,7 +424,7 @@
                     <settings:RemindersSection x:Name="RemindersSection" Visibility="Collapsed" />
                     <settings:AppearanceSection x:Name="AppearanceSection" Visibility="Collapsed" />
                     <settings:AgentsSection x:Name="AgentsSection" Visibility="Collapsed" />
-                    <settings:ApiAccessSection x:Name="ApiAccessSection" Visibility="Collapsed" />
+                    <settings:ConnectionsSection x:Name="ConnectionsSection" Visibility="Collapsed" />
                     <settings:IntegrationsSection x:Name="IntegrationsSection" Visibility="Collapsed" />
                     <settings:DataSection x:Name="DataSection" Visibility="Collapsed" />
 

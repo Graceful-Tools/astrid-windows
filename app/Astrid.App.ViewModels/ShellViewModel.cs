@@ -415,6 +415,15 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>Hand the open list to another member and leave it — one call, then the sidebar redraws without it.</summary>
+    public async Task TransferListOwnershipAsync(string newOwnerId, CancellationToken cancellationToken = default)
+    {
+        if (await ListSettings.TransferOwnershipAsync(newOwnerId, cancellationToken))
+        {
+            await Sidebar.LoadAsync(cancellationToken);
+        }
+    }
+
     /// <summary>
     /// Whether the board is on screen instead of the list.
     /// </summary>

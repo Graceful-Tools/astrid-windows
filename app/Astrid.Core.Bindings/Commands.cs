@@ -132,36 +132,49 @@ public static class Commands
     public static object DeleteCustomAgent(string agentId) =>
         new AgentIdRequest("deleteCustomAgent", agentId);
 
-    // ── API access ───────────────────────────────────────────────────────────────────────────
+    // ── Connections ──────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// The client-credentials pairs this account has registered.
+    /// Everything that can act as this account, grouped and reviewed (astrid-web #285).
     /// </summary>
     /// <remarks>
-    /// Read-only, so the panel opens without minting anything. No secret comes back: the server
+    /// Read-only, so the page opens without minting anything. No secret comes back: the server
     /// stores a hash and shows plaintext once, at creation.
     /// </remarks>
-    public static object ApiAccess() => new KindOnly("apiAccess");
+    public static object Connections() => new KindOnly("connections");
+
+    /// <summary>Stop one connection, by the kind and id the server revokes by.</summary>
+    public static object RevokeConnection(string kind, string id) =>
+        new ConnectionRequest("revokeConnection", kind, id);
+
+    /// <summary>One OAuth client, for editing — the list knows its id but not its redirect URIs.</summary>
+    public static object LoadOAuthClient(string clientId) =>
+        new ClientIdRequest("loadOAuthClient", clientId);
 
     /// <summary>
-    /// Mint an MCP token for this device, or hand back the one it already has.
+    /// Judge a draft as it stands, optionally after flipping one grant with its pair. Pure, and
+    /// asked after every edit, so the editor never has to know a rule.
     /// </summary>
-    /// <remarks>
-    /// The server decides which. Asking twice gives the same token rather than a second one, so a
-    /// screen that lost its copy can get it back without revoking anything.
-    /// </remarks>
-    public static object CreateMcpToken() => new KindOnly("createMcpToken");
+    public static object CheckOAuthClientDraft(OAuthClientDraft draft, string? toggleGrant = null) =>
+        new OAuthClientDraftRequest("checkOAuthClientDraft", draft.Name, draft.Description,
+            draft.Scopes, draft.GrantTypes, draft.RedirectUriText, toggleGrant, ClientId: null);
 
-    /// <summary>Revoke every MCP token minted from a device. All of them: there is no id.</summary>
-    public static object RevokeMcpTokens() => new KindOnly("revokeMcpTokens");
+    /// <summary>Register a client the caller shaped. Answers with the secret shown only this once.</summary>
+    public static object CreateOAuthClient(OAuthClientDraft draft) =>
+        new OAuthClientDraftRequest("createOAuthClient", draft.Name, draft.Description,
+            draft.Scopes, draft.GrantTypes, draft.RedirectUriText, ToggleGrant: null, ClientId: null);
 
-    /// <summary>Register a pair. Answers with the secret shown only this once.</summary>
-    public static object CreateOAuthClient(string name) =>
-        new NamedRequest("createOAuthClient", name);
+    /// <summary>Change a client's redirect URIs. The rest of the draft rides along for the rule.</summary>
+    public static object UpdateOAuthClient(string clientId, OAuthClientDraft draft) =>
+        new OAuthClientDraftRequest("updateOAuthClient", draft.Name, draft.Description,
+            draft.Scopes, draft.GrantTypes, draft.RedirectUriText, ToggleGrant: null, clientId);
 
-    /// <summary>Revoke one pair, addressed by its public half.</summary>
-    public static object DeleteOAuthClient(string clientId) =>
-        new ClientIdRequest("deleteOAuthClient", clientId);
+    /// <summary>
+    /// Client credentials for a transport the agents page configures. The server decides scopes
+    /// and grant types from the preset.
+    /// </summary>
+    public static object MintTransportCredentials(string preset, string agent) =>
+        new PresetRequest("mintTransportCredentials", preset, agent);
 
     /// <summary>Start connecting Copilot. Answers with the URL a browser should open.</summary>
     public static object ConnectCopilot() => new KindOnly("connectCopilot");
@@ -417,6 +430,13 @@ public static class Commands
 
     /// <summary>Leave a list somebody else owns.</summary>
     public static object LeaveList(string listId) => new WithListId("leaveList", listId);
+
+    /// <summary>Who the owner may hand this list to. Four states, never a bare error.</summary>
+    public static object EligibleNewOwners(string listId) => new WithListId("eligibleNewOwners", listId);
+
+    /// <summary>Hand the list to another member and leave it, in one call.</summary>
+    public static object TransferListOwnership(string listId, string newOwnerId) =>
+        new TransferRequest("transferListOwnership", listId, newOwnerId);
 
     /// <summary>
     /// The board a list belongs to: its columns, and the cards in each.
@@ -725,6 +745,11 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("listId")] string ListId);
 
+    private sealed record TransferRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("listId")] string ListId,
+        [property: JsonPropertyName("newOwnerId")] string NewOwnerId);
+
     private sealed record CommentIdRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("commentId")] string CommentId);
@@ -895,14 +920,35 @@ public static class Commands
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("day")] string Day);
 
-    private sealed record NamedRequest(
-        [property: JsonPropertyName("kind")] string Kind,
-        [property: JsonPropertyName("name")] string Name);
-
     /// <summary>A pair is addressed by its public half — the route matches nothing else.</summary>
     private sealed record ClientIdRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("clientId")] string ClientId);
+
+    /// <summary>The row's kind is <c>connectionKind</c>: <c>kind</c> is the command's own word.</summary>
+    private sealed record ConnectionRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("connectionKind")] string ConnectionKind,
+        [property: JsonPropertyName("id")] string Id);
+
+    private sealed record OAuthClientDraftRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("name")] string Name,
+        [property: JsonPropertyName("description")] string Description,
+        [property: JsonPropertyName("scopes")] IReadOnlyList<string> Scopes,
+        [property: JsonPropertyName("grantTypes")] IReadOnlyList<string> GrantTypes,
+        [property: JsonPropertyName("redirectUriText")] string RedirectUriText,
+        [property: JsonPropertyName("toggleGrant"),
+                   JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        string? ToggleGrant,
+        [property: JsonPropertyName("clientId"),
+                   JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        string? ClientId);
+
+    private sealed record PresetRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("preset")] string Preset,
+        [property: JsonPropertyName("agent")] string Agent);
 
     private sealed record AgentModeRequest(
         [property: JsonPropertyName("kind")] string Kind,

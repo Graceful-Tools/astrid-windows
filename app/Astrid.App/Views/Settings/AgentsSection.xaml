@@ -160,6 +160,47 @@
         <TextBlock Text="{x:Bind Shell.Settings.Agents.WebhookTestResult, Mode=OneWay}"
                    FontSize="11"
                    Foreground="{ThemeResource AstridTextMuted}" />
+        <!--
+            The server calls back with a client-credentials
+            pair as well as the signing secret. Minted here,
+            from the web's preset — the server decides the
+            scopes and the grant — and shown once (astrid-web
+            #285: agents mint their own credentials).
+        -->
+        <TextBlock x:Uid="webhook_credentials_line" TextWrapping="Wrap"
+                   FontSize="12"
+                   Foreground="{ThemeResource AstridTextMuted}"
+                   Text="Your webhook server calls back with a client-credentials pair as well as the signing secret. Mint one here; it is shown once." />
+        <Button x:Uid="create_credentials" Content="Create credentials" Click="OnMintWebhookCredentials" />
+        <Border CornerRadius="8"
+                Padding="10,8"
+                Background="{ThemeResource AstridSurfaceHover}"
+                Visibility="{x:Bind Shell.Settings.Agents.HasWebhookCredentials, Mode=OneWay, Converter={StaticResource Visible}}">
+            <StackPanel Spacing="6">
+                <TextBlock x:Uid="copy_the_secret_now_it_is" Text="Copy the secret now - it is not shown again."
+                           FontSize="11"
+                           Foreground="{ThemeResource AstridTextMuted}" />
+                <TextBox x:Uid="client_id" Text="{x:Bind Shell.Settings.Agents.WebhookCredentials.ClientId, Mode=OneWay}"
+                         AutomationProperties.Name="Client id"
+                         Header="Client id"
+                         IsReadOnly="True"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Padding="0"
+                         FontFamily="Consolas"
+                         TextWrapping="Wrap" />
+                <TextBox x:Uid="client_secret" Text="{x:Bind Shell.Settings.Agents.WebhookCredentials.ClientSecret, Mode=OneWay}"
+                         AutomationProperties.Name="Client secret"
+                         Header="Client secret"
+                         IsReadOnly="True"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Padding="0"
+                         FontFamily="Consolas"
+                         TextWrapping="Wrap" />
+                <Button x:Uid="copy_the_pair" Content="Copy the pair" Click="OnCopyWebhookCredentials" />
+            </StackPanel>
+        </Border>
 
         <TextBlock x:Uid="your_own_agents" Text="Your own agents" Style="{StaticResource DetailSection}" />
         <ItemsControl ItemsSource="{x:Bind Shell.Settings.Agents.CustomAgents, Mode=OneWay}">

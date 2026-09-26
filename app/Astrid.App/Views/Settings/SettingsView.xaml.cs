@@ -33,7 +33,7 @@ public sealed partial class SettingsView : UserControl
             ["Reminders"] = ("settings.reminders", "settings.reminders_line", "", "#F97316"),
             ["Tasks"] = ("smart.title", "settings.tasks_line", "", "#3B82F6"),
             ["Agents"] = ("settings.agents", "settings.agents_line", "", "#A855F7"),
-            ["ApiAccess"] = ("settings.api_access", "settings.api_access_line", "", "#2563EB"),
+            ["Connections"] = ("settings.connections", "settings.connections_line", "", "#2563EB"),
             ["Contacts"] = ("contacts.title", "settings.contacts_line", "", "#14B8A6"),
             ["Appearance"] = ("settings.appearance", "settings.appearance_line", "", "#EC4899"),
             ["Integrations"] = ("settings.integrations", "settings.integrations_line", "", "#10B981"),
@@ -56,7 +56,7 @@ public sealed partial class SettingsView : UserControl
         RemindersCardLine.Text = Strings.Get(Pages["Reminders"].LineKey);
         TasksCardLine.Text = Strings.Get(Pages["Tasks"].LineKey);
         AgentsCardLine.Text = Strings.Get(Pages["Agents"].LineKey);
-        ApiAccessCardLine.Text = Strings.Get(Pages["ApiAccess"].LineKey);
+        ConnectionsCardLine.Text = Strings.Get(Pages["Connections"].LineKey);
         ContactsCardLine.Text = Strings.Get(Pages["Contacts"].LineKey);
         AppearanceCardLine.Text = Strings.Get(Pages["Appearance"].LineKey);
         IntegrationsCardLine.Text = Strings.Get(Pages["Integrations"].LineKey);
@@ -74,7 +74,7 @@ public sealed partial class SettingsView : UserControl
         RemindersSection.Shell = Shell;
         AppearanceSection.Shell = Shell;
         AgentsSection.Shell = Shell;
-        ApiAccessSection.Shell = Shell;
+        ConnectionsSection.Shell = Shell;
         IntegrationsSection.Shell = Shell;
         DataSection.Shell = Shell;
     }
@@ -143,7 +143,11 @@ public sealed partial class SettingsView : UserControl
     /// A minted token lives for as long as the screen showing it and no longer. That is the whole
     /// of its storage policy, and it only holds if something actually forgets.
     /// </remarks>
-    internal void Closed() => Shell.Settings.ApiAccess.ForgetMintedCredentials();
+    internal void Closed()
+    {
+        Shell.Settings.Connections.ForgetMintedCredentials();
+        Shell.Settings.Agents.ForgetWebhookCredentials();
+    }
 
     /// <summary>The bar's arrow: back to the list, exactly as it was.</summary>
     private void OnBack(object sender, RoutedEventArgs args) => Shell.ShowSettings(false);
@@ -172,9 +176,9 @@ public sealed partial class SettingsView : UserControl
 
         // Loaded when its page is opened rather than when the settings are: it is a network round
         // trip for a page most opens never reach, and opening already makes four.
-        if (section == "ApiAccess")
+        if (section == "Connections")
         {
-            await Shell.Settings.ApiAccess.LoadApiAccessAsync();
+            await Shell.Settings.Connections.LoadAsync();
         }
         if (section == "Contacts")
         {
@@ -204,7 +208,7 @@ public sealed partial class SettingsView : UserControl
         RemindersSection.Visibility = Visible("Reminders");
         AppearanceSection.Visibility = Visible("Appearance");
         AgentsSection.Visibility = Visible("Agents");
-        ApiAccessSection.Visibility = Visible("ApiAccess");
+        ConnectionsSection.Visibility = Visible("Connections");
         IntegrationsSection.Visibility = Visible("Integrations");
         DataSection.Visibility = Visible("Data");
 

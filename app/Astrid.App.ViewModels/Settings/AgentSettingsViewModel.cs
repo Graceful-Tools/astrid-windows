@@ -19,6 +19,7 @@ public sealed class AgentSettingsViewModel : ObservableObject
     private string? _webhookUrl;
     private string? _newWebhookSecret;
     private string? _webhookTestResult;
+    private MintedClient? _webhookCredentials;
 
     public AgentSettingsViewModel(SettingsSession session)
     {
@@ -246,6 +247,49 @@ public sealed class AgentSettingsViewModel : ObservableObject
         get => _webhookTestResult;
         private set => Set(ref _webhookTestResult, value);
     }
+
+    /// <summary>
+    /// The client-credentials pair the webhook server calls back with, the once the server shows
+    /// it. In memory only, until the screen closes.
+    /// </summary>
+    public MintedClient? WebhookCredentials
+    {
+        get => _webhookCredentials;
+        private set
+        {
+            if (Set(ref _webhookCredentials, value))
+            {
+                Raise(nameof(HasWebhookCredentials));
+            }
+        }
+    }
+
+    public bool HasWebhookCredentials => WebhookCredentials is not null;
+
+    /// <summary>
+    /// Mint the pair the webhook server needs as well as its signing secret. The preset is the
+    /// server's: it decides the scopes and the grant, and the body names only the preset and the
+    /// agent — the first agent the webhook delivers to, or Claude when none is chosen yet.
+    /// </summary>
+    public async Task<bool> MintWebhookCredentialsAsync(CancellationToken cancellationToken = default)
+    {
+        var agent = Webhook.Agents.FirstOrDefault() ?? "claude";
+        var response = await _session.Core.CallAsync(
+            Commands.MintTransportCredentials("webhookServer", agent), cancellationToken);
+        if (!response.Ok)
+        {
+            _session.ErrorMessage = response.IsStillPending
+                ? "Minting credentials needs a connection."
+                : response.Error?.Message;
+            return false;
+        }
+        WebhookCredentials = response.Read<MintedClient>();
+        _session.ErrorMessage = null;
+        return HasWebhookCredentials;
+    }
+
+    /// <summary>Forget the pair on screen. Called when the settings close.</summary>
+    public void ForgetWebhookCredentials() => WebhookCredentials = null;
 
     /// <summary>The agents this account has registered of its own.</summary>
     public ObservableCollection<CustomAgent> CustomAgents { get; } = [];

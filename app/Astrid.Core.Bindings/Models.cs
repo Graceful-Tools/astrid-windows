@@ -529,44 +529,181 @@ public sealed record AgentHub
 }
 
 /// <summary>
-/// One client-credentials pair this account has registered.
+/// One thing that can act as the account (astrid-web #285), as the core projects it.
 /// </summary>
 /// <remarks>
-/// No secret: the server returns it once at creation and stores a hash. A field that was sometimes
-/// a secret and sometimes null is a field somebody will try to read.
+/// The kind is the path segment a revoke names; the category and owner are what the page groups
+/// and badges by. A kind this build has never heard of arrives as <c>unknown</c> and can never be
+/// revoked from here, whatever the server said. Decoded leniently: an absent field is a default,
+/// not a failure that blanks the list.
 /// </remarks>
-public sealed record OAuthClientRow
+public sealed record Connection
 {
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    /// <summary><c>oauthClient</c>, <c>authorizedApp</c>, <c>customAgent</c>, <c>accessToken</c>, <c>webhook</c>, or <c>unknown</c>.</summary>
+    [JsonPropertyName("kind")] public string Kind { get; init; } = "unknown";
+
+    /// <summary><c>app</c>, <c>token</c>, <c>webhook</c> or <c>unknown</c>; null on a server that predates the facets.</summary>
+    [JsonPropertyName("category")] public string? Category { get; init; }
+
+    /// <summary><c>you</c>, <c>thirdParty</c> or <c>agent</c>; null where there is no owner to draw.</summary>
+    [JsonPropertyName("owner")] public string? Owner { get; init; }
+
     [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
 
-    /// <summary>
-    /// The public half.
-    /// </summary>
-    /// <remarks>
-    /// Safe to show, the half somebody has to copy again later, and what a revoke addresses — the
-    /// route matches <c>clientId</c> and nothing else.
-    /// </remarks>
-    [JsonPropertyName("clientId")] public string ClientId { get; init; } = string.Empty;
+    /// <summary>The email this credential authors as; null means the account holder.</summary>
+    [JsonPropertyName("actsAs")] public string? ActsAs { get; init; }
 
-    /// <summary>What it may do. "A pair for CI" and "a pair that can delete every list" look the
-    /// same without it.</summary>
     [JsonPropertyName("scopes")] public IReadOnlyList<string> Scopes { get; init; } = [];
 
-    [JsonPropertyName("createdAt")] public string? CreatedAt { get; init; }
+    [JsonPropertyName("createdAt")] public string CreatedAt { get; init; } = string.Empty;
 
-    /// <summary>A revoked pair stays in the list saying so, rather than vanishing.</summary>
-    [JsonPropertyName("isActive")] public bool IsActive { get; init; } = true;
+    [JsonPropertyName("lastUsedAt")] public string? LastUsedAt { get; init; }
+
+    [JsonPropertyName("expiresAt")] public string? ExpiresAt { get; init; }
+
+    /// <summary><c>active</c>, <c>expired</c>, <c>disabled</c> or <c>unknown</c>.</summary>
+    [JsonPropertyName("status")] public string Status { get; init; } = "unknown";
+
+    [JsonPropertyName("revocable")] public bool Revocable { get; init; }
+
+    /// <summary>Which settings page owns further management: <c>agents</c> or <c>connections</c>.</summary>
+    [JsonPropertyName("manageIn")] public string? ManageIn { get; init; }
+
+    [JsonPropertyName("detail")] public ConnectionDetail? Detail { get; init; }
+
+    /// <summary>The client this page may edit, when the row is one — the core's rule.</summary>
+    [JsonPropertyName("editableClientId")] public string? EditableClientId { get; init; }
+
+    /// <summary>Why it looks unused, when it does.</summary>
+    [JsonPropertyName("review")] public ConnectionReview? Review { get; init; }
+
+    public bool HasOwner => !string.IsNullOrEmpty(Owner);
+
+    public bool HasScopes => Scopes.Count > 0;
+
+    public bool HasExpiry => !string.IsNullOrEmpty(ExpiresAt);
+
+    public bool HasReview => Review is not null;
+
+    public bool IsEditable => !string.IsNullOrEmpty(EditableClientId);
+
+    public bool IsActive => Status == "active";
+
+    public bool ManagedOnAgentsPage => ManageIn == "agents";
 
     /// <summary>The scopes as one line, for the row under the name.</summary>
-    public string ScopeLabel => Scopes.Count == 0 ? string.Empty : string.Join(", ", Scopes);
+    public string ScopeLabel => string.Join(", ", Scopes);
 
-    public override string ToString() => Name.Length > 0 ? Name : ClientId;
+    public override string ToString() => Name.Length > 0 ? Name : Id;
 }
 
-/// <summary>The API-access panel: what is registered, before anything new is made.</summary>
-public sealed record ApiAccessPanel
+/// <summary>What the server knows about a row beyond the common fields. Every field optional.</summary>
+public sealed record ConnectionDetail
 {
-    [JsonPropertyName("clients")] public IReadOnlyList<OAuthClientRow> Clients { get; init; } = [];
+    [JsonPropertyName("clientId")] public string? ClientId { get; init; }
+
+    [JsonPropertyName("grantTypes")] public IReadOnlyList<string>? GrantTypes { get; init; }
+
+    [JsonPropertyName("activeTokens")] public int? ActiveTokens { get; init; }
+
+    [JsonPropertyName("permissions")] public IReadOnlyList<string>? Permissions { get; init; }
+
+    [JsonPropertyName("agentId")] public string? AgentId { get; init; }
+
+    [JsonPropertyName("webhookUrl")] public string? WebhookUrl { get; init; }
+
+    [JsonPropertyName("description")] public string? Description { get; init; }
+}
+
+/// <summary>Why a row looks unused enough to be worth revoking: <c>idle</c> or <c>neverUsed</c>, and for how many days.</summary>
+public sealed record ConnectionReview
+{
+    [JsonPropertyName("reason")] public string Reason { get; init; } = "idle";
+
+    [JsonPropertyName("days")] public long Days { get; init; }
+}
+
+/// <summary>One heading of the Connections page and the rows under it, in the core's order.</summary>
+public sealed record ConnectionSection
+{
+    /// <summary>The resource the heading is worded from: <c>connections.category.app</c>, <c>connections.kind.webhook</c>.</summary>
+    [JsonPropertyName("titleKey")] public string TitleKey { get; init; } = string.Empty;
+
+    /// <summary>Owner badges belong to the category grouping only; under a kind heading the badge would say it twice.</summary>
+    [JsonPropertyName("showsOwnerBadges")] public bool ShowsOwnerBadges { get; init; }
+
+    [JsonPropertyName("rows")] public IReadOnlyList<Connection> Rows { get; init; } = [];
+}
+
+/// <summary>The Connections page in one answer.</summary>
+public sealed record ConnectionsPanel
+{
+    [JsonPropertyName("connections")] public IReadOnlyList<Connection> Connections { get; init; } = [];
+
+    [JsonPropertyName("sections")] public IReadOnlyList<ConnectionSection> Sections { get; init; } = [];
+
+    /// <summary>How many rows look unused.</summary>
+    [JsonPropertyName("reviewCount")] public int ReviewCount { get; init; }
+}
+
+/// <summary>One OAuth client as the server describes it — what an editor needs.</summary>
+public sealed record OAuthClientSummary
+{
+    [JsonPropertyName("clientId")] public string ClientId { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
+
+    [JsonPropertyName("description")] public string? Description { get; init; }
+
+    [JsonPropertyName("redirectUris")] public IReadOnlyList<string> RedirectUris { get; init; } = [];
+
+    [JsonPropertyName("grantTypes")] public IReadOnlyList<string> GrantTypes { get; init; } = [];
+
+    [JsonPropertyName("scopes")] public IReadOnlyList<string> Scopes { get; init; } = [];
+
+    [JsonPropertyName("isActive")] public bool IsActive { get; init; } = true;
+}
+
+/// <summary>What the editor holds while a person is typing. The core judges it; this only carries it.</summary>
+public sealed record OAuthClientDraft
+{
+    public string Name { get; init; } = string.Empty;
+
+    public string Description { get; init; } = string.Empty;
+
+    public IReadOnlyList<string> Scopes { get; init; } = [];
+
+    /// <summary>Wire strings: <c>client_credentials</c>, <c>authorization_code</c>, <c>refresh_token</c>.</summary>
+    public IReadOnlyList<string> GrantTypes { get; init; } = ["client_credentials"];
+
+    /// <summary>One URI per line, as typed.</summary>
+    public string RedirectUriText { get; init; } = string.Empty;
+}
+
+/// <summary>Why a draft cannot be sent yet: <c>nameMissing</c>, <c>grantRequired</c>, <c>redirectRequired</c> or <c>redirectInvalid</c> with the URI.</summary>
+public sealed record DraftProblem
+{
+    [JsonPropertyName("key")] public string Key { get; init; } = string.Empty;
+
+    [JsonPropertyName("uri")] public string? Uri { get; init; }
+}
+
+/// <summary>The core's judgement of a draft as it stands.</summary>
+public sealed record OAuthClientDraftCheck
+{
+    [JsonPropertyName("problem")] public DraftProblem? Problem { get; init; }
+
+    [JsonPropertyName("canSend")] public bool CanSend { get; init; }
+
+    /// <summary>The grants after the pairing, in wire order.</summary>
+    [JsonPropertyName("grantTypes")] public IReadOnlyList<string> GrantTypes { get; init; } = [];
+
+    [JsonPropertyName("redirectUris")] public IReadOnlyList<string> RedirectUris { get; init; } = [];
+
+    /// <summary>The scopes a picker may offer.</summary>
+    [JsonPropertyName("scopes")] public IReadOnlyList<string> Scopes { get; init; } = [];
 }
 
 /// <summary>
@@ -582,12 +719,6 @@ public sealed record MintedClient
     [JsonPropertyName("clientSecret")] public string ClientSecret { get; init; } = string.Empty;
 
     [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
-}
-
-/// <summary>An MCP token, plaintext, as minted.</summary>
-public sealed record MintedToken
-{
-    [JsonPropertyName("token")] public string Token { get; init; } = string.Empty;
 }
 
 /// <summary>Where an account's own agent is told about work.</summary>
@@ -1043,6 +1174,9 @@ public sealed record ListSettings
     [JsonPropertyName("canDeleteList")] public bool CanDeleteList { get; init; }
 
     [JsonPropertyName("canLeave")] public bool CanLeave { get; init; }
+
+    /// <summary>The owner is offered a handover where a member is offered Leave (Apple AITD-392).</summary>
+    [JsonPropertyName("canTransferOwnership")] public bool CanTransferOwnership { get; init; }
 
     [JsonPropertyName("currentUserId")] public string? CurrentUserId { get; init; }
 
@@ -1508,4 +1642,15 @@ public sealed record AstridModelOption
     [JsonPropertyName("serviceLabel")] public string ServiceLabel { get; init; } = string.Empty;
 
     [JsonPropertyName("isSelected")] public bool IsSelected { get; init; }
+}
+
+/// <summary>
+/// What the Transfer control may offer right now: <c>available</c> with the people, <c>noEligibleOwners</c>,
+/// <c>notPermitted</c>, or <c>unavailable</c> — the route not deployed, or the network gone.
+/// </summary>
+public sealed record TransferAvailability
+{
+    [JsonPropertyName("availability")] public string Availability { get; init; } = "unavailable";
+
+    [JsonPropertyName("owners")] public IReadOnlyList<UserSummary> Owners { get; init; } = [];
 }

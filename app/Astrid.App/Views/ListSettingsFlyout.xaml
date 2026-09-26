@@ -374,6 +374,47 @@
                     Click="OnLeaveList"
                     Visibility="{x:Bind Shell.ListSettings.CanLeave, Mode=OneWay, Converter={StaticResource Visible}}" />
             <!--
+                The owner is offered a handover where a member is
+                offered Leave (Apple AITD-392): ownership is what
+                deleting keys on, so it goes to someone by name.
+                Who is eligible is the server's answer, asked when
+                this opens, and its four states are drawn as four.
+            -->
+            <Button x:Uid="transfer_ownership" Content="Transfer ownership"
+                    Visibility="{x:Bind Shell.ListSettings.CanTransferOwnership, Mode=OneWay, Converter={StaticResource Visible}}">
+                <Button.Flyout>
+                    <Flyout Opening="OnTransferFlyoutOpening">
+                        <StackPanel Spacing="8" MinWidth="240" MaxWidth="320">
+                            <TextBlock x:Uid="transfer_ownership_line" TextWrapping="Wrap"
+                                       FontSize="12"
+                                       Foreground="{ThemeResource AstridTextMuted}"
+                                       Text="Hand this list to another member. You leave it at the same time." />
+                            <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.EligibleOwners, Mode=OneWay}"
+                                          Visibility="{x:Bind Shell.ListSettings.HasEligibleOwners, Mode=OneWay, Converter={StaticResource Visible}}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="bindings:UserSummary">
+                                        <Button Content="{x:Bind DisplayName}"
+                                                Tag="{x:Bind}"
+                                                HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Left"
+                                                Margin="0,0,0,4"
+                                                Click="OnTransferTo" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock x:Uid="transfer_nobody" Text="Nobody to hand it to yet - invite someone first."
+                                       TextWrapping="Wrap" FontSize="12"
+                                       Foreground="{ThemeResource AstridTextMuted}"
+                                       Visibility="{x:Bind Shell.ListSettings.NoEligibleOwners, Mode=OneWay, Converter={StaticResource Visible}}" />
+                            <TextBlock x:Uid="transfer_unavailable" Text="Not available from here yet - use the web app."
+                                       TextWrapping="Wrap" FontSize="12"
+                                       Foreground="{ThemeResource AstridTextMuted}"
+                                       Visibility="{x:Bind Shell.ListSettings.TransferUnavailable, Mode=OneWay, Converter={StaticResource Visible}}" />
+                        </StackPanel>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+            <!--
                 Deleting asks first. It takes the list away from
                 everybody it is shared with, and there is no undo
                 for that on any client.

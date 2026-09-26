@@ -22,7 +22,7 @@ milestones; this tracks the *product*.
 | My Tasks | ✅ | ✅ | The view the app opens on — yours and nobody's — with filters that belong to the account and follow you between machines |
 | Task list with subtasks and windowing | ✅ | ✅ | Windows sends a window of rows; the Mac loads the list |
 | Quick add, with `#list` tags | ✅ | ✅ | When the account's smart parsing is on, `#health` files the task in Health and leaves the title, by the web's rule in the core; off, the title is kept as typed. Dates and priority words are not parsed here (CONTRACTS D11) |
-| Task detail: title, description, priority, lists | ✅ | ✅ | Field order comes from the core. The description is drawn as the web draws it — GFM plus the @/#/! pills, rendered in the core — and clicked to edit. The Lists row edits: add, remove, or create a list from a search, with the web's privacy and colour rules in the core. The action menu is the web's: Copy link, Share (a shortcode minted on the server), Status (the board's columns, the same move a dragged card makes), Won't do / Reopen (`closedReason`, no repeat rollover), Delete |
+| Task detail: title, description, priority, lists | ✅ | ✅ | Field order comes from the core. The description is drawn as the web draws it — GFM plus the @/#/! pills, rendered in the core — and clicked to edit. The Lists row edits: add, remove, or create a list from a search, with the web's privacy and colour rules in the core. A board task in list mode shows its **board state** as chips after Lists, Done left out, the rule shared with the Mac (AITD-327) and the web (5221e43f). The action menu is the web's: Copy link, Share (a shortcode minted on the server), Status (the board's columns, the same move a dragged card makes), Won't do / Reopen (`closedReason`, no repeat rollover), Delete |
 | Completion, including repeat rollover | ✅ | ✅ | One path, `TaskService::complete` |
 | Due dates and quick picks | ✅ | ✅ | Instants computed in the core, not in XAML |
 | Reminders | ✅ | ✅ | Windows adds a banner with Complete and Snooze |
@@ -34,7 +34,7 @@ milestones; this tracks the *product*.
 | Filters and sort | ✅ | ✅ | All seven filters, fixture-checked values |
 | Drag rows into your own order | ✅ | ✅ | When the list is sorted by hand. The whole order is completed here and sent to the web's route for it, whose reconciled answer is kept (CONTRACTS D17) |
 | Chat | ✅ | ✅ | |
-| List settings, sharing, members | ✅ | ✅ | Colour (the web's palette), favourite, privacy, the coding agent and its repository, and the defaults for new tasks have controls in the flyout; quick-add applies the defaults in the core, as the web does (CONTRACTS D10) |
+| List settings, sharing, members | ✅ | ✅ | Colour (the web's palette), favourite, privacy, the coding agent and its repository, and the defaults for new tasks have controls in the flyout; quick-add applies the defaults in the core, as the web does (CONTRACTS D10). The owner is offered **Transfer ownership** where a member is offered Leave (Apple AITD-392): who is eligible is the server's answer, and the handover is one call |
 | Keyboard scheme | ✅ | ✅ | The same table, from one fixture |
 | Offline-first with an Outbox | ✅ | ✅ | |
 | Sign-in through the browser | ✅ | ✅ | |
@@ -52,7 +52,8 @@ milestones; this tracks the *product*.
 | My Tasks ↔ Google's default list | ✅ | ✅ | Unlisted tasks assigned to you, mirrored against the list Google files stray tasks in |
 | Google auto-link modes (all lists, bidirectional) | ✅ | ✅ | Chosen in the account flyout; the pass makes counterparts on both sides, adopting a same-name list rather than duplicating it (CONTRACTS D9) |
 | Deleting a Google twin when a task is deleted here | ✅ | ✅ | A ledger captures the link at delete time — the server's link row cascades away with the task — and the next pass removes the twin and tombstones the id |
-| Agent Hub | ✅ | ✅ | Modes, credentials, Copilot, the webhook editor and the agents an account registers of its own |
+| Agent Hub | ✅ | ✅ | Modes, credentials, Copilot, the webhook editor and the agents an account registers of its own. The agents are the server's list — Muse (AITD-423) arrived without a build — and a harness-only agent offers polling and off, nothing the server would refuse (web 42349da6). The webhook server's client-credentials pair is minted here from the web's preset |
+| Connections | ✅ | ✅ | Everything that can act as the account (Mac #517, AITD-420): apps with an owner badge, access tokens, the webhook server; each reviewed for looking unused, revocable one at a time; an OAuth client made and edited by hand (AITD-419). The grouping, the review and the draft rules are the core's, ported from the Swift tests |
 | Profile numbers and data export | ✅ | ✅ | JSON or CSV, written where you choose |
 | Contacts, Help & Support, Privacy, Terms | ✅ | ✅ | Contacts lists what the account imported and can clear it (no import here: Windows has no address book to read); Help, Privacy and Terms open the web's own pages in the browser |
 | Notification inbox | ❌ | ✅ | The web's bell (`/api/v1/notifications`): assigned, mentioned, replied, commented, status changed, completed. Unread count from the cache, refreshed on every sync pass; mark read and mark all read |

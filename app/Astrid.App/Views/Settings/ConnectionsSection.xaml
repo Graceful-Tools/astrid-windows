@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Astrid.App.Views.Settings.ConnectionsSection"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:bindings="using:Astrid.Core.Bindings"
+    xmlns:local="using:Astrid.App"
+    xmlns:views="using:Astrid.App.Views"
+    xmlns:settings="using:Astrid.App.Views.Settings"
+    xmlns:viewmodels="using:Astrid.App.ViewModels">
+
+    <!--
+        Connections, as astrid-web's settings page has it
+        (astrid-web #285): everything that can act as this
+        account, with a way to stop each one. Replaces the
+        API access page, a developer console most readers
+        never needed and which could not answer the question
+        they brought to it - "what has access to my account,
+        and how do I stop it?". The console lives on below,
+        for making an OAuth client by hand.
+
+        Which rows group under which heading, which look
+        unused, which can be edited and what a draft may say
+        are the core's answers. This draws them.
+    -->
+    <StackPanel Spacing="10">
+        <TextBlock x:Uid="connections_intro" TextWrapping="Wrap"
+                   FontSize="12"
+                   Foreground="{ThemeResource AstridTextMuted}"
+                   Text="Everything that can act as your account, and a way to stop each one. Revoking stops it at once." />
+        <ProgressRing IsActive="{x:Bind Shell.Settings.Connections.IsLoading, Mode=OneWay}"
+                      Width="20" Height="20" HorizontalAlignment="Left"
+                      Visibility="{x:Bind Shell.Settings.Connections.IsLoading, Mode=OneWay, Converter={StaticResource Visible}}" />
+        <TextBlock x:Uid="connections_empty" Text="Nothing is connected to your account yet."
+                   FontSize="12"
+                   Foreground="{ThemeResource AstridTextMuted}"
+                   Visibility="{x:Bind Shell.Settings.Connections.IsEmpty, Mode=OneWay, Converter={StaticResource Visible}}" />
+        <!-- How many look unused, before any row is read. Worded in code-behind: one or many. -->
+        <TextBlock x:Name="ReviewSummary"
+                   FontSize="12"
+                   TextWrapping="Wrap"
+                   Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                   Visibility="{x:Bind Shell.Settings.Connections.HasReviews, Mode=OneWay, Converter={StaticResource Visible}}" />
+        <!--
+            Revoking and registering are session-only on the
+            server. This client sends its session cookie so
+            they normally succeed; a 403 reads as "do this on
+            the web" rather than as a bare error.
+        -->
+        <InfoBar x:Uid="connections_web_session"
+                 IsOpen="{x:Bind Shell.Settings.Connections.RequiresWebSession, Mode=OneWay}"
+                 Severity="Warning"
+                 IsClosable="False"
+                 Title="Do this on the web">
+            <TextBlock x:Uid="connections_web_session_line" TextWrapping="Wrap" FontSize="12"
+                       Text="The server wants a signed-in browser for this. Open Settings, then Connections, at astrid.cc." />
+        </InfoBar>
+
+        <ItemsControl ItemsSource="{x:Bind Shell.Settings.Connections.Sections, Mode=OneWay}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="bindings:ConnectionSection">
+                    <StackPanel Spacing="6" Margin="0,4,0,0">
+                        <!-- The heading is the core's key, worded here. -->
+                        <TextBlock Text="{x:Bind TitleKey, Converter={StaticResource Words}}"
+                                   Style="{StaticResource DetailSection}" />
+                        <ItemsControl ItemsSource="{x:Bind Rows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="bindings:Connection">
+                                    <Border CornerRadius="8"
+                                            Padding="10,8"
+                                            Margin="0,0,0,6"
+                                            Background="{ThemeResource AstridSurfaceHover}"
+                                            Opacity="{x:Bind IsActive, Converter={StaticResource RowOpacity}}">
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Spacing="2">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Text="{x:Bind Name}"
+                                                               FontWeight="SemiBold"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Foreground="{ThemeResource AstridTextPrimary}" />
+                                                    <!--
+                                                        The heading already names the category;
+                                                        only an app has an owner left to say.
+                                                    -->
+                                                    <Border CornerRadius="4" Padding="6,1"
+                                                            BorderThickness="1"
+                                                            BorderBrush="{ThemeResource AstridBorder}"
+                                                            VerticalAlignment="Center"
+                                                            Visibility="{x:Bind HasOwner, Converter={StaticResource Visible}}">
+                                                        <TextBlock Text="{x:Bind Owner, Converter={StaticResource ConnectionOwner}}"
+                                                                   FontSize="10"
+                                                                   Foreground="{ThemeResource AstridTextMuted}" />
+                                                    </Border>
+                                                    <Border CornerRadius="4" Padding="6,1"
+                                                            Background="{ThemeResource AstridBorder}"
+                                                            VerticalAlignment="Center">
+                                                        <TextBlock Text="{x:Bind Status, Converter={StaticResource ConnectionStatus}}"
+                                                                   FontSize="10"
+                                                                   Foreground="{ThemeResource AstridTextMuted}" />
+                                                    </Border>
+                                                </StackPanel>
+                                                <TextBlock FontSize="11" Foreground="{ThemeResource AstridTextMuted}">
+                                                    <Run x:Uid="acts_as" Text="Acts as " /><Run Text="{x:Bind ActsAs, Converter={StaticResource ActsAs}}" FontFamily="Consolas" />
+                                                </TextBlock>
+                                                <TextBlock Text="{x:Bind ScopeLabel}"
+                                                           FontSize="11"
+                                                           FontFamily="Consolas"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="{ThemeResource AstridTextMuted}"
+                                                           Visibility="{x:Bind HasScopes, Converter={StaticResource Visible}}" />
+                                                <TextBlock FontSize="11" Foreground="{ThemeResource AstridTextMuted}">
+                                                    <Run x:Uid="created" Text="Created " /><Run Text="{x:Bind CreatedAt, Converter={StaticResource IsoDay}}" /><Run Text=" · " /><Run x:Uid="last_used" Text="Last used " /><Run Text="{x:Bind LastUsedAt, Converter={StaticResource IsoDay}}" />
+                                                </TextBlock>
+                                                <TextBlock FontSize="11" Foreground="{ThemeResource AstridTextMuted}"
+                                                           Visibility="{x:Bind HasExpiry, Converter={StaticResource Visible}}">
+                                                    <Run x:Uid="expires" Text="Expires " /><Run Text="{x:Bind ExpiresAt, Converter={StaticResource IsoDay}}" />
+                                                </TextBlock>
+                                                <TextBlock Text="{x:Bind Review, Converter={StaticResource ReviewLine}}"
+                                                           FontSize="11"
+                                                           Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                                           Visibility="{x:Bind HasReview, Converter={StaticResource Visible}}" />
+                                                <TextBlock x:Uid="manage_in_agents" Text="Managed on the AI agents page"
+                                                           FontSize="11"
+                                                           Foreground="{ThemeResource AstridTextMuted}"
+                                                           Visibility="{x:Bind ManagedOnAgentsPage, Converter={StaticResource Visible}}" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Top">
+                                                <Button x:Uid="edit_client" Content="Edit"
+                                                        Tag="{x:Bind EditableClientId}"
+                                                        Visibility="{x:Bind IsEditable, Converter={StaticResource Visible}}"
+                                                        Click="OnEditClient" />
+                                                <Button x:Uid="revoke" Content="Revoke"
+                                                        Tag="{x:Bind}"
+                                                        Visibility="{x:Bind Revocable, Converter={StaticResource Visible}}"
+                                                        Click="OnRevoke" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!--
+            The developer's half (AITD-419): an OAuth client
+            made by hand, for a machine that is not this one.
+            What a draft may say is the core's rule, asked
+            after every edit; this only draws the answer.
+        -->
+        <TextBlock x:Uid="developer_heading" Text="Developer" Style="{StaticResource DetailSection}" Margin="0,10,0,0" />
+        <TextBlock x:Uid="developer_line" TextWrapping="Wrap"
+                   FontSize="12"
+                   Foreground="{ThemeResource AstridTextMuted}"
+                   Text="An OAuth client made by hand, for a machine that is not this one - CI, a script, a runner. An assistant that speaks OAuth registers itself when it connects." />
+        <Button x:Uid="new_client" Content="New client"
+                Click="OnBeginCreate"
+                Visibility="{x:Bind Shell.Settings.Connections.IsEditorOpen, Mode=OneWay, Converter={StaticResource NotVisible}}" />
+        <StackPanel Spacing="8"
+                    Visibility="{x:Bind Shell.Settings.Connections.IsEditorOpen, Mode=OneWay, Converter={StaticResource Visible}}">
+            <TextBox x:Uid="what_it_is_for" x:Name="DraftNameBox"
+                     AutomationProperties.Name="New client name"
+                     PlaceholderText="what it is for"
+                     Text="{x:Bind Shell.Settings.Connections.DraftName, Mode=OneWay}"
+                     IsEnabled="{x:Bind Shell.Settings.Connections.IsCreating, Mode=OneWay}"
+                     TextChanged="OnDraftTextChanged" />
+            <TextBox x:Uid="client_description_box" x:Name="DraftDescriptionBox"
+                     AutomationProperties.Name="Client description"
+                     PlaceholderText="a line about it, optional"
+                     Text="{x:Bind Shell.Settings.Connections.DraftDescription, Mode=OneWay}"
+                     IsEnabled="{x:Bind Shell.Settings.Connections.IsCreating, Mode=OneWay}"
+                     TextChanged="OnDraftTextChanged" />
+            <!--
+                The grants travel in pairs and the last one
+                cannot go; the boxes are rebuilt from the
+                core's answer after every click so they show
+                the set that resulted, not the one clicked.
+            -->
+            <TextBlock x:Uid="grant_types_heading" Text="Grant types" FontSize="12" FontWeight="SemiBold" />
+            <ItemsControl ItemsSource="{x:Bind Shell.Settings.Connections.GrantChoices, Mode=OneWay}"
+                          IsEnabled="{x:Bind Shell.Settings.Connections.IsCreating, Mode=OneWay}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="viewmodels:GrantChoice">
+                        <CheckBox IsChecked="{x:Bind IsOn}"
+                                  Tag="{x:Bind Grant}"
+                                  AutomationProperties.Name="{x:Bind LabelKey, Converter={StaticResource Words}}"
+                                  Click="OnGrantToggled">
+                            <StackPanel>
+                                <TextBlock Text="{x:Bind LabelKey, Converter={StaticResource Words}}" />
+                                <TextBlock Text="{x:Bind HintKey, Converter={StaticResource Words}}"
+                                           FontSize="11"
+                                           Foreground="{ThemeResource AstridTextMuted}" />
+                            </StackPanel>
+                        </CheckBox>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock x:Uid="scopes_heading" Text="Scopes" FontSize="12" FontWeight="SemiBold" />
+            <!-- A GridView wraps; nothing else in the box does. Selection is off: the boxes are the control. -->
+            <GridView ItemsSource="{x:Bind Shell.Settings.Connections.ScopeChoices, Mode=OneWay}"
+                      SelectionMode="None"
+                      IsItemClickEnabled="False"
+                      IsEnabled="{x:Bind Shell.Settings.Connections.IsCreating, Mode=OneWay}">
+                <GridView.ItemTemplate>
+                    <DataTemplate x:DataType="viewmodels:ScopeChoice">
+                        <CheckBox Content="{x:Bind Scope}"
+                                  IsChecked="{x:Bind IsOn}"
+                                  Tag="{x:Bind Scope}"
+                                  MinWidth="0"
+                                  FontFamily="Consolas"
+                                  FontSize="12"
+                                  Click="OnScopeToggled" />
+                    </DataTemplate>
+                </GridView.ItemTemplate>
+            </GridView>
+            <TextBox x:Uid="redirect_uris_box" x:Name="DraftRedirectUrisBox"
+                     Header="Redirect URIs, one per line"
+                     AutomationProperties.Name="Redirect URIs"
+                     PlaceholderText="https://example.com/callback"
+                     AcceptsReturn="True"
+                     TextWrapping="Wrap"
+                     MinHeight="72"
+                     FontFamily="Consolas"
+                     Text="{x:Bind Shell.Settings.Connections.DraftRedirectUriText, Mode=OneWay}"
+                     TextChanged="OnDraftTextChanged" />
+            <!-- The first thing to fix, worded in code-behind from the core's key. -->
+            <TextBlock x:Name="DraftProblemText"
+                       FontSize="11"
+                       TextWrapping="Wrap"
+                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                       Visibility="{x:Bind Shell.Settings.Connections.HasDraftProblem, Mode=OneWay, Converter={StaticResource Visible}}" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button x:Uid="save" Content="Save"
+                        Style="{ThemeResource AccentButtonStyle}"
+                        IsEnabled="{x:Bind Shell.Settings.Connections.CanSend, Mode=OneWay}"
+                        Click="OnSaveClient" />
+                <Button x:Uid="cancel_edit" Content="Cancel" Click="OnCancelEditor" />
+            </StackPanel>
+        </StackPanel>
+        <!--
+            The pair just made. Shown until this panel closes
+            and never written down: the server stores a hash
+            and shows the secret once.
+        -->
+        <Border CornerRadius="8"
+                Padding="10,8"
+                Background="{ThemeResource AstridSurfaceHover}"
+                Visibility="{x:Bind Shell.Settings.Connections.HasMintedClient, Mode=OneWay, Converter={StaticResource Visible}}">
+            <StackPanel Spacing="6">
+                <TextBlock x:Uid="copy_the_secret_now_it_is" Text="Copy the secret now - it is not shown again."
+                           FontSize="11"
+                           Foreground="{ThemeResource AstridTextMuted}" />
+                <TextBox x:Uid="client_id" Text="{x:Bind Shell.Settings.Connections.MintedClient.ClientId, Mode=OneWay}"
+                         AutomationProperties.Name="Client id"
+                         Header="Client id"
+                         IsReadOnly="True"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Padding="0"
+                         FontFamily="Consolas"
+                         TextWrapping="Wrap" />
+                <TextBox x:Uid="client_secret" Text="{x:Bind Shell.Settings.Connections.MintedClient.ClientSecret, Mode=OneWay}"
+                         AutomationProperties.Name="Client secret"
+                         Header="Client secret"
+                         IsReadOnly="True"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Padding="0"
+                         FontFamily="Consolas"
+                         TextWrapping="Wrap" />
+                <Button x:Uid="copy_the_pair" Content="Copy the pair" Click="OnCopyMintedClient" />
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

@@ -155,6 +155,67 @@ public sealed partial class CredentialStateConverter : IValueConverter
         throw new NotSupportedException("a key's state is read-only in the UI");
 }
 
+/// <summary>A connection row's words for one field: <c>Prefix.value</c> from the strings table.</summary>
+/// <remarks>
+/// The owner and the status arrive as the core's wire words (<c>thirdParty</c>, <c>expired</c>);
+/// the sentence is the translator's. One converter per prefix, declared in the resources.
+/// </remarks>
+public sealed partial class PrefixedWordsConverter : IValueConverter
+{
+    public string Prefix { get; set; } = string.Empty;
+
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is string word && word.Length > 0 ? Strings.Get($"{Prefix}.{word}") : string.Empty;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("words are not a value to read back");
+}
+
+/// <summary>Who a connection authors as: the address, or "You" when it is the account holder.</summary>
+public sealed partial class ActsAsConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is string email && email.Length > 0 ? email : Strings.Get("connections.acts_as_you");
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("an author is not a value to read back");
+}
+
+/// <summary>An instant as the reader's short date, or "Never" when there is none.</summary>
+public sealed partial class IsoDayConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is string instant
+        && DateTimeOffset.TryParse(instant, null, System.Globalization.DateTimeStyles.RoundtripKind, out var parsed)
+            ? parsed.ToLocalTime().ToString("d")
+            : Strings.Get("connections.never");
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a date is not a value to read back");
+}
+
+/// <summary>Why a connection looks unused, as a sentence with its day count.</summary>
+public sealed partial class ReviewLineConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is ConnectionReview review
+            ? Strings.Get($"connections.review.{review.Reason}", review.Days)
+            : string.Empty;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a review is not a value to read back");
+}
+
+/// <summary>A row that is expired or disabled is drawn faded, as the web fades it.</summary>
+public sealed partial class RowOpacityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is true ? 1.0 : 0.7;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("opacity is read-only in the UI");
+}
+
 /// <summary>A list's colour at a tenth of its strength, for a chip behind its name.</summary>
 /// <remarks>
 /// astrid-web writes this as <c>{color}15</c> — the colour with an eight-percent alpha — so a chip

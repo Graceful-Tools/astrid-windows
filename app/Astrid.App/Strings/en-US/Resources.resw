@@ -571,9 +571,6 @@
   <data name="settings_agents" xml:space="preserve">
     <value>AI agents</value>
   </data>
-  <data name="settings_api_access" xml:space="preserve">
-    <value>API access</value>
-  </data>
   <data name="settings_integrations" xml:space="preserve">
     <value>Integrations</value>
   </data>
@@ -609,9 +606,6 @@
   </data>
   <data name="ordinal_th" xml:space="preserve">
     <value>{0}th</value>
-  </data>
-  <data name="a_pair_for_a_machine_that.Text" xml:space="preserve">
-    <value>A pair for a machine that is not this one — CI, a script, a runner. Read and write on tasks and lists.</value>
   </data>
   <data name="account.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Account</value>
@@ -651,12 +645,6 @@
   </data>
   <data name="ai_agents_2.Text" xml:space="preserve">
     <value>AI agents</value>
-  </data>
-  <data name="api_access.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
-    <value>API access</value>
-  </data>
-  <data name="api_access_2.Text" xml:space="preserve">
-    <value>API access</value>
   </data>
   <data name="appearance.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Appearance</value>
@@ -721,9 +709,6 @@
   <data name="chat_toggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Chat</value>
   </data>
-  <data name="client_credentials.Text" xml:space="preserve">
-    <value>Client credentials</value>
-  </data>
   <data name="client_id.Header" xml:space="preserve">
     <value>Client id</value>
   </data>
@@ -780,12 +765,6 @@
   </data>
   <data name="copy_this_now.Title" xml:space="preserve">
     <value>Copy this now</value>
-  </data>
-  <data name="copy_this_now_it_is_not.Text" xml:space="preserve">
-    <value>Copy this now — it is not shown again.</value>
-  </data>
-  <data name="create_a_token.Content" xml:space="preserve">
-    <value>Create a token</value>
   </data>
   <data name="create_list.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Create list</value>
@@ -922,9 +901,6 @@
   <data name="filter_button_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Filters</value>
   </data>
-  <data name="for_a_coding_agent_or_an.Text" xml:space="preserve">
-    <value>For a coding agent or an MCP client. Ninety days. Asking twice gives the same token back rather than a second one.</value>
-  </data>
   <data name="google_sync_mode_box.Header" xml:space="preserve">
     <value>Google lists</value>
   </data>
@@ -1008,12 +984,6 @@
   </data>
   <data name="m.Content" xml:space="preserve">
     <value>M</value>
-  </data>
-  <data name="mcp_token.Text" xml:space="preserve">
-    <value>MCP token</value>
-  </data>
-  <data name="mcp_token_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
-    <value>MCP token</value>
   </data>
   <data name="mirrored_to.Text" xml:space="preserve">
     <value>Mirrored to</value>
@@ -1212,9 +1182,6 @@
   </data>
   <data name="revoke.Content" xml:space="preserve">
     <value>Revoke</value>
-  </data>
-  <data name="revoke_all.Content" xml:space="preserve">
-    <value>Revoke all</value>
   </data>
   <data name="revoke_passkey.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Revoke passkey</value>
@@ -1636,9 +1603,6 @@
   <data name="settings_agents_line" xml:space="preserve">
     <value>AI assistants and coding agents, with your API keys</value>
   </data>
-  <data name="settings_api_access_line" xml:space="preserve">
-    <value>OAuth applications and API integrations</value>
-  </data>
   <data name="settings_contacts_line" xml:space="preserve">
     <value>Import contacts for collaborator suggestions</value>
   </data>
@@ -1668,5 +1632,224 @@
   </data>
   <data name="board_state_row.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Board state</value>
+  </data>
+  <data name="settings_connections" xml:space="preserve">
+    <value>Connections</value>
+  </data>
+  <data name="settings_connections_line" xml:space="preserve">
+    <value>Everything that can act as your account</value>
+  </data>
+  <data name="connections.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Connections</value>
+  </data>
+  <data name="connections_2.Text" xml:space="preserve">
+    <value>Connections</value>
+  </data>
+  <data name="connections_intro.Text" xml:space="preserve">
+    <value>Everything that can act as your account, and a way to stop each one. Revoking stops it at once.</value>
+  </data>
+  <data name="connections_empty.Text" xml:space="preserve">
+    <value>Nothing is connected to your account yet.</value>
+  </data>
+  <data name="connections_web_session.Title" xml:space="preserve">
+    <value>Do this on the web</value>
+  </data>
+  <data name="connections_web_session_line.Text" xml:space="preserve">
+    <value>The server wants a signed-in browser for this. Open Settings, then Connections, at astrid.cc.</value>
+  </data>
+  <data name="acts_as.Text" xml:space="preserve">
+    <value>Acts as </value>
+  </data>
+  <data name="created.Text" xml:space="preserve">
+    <value>Created </value>
+  </data>
+  <data name="last_used.Text" xml:space="preserve">
+    <value>Last used </value>
+  </data>
+  <data name="expires.Text" xml:space="preserve">
+    <value>Expires </value>
+  </data>
+  <data name="manage_in_agents.Text" xml:space="preserve">
+    <value>Managed on the AI agents page</value>
+  </data>
+  <data name="developer_heading.Text" xml:space="preserve">
+    <value>Developer</value>
+  </data>
+  <data name="developer_line.Text" xml:space="preserve">
+    <value>An OAuth client made by hand, for a machine that is not this one - CI, a script, a runner. An assistant that speaks OAuth registers itself when it connects.</value>
+  </data>
+  <data name="new_client.Content" xml:space="preserve">
+    <value>New client</value>
+  </data>
+  <data name="client_description_box.PlaceholderText" xml:space="preserve">
+    <value>a line about it, optional</value>
+  </data>
+  <data name="client_description_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Client description</value>
+  </data>
+  <data name="grant_types_heading.Text" xml:space="preserve">
+    <value>Grant types</value>
+  </data>
+  <data name="scopes_heading.Text" xml:space="preserve">
+    <value>Scopes</value>
+  </data>
+  <data name="redirect_uris_box.Header" xml:space="preserve">
+    <value>Redirect URIs, one per line</value>
+  </data>
+  <data name="redirect_uris_box.PlaceholderText" xml:space="preserve">
+    <value>https://example.com/callback</value>
+  </data>
+  <data name="redirect_uris_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Redirect URIs</value>
+  </data>
+  <data name="cancel_edit.Content" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="webhook_credentials_line.Text" xml:space="preserve">
+    <value>Your webhook server calls back with a client-credentials pair as well as the signing secret. Mint one here; it is shown once.</value>
+  </data>
+  <data name="create_credentials.Content" xml:space="preserve">
+    <value>Create credentials</value>
+  </data>
+  <data name="connections_category_app" xml:space="preserve">
+    <value>Apps</value>
+  </data>
+  <data name="connections_category_token" xml:space="preserve">
+    <value>Access tokens</value>
+  </data>
+  <data name="connections_category_webhook" xml:space="preserve">
+    <value>Webhook server</value>
+  </data>
+  <data name="connections_category_unknown" xml:space="preserve">
+    <value>Other</value>
+  </data>
+  <data name="connections_kind_authorizedApp" xml:space="preserve">
+    <value>Approved apps</value>
+  </data>
+  <data name="connections_kind_oauthClient" xml:space="preserve">
+    <value>OAuth clients</value>
+  </data>
+  <data name="connections_kind_customAgent" xml:space="preserve">
+    <value>Custom agents</value>
+  </data>
+  <data name="connections_kind_accessToken" xml:space="preserve">
+    <value>Access tokens</value>
+  </data>
+  <data name="connections_kind_webhook" xml:space="preserve">
+    <value>Webhook server</value>
+  </data>
+  <data name="connections_kind_unknown" xml:space="preserve">
+    <value>Other</value>
+  </data>
+  <data name="connections_owner_you" xml:space="preserve">
+    <value>Yours</value>
+  </data>
+  <data name="connections_owner_thirdParty" xml:space="preserve">
+    <value>Third-party</value>
+  </data>
+  <data name="connections_owner_agent" xml:space="preserve">
+    <value>Agent</value>
+  </data>
+  <data name="connections_status_active" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="connections_status_expired" xml:space="preserve">
+    <value>Expired</value>
+  </data>
+  <data name="connections_status_disabled" xml:space="preserve">
+    <value>Disabled</value>
+  </data>
+  <data name="connections_status_unknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+  <data name="connections_acts_as_you" xml:space="preserve">
+    <value>You</value>
+  </data>
+  <data name="connections_never" xml:space="preserve">
+    <value>Never</value>
+  </data>
+  <data name="connections_review_summary_one" xml:space="preserve">
+    <value>1 connection looks unused - revoke it if you no longer need it.</value>
+  </data>
+  <data name="connections_review_summary_many" xml:space="preserve">
+    <value>{0} connections look unused - revoke the ones you no longer need.</value>
+  </data>
+  <data name="connections_review_idle" xml:space="preserve">
+    <value>Not used in {0} days</value>
+  </data>
+  <data name="connections_review_neverUsed" xml:space="preserve">
+    <value>Never used, created {0} days ago</value>
+  </data>
+  <data name="connections_revoke_title" xml:space="preserve">
+    <value>Revoke this connection?</value>
+  </data>
+  <data name="connections_revoke_confirm" xml:space="preserve">
+    <value>Revoke {0}? Anything using it stops working immediately.</value>
+  </data>
+  <data name="connections_revoke_yes" xml:space="preserve">
+    <value>Revoke it</value>
+  </data>
+  <data name="connections_remove_agent_title" xml:space="preserve">
+    <value>Remove this agent?</value>
+  </data>
+  <data name="connections_remove_agent_confirm" xml:space="preserve">
+    <value>Remove {0}? The agent and its credentials are deleted.</value>
+  </data>
+  <data name="connections_remove_yes" xml:space="preserve">
+    <value>Remove it</value>
+  </data>
+  <data name="connections_problem_nameMissing" xml:space="preserve">
+    <value>Give the client a name.</value>
+  </data>
+  <data name="connections_problem_grantRequired" xml:space="preserve">
+    <value>Choose at least one grant type.</value>
+  </data>
+  <data name="connections_problem_redirectRequired" xml:space="preserve">
+    <value>The authorization-code grant needs a redirect URI.</value>
+  </data>
+  <data name="connections_problem_redirectInvalid" xml:space="preserve">
+    <value>{0} is not an absolute http or https address.</value>
+  </data>
+  <data name="connections_grant_client_credentials" xml:space="preserve">
+    <value>Client credentials</value>
+  </data>
+  <data name="connections_grant_client_credentials_hint" xml:space="preserve">
+    <value>A machine's own pair. No browser, no person.</value>
+  </data>
+  <data name="connections_grant_authorization_code" xml:space="preserve">
+    <value>Authorization code</value>
+  </data>
+  <data name="connections_grant_authorization_code_hint" xml:space="preserve">
+    <value>A person consents in a browser and is sent back to a redirect URI.</value>
+  </data>
+  <data name="connections_grant_refresh_token" xml:space="preserve">
+    <value>Refresh token</value>
+  </data>
+  <data name="connections_grant_refresh_token_hint" xml:space="preserve">
+    <value>Keeps an authorization alive. Travels with the authorization code.</value>
+  </data>
+  <data name="edit_client.Content" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="transfer_ownership.Content" xml:space="preserve">
+    <value>Transfer ownership</value>
+  </data>
+  <data name="transfer_ownership_line.Text" xml:space="preserve">
+    <value>Hand this list to another member. You leave it at the same time.</value>
+  </data>
+  <data name="transfer_nobody.Text" xml:space="preserve">
+    <value>Nobody to hand it to yet - invite someone first.</value>
+  </data>
+  <data name="transfer_unavailable.Text" xml:space="preserve">
+    <value>Not available from here yet - use the web app.</value>
+  </data>
+  <data name="list_transfer_title" xml:space="preserve">
+    <value>Transfer this list?</value>
+  </data>
+  <data name="list_transfer_confirm" xml:space="preserve">
+    <value>{0} becomes the owner and you leave the list. There is no undo.</value>
+  </data>
+  <data name="list_transfer_yes" xml:space="preserve">
+    <value>Transfer and leave</value>
   </data>
 </root>
