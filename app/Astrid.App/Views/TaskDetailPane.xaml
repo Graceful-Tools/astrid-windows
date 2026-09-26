@@ -244,7 +244,13 @@
                     </ContentPresenter>
                 </Grid>
                 <Button.Flyout>
-                    <Flyout Opening="OnAssigneeFlyoutOpening" Closed="OnAssigneeFlyoutClosed">
+                    <!--
+                        Named so a pick can dismiss it (task a7748274). A Button inside a Flyout
+                        does not close it the way a MenuFlyoutItem closes a MenuFlyout, so the
+                        popup used to stay open over the field it had just changed.
+                    -->
+                    <Flyout x:Name="AssigneeFlyout"
+                            Opening="OnAssigneeFlyoutOpening" Closed="OnAssigneeFlyoutClosed">
                         <ItemsControl ItemsSource="{x:Bind Shell.Detail.Assignees, Mode=OneWay}"
                                       MinWidth="220">
                             <ItemsControl.ItemTemplate>

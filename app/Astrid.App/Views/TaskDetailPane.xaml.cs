@@ -551,11 +551,22 @@ public sealed partial class TaskDetailPane : UserControl
         await Shell.Detail.LoadAssigneesAsync();
     }
 
+    /// <summary>
+    /// Take a row in the assignee picker (task a7748274).
+    /// </summary>
+    /// <remarks>
+    /// The popup is dismissed FIRST, because it sits over the field the pick is about to change and
+    /// a person who has chosen is done choosing. A <c>Button</c> inside a <c>Flyout</c> does not
+    /// dismiss it by itself — only a <c>MenuFlyoutItem</c> does — so this says it out loud.
+    /// What a pick MEANS is <c>ChooseAssigneeAsync</c>'s: the write and the end of the edit are one
+    /// operation there, not two arranged from here.
+    /// </remarks>
     private async void OnAssigneeChosen(object sender, RoutedEventArgs args)
     {
         // A null tag is the unassigned row, and clearing is a real choice rather than a no-op.
         var userId = (sender as FrameworkElement)?.Tag as string;
-        await Shell.Detail.AssignAsync(userId);
+        AssigneeFlyout.Hide();
+        await Shell.Detail.ChooseAssigneeAsync(userId);
     }
 
     // ── The lists a task is in (task d3f3b111) ──────────────────────────────────────────────
