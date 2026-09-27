@@ -46,6 +46,7 @@ public sealed class TaskDetailViewModel : ObservableObject
     private bool _showsWaitingOn;
     private bool _canEditBlockers;
     private string _blockerSearch = string.Empty;
+    private string? _blockerErrorKey;
     private string? _link;
 
     public TaskDetailViewModel(IAstridCore core)
@@ -1177,6 +1178,22 @@ public sealed class TaskDetailViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Why the last pick did not take, as a resource key — or null when nothing is wrong
+    /// (task 69a840a4).
+    /// </summary>
+    /// <remarks>
+    /// A key rather than a sentence, as <see cref="WontDoLabelKey"/> is: the core's message is a
+    /// developer's line in one language, and this is copy the reader sees, so it lives in the
+    /// string folders and the shell words it. The refusal belongs in the picker rather than the
+    /// pane's error line, because that is where the reader just clicked.
+    /// </remarks>
+    public string? BlockerErrorKey
+    {
+        get => _blockerErrorKey;
+        private set => Set(ref _blockerErrorKey, value);
+    }
+
     /// <summary>Make this task wait on another.</summary>
     public async Task<bool> AddBlockerAsync(string blockingTaskId,
         CancellationToken cancellationToken = default)
@@ -1189,8 +1206,12 @@ public sealed class TaskDetailViewModel : ObservableObject
             Commands.AddTaskBlocker(TaskId, blockingTaskId), cancellationToken);
         if (!Handle(response))
         {
+            // The write is journalled, so a pending answer is a pick that will go and not one that
+            // failed; only a genuine refusal is worth saying anything about.
+            BlockerErrorKey = response.IsStillPending ? null : "detail.waiting_on_error";
             return false;
         }
+        BlockerErrorKey = null;
         ReadBlockedBy(response.Value);
         // The picker stays open between picks, so what it offers is re-asked: the task just
         // chosen is no longer offerable, and neither is anything that now waits on this one.
@@ -1799,6 +1820,9 @@ public sealed class TaskDetailViewModel : ObservableObject
                           && canEdit.ValueKind == JsonValueKind.True;
         Replace(WaitingOnChips, hasBlockers ? Wearing(Read<Blocker>(blockers, "chips")) : []);
         Raise(nameof(HasNoBlockers));
+        // A refusal is about the pick that was just made, so it does not follow the reader to the
+        // next task.
+        BlockerErrorKey = null;
         Link = value.TryGetProperty("link", out var link) && link.ValueKind == JsonValueKind.String
             ? link.GetString()
             : null;

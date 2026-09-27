@@ -1660,6 +1660,9 @@
   <data name="waiting_on_no_results.Text" xml:space="preserve">
     <value>No matching tasks</value>
   </data>
+  <data name="detail_waiting_on_error" xml:space="preserve">
+    <value>Could not wait on that task</value>
+  </data>
   <data name="settings_connections" xml:space="preserve">
     <value>Connections</value>
   </data>

@@ -1659,6 +1659,9 @@
   <data name="waiting_on_no_results.Text" xml:space="preserve">
     <value>Keine passenden Aufgaben</value>
   </data>
+  <data name="detail_waiting_on_error" xml:space="preserve">
+    <value>Warten auf diese Aufgabe nicht möglich</value>
+  </data>
   <data name="settings_connections" xml:space="preserve">
     <value>Verbindungen</value>
   </data>

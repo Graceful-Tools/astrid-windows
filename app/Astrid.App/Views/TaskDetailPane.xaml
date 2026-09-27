@@ -806,6 +806,16 @@
                                                FontSize="12"
                                                Foreground="{ThemeResource AstridTextMuted}"
                                                Visibility="{x:Bind Shell.Detail.HasNoCandidates, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                    <!--
+                                        A refused pick is said where the reader just clicked, not
+                                        on the pane's error line at the other end of the screen.
+                                        The view model answers a key and the words are the string
+                                        table's, as everything else the reader reads here is.
+                                    -->
+                                    <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                               FontSize="12" TextWrapping="Wrap"
+                                               Text="{x:Bind Shell.Detail.BlockerErrorKey, Mode=OneWay, Converter={StaticResource Words}}"
+                                               Visibility="{x:Bind Shell.Detail.BlockerErrorKey, Mode=OneWay, Converter={StaticResource Visible}}" />
                                 </StackPanel>
                             </Flyout>
                         </Button.Flyout>

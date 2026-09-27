@@ -670,6 +670,57 @@ public sealed class TaskDetailViewModelTests
     }
 
     /// <summary>
+    /// A pick the core refuses says so in the picker, in this app's words (task 69a840a4).
+    /// </summary>
+    /// <remarks>
+    /// A resource key and not a sentence: the core's message is a developer's line in one
+    /// language, and the row's copy is translated in both string folders. The chip does not appear
+    /// either — a refused write must not leave the reader looking at a blocker that is not there.
+    /// </remarks>
+    [Fact]
+    public async Task A_refused_pick_says_so_in_the_picker_s_own_words_task_69a840a4()
+    {
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail(blockers: new { chips = Array.Empty<object>(), canEdit = true }))
+            .AnswerFailure("addTaskBlocker", AstridFailureKind.BadRequest, "cannot wait on that");
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.False(await view.AddBlockerAsync("b1"));
+
+        Assert.Equal("detail.waiting_on_error", view.BlockerErrorKey);
+        Assert.Empty(view.WaitingOnChips);
+    }
+
+    /// <summary>
+    /// The refusal goes when the next pick takes, so a picker left open does not keep saying no
+    /// about a task the reader has moved on from (task 69a840a4).
+    /// </summary>
+    [Fact]
+    public async Task A_pick_that_takes_clears_the_last_refusal_task_69a840a4()
+    {
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail(blockers: new { chips = Array.Empty<object>(), canEdit = true }))
+            .AnswerFailure("addTaskBlocker", AstridFailureKind.BadRequest, "cannot wait on that")
+            .AnswerOk("addTaskBlocker", new
+            {
+                blockedBy = new[] { new { id = "b2", title = "Ship the API", completed = false, hidden = false } },
+                blocks = Array.Empty<object>(),
+                dependentIds = Array.Empty<string>(),
+            })
+            .AnswerOk("taskBlockerCandidates", new { candidates = Array.Empty<object>() });
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+        await view.AddBlockerAsync("b1");
+        Assert.NotNull(view.BlockerErrorKey);
+
+        Assert.True(await view.AddBlockerAsync("b2"));
+
+        Assert.Null(view.BlockerErrorKey);
+        Assert.Equal(new[] { "b2" }, view.WaitingOnChips.Select(chip => chip.Id));
+    }
+
+    /// <summary>
     /// The Status submenu is the board's columns as the core gives them, current one lit, and a
     /// choice is sent by column id — the core makes the move (task 016ce981).
     /// </summary>
