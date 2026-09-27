@@ -43,6 +43,10 @@ public sealed class TaskDetailViewModel : ObservableObject
     private bool _isCanceled;
     private bool _isCopyOnly;
     private bool _showsBoardState;
+    private bool _showsWaitingOn;
+    private bool _canEditBlockers;
+    private string _blockerSearch = string.Empty;
+    private string? _blockerErrorKey;
     private string? _link;
 
     public TaskDetailViewModel(IAstridCore core)
@@ -438,6 +442,39 @@ public sealed class TaskDetailViewModel : ObservableObject
         private set => Set(ref _showsBoardState, value);
     }
 
+    /// <summary>
+    /// The WAITING ON row's chips (task 69a840a4): every task this one is waiting on, in the
+    /// server's order, with no cap and no "+n more".
+    /// </summary>
+    /// <remarks>
+    /// A blocker the reader cannot see arrives hidden, with neither title nor id, and is drawn
+    /// all the same — it still blocks, so leaving it out would draw a task as free when it is not.
+    /// </remarks>
+    public ObservableCollection<Blocker> WaitingOnChips { get; } = [];
+
+    /// <summary>
+    /// Whether the WAITING ON row is drawn. The rule is the core's
+    /// (<c>rows::detail::shows_task_blockers</c>), shared with web; the pane only says whether the
+    /// core sent a row. Unlike the board-state row this one survives a read-only viewer, so it is
+    /// <em>not</em> "has chips" — a task on a board with nothing blocking it still shows the row
+    /// to someone who could add one.
+    /// </summary>
+    public bool ShowsWaitingOn
+    {
+        get => _showsWaitingOn;
+        private set => Set(ref _showsWaitingOn, value);
+    }
+
+    /// <summary>Whether the ✕ and the "Wait on a task…" picker are offered. The core's answer.</summary>
+    public bool CanEditBlockers
+    {
+        get => _canEditBlockers;
+        private set => Set(ref _canEditBlockers, value);
+    }
+
+    /// <summary>Whether the row has nothing to list, which is its own line of copy.</summary>
+    public bool HasNoBlockers => WaitingOnChips.Count == 0;
+
     /// <summary>The mark that stands for this task's priority — the core's, not the shell's.</summary>
     public string PriorityGlyph
     {
@@ -481,6 +518,10 @@ public sealed class TaskDetailViewModel : ObservableObject
         IsOpen = true;
         await ReloadAsync(cancellationToken);
         await RefreshCommentsAsync(cancellationToken);
+        // For the same reason as the comments, and after the screen is already drawn: only the
+        // server can tell a blocker the reader may not see from one this cache has not got yet
+        // (task 69a840a4). It returns at once for a task with no WAITING ON row.
+        await RefreshBlockersAsync(cancellationToken);
     }
 
     /// <summary>
@@ -1101,6 +1142,147 @@ public sealed class TaskDetailViewModel : ObservableObject
         CreateListName = picks.CreateName;
     }
 
+    /// <summary>What the "Wait on a task…" picker is offering (task 69a840a4).</summary>
+    public ObservableCollection<Blocker> BlockerCandidates { get; } = [];
+
+    /// <summary>What has been typed into the picker's search box.</summary>
+    public string BlockerSearch
+    {
+        get => _blockerSearch;
+        private set => Set(ref _blockerSearch, value);
+    }
+
+    /// <summary>
+    /// Correct the WAITING ON row from the server (task 69a840a4).
+    /// </summary>
+    /// <remarks>
+    /// The row is already drawn from the cache by the time this runs. This is the only thing that
+    /// can tell a blocker the reader may not see from one this machine has simply not synced yet,
+    /// which is why it is worth a round trip for a row that already has something to show. The
+    /// core answers with the cache when it is offline, so this is not an error path.
+    ///
+    /// A failure is not shown, for the same reason <see cref="RefreshCommentsAsync"/> does not
+    /// show one: the cached row is still on screen and is the right thing to be looking at, and
+    /// an error banner over a working screen is noise.
+    /// </remarks>
+    public async Task RefreshBlockersAsync(CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null || !ShowsWaitingOn)
+        {
+            return;
+        }
+        var response = await _core.CallAsync(Commands.TaskBlockers(TaskId), cancellationToken);
+        if (response.Ok)
+        {
+            ReadBlockedBy(response.Value);
+        }
+    }
+
+    /// <summary>
+    /// Why the last pick did not take, as a resource key — or null when nothing is wrong
+    /// (task 69a840a4).
+    /// </summary>
+    /// <remarks>
+    /// A key rather than a sentence, as <see cref="WontDoLabelKey"/> is: the core's message is a
+    /// developer's line in one language, and this is copy the reader sees, so it lives in the
+    /// string folders and the shell words it. The refusal belongs in the picker rather than the
+    /// pane's error line, because that is where the reader just clicked.
+    /// </remarks>
+    public string? BlockerErrorKey
+    {
+        get => _blockerErrorKey;
+        private set => Set(ref _blockerErrorKey, value);
+    }
+
+    /// <summary>Make this task wait on another.</summary>
+    public async Task<bool> AddBlockerAsync(string blockingTaskId,
+        CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(
+            Commands.AddTaskBlocker(TaskId, blockingTaskId), cancellationToken);
+        if (!Handle(response))
+        {
+            // The write is journalled, so a pending answer is a pick that will go and not one that
+            // failed; only a genuine refusal is worth saying anything about.
+            BlockerErrorKey = response.IsStillPending ? null : "detail.waiting_on_error";
+            return false;
+        }
+        BlockerErrorKey = null;
+        ReadBlockedBy(response.Value);
+        // The picker stays open between picks, so what it offers is re-asked: the task just
+        // chosen is no longer offerable, and neither is anything that now waits on this one.
+        await LoadBlockerCandidatesAsync(BlockerSearch, cancellationToken);
+        return true;
+    }
+
+    /// <summary>Stop this task waiting on another.</summary>
+    public async Task<bool> RemoveBlockerAsync(string blockingTaskId,
+        CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(
+            Commands.RemoveTaskBlocker(TaskId, blockingTaskId), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        ReadBlockedBy(response.Value);
+        return true;
+    }
+
+    /// <summary>
+    /// Fill the picker for what has been typed. Called as the flyout opens and as the box changes.
+    /// </summary>
+    /// <remarks>
+    /// The whole search is the core's, including the two-character threshold and which tasks are
+    /// offerable at all. Filtering here instead is the bug web fixed as <c>5df85b9f</c> — a picker
+    /// that offers only what it happens to have on screen.
+    /// </remarks>
+    public async Task LoadBlockerCandidatesAsync(string query,
+        CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return;
+        }
+        BlockerSearch = query;
+        var response = await _core.CallAsync(
+            Commands.TaskBlockerCandidates(TaskId, query), cancellationToken);
+        if (!Handle(response))
+        {
+            return;
+        }
+        Replace(BlockerCandidates, Read<Blocker>(response.Value, "candidates"));
+        Raise(nameof(HasNoCandidates));
+    }
+
+    /// <summary>Whether the picker has nothing to offer for what has been typed.</summary>
+    public bool HasNoCandidates => BlockerCandidates.Count == 0;
+
+    /// <summary>
+    /// Take the chips from anything the core answers with dependencies: the three writes and the
+    /// refresh all answer in the same shape, so there is one reader for them.
+    /// </summary>
+    private void ReadBlockedBy(JsonElement value)
+    {
+        Replace(WaitingOnChips, Wearing(Read<Blocker>(value, "blockedBy")));
+        Raise(nameof(HasNoBlockers));
+    }
+
+    /// <summary>
+    /// The row's one <c>canEdit</c>, copied onto every chip so each can draw its own ✕. The core
+    /// answers it once, per row, and nothing here decides it.
+    /// </summary>
+    private List<Blocker> Wearing(IEnumerable<Blocker> chips) =>
+        chips.Select(chip => chip with { CanEdit = CanEditBlockers }).ToList();
+
     /// <summary>Put the task in a list it is not in.</summary>
     public Task<bool> AddToListAsync(string listId, CancellationToken cancellationToken = default) =>
         ChangeListsAsync(Commands.AddTaskToList(TaskId ?? string.Empty, listId), cancellationToken);
@@ -1627,6 +1809,20 @@ public sealed class TaskDetailViewModel : ObservableObject
                             && boardState.ValueKind == JsonValueKind.Object;
         Replace(BoardStateChips, hasBoardState ? Read<StatusChoice>(boardState, "chips") : []);
         ShowsBoardState = hasBoardState && BoardStateChips.Count > 0;
+        // The WAITING ON row (task 69a840a4), read exactly as the board-state row above is: `null`
+        // is "no row" and an object is the row. Not "has chips", though — this row shows empty to
+        // anyone who could add a blocker, so the core's answer is the whole of the rule.
+        var hasBlockers = value.TryGetProperty("blockers", out var blockers)
+                          && blockers.ValueKind == JsonValueKind.Object;
+        ShowsWaitingOn = hasBlockers;
+        CanEditBlockers = hasBlockers
+                          && blockers.TryGetProperty("canEdit", out var canEdit)
+                          && canEdit.ValueKind == JsonValueKind.True;
+        Replace(WaitingOnChips, hasBlockers ? Wearing(Read<Blocker>(blockers, "chips")) : []);
+        Raise(nameof(HasNoBlockers));
+        // A refusal is about the pick that was just made, so it does not follow the reader to the
+        // next task.
+        BlockerErrorKey = null;
         Link = value.TryGetProperty("link", out var link) && link.ValueKind == JsonValueKind.String
             ? link.GetString()
             : null;

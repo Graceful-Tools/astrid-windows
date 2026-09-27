@@ -676,6 +676,154 @@
             </Grid>
 
             <!--
+                WAITING ON (task 69a840a4): the tasks this one is held by, after the board-state
+                row, because a blocker is a statement about the task's lane. Drawn only when the
+                core sent a row — the rule is `rows::detail::shows_task_blockers`, shared with web,
+                and unlike the row above it survives a read-only reader: a chip is information,
+                and knowing a task is held is worth having even when you cannot lift the block.
+                LIST_MODE is untouched; Who / Date / Priority / Lists is a cross-platform contract
+                and nothing is interleaved into it.
+
+                The icon is an inverted triangle — a yield sign, not an hourglass — which is the
+                mark the other clients use for this row.
+            -->
+            <Grid x:Uid="waiting_on_row" ColumnSpacing="8" Padding="0,6" MinHeight="36"
+                  AutomationProperties.Name="Waiting on"
+                  Visibility="{x:Bind Shell.Detail.ShowsWaitingOn, Mode=OneWay, Converter={StaticResource Visible}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="32" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="&#xE96E;"
+                           FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                           FontSize="15"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="{ThemeResource AstridTextMuted}">
+                    <TextBlock.RenderTransform>
+                        <RotateTransform Angle="180" CenterX="7" CenterY="8" />
+                    </TextBlock.RenderTransform>
+                </TextBlock>
+                <!--
+                    Chips wrap, with no cap and no "+n more": a task waiting on nine things is
+                    waiting on nine things, and a count that hid some of them would be the one
+                    number nobody could act on.
+                -->
+                <StackPanel Grid.Column="1" Orientation="Vertical" Spacing="4">
+                    <ItemsControl ItemsSource="{x:Bind Shell.Detail.WaitingOnChips, Mode=OneWay}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <local:ChipWrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="bindings:Blocker">
+                                <Border Background="{ThemeResource AstridBgSelected}"
+                                        BorderBrush="{ThemeResource AstridBorder}" BorderThickness="1"
+                                        CornerRadius="6" Padding="8,2,4,2">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <!--
+                                            A blocker the reader may not see shows neither title
+                                            nor id, only that something they cannot see is
+                                            holding this task.
+                                        -->
+                                        <Button Background="Transparent" BorderThickness="0"
+                                                Padding="0" MinWidth="0" MinHeight="0"
+                                                Tag="{x:Bind Id}"
+                                                Visibility="{x:Bind IsVisible, Converter={StaticResource Visible}}"
+                                                AutomationProperties.Name="{x:Bind Label}"
+                                                Click="OnBlockerOpened">
+                                            <TextBlock Text="{x:Bind Label}" FontSize="12"
+                                                       TextDecorations="{x:Bind Completed, Converter={StaticResource Strikethrough}}" />
+                                        </Button>
+                                        <TextBlock x:Uid="waiting_on_hidden" Text="A task you cannot see"
+                                                   FontSize="12"
+                                                   Foreground="{ThemeResource AstridTextMuted}"
+                                                   Visibility="{x:Bind Hidden, Converter={StaticResource Visible}}" />
+                                        <!--
+                                            `CanEdit` rides on the chip because a DataTemplate
+                                            cannot x:Bind past its own item, and the answer is
+                                            the core's either way.
+                                        -->
+                                        <Button x:Uid="waiting_on_remove"
+                                                Background="Transparent" BorderThickness="0"
+                                                Padding="2,0" MinWidth="0" MinHeight="0"
+                                                FontSize="10"
+                                                Content="&#xE711;"
+                                                FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                Tag="{x:Bind Id}"
+                                                AutomationProperties.Name="Stop waiting on this task"
+                                                Visibility="{x:Bind CanEdit, Converter={StaticResource Visible}}"
+                                                Click="OnBlockerRemoved" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <!--
+                        The row shows to anyone who could add a blocker even when there is none,
+                        so it needs a line that says so rather than an empty strip.
+                    -->
+                    <TextBlock x:Uid="waiting_on_empty" Text="Not waiting on any task"
+                               FontSize="12"
+                               Foreground="{ThemeResource AstridTextMuted}"
+                               Visibility="{x:Bind Shell.Detail.HasNoBlockers, Mode=OneWay, Converter={StaticResource Visible}}" />
+                    <Button x:Uid="waiting_on_add" x:Name="WaitingOnAdd"
+                            HorizontalAlignment="Left"
+                            Background="Transparent" BorderThickness="0"
+                            Padding="0,2" FontSize="12"
+                            Content="Wait on a task…"
+                            AutomationProperties.Name="Wait on a task"
+                            Visibility="{x:Bind Shell.Detail.CanEditBlockers, Mode=OneWay, Converter={StaticResource Visible}}"
+                            Click="OnWaitingOnPickerOpened">
+                        <Button.Flyout>
+                            <Flyout>
+                                <StackPanel Width="300" Spacing="6">
+                                    <TextBox x:Uid="waiting_on_search" x:Name="BlockerSearchBox"
+                                             AutomationProperties.Name="Search tasks"
+                                             PlaceholderText="Search tasks..."
+                                             Text="{x:Bind Shell.Detail.BlockerSearch, Mode=OneWay}"
+                                             TextChanged="OnBlockerSearchChanged" />
+                                    <!--
+                                        The picker stays open between picks, so a task held by
+                                        three things is three clicks rather than three openings.
+                                    -->
+                                    <ItemsControl ItemsSource="{x:Bind Shell.Detail.BlockerCandidates, Mode=OneWay}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="bindings:Blocker">
+                                                <Button HorizontalAlignment="Stretch"
+                                                        HorizontalContentAlignment="Left"
+                                                        Background="Transparent" BorderThickness="0"
+                                                        Tag="{x:Bind Id}"
+                                                        AutomationProperties.Name="{x:Bind Label}"
+                                                        Click="OnBlockerChosen">
+                                                    <TextBlock Text="{x:Bind Label}"
+                                                               TextDecorations="{x:Bind Completed, Converter={StaticResource Strikethrough}}" />
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock x:Uid="waiting_on_no_results" Text="No matching tasks"
+                                               FontSize="12"
+                                               Foreground="{ThemeResource AstridTextMuted}"
+                                               Visibility="{x:Bind Shell.Detail.HasNoCandidates, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                    <!--
+                                        A refused pick is said where the reader just clicked, not
+                                        on the pane's error line at the other end of the screen.
+                                        The view model answers a key and the words are the string
+                                        table's, as everything else the reader reads here is.
+                                    -->
+                                    <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                               FontSize="12" TextWrapping="Wrap"
+                                               Text="{x:Bind Shell.Detail.BlockerErrorKey, Mode=OneWay, Converter={StaticResource Words}}"
+                                               Visibility="{x:Bind Shell.Detail.BlockerErrorKey, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!--
                 The description, on the same 32px icon column as everything above it. Borderless
                 on a tinted ground, which is how the web draws its textarea - a boxed control
                 here read as a form field rather than as the task's own notes.

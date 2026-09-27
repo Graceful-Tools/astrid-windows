@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using System.IO;
 using System.Text;
 using Windows.UI;
+using Windows.UI.Text;
 
 namespace Astrid.App;
 
@@ -398,6 +399,22 @@ public sealed partial class FilterStateConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("a filter is chosen from the sheet");
+}
+
+/// <summary>
+/// Strikes text through when the thing it names is finished (task 69a840a4).
+/// </summary>
+/// <remarks>
+/// A completed blocker stays on the WAITING ON row rather than vanishing — the reader wants to
+/// see that the thing they were held by is done — and the strike is how it says so.
+/// </remarks>
+public sealed partial class StrikethroughConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is true ? TextDecorations.Strikethrough : TextDecorations.None;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a strike follows the task, not the other way round");
 }
 
 /// <summary>Visible when the value is false — for the half of a pair that is not showing.</summary>

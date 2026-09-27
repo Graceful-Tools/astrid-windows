@@ -27,6 +27,7 @@
     <local:RepeatSummaryConverter x:Key="RepeatText" />
     <local:ReminderStateConverter x:Key="ReminderText" />
     <local:NotVisibleConverter x:Key="NotVisible" />
+    <local:StrikethroughConverter x:Key="Strikethrough" />
     <local:WordsConverter x:Key="Words" />
     <local:PasskeyAddedConverter x:Key="PasskeyAdded" />
     <local:FixedWordsConverter x:Key="PasskeyRenameWord" Key="passkeys.rename" />

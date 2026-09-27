@@ -8,11 +8,12 @@ public sealed class TaskDetailViewModelTests
 {
     private static object Detail(string title = "Plan the trip", int priority = 3,
         bool completed = false, string[]? subtasks = null, string[]? comments = null,
-        bool isCanceled = false, object? boardState = null) => new
+        bool isCanceled = false, object? boardState = null, object? blockers = null) => new
         {
             task = new { id = "t1", title, description = "two weeks", priority, completed },
             isCanceled,
             boardState,
+            blockers,
             link = "https://astrid.cc/tasks/t1",
             fieldOrder = new[] { "assignee", "when", "priority", "lists" },
             priorityGlyph = "!!!",
@@ -422,6 +423,301 @@ public sealed class TaskDetailViewModelTests
 
         Assert.False(view.ShowsBoardState);
         Assert.Empty(view.BoardStateChips);
+    }
+
+    /// <summary>
+    /// The WAITING ON row (task 69a840a4) arrives with the detail: every task this one is held
+    /// by, in the server's order, with no cap. A blocker the reader may not see is drawn all the
+    /// same — it still blocks — and a completed one is still listed, struck through.
+    /// </summary>
+    [Fact]
+    public async Task A_blocked_task_lists_every_task_it_waits_on_task_69a840a4()
+    {
+        var core = new FakeCore().AnswerOk("taskDetail", Detail(blockers: new
+        {
+            chips = new object[]
+            {
+                new { id = "b1", title = "Ship the API", identifier = "AWTD-1002", completed = false, hidden = false },
+                new { id = "b2", title = "Sign the build", identifier = (string?)null, completed = true, hidden = false },
+                new { id = "b3", hidden = true },
+            },
+            canEdit = true,
+        }));
+        var view = new TaskDetailViewModel(core);
+
+        await view.OpenAsync("t1");
+
+        Assert.True(view.ShowsWaitingOn);
+        Assert.True(view.CanEditBlockers);
+        Assert.False(view.HasNoBlockers);
+        // Three chips, not two: the hidden one is counted and drawn.
+        Assert.Equal(new[] { "b1", "b2", "b3" }, view.WaitingOnChips.Select(chip => chip.Id));
+        // The short id goes before the title, and a task without one is just its title.
+        Assert.Equal("AWTD-1002 Ship the API", view.WaitingOnChips[0].Label);
+        Assert.Equal("Sign the build", view.WaitingOnChips[1].Label);
+        Assert.True(view.WaitingOnChips[1].Completed);
+        // A hidden blocker shows neither title nor id.
+        Assert.Empty(view.WaitingOnChips[2].Label);
+        Assert.False(view.WaitingOnChips[2].IsVisible);
+        // The row's one `canEdit` rides on each chip, because a DataTemplate cannot bind past it.
+        Assert.All(view.WaitingOnChips, chip => Assert.True(chip.CanEdit));
+    }
+
+    /// <summary>
+    /// The row shows with nothing on it to anybody who could add a blocker, and not at all to a
+    /// reader the core gave no row — the rule is entirely the core's (task 69a840a4).
+    /// </summary>
+    [Fact]
+    public async Task An_empty_waiting_on_row_shows_to_whoever_could_fill_it_task_69a840a4()
+    {
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail(blockers: new { chips = Array.Empty<object>(), canEdit = true }));
+        var view = new TaskDetailViewModel(core);
+
+        await view.OpenAsync("t1");
+
+        Assert.True(view.ShowsWaitingOn);
+        Assert.True(view.HasNoBlockers);
+        Assert.Empty(view.WaitingOnChips);
+    }
+
+    /// <summary>
+    /// A reader the core gave chips but no <c>canEdit</c> sees them and cannot lift them: no ✕ on
+    /// any chip and no picker. Unlike the board-state row, this one does show read-only
+    /// (task 69a840a4).
+    /// </summary>
+    [Fact]
+    public async Task A_read_only_reader_sees_the_blockers_and_cannot_lift_them_task_69a840a4()
+    {
+        var core = new FakeCore().AnswerOk("taskDetail", Detail(blockers: new
+        {
+            chips = new[] { new { id = "b1", title = "Ship the API", completed = false, hidden = false } },
+            canEdit = false,
+        }));
+        var view = new TaskDetailViewModel(core);
+
+        await view.OpenAsync("t1");
+
+        Assert.True(view.ShowsWaitingOn);
+        Assert.False(view.CanEditBlockers);
+        Assert.False(view.WaitingOnChips[0].CanEdit);
+    }
+
+    /// <summary>
+    /// Most tasks are on no board, and the core says so with no row at all (task 69a840a4).
+    /// </summary>
+    [Fact]
+    public async Task A_task_the_core_gives_no_blockers_draws_no_row_task_69a840a4()
+    {
+        var core = new FakeCore().AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+
+        await view.OpenAsync("t1");
+
+        Assert.False(view.ShowsWaitingOn);
+        Assert.False(view.CanEditBlockers);
+        Assert.Empty(view.WaitingOnChips);
+    }
+
+    /// <summary>
+    /// Adding a blocker sends the core's command and redraws from what it answers — and re-asks
+    /// the picker, because the task just chosen is no longer offerable and the picker stays open
+    /// between picks (task 69a840a4).
+    /// </summary>
+    [Fact]
+    public async Task Waiting_on_a_task_sends_the_command_and_redraws_from_the_answer_task_69a840a4()
+    {
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail(blockers: new { chips = Array.Empty<object>(), canEdit = true }))
+            .AnswerOk("addTaskBlocker", new
+            {
+                blockedBy = new[] { new { id = "b1", title = "Ship the API", completed = false, hidden = false } },
+                blocks = Array.Empty<object>(),
+                dependentIds = Array.Empty<string>(),
+            })
+            .AnswerOk("taskBlockerCandidates", new { candidates = Array.Empty<object>() });
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.True(await view.AddBlockerAsync("b1"));
+
+        Assert.Contains(core.Sent, json =>
+            json.Contains("\"kind\":\"addTaskBlocker\"")
+            && json.Contains("\"blockingTaskId\":\"b1\""));
+        Assert.Equal(new[] { "b1" }, view.WaitingOnChips.Select(chip => chip.Id));
+        Assert.False(view.HasNoBlockers);
+        // The ✕ still rides on the chip after a write, from the row's `canEdit`.
+        Assert.True(view.WaitingOnChips[0].CanEdit);
+        Assert.Contains(core.Sent, json => json.Contains("\"kind\":\"taskBlockerCandidates\""));
+    }
+
+    /// <summary>The ✕ sends the core's command and redraws from the answer (task 69a840a4).</summary>
+    [Fact]
+    public async Task Removing_a_blocker_sends_the_command_and_redraws_task_69a840a4()
+    {
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail(blockers: new
+            {
+                chips = new[] { new { id = "b1", title = "Ship the API", completed = false, hidden = false } },
+                canEdit = true,
+            }))
+            .AnswerOk("removeTaskBlocker", new
+            {
+                blockedBy = Array.Empty<object>(),
+                blocks = Array.Empty<object>(),
+                dependentIds = Array.Empty<string>(),
+            });
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.True(await view.RemoveBlockerAsync("b1"));
+
+        Assert.Contains(core.Sent, json =>
+            json.Contains("\"kind\":\"removeTaskBlocker\"")
+            && json.Contains("\"blockingTaskId\":\"b1\""));
+        Assert.Empty(view.WaitingOnChips);
+        Assert.True(view.HasNoBlockers);
+    }
+
+    /// <summary>
+    /// The picker asks the core for its whole answer — what matches, what is offerable and the
+    /// two-character threshold are all the core's, because a picker that filtered the page it
+    /// happens to have loaded is the bug web fixed as 5df85b9f (task 69a840a4).
+    /// </summary>
+    [Fact]
+    public async Task The_blocker_picker_asks_the_core_and_filters_nothing_itself_task_69a840a4()
+    {
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail(blockers: new { chips = Array.Empty<object>(), canEdit = true }))
+            .AnswerOk("taskBlockerCandidates", new
+            {
+                candidates = new[]
+                {
+                    new { id = "b7", title = "Ship the API", identifier = "AWTD-1002", completed = false, hidden = false },
+                },
+            });
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.LoadBlockerCandidatesAsync("shi");
+
+        Assert.Contains(core.Sent, json =>
+            json.Contains("\"kind\":\"taskBlockerCandidates\"") && json.Contains("\"query\":\"shi\""));
+        Assert.Equal("shi", view.BlockerSearch);
+        Assert.Equal(new[] { "b7" }, view.BlockerCandidates.Select(pick => pick.Id));
+        Assert.Equal("AWTD-1002 Ship the API", view.BlockerCandidates[0].Label);
+        Assert.False(view.HasNoCandidates);
+    }
+
+    /// <summary>
+    /// The refresh is the round trip that tells "a task you cannot see" from "a task this cache
+    /// has not got yet". A task with no row does not make it (task 69a840a4).
+    /// </summary>
+    [Fact]
+    public async Task Refreshing_blockers_corrects_the_row_and_skips_a_task_without_one_task_69a840a4()
+    {
+        var withoutRow = new FakeCore().AnswerOk("taskDetail", Detail());
+        var quiet = new TaskDetailViewModel(withoutRow);
+        await quiet.OpenAsync("t1");
+        await quiet.RefreshBlockersAsync();
+        Assert.DoesNotContain(withoutRow.Sent, json => json.Contains("\"kind\":\"taskBlockers\""));
+
+        // Opening does the round trip itself, after the screen is already drawn from the cache.
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail(blockers: new
+            {
+                chips = new[] { new { id = "b1", hidden = true } },
+                canEdit = true,
+            }))
+            .AnswerOk("taskBlockers", new
+            {
+                blockedBy = new[] { new { id = "b1", title = "Ship the API", completed = false, hidden = false } },
+                blocks = Array.Empty<object>(),
+                dependentIds = Array.Empty<string>(),
+            });
+        var view = new TaskDetailViewModel(core);
+
+        await view.OpenAsync("t1");
+
+        Assert.Contains(core.Sent, json => json.Contains("\"kind\":\"taskBlockers\""));
+        // The cache could only say "a task you cannot see"; the server says which it is.
+        Assert.Equal("Ship the API", view.WaitingOnChips[0].Label);
+        Assert.True(view.WaitingOnChips[0].IsVisible);
+        Assert.True(view.WaitingOnChips[0].CanEdit);
+    }
+
+    /// <summary>
+    /// A refresh that cannot reach the server leaves the cached row alone and says nothing: the
+    /// chips on screen are the right thing to be looking at offline, and a banner over a working
+    /// screen is noise (task 69a840a4).
+    /// </summary>
+    [Fact]
+    public async Task A_blocker_refresh_that_fails_keeps_the_cached_row_and_is_quiet_task_69a840a4()
+    {
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail(blockers: new
+            {
+                chips = new[] { new { id = "b1", title = "Ship the API", completed = false, hidden = false } },
+                canEdit = true,
+            }))
+            .AnswerFailure("taskBlockers", AstridFailureKind.Offline);
+        var view = new TaskDetailViewModel(core);
+
+        await view.OpenAsync("t1");
+
+        Assert.Equal(new[] { "b1" }, view.WaitingOnChips.Select(chip => chip.Id));
+        Assert.Null(view.ErrorMessage);
+    }
+
+    /// <summary>
+    /// A pick the core refuses says so in the picker, in this app's words (task 69a840a4).
+    /// </summary>
+    /// <remarks>
+    /// A resource key and not a sentence: the core's message is a developer's line in one
+    /// language, and the row's copy is translated in both string folders. The chip does not appear
+    /// either — a refused write must not leave the reader looking at a blocker that is not there.
+    /// </remarks>
+    [Fact]
+    public async Task A_refused_pick_says_so_in_the_picker_s_own_words_task_69a840a4()
+    {
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail(blockers: new { chips = Array.Empty<object>(), canEdit = true }))
+            .AnswerFailure("addTaskBlocker", AstridFailureKind.BadRequest, "cannot wait on that");
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.False(await view.AddBlockerAsync("b1"));
+
+        Assert.Equal("detail.waiting_on_error", view.BlockerErrorKey);
+        Assert.Empty(view.WaitingOnChips);
+    }
+
+    /// <summary>
+    /// The refusal goes when the next pick takes, so a picker left open does not keep saying no
+    /// about a task the reader has moved on from (task 69a840a4).
+    /// </summary>
+    [Fact]
+    public async Task A_pick_that_takes_clears_the_last_refusal_task_69a840a4()
+    {
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail(blockers: new { chips = Array.Empty<object>(), canEdit = true }))
+            .AnswerFailure("addTaskBlocker", AstridFailureKind.BadRequest, "cannot wait on that")
+            .AnswerOk("addTaskBlocker", new
+            {
+                blockedBy = new[] { new { id = "b2", title = "Ship the API", completed = false, hidden = false } },
+                blocks = Array.Empty<object>(),
+                dependentIds = Array.Empty<string>(),
+            })
+            .AnswerOk("taskBlockerCandidates", new { candidates = Array.Empty<object>() });
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+        await view.AddBlockerAsync("b1");
+        Assert.NotNull(view.BlockerErrorKey);
+
+        Assert.True(await view.AddBlockerAsync("b2"));
+
+        Assert.Null(view.BlockerErrorKey);
+        Assert.Equal(new[] { "b2" }, view.WaitingOnChips.Select(chip => chip.Id));
     }
 
     /// <summary>
