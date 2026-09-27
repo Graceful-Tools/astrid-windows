@@ -95,7 +95,32 @@ foreach ($architecture in $Architectures) {
     $manifest = $manifest.Replace('{IDENTITY_PUBLISHER}', $identityPublisher)
     Set-Content -Path (Join-Path $publish 'AppxManifest.xml') -Value $manifest -Encoding utf8
 
-    Copy-Item -Recurse -Force (Join-Path $repoRoot 'packaging/Assets') (Join-Path $publish 'Assets')
+    # The Store tiles go INTO the published Assets folder, alongside the app's own.
+    #
+    # `Copy-Item -Recurse <src> <dest>` nests when <dest> already EXISTS: it copies the folder
+    # rather than its contents. The app grew an Assets folder of its own (the icons and the
+    # checkbox art), so from that day this wrote Assets\Assets\SplashScreen.png while the manifest
+    # asked for Assets\SplashScreen.png. The package still built, still bundled and still signed,
+    # and then failed at INSTALL with 0x80073CF6, "the splash screen image cannot be located" -
+    # which nobody saw, because nobody had ever installed it. Found on the first real install,
+    # 2026-09-27. Copying the CONTENTS merges the two folders, which is what was always meant.
+    $assetsDest = Join-Path $publish 'Assets'
+    New-Item -ItemType Directory -Force -Path $assetsDest | Out-Null
+    Copy-Item -Recurse -Force (Join-Path $repoRoot 'packaging/Assets/*') $assetsDest
+
+    # Every asset the manifest names has to be where it says it is. Windows only checks at install
+    # time, names one missing file, and stops - so a layout mistake costs a full build, a signature
+    # and an elevated shell to discover. Three seconds here instead.
+    # Matches both spellings the manifest uses: an attribute (Square150x150Logo="Assets\x.png")
+    # and an element (<Logo>Assets\StoreLogo.png</Logo>). StoreLogo is ONLY ever an element, so an
+    # attribute-only pattern would quietly not check it.
+    $referenced = [regex]::Matches($manifest, 'Assets\\[^"<>\s]+') |
+        ForEach-Object { $_.Value } | Sort-Object -Unique
+    $missing = @($referenced | Where-Object { -not (Test-Path (Join-Path $publish $_)) })
+    if ($missing.Count -gt 0) {
+        throw "the manifest names $($missing.Count) asset(s) the package layout does not contain:`n  " +
+            ($missing -join "`n  ")
+    }
 
     $package = Join-Path $dist "Astrid-$Version-$architecture.msix"
     Remove-Item -Force $package -ErrorAction SilentlyContinue
