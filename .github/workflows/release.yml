@@ -122,3 +122,35 @@ jobs:
             way — this is the download for people who want it before then.
 
             Signing in opens your browser and comes back to the app.
+
+      # `prod` says WHICH COMMIT the public download is built from, so it can be read as a ref
+      # rather than inferred from a zip's file name (task 3ef3397b):
+      #
+      #   git log origin/prod..origin/main     what the next release would ship
+      #
+      # The same idea as astrid-web's `prod` and astrid-ios's `ios-prod` / `mac-prod`, and it moves
+      # for the same reason: `main` runs ahead of what anyone has, because a release here is a
+      # deliberate act and pushing `main` reaches nobody.
+      #
+      # Only a TAG PUSH moves it, and only after the release above has actually published — a
+      # `workflow_dispatch` rehearsal builds, leaves its artifacts on the run and moves nothing, or
+      # the branch would claim a build nobody can download. No tag is written: the `v*` tag that
+      # triggered this already records what was released and when, which is the one thing
+      # astrid-web's `advance-prod-branch.sh` adds and this does not need.
+      #
+      # `force` is deliberate. A rollback — re-tagging an older commit — is not a fast-forward, and
+      # a `prod` that refuses to follow the release is worse than none.
+      - name: Move prod to the released commit
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          if gh api "repos/$REPO/git/ref/heads/prod" >/dev/null 2>&1; then
+            gh api -X PATCH "repos/$REPO/git/refs/heads/prod" -f sha="$SHA" -F force=true --jq .object.sha
+            echo "prod → ${SHA:0:7}"
+          else
+            gh api -X POST "repos/$REPO/git/refs" -f ref=refs/heads/prod -f sha="$SHA" --jq .object.sha
+            echo "prod did not exist yet — created at ${SHA:0:7}"
+          fi
