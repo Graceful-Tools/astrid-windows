@@ -110,6 +110,29 @@ public sealed partial class BoardView : UserControl
         }
     }
 
+    /// <summary>
+    /// Enter in a column's add field adds the card (task 95c7a68f).
+    /// </summary>
+    /// <remarks>
+    /// The field's own text is read here rather than left to the binding: a <c>TextBox.Text</c>
+    /// two-way binding does not push until focus leaves, and Enter does not move focus, so the
+    /// first card typed into a column would have been created with an empty title. The view model
+    /// trims it, ignores an empty one, and clears the draft before the write.
+    /// </remarks>
+    private async void OnAddCardKeyDown(object sender, KeyRoutedEventArgs args)
+    {
+        if (args.Key != VirtualKey.Enter
+            || sender is not TextBox field
+            || field.DataContext is not BoardColumnView column)
+        {
+            return;
+        }
+        args.Handled = true;
+        column.Draft = field.Text;
+        await column.AddCardAsync();
+        field.Text = column.Draft;
+    }
+
     private void OnInlineDetailSlotLoaded(object sender, RoutedEventArgs args)
     {
         if (sender is ContentControl host)

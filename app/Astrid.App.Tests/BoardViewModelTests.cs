@@ -175,6 +175,106 @@ public sealed class BoardViewModelTests
         Assert.Contains("\"listId\":\"l1\"", move);
         Assert.Contains("\"columnId\":\"doing\"", move);
     }
+
+    /// <summary>
+    /// A card typed into a column is created IN that column, in one request (task 95c7a68f).
+    /// </summary>
+    /// <remarks>
+    /// The column id, the board's list and the title — and nothing about roles or completion, which
+    /// are the core's to decide. A shell that created the card and then moved it is the Mac's
+    /// AITD-328, where the role was lost in between.
+    /// </remarks>
+    [Fact]
+    public async Task Adding_a_card_to_a_column_sends_the_column_and_the_board_task_95c7a68f()
+    {
+        var core = new FakeCore()
+            .AnswerOk("board", Board(Column("doing", "Doing", "status")))
+            .AnswerOk("addBoardCard")
+            .AnswerOk("board", Board(Column("doing", "Doing", "status", "Write it down")));
+        var view = new BoardViewModel(core);
+        await view.LoadAsync("l1");
+        view.Columns[0].Draft = "  Write it down  ";
+
+        Assert.True(await view.Columns[0].AddCardAsync());
+
+        var added = core.Sent.First(sent => sent.Contains("addBoardCard"));
+        Assert.Contains("\"listId\":\"l1\"", added);
+        Assert.Contains("\"columnId\":\"doing\"", added);
+        Assert.Contains("\"title\":\"Write it down\"", added);
+        Assert.DoesNotContain("moveTaskToColumn", string.Join(" ", core.SentKinds()));
+        // The board is reloaded, so the card appears without the view placing it itself.
+        Assert.Equal(["board", "addBoardCard", "board"], core.SentKinds());
+        Assert.Equal("Write it down", view.Columns[0].Cards[0].Title);
+    }
+
+    /// <summary>
+    /// The field clears on submit, and an empty title does nothing at all (task 95c7a68f).
+    /// </summary>
+    [Fact]
+    public async Task The_add_field_clears_on_submit_and_an_empty_title_does_nothing_task_95c7a68f()
+    {
+        var core = new FakeCore()
+            .AnswerOk("board", Board(Column("doing", "Doing", "status")))
+            .AnswerOk("addBoardCard")
+            .AnswerOk("board", Board(Column("doing", "Doing", "status", "Write it down")));
+        var view = new BoardViewModel(core);
+        await view.LoadAsync("l1");
+
+        view.Columns[0].Draft = "   ";
+        Assert.False(await view.Columns[0].AddCardAsync());
+        Assert.Equal(["board"], core.SentKinds());
+
+        view.Columns[0].Draft = "Write it down";
+        await view.Columns[0].AddCardAsync();
+
+        Assert.Equal(string.Empty, view.Columns[0].Draft);
+    }
+
+    /// <summary>
+    /// A draft typed in one column is not disturbed by another column's create (task 95c7a68f).
+    /// </summary>
+    /// <remarks>
+    /// The reason the drafts live on the board rather than on the column views: a create reloads
+    /// the board, which rebuilds every column view, so a draft held on one of those would vanish
+    /// from whichever column its owner was still typing in.
+    /// </remarks>
+    [Fact]
+    public async Task A_draft_in_one_column_survives_another_column_s_create_task_95c7a68f()
+    {
+        var core = new FakeCore()
+            .AnswerOk("board", Board(Column("ready", "Ready", "status"), Column("doing", "Doing", "status")))
+            .AnswerOk("addBoardCard")
+            .AnswerOk("board", Board(Column("ready", "Ready", "status"), Column("doing", "Doing", "status", "Write it down")));
+        var view = new BoardViewModel(core);
+        await view.LoadAsync("l1");
+        view.Columns[0].Draft = "still typing";
+        view.Columns[1].Draft = "Write it down";
+
+        await view.Columns[1].AddCardAsync();
+
+        Assert.Equal("still typing", view.Columns[0].Draft);
+        Assert.Equal(string.Empty, view.Columns[1].Draft);
+    }
+
+    /// <summary>
+    /// Offline is not an error here either: the card is in the Outbox and the board already shows
+    /// it.
+    /// </summary>
+    [Fact]
+    public async Task A_card_that_has_not_reached_the_server_is_not_reported_as_a_failure_task_95c7a68f()
+    {
+        var core = new FakeCore()
+            .AnswerOk("board", Board(Column("doing", "Doing", "status")))
+            .AnswerFailure("addBoardCard", AstridFailureKind.Offline, "no network")
+            .AnswerOk("board", Board(Column("doing", "Doing", "status", "Write it down")));
+        var view = new BoardViewModel(core);
+        await view.LoadAsync("l1");
+        view.Columns[0].Draft = "Write it down";
+
+        await view.Columns[0].AddCardAsync();
+
+        Assert.Null(view.ErrorMessage);
+    }
 }
 
 

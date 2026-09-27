@@ -13,7 +13,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 # The shared core, by revision. `cargo update -p astrid-core` after changing the rev.
-astrid-core = { git = "https://github.com/Graceful-Tools/astrid-core.git", rev = "9dc084dd31eb3332fb3f7384a1abcc6449b63df2" }
+astrid-core = { git = "https://github.com/Graceful-Tools/astrid-core.git", rev = "fe32809af86b8923ac563d7f7cbe0cd32d6682dd" }
 serde_json = { workspace = true }
 tokio = { workspace = true }
 async-trait = { workspace = true }
