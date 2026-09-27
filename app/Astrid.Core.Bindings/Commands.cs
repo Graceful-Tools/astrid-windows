@@ -574,9 +574,19 @@ public static class Commands
     public static object CreateTask(string title, IReadOnlyList<string>? listIds = null,
         string? description = null, int? priority = null, string? dueDateTime = null,
         bool? isAllDay = null, string? assigneeId = null, string? parentTaskId = null,
-        bool quickAdd = false, string? locale = null) =>
+        string? statusRole = null, bool quickAdd = false, string? locale = null) =>
         new CreateTaskRequest("createTask", title, description, listIds ?? [], priority,
-            dueDateTime, isAllDay, assigneeId, parentTaskId, quickAdd, locale);
+            dueDateTime, isAllDay, assigneeId, parentTaskId, statusRole, quickAdd, locale);
+
+    /// <summary>Add a card at the bottom of a board column (task 95c7a68f).</summary>
+    /// <remarks>
+    /// One request, not a create followed by a move. The column decides the card's lists, its status
+    /// role and — in Done — that it is already finished, and the core is where that is decided: a
+    /// card created bare and moved afterwards is the Mac's AITD-328, where the role was lost in
+    /// between and every card typed into a column turned up in the Inbox.
+    /// </remarks>
+    public static object AddBoardCard(string listId, string columnId, string title) =>
+        new AddBoardCardRequest("addBoardCard", listId, columnId, title);
 
     /// <summary>
     /// Edit a task. <paramref name="changes"/> carries only what changed; a property present and
@@ -825,6 +835,9 @@ public static class Commands
         [property: JsonPropertyName("isAllDay")] bool? IsAllDay,
         [property: JsonPropertyName("assigneeId")] string? AssigneeId,
         [property: JsonPropertyName("parentTaskId")] string? ParentTaskId,
+        // The board status the task is born with: a ROLE, never a list id — one bad list id
+        // rejects the whole write. Null is the Inbox, which is the absence of a status.
+        [property: JsonPropertyName("statusRole")] string? StatusRole,
         // True for the quick-add box, whose `#list` tags the core reads when the account has
         // smart parsing on (task 6ac2639a). The shell says where the title came from, not what
         // to do with it.
@@ -832,6 +845,12 @@ public static class Commands
         // The reader's language tag, for the words the quick-add box reads out of a sentence —
         // "morgen" is tomorrow in German and a plain word in English.
         [property: JsonPropertyName("locale")] string? Locale);
+
+    private sealed record AddBoardCardRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("listId")] string ListId,
+        [property: JsonPropertyName("columnId")] string ColumnId,
+        [property: JsonPropertyName("title")] string Title);
 
     private sealed record UpdateRequest(
         [property: JsonPropertyName("kind")] string Kind,

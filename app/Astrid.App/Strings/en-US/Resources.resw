@@ -1024,6 +1024,12 @@
   <data name="not_synced_yet.Text" xml:space="preserve">
     <value>Not synced yet</value>
   </data>
+  <data name="add_card_to_column.PlaceholderText" xml:space="preserve">
+    <value>Add task</value>
+  </data>
+  <data name="add_card_to_column.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Add task</value>
+  </data>
   <data name="nothing_here_yet.Text" xml:space="preserve">
     <value>Nothing here yet</value>
   </data>

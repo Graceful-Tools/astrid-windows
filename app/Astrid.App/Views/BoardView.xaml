@@ -151,6 +151,7 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <!--
                                     The column head, as astrid-web draws it: the name, the
@@ -223,6 +224,29 @@
                                                       ItemTemplateSelector="{StaticResource BoardItem}" />
                                     </StackPanel>
                                 </ScrollViewer>
+
+                                <!--
+                                    The add field, at the BOTTOM of the column and outside the
+                                    card scroller — the Mac's placement, and the iPad's and the
+                                    web's. The header keeps row 0 and this keeps row 2, so the
+                                    cards scroll between them rather than carrying either away.
+
+                                    What a card typed here is made of is the core's: the column
+                                    decides the lists, the role, and whether Done means it is
+                                    already done. This sends a title.
+                                -->
+                                <Border Grid.Row="2"
+                                        Padding="8"
+                                        BorderThickness="0,1,0,0"
+                                        BorderBrush="{ThemeResource AstridBorder}">
+                                    <TextBox x:Uid="add_card_to_column"
+                                             PlaceholderText="Add task"
+                                             AutomationProperties.Name="Add task"
+                                             Text="{x:Bind Draft, Mode=TwoWay}"
+                                             Background="{ThemeResource AstridSurface}"
+                                             FontSize="12"
+                                             KeyDown="OnAddCardKeyDown" />
+                                </Border>
                             </Grid>
                         </Border>
                     </DataTemplate>

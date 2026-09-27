@@ -27,6 +27,16 @@ namespace Astrid.App.ViewModels;
 public sealed class BoardViewModel : ObservableObject
 {
     private readonly IAstridCore _core;
+    /// <summary>
+    /// What is half-typed in each column's add field, by column id (task 95c7a68f).
+    /// </summary>
+    /// <remarks>
+    /// Held here rather than on <see cref="BoardColumnView"/>, which <see cref="Rebuild"/> builds
+    /// fresh on every load: a draft kept on the view would be erased whenever anything refreshed
+    /// the board, including another column's own create. astrid-web keeps the same dictionary for
+    /// the same reason.
+    /// </remarks>
+    private readonly Dictionary<string, string> _drafts = [];
     private string _listId = string.Empty;
     private Board? _board;
     private bool _isLoading;
@@ -146,6 +156,49 @@ public sealed class BoardViewModel : ObservableObject
         return response.Ok;
     }
 
+    /// <summary>What is half-typed in a column's add field.</summary>
+    internal string DraftFor(string columnId) =>
+        _drafts.TryGetValue(columnId, out var draft) ? draft : string.Empty;
+
+    /// <summary>Remember what is being typed into a column's add field.</summary>
+    internal void SetDraft(string columnId, string draft) => _drafts[columnId] = draft;
+
+    /// <summary>
+    /// Add a card at the bottom of a column (task 95c7a68f).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// What the card is made of — which lists it is filed in, which status it carries, and whether
+    /// Done means it is already finished — is the core's decision, so this sends a column id and a
+    /// title and nothing else. The card is born in the column rather than created and then moved:
+    /// the Mac dropped the role in between and every card appeared in the Inbox (AITD-328).
+    /// </para>
+    /// <para>
+    /// The field is cleared BEFORE the write, as the Mac's <c>addCard(to:)</c> does. Somebody types
+    /// the next card while the last one is still in flight, and a field cleared afterwards would
+    /// swallow what they typed.
+    /// </para>
+    /// </remarks>
+    public async Task<bool> AddCardAsync(string columnId, CancellationToken cancellationToken = default)
+    {
+        var title = DraftFor(columnId).Trim();
+        if (title.Length == 0)
+        {
+            return false;
+        }
+        _drafts[columnId] = string.Empty;
+
+        var response = await _core.CallAsync(
+            Commands.AddBoardCard(_listId, columnId, title), cancellationToken);
+        if (!response.Ok)
+        {
+            // Offline is not a failure: the card is in the Outbox and the board already shows it.
+            ErrorMessage = response.IsStillPending ? null : response.Error?.Message;
+        }
+        await RefreshAsync(cancellationToken);
+        return response.Ok;
+    }
+
     /// <summary>
     /// Draw the columns from the last board that arrived, with the slot after the expanded card.
     /// </summary>
@@ -170,7 +223,7 @@ public sealed class BoardViewModel : ObservableObject
         Columns.Clear();
         foreach (var column in columns)
         {
-            Columns.Add(new BoardColumnView(column, ExpandedTaskId));
+            Columns.Add(new BoardColumnView(column, ExpandedTaskId, this));
         }
         Raise(nameof(HasBoard));
     }
@@ -183,10 +236,12 @@ public sealed class BoardViewModel : ObservableObject
 public sealed class BoardColumnView
 {
     private readonly BoardColumn _column;
+    private readonly BoardViewModel _board;
 
-    public BoardColumnView(BoardColumn column, string? expandedTaskId)
+    public BoardColumnView(BoardColumn column, string? expandedTaskId, BoardViewModel board)
     {
         _column = column;
+        _board = board;
         var items = new List<object>(column.Cards.Count + 1);
         foreach (var card in column.Cards)
         {
@@ -227,6 +282,23 @@ public sealed class BoardColumnView
     /// detail, as the web's column does.
     /// </summary>
     public bool HoldsExpandedCard { get; }
+
+    /// <summary>
+    /// What is half-typed in this column's add field (task 95c7a68f).
+    /// </summary>
+    /// <remarks>
+    /// Reads and writes through to the board, which is what survives a reload: a column view is
+    /// rebuilt on every load, so a draft held in this object would be lost whenever another
+    /// column's create refreshed the board.
+    /// </remarks>
+    public string Draft
+    {
+        get => _board.DraftFor(Id);
+        set => _board.SetDraft(Id, value);
+    }
+
+    /// <summary>Add whatever is in this column's field as a card in this column.</summary>
+    public Task<bool> AddCardAsync() => _board.AddCardAsync(Id);
 }
 
 /// <summary>
