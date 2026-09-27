@@ -15,7 +15,10 @@
       2. Finds or creates a self-signed code-signing certificate with that Subject in the current
          user's personal store (Cert:\CurrentUser\My). It never leaves the store as a .pfx.
       3. Trusts its PUBLIC half for sideloading by importing it into the Trusted People store of
-         -TrustScope (CurrentUser by default, no elevation needed).
+         -TrustScope. CurrentUser is the default and needs no elevation, but it CANNOT be used with
+         -Install: the AppX deployment service does not read a user's store, so the package signs
+         and then fails with 0x800B0109. -Install therefore requires -TrustScope LocalMachine and
+         an elevated shell, and says so before it signs anything.
       4. Copies the per-architecture packages into dist/signed-local/, signs each, bundles them
          again (a signature changes the bytes, so the unsigned bundle cannot be reused), and signs
          the bundle. Everything at the top of dist/ stays unsigned, exactly as the Store wants it.
@@ -73,6 +76,33 @@ param(
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
+
+# --- 0. installing needs MACHINE trust, and finding that out later is expensive ----------------
+# The certificate is validated by the AppX deployment service, which is a system service and does
+# not read a user's certificate store. So a package signed with a self-signed certificate that is
+# trusted only in Cert:\CurrentUser\TrustedPeople signs perfectly and then fails to install with
+# 0x800B0109, "the root certificate of the signature ... must be trusted" - which reads like a
+# signing problem and is not one. Microsoft's own sideloading instructions say Local Machine ->
+# Trusted People for this reason.
+#
+# Found on the first real run of this script, 2026-09-27: it signed both architectures and the
+# bundle, then failed at Add-AppxPackage. Checked BEFORE any of that work, because the remedy is a
+# different shell and nobody should discover it two minutes in.
+if ($Install -and $TrustScope -eq 'CurrentUser') {
+    throw @"
+-Install needs -TrustScope LocalMachine.
+
+Windows validates an MSIX signature with the AppX deployment service, which does not read
+Cert:\CurrentUser\TrustedPeople - so signing succeeds and installing fails with 0x800B0109.
+
+Re-run from an ELEVATED shell:
+
+    .\scripts\sign-local.ps1 -TrustScope LocalMachine -Install -Launch
+
+That trusts the same certificate machine-wide, which is a change to this machine rather than to
+this repository; -RemoveCertificate takes it out of both stores again.
+"@
+}
 
 # The name a person sees in certmgr, so nobody has to guess what this certificate is for.
 $friendlyName = 'Astrid local test signing (self-signed, not for distribution)'
