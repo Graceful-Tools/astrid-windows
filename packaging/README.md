@@ -21,12 +21,22 @@ bundle can be installed and started here, which is the only way to know that it 
 
 ```powershell
 powershell -File scripts/package.ps1 -Version 0.1.0.0
-powershell -File scripts/sign-local.ps1 -Version 0.1.0.0 -Install -Launch
+# from an ELEVATED shell - see below for why -Install needs LocalMachine
+powershell -File scripts/sign-local.ps1 -Version 0.1.0.0 -TrustScope LocalMachine -Install -Launch
 ```
 
+**`-Install` needs `-TrustScope LocalMachine`, and therefore an elevated shell.** Windows validates
+an MSIX signature with the AppX deployment service, which is a system service and does not read a
+user's certificate store. A certificate trusted only in `Cert:\CurrentUser\TrustedPeople` signs the
+package perfectly and then fails to install with `0x800B0109`, "the root certificate of the
+signature ... must be trusted" - which reads like a signing fault and is not one. Microsoft's
+sideloading instructions say Local Machine -> Trusted People for the same reason. The script refuses
+the impossible combination up front rather than signing first and failing two minutes later; the
+`CurrentUser` default is still right when you only want to sign.
+
 It creates the certificate in the current user's personal store with the manifest's Publisher as
-its Subject (MSIX refuses any mismatch), trusts the public half in the current user's Trusted
-People store, and writes the signed packages to `dist/signed-local/` — the unsigned outputs at the
+its Subject (MSIX refuses any mismatch), trusts the public half in the Trusted People store of
+whichever `-TrustScope` was asked for, and writes the signed packages to `dist/signed-local/` — the unsigned outputs at the
 top of `dist/` are what the Store takes and are never touched. With `-Install` it installs the
 bundle and reports which architecture Windows chose; with `-Launch` it starts the app from its
 packaged identity and checks the process is the packaged one.
