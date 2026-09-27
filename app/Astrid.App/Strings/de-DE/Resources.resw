@@ -1632,6 +1632,33 @@
   <data name="board_state_row.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Board-Status</value>
   </data>
+  <data name="waiting_on_row.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Wartet auf</value>
+  </data>
+  <data name="waiting_on_hidden.Text" xml:space="preserve">
+    <value>Eine Aufgabe, die Sie nicht sehen können</value>
+  </data>
+  <data name="waiting_on_remove.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Nicht mehr auf diese Aufgabe warten</value>
+  </data>
+  <data name="waiting_on_empty.Text" xml:space="preserve">
+    <value>Wartet auf keine Aufgabe</value>
+  </data>
+  <data name="waiting_on_add.Content" xml:space="preserve">
+    <value>Auf eine Aufgabe warten…</value>
+  </data>
+  <data name="waiting_on_add.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Auf eine Aufgabe warten</value>
+  </data>
+  <data name="waiting_on_search.PlaceholderText" xml:space="preserve">
+    <value>Aufgaben suchen...</value>
+  </data>
+  <data name="waiting_on_search.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Aufgaben suchen</value>
+  </data>
+  <data name="waiting_on_no_results.Text" xml:space="preserve">
+    <value>Keine passenden Aufgaben</value>
+  </data>
   <data name="settings_connections" xml:space="preserve">
     <value>Verbindungen</value>
   </data>

@@ -194,6 +194,48 @@ public sealed record StatusChoice
     [JsonPropertyName("isCurrent")] public bool IsCurrent { get; init; }
 }
 
+/// <summary>One task another task is waiting on, as a chip or a picker row (task 69a840a4).</summary>
+/// <remarks>
+/// The same shape serves the WAITING ON row and the "Wait on a task…" picker, because the core
+/// answers both with <c>astrid_core::services::dependency::Blocker</c>. A blocker the reader may
+/// not see arrives as <c>{ id, hidden: true }</c> with no title and no identifier — and it still
+/// blocks, so it is counted and drawn rather than filtered out.
+/// </remarks>
+public sealed record Blocker
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("title")] public string? Title { get; init; }
+
+    /// <summary>The short id, <c>AWTD-1007</c>, where the task has one.</summary>
+    [JsonPropertyName("identifier")] public string? Identifier { get; init; }
+
+    [JsonPropertyName("completed")] public bool Completed { get; init; }
+
+    /// <summary>A task the reader cannot see: neither title nor id is drawn for one.</summary>
+    [JsonPropertyName("hidden")] public bool Hidden { get; init; }
+
+    /// <summary>
+    /// What the chip says: the short id before the title where there is one. Composed here rather
+    /// than in the XAML because it is two data fields joined, not a sentence — the one piece of
+    /// copy this row needs, "a task you cannot see", is a <c>x:Uid</c>'d element instead.
+    /// </summary>
+    [JsonIgnore]
+    public string Label => Identifier is { Length: > 0 } identifier
+        ? $"{identifier} {Title}".TrimEnd()
+        : Title ?? string.Empty;
+
+    /// <summary>The visible half of the chip is drawn only for a blocker the reader can see.</summary>
+    [JsonIgnore] public bool IsVisible => !Hidden;
+
+    /// <summary>
+    /// Whether this chip offers its ✕. Not the core's wire field but the row's <c>canEdit</c>
+    /// copied onto each chip: a <c>DataTemplate</c> cannot <c>x:Bind</c> past its own item, and
+    /// one flag per chip is cheaper than a converter that reaches for the page's data context.
+    /// </summary>
+    [JsonIgnore] public bool CanEdit { get; init; }
+}
+
 /// <summary>One list as the detail's list editor draws it (task d3f3b111).</summary>
 public sealed record ListPick
 {

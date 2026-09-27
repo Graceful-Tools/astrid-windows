@@ -569,6 +569,53 @@ public sealed partial class TaskDetailPane : UserControl
         await Shell.Detail.ChooseAssigneeAsync(userId);
     }
 
+    // ── What a task is waiting on (task 69a840a4) ───────────────────────────────────────────
+
+    /// <summary>
+    /// A chip opens the task it names — the same move as any other reference to a task, so a
+    /// blocker and a mention of one cannot behave differently. A hidden chip has no button at
+    /// all, so nothing here has to decide whether the reader may follow it.
+    /// </summary>
+    private async void OnBlockerOpened(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is string blockerId)
+        {
+            await Shell.OpenTaskAsync(blockerId);
+        }
+    }
+
+    private async void OnBlockerRemoved(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is string blockerId)
+        {
+            await Shell.Detail.RemoveBlockerAsync(blockerId);
+        }
+    }
+
+    private async void OnWaitingOnPickerOpened(object sender, RoutedEventArgs args) =>
+        await Shell.Detail.LoadBlockerCandidatesAsync(string.Empty);
+
+    private async void OnBlockerSearchChanged(object sender, TextChangedEventArgs args)
+    {
+        if (sender is TextBox box && box.Text != Shell.Detail.BlockerSearch)
+        {
+            await Shell.Detail.LoadBlockerCandidatesAsync(box.Text);
+        }
+    }
+
+    /// <summary>
+    /// The picker stays open after a pick, because a task held by three things is three clicks
+    /// and not three openings. The view model re-asks what is offerable, so the one just chosen
+    /// drops out of the list on its own.
+    /// </summary>
+    private async void OnBlockerChosen(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is string blockerId)
+        {
+            await Shell.Detail.AddBlockerAsync(blockerId);
+        }
+    }
+
     // ── The lists a task is in (task d3f3b111) ──────────────────────────────────────────────
 
     private async void OnListsFlyoutOpening(object sender, object args)

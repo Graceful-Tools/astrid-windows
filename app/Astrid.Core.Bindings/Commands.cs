@@ -52,6 +52,41 @@ public static class Commands
     public static object Comments(string taskId) => new WithTaskId("comments", taskId);
 
     /// <summary>
+    /// Refresh what one task is waiting on, from the server (task 69a840a4).
+    /// </summary>
+    /// <remarks>
+    /// <see cref="TaskDetail"/> already answers with whatever is cached, so the WAITING ON row
+    /// draws before this returns and still draws with no network at all. This is the round trip
+    /// that corrects it — and the only thing that can tell "a task you cannot see" from "a task
+    /// this cache has not got yet", since the ids on the task cannot say which.
+    /// </remarks>
+    public static object TaskBlockers(string taskId) => new WithTaskId("taskBlockers", taskId);
+
+    /// <summary>Make one task wait on another (task 69a840a4).</summary>
+    /// <remarks>
+    /// Optimistic and journalled, like every other write. The server moves statuses off the back
+    /// of it — a Ready task with a new blocker becomes Waiting — and those arrive as ordinary task
+    /// updates. No client writes <c>statusRole</c> for this.
+    /// </remarks>
+    public static object AddTaskBlocker(string taskId, string blockingTaskId) =>
+        new BlockerRequest("addTaskBlocker", taskId, blockingTaskId);
+
+    /// <summary>Stop one task waiting on another (task 69a840a4).</summary>
+    public static object RemoveTaskBlocker(string taskId, string blockingTaskId) =>
+        new BlockerRequest("removeTaskBlocker", taskId, blockingTaskId);
+
+    /// <summary>
+    /// What the "Wait on a task…" picker may offer for a query (task 69a840a4).
+    /// </summary>
+    /// <remarks>
+    /// The core leaves out the task itself, everything it already waits on, and everything that
+    /// waits on it, and ranks the task's own board first. Two characters is the threshold; below
+    /// it the answer is empty rather than everything.
+    /// </remarks>
+    public static object TaskBlockerCandidates(string taskId, string query, int? limit = null) =>
+        new BlockerSearchRequest("taskBlockerCandidates", taskId, query, limit);
+
+    /// <summary>
     /// The quick date and time choices for a task, with the instant each one means.
     /// </summary>
     /// <remarks>
@@ -1096,6 +1131,17 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("displayMode")] string? DisplayMode);
+
+    private sealed record BlockerRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("taskId")] string TaskId,
+        [property: JsonPropertyName("blockingTaskId")] string BlockingTaskId);
+
+    private sealed record BlockerSearchRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("taskId")] string TaskId,
+        [property: JsonPropertyName("query")] string Query,
+        [property: JsonPropertyName("limit")] int? Limit);
 
     private sealed record ShortcutRequest(
         [property: JsonPropertyName("kind")] string Kind,
