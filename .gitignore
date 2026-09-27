@@ -40,3 +40,9 @@ Thumbs.db
 *.pem
 *.key
 *.snk
+
+# Gate transcripts piped by hand — `npm run predeploy > predeploy.log`. Nothing in
+# the repo writes one, and an untracked one stops the fixall loop dead: every tick
+# skips while the working tree is dirty. (scripts/fixall-loop.ps1 keeps its own log
+# under %LOCALAPPDATA%\Astrid\logs, outside the repo.)
+*.log
