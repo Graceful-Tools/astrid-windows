@@ -1134,7 +1134,19 @@ public sealed record MessageRow
 {
     [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
 
+    /// <summary>The text as written. A reply preview, an accessibility name or a copy wants this;
+    /// the bubble draws <see cref="Blocks"/>.</summary>
     [JsonPropertyName("content")] public string Content { get; init; } = string.Empty;
+
+    /// <summary>
+    /// What the message says, drawn: mentions as pills, links as links, and a task id as a link to
+    /// the task (task 5f3453e2).
+    /// </summary>
+    /// <remarks>
+    /// The core decides all of it — which ids link is a rule about what the reader can see, not a
+    /// pattern the shell matches. Web has always drawn chat this way.
+    /// </remarks>
+    [JsonPropertyName("blocks")] public IReadOnlyList<MarkdownBlock> Blocks { get; init; } = [];
 
     /// <summary>Null for a message the server wrote rather than a person.</summary>
     [JsonPropertyName("authorName")] public string? AuthorName { get; init; }

@@ -77,9 +77,17 @@
                                                    FontSize="11"
                                                    FontWeight="SemiBold"
                                                    Foreground="{ThemeResource AstridTextMuted}" />
-                                        <TextBlock Text="{x:Bind Content}"
-                                                   TextWrapping="Wrap"
-                                                   Foreground="{ThemeResource AstridTextPrimary}" />
+                                        <!--
+                                            Drawn through the same markdown a comment and a
+                                            description get (task 5f3453e2), so a mention is a
+                                            pill, a link is a link and a task id is a link to that
+                                            task. This was a TextBlock of the raw text, which is
+                                            why `**bold**` arrived with its asterisks and an id
+                                            could only be retyped. The system line above stays
+                                            plain: nobody writes it.
+                                        -->
+                                        <local:MarkdownView Blocks="{x:Bind Blocks}"
+                                                            Foreground="{ThemeResource AstridTextPrimary}" />
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
