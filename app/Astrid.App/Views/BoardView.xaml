@@ -46,6 +46,16 @@
                     Click="OnCardOpened"
                     RightTapped="OnCardRightTapped">
                 <StackPanel Spacing="3">
+                    <!--
+                        The key, muted, above the title (task 99da12e0). This is the one surface
+                        where it earns its place: on a board the key is shared context, and a card
+                        is where somebody reads an id out to quote it. `ShowsIdentifier` is the
+                        core's answer, so a card and a list row cannot disagree about one task.
+                    -->
+                    <TextBlock Text="{x:Bind Identifier}"
+                               FontSize="11"
+                               Foreground="{ThemeResource AstridTextMuted}"
+                               Visibility="{x:Bind ShowsIdentifier, Converter={StaticResource Visible}}" />
                     <TextBlock Text="{x:Bind Title}"
                                TextWrapping="Wrap"
                                Foreground="{ThemeResource AstridTextPrimary}" />

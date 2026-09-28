@@ -169,6 +169,18 @@ public sealed partial class TaskRowsView : UserControl
         }
     }
 
+    /// <summary>
+    /// "Copy task id" on a row's menu (task 99da12e0): the key, on its own, ready to paste into a
+    /// commit message or a comment.
+    /// </summary>
+    private void OnCopyRowIdentifier(object sender, RoutedEventArgs args)
+    {
+        if (sender is FrameworkElement { Tag: string identifier })
+        {
+            ClipboardText.Copy(identifier);
+        }
+    }
+
     private async void OnDeleteRow(object sender, RoutedEventArgs args)
     {
         if (sender is FrameworkElement { Tag: string taskId })

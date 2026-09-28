@@ -8,12 +8,16 @@ public sealed class TaskDetailViewModelTests
 {
     private static object Detail(string title = "Plan the trip", int priority = 3,
         bool completed = false, string[]? subtasks = null, string[]? comments = null,
-        bool isCanceled = false, object? boardState = null, object? blockers = null) => new
+        bool isCanceled = false, object? boardState = null, object? blockers = null,
+        string? identifier = null, bool showsIdentifier = false,
+        bool offersCopyIdentifier = false) => new
         {
-            task = new { id = "t1", title, description = "two weeks", priority, completed },
+            task = new { id = "t1", title, description = "two weeks", priority, completed, identifier },
             isCanceled,
             boardState,
             blockers,
+            showsIdentifier,
+            offersCopyIdentifier,
             link = "https://astrid.cc/tasks/t1",
             fieldOrder = new[] { "assignee", "when", "priority", "lists" },
             priorityGlyph = "!!!",
@@ -372,6 +376,48 @@ public sealed class TaskDetailViewModelTests
         // Nulls are not written, so a reopen carries no reason at all; the core reads absence as
         // null, which is what clears it.
         Assert.DoesNotContain("closedReason", sent[1]);
+    }
+
+    /// <summary>
+    /// The identifier row (task 99da12e0): drawn for a task whose key means something, and the two
+    /// answers come apart on a task that has left every board — it stops being drawn and goes on
+    /// being copyable, because the id still resolves in links and search.
+    /// </summary>
+    /// <remarks>
+    /// Both flags are read from the core, never derived from the id being present. That is the whole
+    /// fix: the shell deciding for itself is what put <c>AWTD-1007</c> beside every title on every
+    /// personal list.
+    /// </remarks>
+    [Fact]
+    public async Task The_id_row_follows_the_core_and_copying_outlives_showing_task_99da12e0()
+    {
+        var onABoard = new FakeCore().AnswerOk("taskDetail",
+            Detail(identifier: "AWTD-1007", showsIdentifier: true, offersCopyIdentifier: true));
+        var view = new TaskDetailViewModel(onABoard);
+        await view.OpenAsync("t1");
+
+        Assert.Equal("AWTD-1007", view.Identifier);
+        Assert.True(view.ShowsIdentifier);
+        Assert.True(view.OffersCopyIdentifier);
+
+        // Moved off every board: the key no longer describes where the task lives, so the row goes —
+        // but the menu still hands the id over.
+        var movedOut = new FakeCore().AnswerOk("taskDetail",
+            Detail(identifier: "AWTD-1007", showsIdentifier: false, offersCopyIdentifier: true));
+        var moved = new TaskDetailViewModel(movedOut);
+        await moved.OpenAsync("t1");
+
+        Assert.Equal("AWTD-1007", moved.Identifier);
+        Assert.False(moved.ShowsIdentifier);
+        Assert.True(moved.OffersCopyIdentifier);
+
+        // An ordinary solo task has neither.
+        var solo = new TaskDetailViewModel(new FakeCore().AnswerOk("taskDetail", Detail()));
+        await solo.OpenAsync("t1");
+
+        Assert.Null(solo.Identifier);
+        Assert.False(solo.ShowsIdentifier);
+        Assert.False(solo.OffersCopyIdentifier);
     }
 
     /// <summary>

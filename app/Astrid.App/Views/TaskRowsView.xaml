@@ -259,13 +259,19 @@
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <!-- AST-142, small, as the web draws it. Only when the task has one. -->
+                                <!--
+                                    AST-142, muted, as the web draws it — and only where the key
+                                    means something, which on a list row is never (task 99da12e0).
+                                    `ShowsIdentifier` is the core's answer, not `Identifier is not
+                                    null`: the id arrives on every row, because the menu below
+                                    copies it from the rows that hide it.
+                                -->
                                 <TextBlock Grid.Column="0"
                                            Text="{x:Bind Identifier}"
                                            Style="{ThemeResource CaptionTextBlockStyle}"
                                            VerticalAlignment="Center"
                                            Foreground="{ThemeResource AstridTextMuted}"
-                                           Visibility="{x:Bind HasIdentifier, Converter={StaticResource Visible}}" />
+                                           Visibility="{x:Bind ShowsIdentifier, Converter={StaticResource Visible}}" />
                                 <TextBlock Grid.Column="1"
                                            Text="{x:Bind Title}"
                                            TextWrapping="Wrap"
@@ -325,6 +331,20 @@
                         -->
                         <Grid.ContextFlyout>
                             <MenuFlyout>
+                                <!--
+                                    Where the id stays reachable once the row stops shouting it
+                                    (task 99da12e0). Offered whenever the task HAS an id, which
+                                    outlives the drawing of one: a task moved off every board keeps
+                                    a key that still resolves in links and search.
+                                -->
+                                <MenuFlyoutItem x:Uid="copy_task_id" Text="Copy task id"
+                                                Tag="{x:Bind Identifier}"
+                                                Click="OnCopyRowIdentifier"
+                                                Visibility="{x:Bind OffersCopyIdentifier, Converter={StaticResource Visible}}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE8C8;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
                                 <MenuFlyoutItem x:Uid="delete" Text="Delete"
                                                 Tag="{x:Bind Id}"
                                                 Click="OnDeleteRow" />

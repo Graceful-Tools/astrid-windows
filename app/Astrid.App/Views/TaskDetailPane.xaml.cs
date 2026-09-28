@@ -169,6 +169,7 @@ public sealed partial class TaskDetailPane : UserControl
     private async void OnTaskActionsOpening(object sender, object args)
     {
         CopyLinkItem.Text = Strings.Get("detail.copy_link");
+        CopyTaskIdItem.Text = Strings.Get("detail.copy_task_id");
         ShareItem.Text = Strings.Get("detail.share");
         StatusSubMenu.Text = Strings.Get("detail.status");
         WontDoItem.Text = Strings.Get(Shell.Detail.WontDoLabelKey);
@@ -219,6 +220,12 @@ public sealed partial class TaskDetailPane : UserControl
 
     private void OnCopyTaskLink(object sender, RoutedEventArgs args) =>
         ClipboardText.Copy(Shell.Detail.Link);
+
+    /// <summary>
+    /// "Copy task id" (task 99da12e0): the bare key, for a commit message or a comment.
+    /// </summary>
+    private void OnCopyTaskIdentifier(object sender, RoutedEventArgs args) =>
+        ClipboardText.Copy(Shell.Detail.Identifier);
 
     // ── Copy ─────────────────────────────────────────────────────────────────────────────────
 

@@ -54,6 +54,9 @@
   <data name="detail_copy_link" xml:space="preserve">
     <value>Link kopieren</value>
   </data>
+  <data name="detail_copy_task_id" xml:space="preserve">
+    <value>Aufgaben-ID kopieren</value>
+  </data>
   <data name="detail_share" xml:space="preserve">
     <value>Teilen</value>
   </data>
@@ -1640,6 +1643,12 @@
   </data>
   <data name="waiting_on_row.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Wartet auf</value>
+  </data>
+  <data name="task_id_row.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Aufgaben-ID</value>
+  </data>
+  <data name="copy_task_id.Text" xml:space="preserve">
+    <value>Aufgaben-ID kopieren</value>
   </data>
   <data name="waiting_on_hidden.Text" xml:space="preserve">
     <value>Eine Aufgabe, die Sie nicht sehen können</value>

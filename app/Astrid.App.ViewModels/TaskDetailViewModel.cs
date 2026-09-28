@@ -42,6 +42,9 @@ public sealed class TaskDetailViewModel : ObservableObject
     private TimerState _timer = new();
     private bool _isCanceled;
     private bool _isCopyOnly;
+    private string? _identifier;
+    private bool _showsIdentifier;
+    private bool _offersCopyIdentifier;
     private bool _showsBoardState;
     private bool _showsWaitingOn;
     private bool _canEditBlockers;
@@ -407,6 +410,38 @@ public sealed class TaskDetailViewModel : ObservableObject
     {
         get => _isCopyOnly;
         private set => Set(ref _isCopyOnly, value);
+    }
+
+    /// <summary><c>AWTD-1007</c>, when the task has one. What "Copy task id" copies.</summary>
+    public string? Identifier
+    {
+        get => _identifier;
+        private set => Set(ref _identifier, value);
+    }
+
+    /// <summary>
+    /// Whether the identifier gets its own row, beside the lists (task 99da12e0).
+    /// </summary>
+    /// <remarks>
+    /// The core's answer, not a test on <see cref="Identifier"/>: an id is shown where its key means
+    /// something — on a task that is on a board — and a task moved off every board keeps its id
+    /// without displaying it. <c>astrid_core::rows::identifier</c>, locked by the shared fixture
+    /// <c>task-identifiers.json</c>.
+    /// </remarks>
+    public bool ShowsIdentifier
+    {
+        get => _showsIdentifier;
+        private set => Set(ref _showsIdentifier, value);
+    }
+
+    /// <summary>
+    /// Whether the menu offers "Copy task id" — true whenever there is an id, including on a task
+    /// that no longer draws one, because the id goes on resolving in links and search.
+    /// </summary>
+    public bool OffersCopyIdentifier
+    {
+        get => _offersCopyIdentifier;
+        private set => Set(ref _offersCopyIdentifier, value);
     }
 
     /// <summary>Copy the open task to the reader's own tasks. See <c>TaskListViewModel.CopyAsync</c>.</summary>
@@ -1798,7 +1833,19 @@ public sealed class TaskDetailViewModel : ObservableObject
             DescriptionBlocks = Read<MarkdownBlock>(value, "descriptionBlocks");
             Priority = task.TryGetProperty("priority", out var priority) ? priority.GetInt32() : 0;
             Completed = task.TryGetProperty("completed", out var completed) && completed.GetBoolean();
+            Identifier = task.TryGetProperty("identifier", out var identifier)
+                         && identifier.ValueKind == JsonValueKind.String
+                ? identifier.GetString()
+                : null;
         }
+
+        // Whether the id gets a row, and whether the menu offers to copy it. Two answers rather than
+        // one because they part company on a task that has left every board: it stops being drawn
+        // and goes on being copyable (task 99da12e0).
+        ShowsIdentifier = value.TryGetProperty("showsIdentifier", out var showsIdentifier)
+                          && showsIdentifier.ValueKind == JsonValueKind.True;
+        OffersCopyIdentifier = value.TryGetProperty("offersCopyIdentifier", out var offersCopy)
+                               && offersCopy.ValueKind == JsonValueKind.True;
 
         IsCanceled = value.TryGetProperty("isCanceled", out var canceled)
                      && canceled.ValueKind == JsonValueKind.True;

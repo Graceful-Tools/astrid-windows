@@ -177,6 +177,18 @@
                                         <FontIcon Glyph="&#xE71B;" />
                                     </MenuFlyoutItem.Icon>
                                 </MenuFlyoutItem>
+                                <!--
+                                    Offered whenever the task has an id, including when the row
+                                    above is hidden (task 99da12e0): the key goes on resolving in
+                                    links and search after the task leaves its board, and that is
+                                    exactly when it is hardest to find by other means.
+                                -->
+                                <MenuFlyoutItem x:Name="CopyTaskIdItem" Click="OnCopyTaskIdentifier"
+                                                Visibility="{x:Bind Shell.Detail.OffersCopyIdentifier, Mode=OneWay, Converter={StaticResource Visible}}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE8C8;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
                                 <MenuFlyoutItem x:Name="ShareItem" Click="OnShareTask"
                                                 IsEnabled="{x:Bind Shell.Detail.CanCopyLink, Mode=OneWay}">
                                     <MenuFlyoutItem.Icon>
@@ -631,6 +643,34 @@
                     </Flyout>
                 </Button.Flyout>
             </Button>
+
+            <!--
+                THE TASK ID (task 99da12e0): beside the lists, because the key names the board the
+                task is on — which is what the row above just said. Muted and selectable rather
+                than a button: this is where the id becomes readable once the rows stop printing
+                it, and the menu's "Copy task id" is the thing that hands it over. Drawn only when
+                the core says the key means something here; a task moved off every board keeps its
+                id without displaying it.
+            -->
+            <Grid x:Uid="task_id_row" ColumnSpacing="8" Padding="0,6" MinHeight="36"
+                  AutomationProperties.Name="Task id"
+                  Visibility="{x:Bind Shell.Detail.ShowsIdentifier, Mode=OneWay, Converter={StaticResource Visible}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="32" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="&#xE8C8;"
+                           FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                           FontSize="15"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="{ThemeResource AstridTextMuted}" />
+                <TextBlock Grid.Column="1"
+                           Text="{x:Bind Shell.Detail.Identifier, Mode=OneWay}"
+                           IsTextSelectionEnabled="True"
+                           VerticalAlignment="Center"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource AstridTextMuted}" />
+            </Grid>
 
             <!--
                 BOARD STATE (task 5221e43f): the task's board's columns as chips, Done left out,

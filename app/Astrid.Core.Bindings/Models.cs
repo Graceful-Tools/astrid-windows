@@ -17,10 +17,26 @@ public sealed record TaskRow
 
     [JsonPropertyName("title")] public string Title { get; init; } = string.Empty;
 
-    /// <summary><c>AST-142</c>, when the task has one; drawn small beside the title.</summary>
+    /// <summary><c>AST-142</c>, when the task has one. Present whenever the task has an id, which is
+    /// not the same as being drawn — see <see cref="ShowsIdentifier"/>.</summary>
     [JsonPropertyName("identifier")] public string? Identifier { get; init; }
 
-    public bool HasIdentifier => !string.IsNullOrEmpty(Identifier);
+    /// <summary>
+    /// Whether to draw the identifier on this row. Board cards do, list rows never.
+    /// </summary>
+    /// <remarks>
+    /// Read, never computed. "Does this id mean anything where it is being drawn?" is the shared
+    /// show-rule in <c>astrid_core::rows::identifier</c>, and a shell that answered it from
+    /// <c>Identifier is not null</c> is how every list came to print a key naming a board the reader
+    /// has never seen.
+    /// </remarks>
+    [JsonPropertyName("showsIdentifier")] public bool ShowsIdentifier { get; init; }
+
+    /// <summary>
+    /// Whether the row's menu offers "Copy task id" — true whenever there is an id, including on the
+    /// rows that do not draw it, because the id goes on resolving in links and search.
+    /// </summary>
+    [JsonPropertyName("offersCopyIdentifier")] public bool OffersCopyIdentifier { get; init; }
 
     [JsonPropertyName("completed")] public bool Completed { get; init; }
 
