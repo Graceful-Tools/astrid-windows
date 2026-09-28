@@ -100,6 +100,29 @@ public sealed partial class TaskRowsView : UserControl
 
     private async void OnQuickAdd(object sender, RoutedEventArgs args) => await AddTypedTask();
 
+    /// <summary>
+    /// A priority chosen for the task about to be made (task 8aa5732c). The view model asks the
+    /// core what that pick produces; nothing about the three states is decided here.
+    /// </summary>
+    private async void OnQuickAddPriorityPicked(object sender, RoutedEventArgs args)
+    {
+        QuickAddSettingsFlyout.Hide();
+        if (sender is FrameworkElement { Tag: string tag } && int.TryParse(tag, out var priority))
+        {
+            await Shell.Tasks.PickQuickAddPriorityAsync(priority);
+        }
+    }
+
+    /// <summary>Who the task about to be made goes to. A null tag is the unassigned row.</summary>
+    private async void OnQuickAddAssigneeChosen(object sender, RoutedEventArgs args)
+    {
+        QuickAddSettingsFlyout.Hide();
+        if (sender is FrameworkElement element)
+        {
+            await Shell.Tasks.PickQuickAddAssigneeAsync(element.Tag as string);
+        }
+    }
+
     private async void OnQuickAddKeyDown(object sender, KeyRoutedEventArgs args)
     {
         if (args.Key != VirtualKey.Enter)

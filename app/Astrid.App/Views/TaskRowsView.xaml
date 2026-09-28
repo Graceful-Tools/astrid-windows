@@ -40,6 +40,7 @@
                 BorderBrush="{ThemeResource AstridBorder}">
             <Grid ColumnSpacing="10">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
@@ -47,15 +48,90 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
+                <!--
+                    The quick settings, on the left, as web's `quick-add` draws them (task
+                    8aa5732c): the mark the task about to be made would carry, and a tap to
+                    change its priority and who it goes to.
+
+                    The three states are the row's three states, because they are the same
+                    rule — the core previewed them by making the draft `createTask` would make
+                    and reading it back, so this cannot show one thing and create another.
+                -->
+                <Button x:Uid="quick_add_settings" Grid.Column="0"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="0"
+                        Width="32" Height="32"
+                        VerticalAlignment="Top"
+                        AutomationProperties.Name="Task settings">
+                    <Grid Width="32" Height="32">
+                        <Image Source="{x:Bind Shell.Tasks.QuickAddCheckboxAsset, Mode=OneWay}"
+                               Width="32" Height="32"
+                               Visibility="{x:Bind Shell.Tasks.QuickAddIsCheckbox, Mode=OneWay, Converter={StaticResource Visible}}" />
+                        <Border Width="24" Height="24" CornerRadius="6"
+                                Background="{x:Bind Shell.Tasks.QuickAddPriority, Mode=OneWay, Converter={StaticResource PriorityBrush}}"
+                                Visibility="{x:Bind Shell.Tasks.QuickAddIsSquare, Mode=OneWay, Converter={StaticResource Visible}}">
+                            <TextBlock Text="{x:Bind Shell.Tasks.QuickAddMark, Mode=OneWay}"
+                                       FontSize="12" FontWeight="SemiBold"
+                                       Foreground="White"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </Grid>
+                    <Button.Flyout>
+                        <!--
+                            Named so a pick can dismiss it (task a7748274): a Button inside a
+                            Flyout does not close it the way a MenuFlyoutItem closes a MenuFlyout.
+                        -->
+                        <Flyout x:Name="QuickAddSettingsFlyout">
+                            <StackPanel Spacing="10" MinWidth="220">
+                                <StackPanel x:Uid="quick_add_priority" Orientation="Horizontal" Spacing="6"
+                                            AutomationProperties.Name="Priority">
+                                    <Button x:Uid="quick_add_priority_none" Tag="0" Content="&#x25CB;"
+                                            Style="{StaticResource PriorityChoice}"
+                                            AutomationProperties.Name="No priority"
+                                            Click="OnQuickAddPriorityPicked" />
+                                    <Button x:Uid="quick_add_priority_low" Tag="1" Content="!"
+                                            Style="{StaticResource PriorityChoice}"
+                                            AutomationProperties.Name="Low"
+                                            Click="OnQuickAddPriorityPicked" />
+                                    <Button x:Uid="quick_add_priority_medium" Tag="2" Content="!!"
+                                            Style="{StaticResource PriorityChoice}"
+                                            AutomationProperties.Name="Medium"
+                                            Click="OnQuickAddPriorityPicked" />
+                                    <Button x:Uid="quick_add_priority_high" Tag="3" Content="!!!"
+                                            Style="{StaticResource PriorityChoice}"
+                                            AutomationProperties.Name="High"
+                                            Click="OnQuickAddPriorityPicked" />
+                                </StackPanel>
+                                <ItemsControl ItemsSource="{x:Bind Shell.Tasks.QuickAddAssignees, Mode=OneWay}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="bindings:AssigneeOption">
+                                            <Button HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Left"
+                                                    Tag="{x:Bind UserId}"
+                                                    Click="OnQuickAddAssigneeChosen">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <TextBlock Text="{x:Bind Glyph}"
+                                                               Width="24" TextAlignment="Center" />
+                                                    <TextBlock Text="{x:Bind TitleKey, Converter={StaticResource PickTitle}}" />
+                                                </StackPanel>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
                 <TextBox x:Uid="quick_add_box" x:Name="QuickAddBox"
-                         Grid.Column="0"
+                         Grid.Column="1"
                          PlaceholderText="Add a task"
                          Background="{ThemeResource AstridSurfaceHover}"
                          BorderThickness="0"
                          CornerRadius="8"
                          Padding="12,7"
                          KeyDown="OnQuickAddKeyDown" />
-                <Button x:Uid="add_a_task" Grid.Column="1"
+                <Button x:Uid="add_a_task" Grid.Column="2"
                         Width="36" Height="36"
                         Padding="0"
                         CornerRadius="8"
@@ -70,7 +146,7 @@
                     toast (task 79d4604c). The title is the core's, after any #list tag
                     came out of it.
                 -->
-                <TextBlock x:Uid="added" Grid.Row="1" Grid.ColumnSpan="2" Margin="4,6,0,0" FontSize="12"
+                <TextBlock x:Uid="added" Grid.Row="1" Grid.ColumnSpan="3" Margin="4,6,0,0" FontSize="12"
                            Foreground="{ThemeResource AstridTextSecondary}"
                            AutomationProperties.Name="Added"
                            Visibility="{x:Bind Shell.Tasks.HasCreatedNotice, Mode=OneWay, Converter={StaticResource Visible}}">

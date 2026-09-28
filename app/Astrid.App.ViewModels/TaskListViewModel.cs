@@ -43,6 +43,13 @@ public sealed class TaskListViewModel : ObservableObject
     private bool _isSearching;
     private bool _isFiltered;
     private string? _lastCreatedTitle;
+    private int _quickAddPriority;
+    private string? _quickAddAssigneeId;
+    private LeadingControl _quickAddLeading = new();
+    // What the person picked, as distinct from what the core resolved: only a pick is sent back,
+    // and only a pick goes on the created task.
+    private int? _quickAddPriorityPick;
+    private string? _quickAddAssigneePick;
 
     public TaskListViewModel(IAstridCore core)
     {
@@ -179,10 +186,15 @@ public sealed class TaskListViewModel : ObservableObject
         ListName = listName;
         Rows.Clear();
         Total = 0;
+        // A different list has different defaults, and anything picked for the old one was picked
+        // against those. Asked after the rows, so the list draws without waiting on a decoration.
+        _quickAddPriorityPick = null;
+        _quickAddAssigneePick = null;
         // A new list is a new question, so it gets a new generation. Anything still in flight for
         // the previous one will find its generation stale and drop its answer rather than filling
         // the rows that have just been cleared for this one.
         await LoadWindowAsync(++_generation, cancellationToken);
+        await LoadQuickAddDefaultsAsync(cancellationToken);
     }
 
     /// <summary>
@@ -508,6 +520,136 @@ public sealed class TaskListViewModel : ObservableObject
     /// <summary>Take the notice down; the shell does this a moment after it appears.</summary>
     public void ClearCreatedNotice() => LastCreatedTitle = null;
 
+    // ── Quick add's leading control (task 8aa5732c) ──────────────────────────────────────────
+
+    /// <summary>The rows the quick-add assignee picker offers, as the core listed them.</summary>
+    public ObservableCollection<AssigneeOption> QuickAddAssignees { get; } = [];
+
+    /// <summary>
+    /// What the task quick-add is about to make would look like: the priority, who it would go to,
+    /// and which of the three leading states that produces.
+    /// </summary>
+    /// <remarks>
+    /// Asked of the core, never worked out here. A list with no default assignee makes a task that
+    /// is the reader's, so the control above the box has to draw a checkbox — and a shell that
+    /// decided that for itself would preview one thing and create another (task e2505d10 is that
+    /// bug seen from the row's end). The core answers by making the draft <c>createTask</c> would
+    /// make and reading it back, so the two cannot drift.
+    /// </remarks>
+    public int QuickAddPriority
+    {
+        get => _quickAddPriority;
+        private set
+        {
+            if (Set(ref _quickAddPriority, value))
+            {
+                Raise(nameof(QuickAddCheckboxAsset));
+            }
+        }
+    }
+
+    /// <summary>Who the task would go to, resolved. Null is nobody.</summary>
+    public string? QuickAddAssigneeId
+    {
+        get => _quickAddAssigneeId;
+        private set
+        {
+            if (Set(ref _quickAddAssigneeId, value))
+            {
+                Raise(nameof(QuickAddMark));
+            }
+        }
+    }
+
+    public LeadingControl QuickAddLeading
+    {
+        get => _quickAddLeading;
+        private set
+        {
+            if (Set(ref _quickAddLeading, value))
+            {
+                Raise(nameof(QuickAddIsCheckbox));
+                Raise(nameof(QuickAddIsSquare));
+            }
+        }
+    }
+
+    /// <summary>Yours: the checkbox art the rows use, tinted by the priority.</summary>
+    public bool QuickAddIsCheckbox => QuickAddLeading.Kind == "checkbox";
+
+    /// <summary>Somebody else's, or nobody's: a priority-coloured square with a mark in it.</summary>
+    public bool QuickAddIsSquare => !QuickAddIsCheckbox;
+
+    /// <summary>
+    /// The same PNG a row draws, so the mark above the box and the mark on the row it makes are
+    /// one picture rather than two that resemble each other.
+    /// </summary>
+    public string QuickAddCheckboxAsset
+    {
+        get
+        {
+            var priority = QuickAddPriority is >= 0 and <= 3 ? QuickAddPriority : 0;
+            return $"ms-appx:///Assets/Checkboxes/check_box_{priority}.png";
+        }
+    }
+
+    /// <summary>What goes in the square: their initials, or the unassigned mark for nobody.</summary>
+    public string QuickAddMark => QuickAddAssignees
+        .FirstOrDefault(option => option.UserId == QuickAddAssigneeId)?.Glyph ?? "—";
+
+    /// <summary>
+    /// Ask what quick-add would make, with whatever has been picked so far.
+    /// </summary>
+    /// <remarks>
+    /// Re-asked after every pick rather than adjusted here, because which of the three states a
+    /// pick produces is the same rule that produced the first answer. A failure leaves the last
+    /// answer standing and raises nothing: the box still adds tasks without its preview, and an
+    /// error banner over a decoration would be worse than the missing decoration.
+    /// </remarks>
+    public async Task LoadQuickAddDefaultsAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(
+            Commands.QuickAddDefaults(
+                // A pseudo-list such as My Tasks has no id, and the core falls back to the reader
+                // there rather than to nobody.
+                string.IsNullOrEmpty(ListId) ? null : ListId,
+                _quickAddAssigneePick,
+                _quickAddPriorityPick),
+            cancellationToken);
+        if (!response.Ok || response.Read<QuickAddDefaults>() is not { } defaults)
+        {
+            return;
+        }
+
+        QuickAddPriority = defaults.Priority;
+        QuickAddLeading = defaults.Leading;
+        Replace(QuickAddAssignees, defaults.Options);
+        // After the options, so the mark can be read off them.
+        QuickAddAssigneeId = defaults.AssigneeId;
+        Raise(nameof(QuickAddMark));
+    }
+
+    /// <summary>Choose the priority the next task is born with.</summary>
+    public Task PickQuickAddPriorityAsync(int priority, CancellationToken cancellationToken = default)
+    {
+        _quickAddPriorityPick = priority;
+        return LoadQuickAddDefaultsAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Choose who the next task goes to. <paramref name="userId"/> is null for the unassigned row.
+    /// </summary>
+    /// <remarks>
+    /// Nobody is sent as <c>"unassigned"</c>, not as a null. A null means "nothing chosen", and the
+    /// list's own default would fill it back in — so a null here would make choosing nobody do
+    /// nothing at all in exactly the lists where it matters.
+    /// </remarks>
+    public Task PickQuickAddAssigneeAsync(string? userId, CancellationToken cancellationToken = default)
+    {
+        _quickAddAssigneePick = userId ?? "unassigned";
+        return LoadQuickAddDefaultsAsync(cancellationToken);
+    }
+
     /// <summary>Add a task to this list.</summary>
     public async Task<bool> CreateTaskAsync(string title, CancellationToken cancellationToken = default)
     {
@@ -524,6 +666,13 @@ public sealed class TaskListViewModel : ObservableObject
         // account's smart parsing says (task 6ac2639a).
         var response = await _core
             .CallAsync(Commands.CreateTask(trimmed, listIds, quickAdd: true,
+                // Only what was PICKED, never the resolved preview. Passing the preview back would
+                // be the shell asserting a default it was merely shown, and a list whose default
+                // changed between opening the box and hitting + would be overruled by a stale one.
+                // Unpicked, these are absent and the core applies the list's own defaults —
+                // the same pass that produced the preview (task 8aa5732c).
+                priority: _quickAddPriorityPick,
+                assigneeId: _quickAddAssigneePick,
                 // The reader's language decides which words are dates and priorities.
                 locale: System.Globalization.CultureInfo.CurrentUICulture.Name), cancellationToken);
         if (!Handle(response))
@@ -534,6 +683,12 @@ public sealed class TaskListViewModel : ObservableObject
                            && made.GetString() is { Length: > 0 } named
             ? named
             : trimmed;
+
+        // The next task starts from the list's defaults again, as the web's box does: a priority
+        // chosen for one task is not a mode the box stays in.
+        _quickAddPriorityPick = null;
+        _quickAddAssigneePick = null;
+        await LoadQuickAddDefaultsAsync(cancellationToken);
 
         await RefreshAsync(cancellationToken);
         return true;
@@ -671,6 +826,15 @@ public sealed class TaskListViewModel : ObservableObject
     /// Read a response, and decide what the user should be told.
     /// </summary>
     /// <returns><c>true</c> when the caller should carry on.</returns>
+    private static void Replace<T>(ObservableCollection<T> target, IReadOnlyList<T> source)
+    {
+        target.Clear();
+        foreach (var item in source)
+        {
+            target.Add(item);
+        }
+    }
+
     private bool Handle(AstridResponse response)
     {
         if (response.Ok)

@@ -1098,6 +1098,24 @@
   <data name="quick_add_box.PlaceholderText" xml:space="preserve">
     <value>Aufgabe hinzufügen</value>
   </data>
+  <data name="quick_add_settings.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Aufgabeneinstellungen</value>
+  </data>
+  <data name="quick_add_priority.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Priorität</value>
+  </data>
+  <data name="quick_add_priority_none.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Keine Priorität</value>
+  </data>
+  <data name="quick_add_priority_low.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Niedrig</value>
+  </data>
+  <data name="quick_add_priority_medium.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Mittel</value>
+  </data>
+  <data name="quick_add_priority_high.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Hoch</value>
+  </data>
   <data name="quiet_end_box.Header" xml:space="preserve">
     <value>Bis</value>
   </data>
