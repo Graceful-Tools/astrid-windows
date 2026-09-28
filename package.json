@@ -7,6 +7,7 @@
   "scripts": {
     "predeploy": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/predeploy.ps1",
     "predeploy:quick": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/predeploy.ps1 -Quick",
-    "predeploy:full": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/predeploy.ps1 -Full"
+    "predeploy:full": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/predeploy.ps1 -Full",
+    "predeploy:scripts": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/predeploy.ps1 -ScriptsOnly"
   }
 }

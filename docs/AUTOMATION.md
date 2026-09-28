@@ -58,6 +58,51 @@ Three guards, cheapest first, because the expensive thing is starting a session 
    Waiting task whose date arrived counts this tick. A queue that cannot be read is a reason to
    run and let the agent report, never a reason to go quiet.
 
+### One task per tick, and what happens when a tick dies
+
+A tick takes **one** Ready task. `ASTRID_FIXALL_MAX_TASKS`, which the loop exports as `1`, is the
+shared contract (`astrid-web/docs/FIXALL_WORKFLOW.md` → *One task per scheduled run*): stop after
+that many, push, report, end the run. `RECHECK` / `REVIEW` do not count. An interactive `/fixall`
+leaves it unset and drives the queue to empty.
+
+The cap is a count of **tasks**, not of dollars, because the agent cannot see its own remaining
+spend until it is nearly gone. On 2026-09-27 three runs in a row started a task they could not
+finish — `claude` exits 1 the moment `--max-budget-usd` is hit, wherever it happens to be, and all
+three times that was after the code was written and before it was committed, gated, pushed or
+reported. The watchdog is 75 minutes for the same reason: one task with a ~10-minute `predeploy`
+has to fit inside it.
+
+**A tick that dies no longer wedges the loop.** Guard 2 refuses a dirty tree and a non-`main` HEAD
+— rightly, since it cannot tell a died run's leftovers from your work in progress. The loop can:
+it holds the lock and its child is gone, so on every ending it runs `Save-UnfinishedWork`
+(`scripts/lib/fixall-cleanup.ps1`), which
+
+- commits whatever is uncommitted as `wip: … UNFINISHED, UNVERIFIED`, with `--no-verify` because
+  the work has passed no gate and a hook would only put us back where we started;
+- puts it on the task's own branch — or a fresh `wip/fixall-windows-…` branch if the run dirtied
+  `main` or a detached `HEAD`, so a died run can never commit to `main`;
+- pushes the branch so the work is reviewable, and returns the checkout to `main`;
+- and names the branch in the `RESULT:` line.
+
+It does this for a **clean** task branch too: `95c7a68f` was committed and then died before it
+could push or merge, and sat invisible for eleven ticks. Before any of this, `8aa5732c` cost
+seventeen ticks and 8½ hours.
+
+**So a branch whose tip reads `wip: … UNFINISHED, UNVERIFIED` is a resume point** — check it out
+and continue from it rather than starting over. It is not verified and must never be shipped.
+
+**The loop also reports on the board.** A died run cannot write its own completion comment, so the
+loop comments the failure and the branch on the task the run had taken. It learns which task that
+was from `ASTRID_FIXALL_TASK_FILE`: the loop hands the run a path, and the run writes the id there
+as it takes the task. Not list chat — that needs a board id, and this board's is deliberately
+nowhere in this repo. Not the pre-run queue either, which holds candidates rather than the choice;
+a note on the wrong task is worse than none, so with no task file the loop stays quiet.
+
+> **Not yet wired on the agent side.** `.claude/commands/fixall.md` still has to tell the run to
+> write its task id to `ASTRID_FIXALL_TASK_FILE`. Until that line lands the file is never written
+> and the board comment is simply skipped — the cleanup above, which is the part that unjams the
+> loop, does not depend on it.
+
 **What the local loop needs on the machine:** the astrid-web checkout beside this one with
 `npm ci` run (its `tsx`, its `.env.local`, its OAuth pair), the **astrid-core checkout beside this
 one**, the `claude` CLI on `PATH`, and `.claude/settings.json` — committed here, because a
