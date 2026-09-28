@@ -95,6 +95,7 @@ internal static class Strings
         ["assignee.unassigned"] = "Unassigned",
         ["defaults.task_creator"] = "Task creator",
         ["detail.copy_link"] = "Copy link",
+        ["detail.copy_task_id"] = "Copy task id",
         ["detail.share"] = "Share",
         ["detail.status"] = "Status",
         ["detail.wont_do"] = "Won't do",

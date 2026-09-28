@@ -40,6 +40,48 @@ public sealed class TaskListViewModelTests
     };
 
     /// <summary>
+    /// A list row does not draw the task id, and still offers to copy it (task 99da12e0).
+    /// </summary>
+    /// <remarks>
+    /// Windows drew the id whenever the task had one, so every personal list printed a key naming a
+    /// board the reader has never seen. Which surfaces draw it is
+    /// <c>astrid_core::rows::identifier</c>; the row carries the answer and the markup binds it. The
+    /// id itself still arrives, because "Copy task id" needs it on the rows that hide it.
+    /// </remarks>
+    [Fact]
+    public async Task A_list_row_carries_the_id_without_drawing_it_task_99da12e0()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", new
+            {
+                total = 1,
+                offset = 0,
+                rows = new[]
+                {
+                    new
+                    {
+                        id = "t0", title = "Bake bread", identifier = "AWTD-1007",
+                        showsIdentifier = false, offersCopyIdentifier = true,
+                        completed = false, priority = 0,
+                        due = new { key = "none" }, isOverdue = false,
+                        leading = new { kind = "checkbox" }, action = "complete", depth = 0,
+                        isPending = false, isPrivate = false, isRepeating = false,
+                        hasDescription = false, commentCount = 0, attachmentCount = 0,
+                        subtaskCount = 0, listChips = Array.Empty<object>(),
+                        statusRole = (string?)null,
+                    },
+                },
+            });
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Home");
+
+        var row = Assert.Single(view.Rows);
+        Assert.Equal("AWTD-1007", row.Identifier);
+        Assert.False(row.ShowsIdentifier);
+        Assert.True(row.OffersCopyIdentifier);
+    }
+
+    /// <summary>
     /// A task in a public list the reader cannot edit draws the copy control and copies on the
     /// tap, rather than completing (task f6bc59e8). The core decided; the row only carries it.
     /// </summary>
