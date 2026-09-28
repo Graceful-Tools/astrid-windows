@@ -96,6 +96,12 @@ jobs:
     # can be rehearsed without creating one.
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
+      # This repo at the tag, for the astrid-core pin and the pointer script. Checked out into a
+      # path of its own so it cannot disturb the artifacts downloaded below.
+      - uses: actions/checkout@v4
+        with:
+          path: windows
+
       - uses: actions/download-artifact@v4
         with:
           path: assets
@@ -154,3 +160,59 @@ jobs:
             gh api -X POST "repos/$REPO/git/refs" -f ref=refs/heads/prod -f sha="$SHA" --jq .object.sha
             echo "prod did not exist yet — created at ${SHA:0:7}"
           fi
+
+      # The step above records half of what shipped. This app is built from TWO repositories: the
+      # shell here, and `astrid-core`, which is its own repository and is pinned by revision in
+      # `crates/astrid-ffi/Cargo.toml`. The core's `main` runs ahead of every pin, and a sha sitting
+      # in a Cargo.toml is not a ref anybody can `git log` against — so without this, "which core
+      # went out in 0.1.0" is only answerable by reading an old commit of a manifest.
+      #
+      # With it, both halves read the same way:
+      #
+      #   git log origin/prod..origin/main          (here)   what the next release would ship
+      #   git log origin/windows-prod..origin/main  (core)   what the core has moved on to since
+      #
+      # Spec of record: astrid-web `docs/specs/PROD_POINTERS_FOR_DEPENDENCIES.md`. Task `b34ca8ab`.
+      #
+      # `advance-prod-branch.sh` is astrid-web's, copied verbatim, so "fast-forward or a warned
+      # rollback" stays one implementation rather than two that can drift. Its third argument is a
+      # TAG PREFIX — it appends `-<UTC timestamp>-<sha7>` — so the tags read
+      # `windows-v0.1.0-20260927-3421ad6`: the Astrid version that shipped this core commit, which
+      # is what the tag is for.
+      #
+      # `github.token` is scoped to THIS repository and cannot push to astrid-core, so this needs a
+      # credential of its own. Until that secret exists the step warns and skips: by the time it
+      # runs the release has already published, and failing the job would report a good release as
+      # broken. The warning is on the run, so it cannot rot unnoticed.
+      - name: Move astrid-core's windows-prod to the released pin
+        if: github.event_name == 'push'
+        env:
+          ASTRID_CORE_TOKEN: ${{ secrets.ASTRID_CORE_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${ASTRID_CORE_TOKEN:-}" ]; then
+            echo "::warning::ASTRID_CORE_TOKEN is not set, so astrid-core's windows-prod was not moved. The release itself published normally. To enable this, add a secret with contents:write on Graceful-Tools/astrid-core (a GitHub App token via actions/create-github-app-token, or a fine-grained PAT)."
+            exit 0
+          fi
+
+          pin=$(sed -n 's/^astrid-core = .*rev = "\([0-9a-f]\{40\}\)".*/\1/p' \
+            windows/crates/astrid-ffi/Cargo.toml)
+          if [ -z "$pin" ]; then
+            echo "::error::could not read the astrid-core rev from crates/astrid-ffi/Cargo.toml — is it still a git pin?"
+            exit 1
+          fi
+          echo "astrid-core pin: ${pin:0:7}"
+
+          # A full clone: the script asks whether the move is a fast-forward, which needs history.
+          git clone --quiet \
+            "https://x-access-token:${ASTRID_CORE_TOKEN}@github.com/Graceful-Tools/astrid-core.git" core
+          cd core
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Invoked through `bash` rather than as an executable: the file is checked out on a
+          # Windows runner for the build matrix and its exec bit is not something to depend on.
+          bash ../windows/scripts/advance-prod-branch.sh \
+            "$pin" windows-prod "windows-v${TAG#v}"
