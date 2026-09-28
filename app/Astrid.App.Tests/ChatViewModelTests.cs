@@ -141,4 +141,57 @@ public sealed class ChatViewModelTests
         Assert.Null(view.ErrorMessage);
         Assert.Single(view.Messages);
     }
+
+    /// <summary>
+    /// The bubble draws what the core drew, not the raw text (task 5f3453e2). A task id quoted in a
+    /// conversation arrives as a run carrying its address, so the shell has only to draw it — which
+    /// ids link at all is a rule about what the reader can see, and it lives in the core.
+    /// </summary>
+    [Fact]
+    public async Task A_message_carries_the_drawn_blocks_and_a_linked_task_id_task_5f3453e2()
+    {
+        var panel = new
+        {
+            channelId = "c1",
+            name = "Work",
+            messages = new[]
+            {
+                new
+                {
+                    id = "m1",
+                    content = "see AWTD-1007",
+                    authorName = "Dana",
+                    initials = "DA",
+                    isMine = false,
+                    isPending = false,
+                    isSystem = false,
+                    blocks = new object[]
+                    {
+                        new
+                        {
+                            kind = "paragraph",
+                            inlines = new object[]
+                            {
+                                new { kind = "text", text = "see " },
+                                new { kind = "text", text = "AWTD-1007", link = "https://astrid.cc/t/AWTD-1007" },
+                            },
+                        },
+                    },
+                },
+            },
+        };
+        var core = new FakeCore().AnswerOk("chat", panel).AnswerOk("refreshChat", panel);
+        var view = new ChatViewModel(core);
+
+        await view.OpenAsync("l1");
+
+        var message = Assert.Single(view.Messages);
+        var paragraph = Assert.Single(message.Blocks);
+        Assert.Contains(
+            paragraph.Inlines,
+            inline => inline.Text == "AWTD-1007" && inline.Link == "https://astrid.cc/t/AWTD-1007");
+        Assert.Equal(
+            "see AWTD-1007",
+            message.Content);
+    }
 }
