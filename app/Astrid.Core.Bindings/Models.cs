@@ -1502,6 +1502,26 @@ public sealed record AssigneeOption
     [JsonIgnore] public string Glyph => UserId is null ? "\u2014" : Initials;
 }
 
+/// <summary>
+/// What quick-add's leading control shows before anything is typed (task 8aa5732c).
+/// </summary>
+/// <remarks>
+/// A preview of the task <c>createTask</c> would make: the core produced it from the same
+/// <c>list_defaults</c> pass, so the control cannot show one thing and the created task be another.
+/// The three states are read the same way a row's are — see <see cref="TaskRow.LeadingIsCheckbox"/>
+/// — because they are the same rule, not a lookalike.
+/// </remarks>
+public sealed record QuickAddDefaults
+{
+    [JsonPropertyName("priority")] public int Priority { get; init; }
+
+    [JsonPropertyName("assigneeId")] public string? AssigneeId { get; init; }
+
+    [JsonPropertyName("leading")] public LeadingControl Leading { get; init; } = new();
+
+    [JsonPropertyName("options")] public IReadOnlyList<AssigneeOption> Options { get; init; } = [];
+}
+
 /// <summary>The picker's rows, and which of them the task currently holds.</summary>
 public sealed record AssigneeChoices
 {
