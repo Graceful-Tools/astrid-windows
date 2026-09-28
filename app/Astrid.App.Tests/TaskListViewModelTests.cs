@@ -9,6 +9,14 @@ namespace Astrid.App.Tests;
 /// </summary>
 public sealed class TaskListViewModelTests
 {
+    /// <summary>
+    /// Just the row requests. Opening a list also asks what quick-add would make (task 8aa5732c),
+    /// so a test about paging has to say which of the two it means.
+    /// </summary>
+    private static IReadOnlyList<string> Windows(FakeCore core) => core.Sent
+        .Where(json => json.Contains("\"kind\":\"rowsForList\""))
+        .ToList();
+
     private static object Window(int total, params string[] titles) => Window("auto", total, titles);
 
     private static object Window(string sortBy, int total, params string[] titles) => new
@@ -152,8 +160,9 @@ public sealed class TaskListViewModelTests
 
         await view.OpenAsync("l1", "Home");
 
-        Assert.Contains($"\"limit\":{TaskListViewModel.PageSize}", core.Sent[0]);
-        Assert.Contains("\"offset\":0", core.Sent[0]);
+        var asked = Assert.Single(Windows(core));
+        Assert.Contains($"\"limit\":{TaskListViewModel.PageSize}", asked);
+        Assert.Contains("\"offset\":0", asked);
         Assert.Equal(10_000, view.Total);
     }
 
@@ -168,8 +177,8 @@ public sealed class TaskListViewModelTests
         await view.OpenAsync("l1", "Home");
         await view.LoadMoreAsync();
 
-        Assert.Equal(2, core.Sent.Count);
-        Assert.Contains("\"offset\":1", core.Sent[1]);
+        Assert.Equal(2, Windows(core).Count);
+        Assert.Contains("\"offset\":1", Windows(core)[1]);
     }
 
     /// <summary>Nothing left to fetch means no request at all.</summary>
@@ -182,7 +191,7 @@ public sealed class TaskListViewModelTests
         await view.OpenAsync("l1", "Home");
         await view.LoadMoreAsync();
 
-        Assert.Single(core.Sent);
+        Assert.Single(Windows(core));
     }
 
     /// <summary>
@@ -381,7 +390,9 @@ public sealed class TaskListViewModelTests
 
         Assert.Single(view.Rows);
         Assert.Equal(1, view.Total);
-        Assert.Equal(2, core.Sent.Count);
+        // The delete and the rows it followed — no re-read. (Opening the list also asks what
+        // quick-add would make, task 8aa5732c, which is not a round trip for the delete.)
+        Assert.Equal(["rowsForList", "quickAddDefaults", "deleteTask"], core.SentKinds());
     }
 
     /// <summary>
@@ -504,7 +515,11 @@ public sealed class TaskListViewModelTests
 
         var sent = core.Sent.First(item => item.Contains("setManualOrder"));
         Assert.Contains("\"order\":[\"t1\",\"t0\"]", sent);
-        Assert.Equal(["rowsForList", "setManualOrder", "rowsForList"], core.SentKinds());
+        // Opening the list also asks what quick-add would make (task 8aa5732c); the point here is
+        // the write and the re-read around it.
+        Assert.Equal(
+            ["rowsForList", "quickAddDefaults", "setManualOrder", "rowsForList"],
+            core.SentKinds());
     }
 
     /// <summary>A drag that put the rows back where they were writes nothing.</summary>
@@ -518,7 +533,7 @@ public sealed class TaskListViewModelTests
 
         view.BeginReorder();
         Assert.False(await view.EndReorderAsync());
-        Assert.Equal(["rowsForList"], core.SentKinds());
+        Assert.Equal(["rowsForList", "quickAddDefaults"], core.SentKinds());
     }
 
     private static object FilterOptions(bool filtered, string dueValue) => new
@@ -656,5 +671,220 @@ public sealed class TaskListViewModelTests
 
         Assert.Single(view.Rows);
         Assert.DoesNotContain(view.Rows, row => row.Title.StartsWith("first list"));
+    }
+
+    // ── Quick add's leading control (task 8aa5732c) ──────────────────────────────────────────
+
+    private static object Defaults(string leading, int priority = 0, string? assigneeId = null) =>
+        new
+        {
+            priority,
+            assigneeId,
+            leading = new { kind = leading, userId = assigneeId },
+            options = new object[]
+            {
+                new { userId = (string?)null, initials = "", isCurrentUser = false, isAgent = false },
+                new { userId = "me", name = "Jon", initials = "J", isCurrentUser = true, isAgent = false },
+                new { userId = "dana", name = "Dana", initials = "D", isCurrentUser = false, isAgent = false },
+            },
+        };
+
+    /// <summary>
+    /// Opening a list asks what quick-add would make, and draws that (task 8aa5732c).
+    /// </summary>
+    /// <remarks>
+    /// A list with no default assignee makes a task that is the reader's, so the control is a
+    /// CHECKBOX before anything is typed — the same answer the row it creates will give
+    /// (task e2505d10). The view model reads it; it does not work it out.
+    /// </remarks>
+    [Fact]
+    public async Task Quick_add_previews_the_task_it_would_make_task_8aa5732c()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(0))
+            .AnswerOk("quickAddDefaults", Defaults("checkbox", priority: 2, assigneeId: "me"));
+        var view = new TaskListViewModel(core);
+
+        await view.OpenAsync("l1", "Work");
+
+        Assert.True(view.QuickAddIsCheckbox);
+        Assert.False(view.QuickAddIsSquare);
+        Assert.Equal(2, view.QuickAddPriority);
+        Assert.Contains("check_box_2.png", view.QuickAddCheckboxAsset);
+        Assert.Equal(3, view.QuickAddAssignees.Count);
+    }
+
+    /// <summary>
+    /// Somebody else's list previews THEIR mark — the third of the three states, in a
+    /// priority-coloured square rather than a checkbox (task 8aa5732c).
+    /// </summary>
+    [Fact]
+    public async Task Quick_add_in_somebody_elses_list_previews_their_mark_task_8aa5732c()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(0))
+            .AnswerOk("quickAddDefaults", Defaults("avatar", priority: 1, assigneeId: "dana"));
+        var view = new TaskListViewModel(core);
+
+        await view.OpenAsync("l1", "Dana's list");
+
+        Assert.True(view.QuickAddIsSquare);
+        Assert.False(view.QuickAddIsCheckbox);
+        Assert.Equal("D", view.QuickAddMark);
+    }
+
+    /// <summary>
+    /// A pick is re-asked of the core rather than applied here (task 8aa5732c).
+    /// </summary>
+    /// <remarks>
+    /// Which of the three states a pick produces is the same rule that produced the first answer —
+    /// docs/ASTRID.md rule 4. Choosing a priority in a list that would have assigned the task to
+    /// somebody else must not silently turn the square into a checkbox because the shell guessed.
+    /// </remarks>
+    [Fact]
+    public async Task A_quick_add_pick_is_re_asked_rather_than_worked_out_task_8aa5732c()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(0))
+            .AnswerOk("quickAddDefaults", Defaults("checkbox", assigneeId: "me"))
+            .AnswerOk("quickAddDefaults", Defaults("checkbox", priority: 3, assigneeId: "me"));
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Work");
+
+        await view.PickQuickAddPriorityAsync(3);
+
+        var asked = core.Sent.Last(json => json.Contains("\"kind\":\"quickAddDefaults\""));
+        Assert.Contains("\"priority\":3", asked);
+        Assert.Contains("\"listId\":\"l1\"", asked);
+        Assert.Equal(3, view.QuickAddPriority);
+        Assert.Contains("check_box_3.png", view.QuickAddCheckboxAsset);
+    }
+
+    /// <summary>
+    /// Choosing nobody is sent as the sentinel, never as a null (task 8aa5732c).
+    /// </summary>
+    /// <remarks>
+    /// A null means "nothing chosen", and the list's own default fills that in — so a null here
+    /// would make choosing nobody do nothing at all in exactly the lists where it matters. The
+    /// core reads <c>"unassigned"</c> as the choice it is, at both doors.
+    /// </remarks>
+    [Fact]
+    public async Task Choosing_nobody_in_quick_add_sends_the_sentinel_task_8aa5732c()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(0))
+            .AnswerOk("quickAddDefaults", Defaults("checkbox", assigneeId: "me"))
+            .AnswerOk("quickAddDefaults", Defaults("unassigned"));
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Work");
+
+        await view.PickQuickAddAssigneeAsync(null);
+
+        var asked = core.Sent.Last(json => json.Contains("\"kind\":\"quickAddDefaults\""));
+        Assert.Contains("\"assigneeId\":\"unassigned\"", asked);
+        Assert.True(view.QuickAddIsSquare);
+        Assert.Equal("—", view.QuickAddMark);
+    }
+
+    /// <summary>
+    /// The picks reach the created task, which is the whole point of the picker (task 8aa5732c).
+    /// </summary>
+    [Fact]
+    public async Task A_task_added_from_quick_add_carries_what_was_picked_task_8aa5732c()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(0))
+            .AnswerOk("quickAddDefaults", Defaults("checkbox", assigneeId: "me"))
+            .AnswerOk("quickAddDefaults", Defaults("avatar", priority: 3, assigneeId: "dana"))
+            .AnswerOk("createTask", new { id = "t1", title = "Buy milk" })
+            .AnswerOk("quickAddDefaults", Defaults("checkbox", assigneeId: "me"))
+            .AnswerOk("rowsForList", Window(1, "Buy milk"));
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Work");
+        await view.PickQuickAddPriorityAsync(3);
+        await view.PickQuickAddAssigneeAsync("dana");
+
+        Assert.True(await view.CreateTaskAsync("Buy milk"));
+
+        var made = Assert.Single(core.Sent, json => json.Contains("\"kind\":\"createTask\""));
+        Assert.Contains("\"priority\":3", made);
+        Assert.Contains("\"assigneeId\":\"dana\"", made);
+    }
+
+    /// <summary>
+    /// Nothing picked sends nothing, so the core applies the list's defaults itself
+    /// (task 8aa5732c).
+    /// </summary>
+    /// <remarks>
+    /// The preview is shown, not asserted. Sending it back would be the shell claiming a default
+    /// it was merely told about — and a list whose default changed between the box opening and the
+    /// person hitting + would then be overruled by a stale copy of it.
+    /// </remarks>
+    [Fact]
+    public async Task Quick_add_with_nothing_picked_leaves_the_defaults_to_the_core_task_8aa5732c()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(0))
+            .AnswerOk("quickAddDefaults", Defaults("checkbox", priority: 2, assigneeId: "me"))
+            .AnswerOk("createTask", new { id = "t1", title = "Buy milk" })
+            .AnswerOk("quickAddDefaults", Defaults("checkbox", priority: 2, assigneeId: "me"))
+            .AnswerOk("rowsForList", Window(1, "Buy milk"));
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Work");
+
+        Assert.True(await view.CreateTaskAsync("Buy milk"));
+
+        var made = Assert.Single(core.Sent, json => json.Contains("\"kind\":\"createTask\""));
+        Assert.DoesNotContain("\"priority\"", made);
+        Assert.DoesNotContain("\"assigneeId\"", made);
+    }
+
+    /// <summary>
+    /// A pick lasts for one task, not for the session (task 8aa5732c) — the web's box resets the
+    /// same way, and a box that quietly stayed on "urgent" would file a week of urgent tasks.
+    /// </summary>
+    [Fact]
+    public async Task A_quick_add_pick_does_not_outlive_the_task_it_was_made_for_task_8aa5732c()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(0))
+            .AnswerOk("quickAddDefaults", Defaults("checkbox", assigneeId: "me"))
+            .AnswerOk("quickAddDefaults", Defaults("checkbox", priority: 3, assigneeId: "me"))
+            .AnswerOk("createTask", new { id = "t1", title = "Buy milk" })
+            .AnswerOk("quickAddDefaults", Defaults("checkbox", assigneeId: "me"))
+            .AnswerOk("rowsForList", Window(1, "Buy milk"))
+            .AnswerOk("createTask", new { id = "t2", title = "Water plants" })
+            .AnswerOk("quickAddDefaults", Defaults("checkbox", assigneeId: "me"))
+            .AnswerOk("rowsForList", Window(2, "Buy milk", "Water plants"));
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Work");
+        await view.PickQuickAddPriorityAsync(3);
+        await view.CreateTaskAsync("Buy milk");
+
+        await view.CreateTaskAsync("Water plants");
+
+        var second = core.Sent.Last(json => json.Contains("\"kind\":\"createTask\""));
+        Assert.Contains("Water plants", second);
+        Assert.DoesNotContain("\"priority\"", second);
+        Assert.Equal(0, view.QuickAddPriority);
+    }
+
+    /// <summary>
+    /// A preview the core could not answer leaves the last one standing and raises no error: the
+    /// box still adds tasks, and a banner over a decoration would be worse than the decoration
+    /// (task 8aa5732c).
+    /// </summary>
+    [Fact]
+    public async Task A_quick_add_preview_that_fails_is_not_an_error_on_screen_task_8aa5732c()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(0))
+            .AnswerFailure("quickAddDefaults", AstridFailureKind.Offline);
+        var view = new TaskListViewModel(core);
+
+        await view.OpenAsync("l1", "Work");
+
+        Assert.Null(view.ErrorMessage);
+        Assert.False(view.NeedsSignIn);
     }
 }
