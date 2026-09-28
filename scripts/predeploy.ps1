@@ -3,6 +3,7 @@
 #   npm run predeploy         format, lint, test, cross-build
 #   npm run predeploy:quick   skip the ARM64 cross-build (fast inner loop)
 #   npm run predeploy:full    adds the packaged-app build and UI smoke tests
+#   npm run predeploy:scripts only the PowerShell script tests (seconds)
 #
 # Every step prints its own heading and the script stops at the first failure, so the last heading
 # on screen names what broke.
@@ -10,7 +11,8 @@
 [CmdletBinding()]
 param(
     [switch]$Quick,
-    [switch]$Full
+    [switch]$Full,
+    [switch]$ScriptsOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -33,6 +35,18 @@ function Invoke-Step {
         Write-Host "RESULT: FAILED - $Name" -ForegroundColor Red
         exit 1
     }
+}
+
+# FIRST, and seconds long, because the thing it guards is the scheduled loop that runs everything
+# below. A broken fixall-loop.ps1 does not fail a build - it quietly stops working the board, which
+# is how three tasks were stranded on 2026-09-27 (task 6392dfdb).
+Invoke-Step 'script tests' {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'tests/fixall-loop-cleanup.Tests.ps1')
+}
+if ($ScriptsOnly) {
+    Write-Host ""
+    Write-Host "RESULT: OK" -ForegroundColor Green
+    exit 0
 }
 
 Invoke-Step 'rustfmt' { cargo fmt --all -- --check }

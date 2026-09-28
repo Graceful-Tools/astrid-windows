@@ -74,9 +74,16 @@ param(
     # bound that stops one which stays busy on a task it cannot finish. Two bounds, because a run
     # goes wrong in two different ways: the watchdog catches a HANG, the budget catches BUSY.
     [string]$Model = $(if ($env:FIXALL_MODEL) { $env:FIXALL_MODEL } else { 'opus' }),
-    [int]$MaxMinutes = $(if ($env:FIXALL_MAX_MINUTES) { [int]$env:FIXALL_MAX_MINUTES } else { 50 }),
+    [int]$MaxMinutes = $(if ($env:FIXALL_MAX_MINUTES) { [int]$env:FIXALL_MAX_MINUTES } else { 75 }),
     [string]$MaxUsd = $(if ($null -ne $env:FIXALL_MAX_USD) { $env:FIXALL_MAX_USD } else { '10' }),
-    [string]$PermissionMode = $(if ($env:FIXALL_PERMISSION_MODE) { $env:FIXALL_PERMISSION_MODE } else { 'acceptEdits' })
+    [string]$PermissionMode = $(if ($env:FIXALL_PERMISSION_MODE) { $env:FIXALL_PERMISSION_MODE } else { 'acceptEdits' }),
+
+    # How many Ready tasks one tick may take. ONE, because a run that takes the whole queue does not
+    # fit either bound above once a predeploy costs ~10 minutes and a task costs real money: on
+    # 2026-09-27 three runs in a row were cut off partway through a task they had already started.
+    # The next tick takes the next task, so the queue still drains - it drains one task at a time,
+    # each of which is finished, gated and reported. Answering RECHECK/REVIEW does not count.
+    [int]$MaxTasks = $(if ($env:FIXALL_MAX_TASKS) { [int]$env:FIXALL_MAX_TASKS } else { 1 })
 )
 
 # Never stop on a native command's stderr: this script decides what is fatal, and most of what it
@@ -93,6 +100,10 @@ $CoreRepo = Join-Path (Split-Path -Parent $RepoRoot) 'astrid-core'
 $LogDir = Join-Path $env:LOCALAPPDATA 'Astrid\logs'
 $LogFile = Join-Path $LogDir 'fixall-windows.log'
 if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
+
+# Save-UnfinishedWork: what this script does with a checkout its child died in the middle of. Its
+# own file so the tests can run it against a scratch repo - see scripts/tests/fixall-loop-cleanup.Tests.ps1.
+. (Join-Path $PSScriptRoot 'lib\fixall-cleanup.ps1')
 
 # Everything this script says goes to the console AND to the log, because Task Scheduler captures
 # neither. Native command output is appended separately, where it is produced.
@@ -133,6 +144,31 @@ function Invoke-WebTool([string[]]$ScriptArgs) {
     try { & $Tsx @ScriptArgs 2>&1 } finally { Pop-Location }
 }
 
+# The half-sentence about leftovers that both the RESULT line and the task comment end with.
+function Format-SavedNote($Saved) {
+    if ($Saved.SavedBranch -and $Saved.PushedBranch) { return "its unfinished work is saved on $($Saved.SavedBranch) (WIP, unverified)" }
+    if ($Saved.SavedBranch) { return "its unfinished work is committed on $($Saved.SavedBranch) but could not be pushed (WIP, unverified)" }
+    if ($Saved.PushedBranch) { return "it left $($Saved.PushedBranch), now pushed for review" }
+    return 'nothing was pushed by this run'
+}
+
+# Say on the board what the log would otherwise be the only record of. The task id comes from the
+# run itself (ASTRID_FIXALL_TASK_FILE) rather than from the pre-run queue, because a comment on the
+# wrong task is worse than no comment. No task file means the run died before taking anything -
+# there is nothing to tell, and the RESULT line has already said it.
+function Send-DiedRunNote([string]$TaskFile, [string]$Reason, $Saved) {
+    if (-not (Test-Path $TaskFile)) { return }
+    $taskId = (Get-Content $TaskFile -Raw -ErrorAction SilentlyContinue).Trim()
+    if (-not $taskId) { return }
+    $leftovers = Format-SavedNote $Saved
+    $note = "**Scheduled /fixall (windows) did not finish** - $Reason, and $leftovers. " +
+    'This task is still in Doing and nothing on that branch has passed a gate: a tip reading ' +
+    '`wip: ... UNFINISHED, UNVERIFIED` is a resume point, not something to ship. ' +
+    'Log: %LOCALAPPDATA%\Astrid\logs\fixall-windows.log'
+    Invoke-WebTool @('scripts/add-task-comment.ts', $taskId, $note) | ForEach-Object { Say "  $_" }
+    if ($LASTEXITCODE -ne 0) { Say '  (could not comment on the task it had taken)' }
+}
+
 # ── Guard 1: one session per working tree ─────────────────────────────────────────────────────
 # Cheap by design: no Claude session is started just to discover the tree is busy. The lock is
 # keyed to the git directory, so this tree and astrid-web's never see each other, and a lock whose
@@ -158,6 +194,24 @@ try {
     # only documents the arrangement; it is exported so that adopting the lock there cannot
     # deadlock against this.
     $env:ASTRID_FIXALL_LOCK_HELD = '1'
+
+    # ONE READY TASK PER TICK (FIXALL_WORKFLOW.md → "One task per scheduled run"). The bound the
+    # agent can act on is a COUNT OF TASKS, not its remaining dollars: it cannot see its own spend
+    # until it is nearly gone, and on 2026-09-27 it three times started a task it then could not
+    # finish. Stopping cleanly after one - pushed, gated, reported - is what the cap buys.
+    $env:ASTRID_FIXALL_MAX_TASKS = [string]$MaxTasks
+
+    # WHICH TASK IT TOOK, so a run that dies can be reported on the right one. A died run cannot
+    # write its own completion comment, and the loop cannot guess: the queue it read before the run
+    # is a list of candidates, and commenting on the wrong task is worse than saying nothing. So
+    # /fixall writes the id here as it takes a task, and this script reads it back afterwards.
+    #
+    # NOT list chat, which is what astrid-web's loop posts to. That needs a board id, and this
+    # board's id is deliberately nowhere in this repo (docs/AUTOMATION.md) - it is resolved by name,
+    # and `ready-tasks.ts --json` does not carry it.
+    $taskFile = Join-Path $env:TEMP "astrid-fixall-windows-task-$PID.txt"
+    Remove-Item $taskFile -Force -ErrorAction SilentlyContinue
+    $env:ASTRID_FIXALL_TASK_FILE = $taskFile
 
     # ── Guard 2: never clobber work in progress ───────────────────────────────────────────────
     # /fixstuff and an interactive session take no lock, so they are invisible to guard 1. This is
@@ -289,7 +343,18 @@ try {
         }
     }
 
-    if ($killed) { Finish "RESULT: FAILED - killed after the ${MaxMinutes}m watchdog timeout; nothing was pushed by this run" }
+    # ── Leave the checkout where the next tick can use it ────────────────────────────────────
+    # Before any RESULT line, because this is the difference between one bad tick and a loop that is
+    # wedged until somebody notices. Guard 2 above refuses a dirty tree and a non-main HEAD - rightly,
+    # since it cannot tell a died run's leftovers from somebody's work in progress. THIS script can:
+    # it held the lock, it started the child, and the child is gone.
+    $saved = Save-UnfinishedWork -RepoRoot $RepoRoot -ClaudeExitCode $status -Log { param($Line) Say $Line }
+
+    if ($killed) {
+        $reason = "killed after the ${MaxMinutes}m watchdog timeout"
+        Send-DiedRunNote -TaskFile $taskFile -Reason $reason -Saved $saved
+        Finish "RESULT: FAILED - $reason; $(Format-SavedNote $saved)"
+    }
 
     # A run whose grants were ignored EXITS ZERO. It reads the board, decides it can change nothing,
     # writes a tidy explanation nobody is watching, and the loop logs RESULT: OK - which is the
@@ -305,8 +370,15 @@ try {
     }
 
     if ($status -eq 0) { Finish 'RESULT: OK - run finished (see the tasks for what changed)' }
-    Finish "RESULT: FAILED - claude exited $status; nothing was pushed by this run"
+
+    # A run that died cannot write its own completion comment, and this is precisely the outcome
+    # worth hearing about, so the wrapper says it on the task itself.
+    $reason = "claude exited $status"
+    if ($status -eq 1 -and $MaxUsd) { $reason += " (the `$$MaxUsd budget cap is the usual cause)" }
+    Send-DiedRunNote -TaskFile $taskFile -Reason $reason -Saved $saved
+    Finish "RESULT: FAILED - $reason; $(Format-SavedNote $saved)"
 }
 finally {
+    if ($taskFile) { Remove-Item $taskFile -Force -ErrorAction SilentlyContinue }
     & $releaseLock
 }
