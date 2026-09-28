@@ -535,6 +535,25 @@ public static class Commands
     public static object AssigneeOptions(string taskId) =>
         new WithTaskId("assigneeOptions", taskId);
 
+    /// <summary>
+    /// What quick-add's leading control shows before anything is typed, and who it may offer
+    /// (task 8aa5732c).
+    /// </summary>
+    /// <remarks>
+    /// A preview of the task <see cref="CreateTask"/> is about to make, produced by the core from
+    /// the same <c>list_defaults</c> pass. Asked rather than worked out here: a list with no default
+    /// assignee makes a task that is the reader's, so the control draws a checkbox, and a shell that
+    /// decided that itself would show one thing and create another. <paramref name="listId"/> is
+    /// null for a pseudo-list such as My Tasks.
+    ///
+    /// Re-asked after every pick, passing what has been chosen, because which of the three states a
+    /// pick produces is the same rule. <paramref name="assigneeId"/> is <c>"unassigned"</c> for
+    /// "nobody, on purpose" and null for "nothing chosen yet" — a bare null cannot carry both.
+    /// </remarks>
+    public static object QuickAddDefaults(string? listId, string? assigneeId = null,
+        int? priority = null) =>
+        new QuickAddDefaultsRequest("quickAddDefaults", listId, assigneeId, priority);
+
     public static object CurrentUser() => new KindOnly("currentUser");
 
     /// <summary>
@@ -789,6 +808,12 @@ public static class Commands
     private sealed record WithListId(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("listId")] string ListId);
+
+    private sealed record QuickAddDefaultsRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("listId")] string? ListId,
+        [property: JsonPropertyName("assigneeId")] string? AssigneeId,
+        [property: JsonPropertyName("priority")] int? Priority);
 
     private sealed record TransferRequest(
         [property: JsonPropertyName("kind")] string Kind,
