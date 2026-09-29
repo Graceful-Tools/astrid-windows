@@ -708,6 +708,44 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// Ask once, when the window opens, whether the stream is live (task 1e4c959e).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The stream that never connects.</b> The core's sink holds the flag as an
+    /// <c>AtomicBool</c> starting false and publishes a <c>stream</c> change only when the value
+    /// moves, so a stream that connects says so and a stream that never connects says nothing —
+    /// and <see cref="_isStreamDown"/>'s deliberate opening optimism then stands forever. Usually
+    /// the offline message covers that, because a machine with no network also fails its sync
+    /// pass; but they are not the same condition. A device that reaches the server perfectly well
+    /// while the stream cannot — an SSE-hostile proxy, a filter, a server without the stream — is
+    /// online, syncing, and silently without live updates.
+    /// </para>
+    /// <para>
+    /// Here rather than before the first paint, and it is the same reason the flag starts false:
+    /// the answer arriving is what settles it, so nothing accuses the stream before anybody has
+    /// asked. A core that cannot answer leaves the flag alone — an unanswerable
+    /// <c>streamState</c> is not evidence the stream is off.
+    /// </para>
+    /// <para>
+    /// An opening value and not a second source of truth: every later change is still the
+    /// <c>stream</c> arm's, and it overwrites this. Nor does this catch up the way the up edge
+    /// does — the up edge refreshes because something was missed while the stream was down, and at
+    /// open there is nothing to have missed. <see cref="StartAsync"/> syncs a few lines later.
+    /// </para>
+    /// </remarks>
+    private async Task SeedStreamStateAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.StreamState(), cancellationToken);
+        if (response.Read<StreamState>() is not { } state)
+        {
+            return;
+        }
+        _isStreamDown = !state.Live;
+        Raise(nameof(ShowsLiveUpdatesDown));
+    }
+
+    /// <summary>
     /// Draw what is already cached, then go and look for more.
     /// </summary>
     /// <remarks>
@@ -731,6 +769,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         await Sidebar.LoadAsync(cancellationToken);
         await OpenSelectedAsync(cancellationToken);
         await RefreshOutboxAsync(cancellationToken);
+        await SeedStreamStateAsync(cancellationToken);
         // The badge from the cache, before the network: it is right the moment the window opens.
         await Notifications.LoadAsync(cancellationToken);
         await LoadFeaturesAsync(cancellationToken);

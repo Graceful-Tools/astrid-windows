@@ -1576,6 +1576,16 @@ public sealed record DeadLetter
     [JsonPropertyName("error")] public string? Error { get; init; }
 }
 
+/// <summary>Whether the live stream is connected, asked once when the window opens.</summary>
+/// <remarks>
+/// The <c>stream</c> changes are edges, so they describe every transition and no starting point.
+/// This is the starting point (task 1e4c959e).
+/// </remarks>
+public sealed record StreamState
+{
+    [JsonPropertyName("live")] public bool Live { get; init; }
+}
+
 /// <summary>How many refused writes were given another go (task 84e077ca).</summary>
 public sealed record DeadLettersRevived
 {

@@ -81,11 +81,6 @@ fn every_command_the_shell_sends_is_one_the_core_understands() {
 /// the core Windows deliberately leaves alone, so "not needed" is not a reason and will not pass:
 /// say what this shell does instead, or name the task that will bind it.
 const NOT_BOUND: &[(&str, &str)] = &[
-    // ── Wanted here, tracked ──────────────────────────────────────────────────────────────────
-    (
-        "streamState",
-        "Wanted. `Change::Stream` fires only on edges, and the sink starts `false`, so a stream          that never connects publishes nothing and the window says nothing. Task 1e4c959e.",
-    ),
     // ── This shell draws the core's projections; these answer in the wire shape ───────────────
     (
         "tasks",

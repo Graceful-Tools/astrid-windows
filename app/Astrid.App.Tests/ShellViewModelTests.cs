@@ -807,6 +807,102 @@ public sealed class ShellViewModelTests
     }
 
     /// <summary>
+    /// A stream that never connects says so (task 1e4c959e).
+    /// </summary>
+    /// <remarks>
+    /// The hole <c>ef92df55</c> left. <c>RealtimeSink</c> holds <c>live: AtomicBool::new(false)</c>
+    /// and publishes only when the value changes, so a stream that connects goes
+    /// <c>false → true</c> and says so, while one that never connects goes <c>false → false</c> and
+    /// says nothing at all — leaving the window's optimistic opening value in place forever.
+    /// Usually the offline message covers it, but a device that reaches the server perfectly well
+    /// while the stream cannot — an SSE-hostile proxy, a corporate filter — is online, syncing, and
+    /// silently without live updates. Hence <c>OnlineCore</c>: on the offline fixture this would be
+    /// asserting the precedence instead.
+    /// </remarks>
+    [Fact]
+    public async Task A_stream_that_never_connects_says_so_on_open_task_1e4c959e()
+    {
+        var core = OnlineCore(("l1", "Home", false)).AnswerOk("streamState", new { live = false });
+        using var shell = new ShellViewModel(core, RunInline);
+
+        await shell.StartAsync();
+
+        // No edge ever arrives — that is the whole case.
+        Assert.DoesNotContain("stream", core.SentKinds());
+        Assert.True(shell.ShowsLiveUpdatesDown);
+    }
+
+    /// <summary>
+    /// A stream that is up on open leaves the window saying nothing (task 1e4c959e) — the answer
+    /// settles it either way, and the common case must not gain a message it never had.
+    /// </summary>
+    [Fact]
+    public async Task A_stream_that_is_already_up_on_open_says_nothing_task_1e4c959e()
+    {
+        var core = OnlineCore(("l1", "Home", false)).AnswerOk("streamState", new { live = true });
+        using var shell = new ShellViewModel(core, RunInline);
+
+        await shell.StartAsync();
+
+        Assert.Contains("streamState", core.SentKinds());
+        Assert.False(shell.ShowsLiveUpdatesDown);
+    }
+
+    /// <summary>
+    /// The seed is an opening value, not a second source of truth (task 1e4c959e): an edge after it
+    /// still wins, which is what makes the stream connecting a second later take the message away.
+    /// </summary>
+    [Fact]
+    public async Task An_edge_after_the_seed_still_wins_task_1e4c959e()
+    {
+        var core = OnlineCore(("l1", "Home", false)).AnswerOk("streamState", new { live = false });
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        Assert.True(shell.ShowsLiveUpdatesDown);
+
+        core.AnswerOk("lists", Lists(("l1", "Home", false)))
+            .AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        core.NotifyStream(live: true);
+
+        Assert.False(shell.ShowsLiveUpdatesDown);
+    }
+
+    /// <summary>
+    /// A core that cannot answer leaves the window making no claim (task 1e4c959e). An
+    /// unanswerable <c>streamState</c> is not evidence the stream is off, and the optimism the
+    /// opening value exists for applies exactly here.
+    /// </summary>
+    [Fact]
+    public async Task A_stream_state_the_core_cannot_answer_accuses_nothing_task_1e4c959e()
+    {
+        var core = OnlineCore(("l1", "Home", false))
+            .AnswerFailure("streamState", AstridFailureKind.BadRequest, "no");
+        using var shell = new ShellViewModel(core, RunInline);
+
+        await shell.StartAsync();
+
+        Assert.False(shell.ShowsLiveUpdatesDown);
+    }
+
+    /// <summary>
+    /// Offline still wins the slot when the seed says the stream is down (task 1e4c959e). The
+    /// precedence <c>ef92df55</c> set is untouched by where the flag's first value comes from.
+    /// </summary>
+    [Fact]
+    public async Task A_seeded_stream_down_still_loses_to_offline_task_1e4c959e()
+    {
+        // This fixture's sync pass could not reach the server.
+        var core = StartedCore(("l1", "Home", false)).AnswerOk("streamState", new { live = false });
+        using var shell = new ShellViewModel(core, RunInline);
+
+        await shell.StartAsync();
+
+        Assert.True(shell.ShowsOffline);
+        Assert.False(shell.ShowsLiveUpdatesDown);
+    }
+
+    /// <summary>
     /// Reconnecting catches up at once rather than waiting out the sixty-second timer (task
     /// ef92df55). Events missed while the stream was down are not replayed — the core's own comment
     /// calls that timer "a floor for the screen" — so the up edge does the refresh <c>synced</c>

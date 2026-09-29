@@ -84,6 +84,22 @@ public sealed class CommandSerializationTests
     }
 
     /// <summary>
+    /// Asking whether the stream is live is a command the core has and the bindings did not (task
+    /// 1e4c959e) — the edges are only half the answer, and a stream that never connects has no
+    /// edge to send.
+    /// </summary>
+    [Fact]
+    public void Asking_whether_the_stream_is_live_is_a_bare_command_task_1e4c959e()
+    {
+        Assert.Contains("\"kind\":\"streamState\"", Json(Commands.StreamState()),
+            StringComparison.Ordinal);
+        Assert.True(AstridResponse.Parse("{\"ok\":true,\"value\":{\"live\":true}}")
+            .Read<StreamState>()!.Live);
+        Assert.False(AstridResponse.Parse("{\"ok\":true,\"value\":{\"live\":false}}")
+            .Read<StreamState>()!.Live);
+    }
+
+    /// <summary>
     /// Sending a refused write again is a command the core has and the bindings did not (task
     /// 84e077ca) — which is what made a dead-lettered write a dead end on this client.
     /// </summary>
