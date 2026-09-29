@@ -1543,15 +1543,43 @@ public sealed record AssigneeChoices
 }
 
 /// <summary>What the Outbox is holding, for the "not synced yet" indicator.</summary>
+/// <remarks>
+/// <see cref="Failed"/> and <see cref="HasUnsentWork"/> are two different states, not one fact and
+/// its detail: the core's <c>has_unsent_work()</c> is <c>pending &gt; 0 || running &gt; 0</c>, so a
+/// write the server refused is counted here and in nothing else. The window has to draw both or a
+/// refused write disappears at the moment it starts needing a person (task 84e077ca).
+/// </remarks>
 public sealed record OutboxStats
 {
     [JsonPropertyName("pending")] public int Pending { get; init; }
 
     [JsonPropertyName("running")] public int Running { get; init; }
 
+    /// <summary>Writes the server refused for good. Retried with <c>retryDeadLetters</c>.</summary>
     [JsonPropertyName("failed")] public int Failed { get; init; }
 
     [JsonPropertyName("hasUnsentWork")] public bool HasUnsentWork { get; init; }
+
+    /// <summary>The five most recently refused, newest first.</summary>
+    [JsonPropertyName("deadLetters")] public IReadOnlyList<DeadLetter> DeadLetters { get; init; } = [];
+}
+
+/// <summary>One write the server refused: what it was, and what it said.</summary>
+/// <remarks>
+/// The error is the server's own words and can be absent — the core sends <c>last_error</c> as it
+/// has it, and an entry dead-lettered without one carries null.
+/// </remarks>
+public sealed record DeadLetter
+{
+    [JsonPropertyName("kind")] public string Kind { get; init; } = string.Empty;
+
+    [JsonPropertyName("error")] public string? Error { get; init; }
+}
+
+/// <summary>How many refused writes were given another go (task 84e077ca).</summary>
+public sealed record DeadLettersRevived
+{
+    [JsonPropertyName("revived")] public int Revived { get; init; }
 }
 
 /// <summary>

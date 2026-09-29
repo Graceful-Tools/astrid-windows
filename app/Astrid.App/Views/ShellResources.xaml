@@ -39,6 +39,10 @@
     <local:StatConverter x:Key="StatInspired" Key="stats.inspired" />
     <local:StatConverter x:Key="StatSupported" Key="stats.supported" />
     <local:LoggedTimeConverter x:Key="LoggedTime" />
+    <!-- The Outbox's refused writes, and what a retry did with them (task 84e077ca). -->
+    <local:CountedWordsConverter x:Key="RefusedWrites" Key="outbox.refused" />
+    <local:CountedWordsConverter x:Key="RetryOutcome" Key="outbox.retry_sent"
+                                 ZeroKey="outbox.retry_none" />
     <local:CredentialStateConverter x:Key="CredentialState" />
     <local:PrefixedWordsConverter x:Key="ConnectionOwner" Prefix="connections.owner" />
     <local:PrefixedWordsConverter x:Key="ConnectionStatus" Prefix="connections.status" />

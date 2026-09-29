@@ -142,6 +142,33 @@ public sealed partial class StatConverter : IValueConverter
         throw new NotSupportedException("statistics are read-only in the UI");
 }
 
+/// <summary>A count with the sentence it belongs in (task 84e077ca).</summary>
+/// <remarks>
+/// The view model hands over numbers, never words — so "2 writes were refused" and "Nothing to
+/// retry" are one binding with two keys rather than a string built where no translator can reach
+/// it. <see cref="ZeroKey"/> is a separate key because zero is rarely "0 of them": it is usually a
+/// different sentence, and sometimes nothing at all, which is what an empty <see cref="ZeroKey"/>
+/// means.
+/// </remarks>
+public sealed partial class CountedWordsConverter : IValueConverter
+{
+    /// <summary>The key for one or more, with <c>{0}</c> where the number goes.</summary>
+    public string Key { get; set; } = string.Empty;
+
+    /// <summary>The key for none. Empty for the counts that simply disappear at zero.</summary>
+    public string ZeroKey { get; set; } = string.Empty;
+
+    public object Convert(object value, Type targetType, object parameter, string language) => value switch
+    {
+        int count when count > 0 => Strings.Get(Key, count),
+        int => ZeroKey.Length > 0 ? Strings.Get(ZeroKey) : string.Empty,
+        _ => string.Empty,
+    };
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a count's sentence is read-only in the UI");
+}
+
 /// <summary>Whether a service has a key stored.</summary>
 /// <remarks>
 /// "Set up" rather than the key itself, because the server never answers with a key — which is the

@@ -321,6 +321,12 @@ internal static class Strings
         // The first letter of the reader's word for "unassigned": U here, 未 in Japanese, Н in
         // Russian (PRODUCT_CONTRACT.md §4). A translator changes this, not the code.
         ["tasks.unassigned_mark"] = "U",
+        // The Outbox's refused writes, and what pressing "Try again" did (task 84e077ca). The
+        // retry's word is deliberately about what was attempted: the core revives the entries and
+        // drains without waiting to see, so a sentence claiming they were sent would be a guess.
+        ["outbox.refused"] = "{0} refused",
+        ["outbox.retry_sent"] = "{0} sent again",
+        ["outbox.retry_none"] = "Nothing to retry",
         ["appearance.hotkey"] = "Quick-add shortcut",
         ["appearance.hotkey_hint"] = "Brings Astrid forward from anywhere, ready for a new task. Ctrl, Alt or Win, plus one letter or digit.",
         ["appearance.apply"] = "Apply",

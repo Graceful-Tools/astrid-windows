@@ -217,6 +217,32 @@
                              VerticalAlignment="Center"
                              Click="OnReconnectStream"
                              Visibility="{x:Bind Shell.ShowsLiveUpdatesDown, Mode=OneWay, Converter={StaticResource Visible}}" />
+            <!--
+                A write the server refused, and the way out of it (task 84e077ca). Not a kind of
+                "not synced yet": that one is about waiting, and waiting ends on its own. This one
+                does not, which is why it is the only thing in this row with something to press.
+
+                The count's sentence comes from a converter, not from the view model — the number
+                is the fact, the words are the translator's. It is read again straight after the
+                retry, so a write refused a second time leaves this saying so rather than the
+                outcome line claiming it was sent.
+            -->
+            <TextBlock Text="{x:Bind Shell.RefusedWrites, Mode=OneWay, Converter={StaticResource RefusedWrites}}"
+                       VerticalAlignment="Center"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Visibility="{x:Bind Shell.RefusedWrites, Mode=OneWay, Converter={StaticResource Visible}}" />
+            <HyperlinkButton x:Uid="retry_refused_writes"
+                             Content="Try again"
+                             ToolTipService.ToolTip="Send the refused writes again"
+                             VerticalAlignment="Center"
+                             Click="OnRetryRefusedWrites"
+                             Visibility="{x:Bind Shell.RefusedWrites, Mode=OneWay, Converter={StaticResource Visible}}" />
+            <TextBlock Text="{x:Bind Shell.LastRetryRevived, Mode=OneWay, Converter={StaticResource RetryOutcome}}"
+                       VerticalAlignment="Center"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Visibility="{x:Bind Shell.ShowsRetryOutcome, Mode=OneWay, Converter={StaticResource Visible}}" />
         </StackPanel>
         <!--
             Account, Sync and Sign out, in one row.
