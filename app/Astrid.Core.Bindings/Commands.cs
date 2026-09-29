@@ -755,6 +755,17 @@ public static class Commands
     /// </remarks>
     public static object ReconnectStream() => new KindOnly("reconnectStream");
 
+    /// <summary>
+    /// Whether the live stream is connected: <c>{ "live": bool }</c>.
+    /// </summary>
+    /// <remarks>
+    /// The other half of the <c>stream</c> changes, which are edges and so say nothing at all when
+    /// there has been no edge. A window that only listened would have no opening value for a
+    /// stream that has never connected — which is the state it is least able to explain and most
+    /// needs to (task 1e4c959e).
+    /// </remarks>
+    public static object StreamState() => new KindOnly("streamState");
+
     public static object RefreshComments(string taskId) => new WithTaskId("refreshComments", taskId);
 
     public static object SearchUsers(string query) => new SearchRequest("searchUsers", query);
