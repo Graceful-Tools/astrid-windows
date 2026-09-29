@@ -142,7 +142,12 @@ public sealed record AstridFailure(
 /// For a <c>synced</c> change, every task a background pass brought in, changed or removed.
 /// Empty when the pass could not say — which means "refresh what is on screen", not "nothing".
 /// </param>
-public sealed record ChangeNotification(string Change, string? Id, IReadOnlyList<string>? TaskIds = null)
+/// <param name="Live">
+/// For a <c>stream</c> change, which edge it is: the live stream connected, or dropped. Null on
+/// every other change, which says nothing about the stream — and "says nothing" is not "down".
+/// </param>
+public sealed record ChangeNotification(
+    string Change, string? Id, IReadOnlyList<string>? TaskIds = null, bool? Live = null)
 {
     public static ChangeNotification Parse(string json)
     {
@@ -158,7 +163,11 @@ public sealed record ChangeNotification(string Change, string? Id, IReadOnlyList
                     .Select(element => element.GetString()!)
                     .ToList()
                 : null;
-            return new ChangeNotification(change ?? "unknown", id, taskIds);
+            var live = root.TryGetProperty("live", out var flag)
+                && flag.ValueKind is JsonValueKind.True or JsonValueKind.False
+                ? flag.GetBoolean()
+                : (bool?)null;
+            return new ChangeNotification(change ?? "unknown", id, taskIds, live);
         }
         catch (JsonException)
         {

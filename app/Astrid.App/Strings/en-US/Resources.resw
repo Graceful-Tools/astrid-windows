@@ -1027,6 +1027,18 @@
   <data name="not_synced_yet.Text" xml:space="preserve">
     <value>Not synced yet</value>
   </data>
+  <data name="status_offline.Text" xml:space="preserve">
+    <value>Offline</value>
+  </data>
+  <data name="status_live_updates_off.Text" xml:space="preserve">
+    <value>Live updates are off</value>
+  </data>
+  <data name="reconnect_stream.Content" xml:space="preserve">
+    <value>Reconnect</value>
+  </data>
+  <data name="reconnect_stream.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Try the live stream again now</value>
+  </data>
   <data name="add_card_to_column.PlaceholderText" xml:space="preserve">
     <value>Add task</value>
   </data>

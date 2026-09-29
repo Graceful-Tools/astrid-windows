@@ -37,6 +37,14 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private bool _projectModeEnabled = true;
     private bool _googleTasksEnabled = true;
     private string? _statusMessage;
+    private bool _isOffline;
+    /// <summary>
+    /// Optimistic on purpose: the core's sink starts down and announces itself only when it
+    /// connects, so a window that began by claiming live updates were off would be wrong for the
+    /// second before the first connection, at every launch. A launch with no network at all is
+    /// covered by the sync pass, which sets <see cref="ShowsOffline"/> and outranks this anyway.
+    /// </summary>
+    private bool _isStreamDown;
     private bool _disposed;
     private bool _isBoardView;
     private string? _listImageSource;
@@ -579,6 +587,54 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// Whether the header says the app cannot reach the server, and whether it says live updates
+    /// have stopped (task ef92df55).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Deliberately two facts, deliberately one slot.</b> A sync pass that could not reach the
+    /// server and the live stream dropping are different things: offline means nothing at all is
+    /// getting through, stream-down means writes still work and only the live half stopped. One
+    /// message for both would be wrong in whichever case it was not written for, so they have
+    /// separate words.
+    /// </para>
+    /// <para>
+    /// They share the one place in the header, with offline winning, because when the server is
+    /// unreachable "live updates are off" is a redundant second line saying less than the first.
+    /// That precedence lives here and not in the XAML: the shell renders and dispatches, it does
+    /// not decide (ASTRID.md §0 rule 4). The words themselves come from <c>.resw</c> — which is why
+    /// these are flags and not a string the way <see cref="StatusMessage"/> is.
+    /// </para>
+    /// </remarks>
+    public bool ShowsOffline
+    {
+        get => _isOffline;
+        private set
+        {
+            if (Set(ref _isOffline, value))
+            {
+                Raise(nameof(ShowsLiveUpdatesDown));
+            }
+        }
+    }
+
+    /// <inheritdoc cref="ShowsOffline"/>
+    public bool ShowsLiveUpdatesDown => _isStreamDown && !_isOffline;
+
+    /// <summary>
+    /// Start the live stream over now rather than waiting out the core's backoff (task ef92df55).
+    /// </summary>
+    /// <remarks>
+    /// What the Reconnect button beside the stream-down message calls. The core clears its failure
+    /// count and connects again; the <c>stream</c> change that follows is what takes the message
+    /// away, so nothing is assumed here about whether it worked.
+    /// </remarks>
+    public async Task ReconnectStreamAsync(CancellationToken cancellationToken = default)
+    {
+        await _core.CallAsync(Commands.ReconnectStream(), cancellationToken);
+    }
+
+    /// <summary>
     /// Draw what is already cached, then go and look for more.
     /// </summary>
     /// <remarks>
@@ -804,7 +860,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             var fetched = response.Ok
                 && response.Value.TryGetProperty("fetched", out var element)
                 && element.GetBoolean();
-            StatusMessage = fetched ? null : "offline";
+            ShowsOffline = !fetched;
+            // Each pass has the last word on what the header says, as the hardcoded "offline" this
+            // replaced did (task ef92df55).
+            StatusMessage = null;
 
             if (fetched)
             {
@@ -981,22 +1040,49 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 case "synced":
                     // A pass nobody asked for brought something in. The same refresh a sync
                     // asked for here does afterwards — the cache moved, so the screen has to.
-                    await Sidebar.LoadAsync();
-                    await Tasks.RefreshAsync();
-                    if (IsBoardView)
+                    await CatchUpAsync(notification);
+                    break;
+                case "stream" when notification.Live is { } live:
+                    // The live stream went up or down, said once per edge (task ef92df55).
+                    _isStreamDown = !live;
+                    Raise(nameof(ShowsLiveUpdatesDown));
+                    if (live)
                     {
-                        await Board.RefreshAsync();
+                        // Nothing missed while the stream was down is replayed — the core leaves
+                        // that to the next sync pass, and its sixty-second timer is a floor for
+                        // the screen, not a promise. So catch up now rather than up to a minute
+                        // late. The change names nothing, which is "could not say": everything
+                        // open is refreshed.
+                        await CatchUpAsync(notification);
                     }
-                    if (Detail.IsOpen && notification.Touches(Detail.TaskId))
-                    {
-                        await Detail.ReloadAsync();
-                    }
-                    await RefreshOutboxAsync();
                     break;
                 default:
                     // A change this build does not draw anything for. The next sync carries it.
                     break;
             }
         });
+    }
+
+    /// <summary>
+    /// Redraw everything on screen from the cache, for a change that brought work in without
+    /// saying — or without being able to say — exactly what moved.
+    /// </summary>
+    /// <remarks>
+    /// Shared by <c>synced</c> and by the stream coming back up. Both mean the same thing to the
+    /// window: the cache is ahead of what is drawn, and nothing here names which rows.
+    /// </remarks>
+    private async Task CatchUpAsync(ChangeNotification notification)
+    {
+        await Sidebar.LoadAsync();
+        await Tasks.RefreshAsync();
+        if (IsBoardView)
+        {
+            await Board.RefreshAsync();
+        }
+        if (Detail.IsOpen && notification.Touches(Detail.TaskId))
+        {
+            await Detail.ReloadAsync();
+        }
+        await RefreshOutboxAsync();
     }
 }

@@ -173,13 +173,51 @@
                 </Button>
             </StackPanel>
         </Grid>
-        <!-- Not synced yet. Quiet, because it is a normal state and not a problem. -->
-        <TextBlock x:Uid="not_synced_yet" Grid.Column="1"
-                   Text="Not synced yet"
-                   VerticalAlignment="Center"
-                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                   Style="{ThemeResource CaptionTextBlockStyle}"
-                   Visibility="{x:Bind Shell.HasUnsentWork, Mode=OneWay, Converter={StaticResource Visible}}" />
+        <!--
+            What the app can currently see, in one row: quiet, because none of it is a problem
+            the person has to do anything about.
+
+            One row and not three cells, because they used to be separate claims on the same
+            column and drew on top of each other — the same bug the toolbar comment above
+            records. The states can coexist: unsent work and a dead stream are both true after
+            an edit made on a train.
+
+            Offline and live-updates-off are two different facts sharing a slot, and only ever
+            one of them shows at a time: ShowsLiveUpdatesDown is false while ShowsOffline is
+            true, decided in the view model and not here (task ef92df55). Offline means no sync
+            pass has reached the server and nothing at all is getting through. Live updates off
+            means only the stream dropped — writes still work, and the app simply will not hear
+            about somebody else's edit until the next pass. So that one comes with a way to try
+            again, which is exactly what a machine waking from sleep needs: the core's backoff
+            was chosen for a network that has since come back.
+        -->
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
+                    VerticalAlignment="Center">
+            <TextBlock x:Uid="not_synced_yet"
+                       Text="Not synced yet"
+                       VerticalAlignment="Center"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Visibility="{x:Bind Shell.HasUnsentWork, Mode=OneWay, Converter={StaticResource Visible}}" />
+            <TextBlock x:Uid="status_offline"
+                       Text="Offline"
+                       VerticalAlignment="Center"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Visibility="{x:Bind Shell.ShowsOffline, Mode=OneWay, Converter={StaticResource Visible}}" />
+            <TextBlock x:Uid="status_live_updates_off"
+                       Text="Live updates are off"
+                       VerticalAlignment="Center"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Visibility="{x:Bind Shell.ShowsLiveUpdatesDown, Mode=OneWay, Converter={StaticResource Visible}}" />
+            <HyperlinkButton x:Uid="reconnect_stream"
+                             Content="Reconnect"
+                             ToolTipService.ToolTip="Try the live stream again now"
+                             VerticalAlignment="Center"
+                             Click="OnReconnectStream"
+                             Visibility="{x:Bind Shell.ShowsLiveUpdatesDown, Mode=OneWay, Converter={StaticResource Visible}}" />
+        </StackPanel>
         <!--
             Account, Sync and Sign out, in one row.
 

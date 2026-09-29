@@ -40,6 +40,15 @@ public sealed partial class ListHeaderView : UserControl
     private void OnOpenSettings(object sender, RoutedEventArgs args) => Shell.ShowSettings(true);
 
     /// <summary>
+    /// Try the live stream again (task ef92df55). The button goes away when the core says the
+    /// stream is back, not when this returns — whether it worked is the core's to say.
+    /// </summary>
+    private async void OnReconnectStream(object sender, RoutedEventArgs args)
+    {
+        await Shell.ReconnectStreamAsync();
+    }
+
+    /// <summary>
     /// Search as the query is typed.
     /// </summary>
     /// <remarks>
