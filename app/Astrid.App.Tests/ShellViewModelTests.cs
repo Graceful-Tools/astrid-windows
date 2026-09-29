@@ -53,6 +53,22 @@ public sealed class ShellViewModelTests
             .AnswerOk("rowsForList", EmptyWindow());
 
     /// <summary>
+    /// The same core, with two writes the server refused waiting in the Outbox (task 84e077ca).
+    /// </summary>
+    /// <remarks>
+    /// <c>StartAsync</c> reads the outbox twice — once for the first paint and once after the sync
+    /// pass — so this is the second of those reads, and the state the window is left in. Note
+    /// <c>hasUnsentWork</c> is false: the core counts a dead-lettered write in <c>failed</c> and
+    /// deliberately not in the "still to send" answer, which is the whole reason it was invisible.
+    /// </remarks>
+    private static FakeCore Refusing(FakeCore core) =>
+        core.Answer("outboxStats",
+            "{\"ok\":true,\"value\":{\"pending\":0,\"running\":0,\"failed\":2,"
+            + "\"hasUnsentWork\":false,\"deadLetters\":["
+            + "{\"kind\":\"updateTask\",\"error\":\"403 forbidden\"},"
+            + "{\"kind\":\"createTask\",\"error\":\"403 forbidden\"}]}}");
+
+    /// <summary>
     /// Once, and then never again on this machine. A tour that came back every launch would be
     /// the first thing anybody turned off.
     /// </summary>
@@ -889,6 +905,113 @@ public sealed class ShellViewModelTests
         await shell.StartAsync();
 
         Assert.True(shell.HasUnsentWork);
+    }
+
+    /// <summary>
+    /// A write the server refused is visible (task 84e077ca).
+    /// </summary>
+    /// <remarks>
+    /// The window drew one outbox fact — "not synced yet" — and the core's <c>hasUnsentWork</c> is
+    /// <c>pending &gt; 0 || running &gt; 0</c>, which stops being true the moment a write is
+    /// dead-lettered. So the one state that needs a person was the one state that said nothing.
+    /// </remarks>
+    [Fact]
+    public async Task Writes_the_server_refused_are_visible_to_the_window_task_84e077ca()
+    {
+        var core = Refusing(OnlineCore(("l1", "Home", false)));
+        using var shell = new ShellViewModel(core, RunInline);
+
+        await shell.StartAsync();
+
+        Assert.Equal(2, shell.RefusedWrites);
+        // Not the same fact: nothing is queued, so there is nothing to wait for — only to retry.
+        Assert.False(shell.HasUnsentWork);
+    }
+
+    /// <summary>
+    /// Trying them again sends the command and re-reads the outbox (task 84e077ca).
+    /// </summary>
+    [Fact]
+    public async Task Retrying_refused_writes_sends_them_again_and_re_reads_the_outbox_task_84e077ca()
+    {
+        var core = Refusing(OnlineCore(("l1", "Home", false)));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        var readsBefore = core.SentKinds().Count(kind => kind == "outboxStats");
+
+        core.AnswerOk("retryDeadLetters", new { revived = 2 })
+            // Both went through this time.
+            .AnswerOk("outboxStats", new { pending = 0, failed = 0, hasUnsentWork = false });
+        await shell.RetryRefusedWritesAsync();
+
+        Assert.Contains("retryDeadLetters", core.SentKinds());
+        Assert.Equal(readsBefore + 1, core.SentKinds().Count(kind => kind == "outboxStats"));
+        Assert.Equal(2, shell.LastRetryRevived);
+        Assert.True(shell.ShowsRetryOutcome);
+        Assert.Equal(0, shell.RefusedWrites);
+    }
+
+    /// <summary>
+    /// A refusal refused again is not a success (task 84e077ca).
+    /// </summary>
+    /// <remarks>
+    /// <c>revived</c> is how many were given another go, not how many got through — the core's own
+    /// comment says so. So the outcome is read from the fresh <c>outboxStats</c> beside it, and the
+    /// row goes on saying two writes were refused rather than reporting two writes sent.
+    /// </remarks>
+    [Fact]
+    public async Task A_retry_that_is_refused_again_still_says_the_writes_were_refused_task_84e077ca()
+    {
+        var core = Refusing(OnlineCore(("l1", "Home", false)));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        core.AnswerOk("retryDeadLetters", new { revived = 2 })
+            // Revived, drained, and refused a second time: back where they started.
+            .AnswerOk("outboxStats", new { pending = 0, failed = 2, hasUnsentWork = false });
+        await shell.RetryRefusedWritesAsync();
+
+        Assert.Equal(2, shell.RefusedWrites);
+        Assert.Equal(2, shell.LastRetryRevived);
+    }
+
+    /// <summary>
+    /// Nothing to retry says so (task 84e077ca). A button that answers with silence is the thing
+    /// this task exists to avoid, and it is reachable: a drain can empty the dead letters between
+    /// the row being drawn and the link being pressed.
+    /// </summary>
+    [Fact]
+    public async Task Retrying_with_nothing_refused_says_so_task_84e077ca()
+    {
+        var core = OnlineCore(("l1", "Home", false));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        core.AnswerOk("retryDeadLetters", new { revived = 0 })
+            .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        await shell.RetryRefusedWritesAsync();
+
+        Assert.True(shell.ShowsRetryOutcome);
+        Assert.Equal(0, shell.LastRetryRevived);
+    }
+
+    /// <summary>
+    /// A core that cannot answer leaves no claim about what happened (task 84e077ca) — the failure
+    /// is what the status line is for, and "0 revived" would read as "nothing to retry".
+    /// </summary>
+    [Fact]
+    public async Task A_retry_the_core_refuses_says_nothing_about_what_was_sent_task_84e077ca()
+    {
+        var core = OnlineCore(("l1", "Home", false));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        // What `revive_dead` failing looks like: the core could not write the journal.
+        core.AnswerFailure("retryDeadLetters", AstridFailureKind.Cache, "database is locked");
+        await shell.RetryRefusedWritesAsync();
+
+        Assert.False(shell.ShowsRetryOutcome);
+        Assert.Equal("database is locked", shell.StatusMessage);
     }
 
     /// <summary>

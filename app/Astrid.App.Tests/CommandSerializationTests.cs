@@ -83,6 +83,42 @@ public sealed class CommandSerializationTests
             StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Sending a refused write again is a command the core has and the bindings did not (task
+    /// 84e077ca) — which is what made a dead-lettered write a dead end on this client.
+    /// </summary>
+    [Fact]
+    public void Retrying_refused_writes_is_a_bare_command_task_84e077ca()
+    {
+        Assert.Contains("\"kind\":\"retryDeadLetters\"", Json(Commands.RetryDeadLetters()),
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <c>outboxStats</c> carries the writes the server refused as well as the counts, and the
+    /// shell has to read both (task 84e077ca). The core gained the list in <c>c0ec031</c>;
+    /// <c>failed</c> is what <c>hasUnsentWork</c> deliberately leaves out.
+    /// </summary>
+    [Fact]
+    public void The_outbox_answer_carries_the_writes_that_were_refused_task_84e077ca()
+    {
+        var stats = AstridResponse.Parse(
+                "{\"ok\":true,\"value\":{\"pending\":0,\"running\":0,\"failed\":2,"
+                + "\"hasUnsentWork\":false,\"deadLetters\":["
+                + "{\"kind\":\"updateTask\",\"error\":\"403 forbidden\"},"
+                + "{\"kind\":\"createTask\",\"error\":null}]}}")
+            .Read<OutboxStats>();
+
+        Assert.NotNull(stats);
+        Assert.Equal(2, stats!.Failed);
+        Assert.False(stats.HasUnsentWork);
+        Assert.Equal(2, stats.DeadLetters.Count);
+        Assert.Equal("updateTask", stats.DeadLetters[0].Kind);
+        Assert.Equal("403 forbidden", stats.DeadLetters[0].Error);
+        // The core sends `last_error` as it has it, and it can be absent.
+        Assert.Null(stats.DeadLetters[1].Error);
+    }
+
     [Fact]
     public void Fields_are_camel_case()
     {

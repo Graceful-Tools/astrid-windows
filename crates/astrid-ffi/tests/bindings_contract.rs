@@ -86,10 +86,6 @@ const NOT_BOUND: &[(&str, &str)] = &[
         "streamState",
         "Wanted. `Change::Stream` fires only on edges, and the sink starts `false`, so a stream          that never connects publishes nothing and the window says nothing. Task 1e4c959e.",
     ),
-    (
-        "retryDeadLetters",
-        "Wanted. `outboxStats` is bound and drawn, so this shell can say a write was refused and          offers no way to send it again. Task 84e077ca.",
-    ),
     // ── This shell draws the core's projections; these answer in the wire shape ───────────────
     (
         "tasks",

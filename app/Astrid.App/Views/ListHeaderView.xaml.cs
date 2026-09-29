@@ -49,6 +49,15 @@ public sealed partial class ListHeaderView : UserControl
     }
 
     /// <summary>
+    /// Send the writes the server refused again (task 84e077ca). Whether they land is the next
+    /// <c>outboxStats</c> read's to say, which the view model does for itself.
+    /// </summary>
+    private async void OnRetryRefusedWrites(object sender, RoutedEventArgs args)
+    {
+        await Shell.RetryRefusedWritesAsync();
+    }
+
+    /// <summary>
     /// Search as the query is typed.
     /// </summary>
     /// <remarks>

@@ -1038,6 +1038,21 @@
   <data name="reconnect_stream.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Live-Verbindung jetzt erneut versuchen</value>
   </data>
+  <data name="retry_refused_writes.Content" xml:space="preserve">
+    <value>Erneut versuchen</value>
+  </data>
+  <data name="retry_refused_writes.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Abgelehnte Änderungen erneut senden</value>
+  </data>
+  <data name="outbox_refused" xml:space="preserve">
+    <value>{0} abgelehnt</value>
+  </data>
+  <data name="outbox_retry_sent" xml:space="preserve">
+    <value>{0} erneut gesendet</value>
+  </data>
+  <data name="outbox_retry_none" xml:space="preserve">
+    <value>Nichts zu wiederholen</value>
+  </data>
   <data name="add_card_to_column.PlaceholderText" xml:space="preserve">
     <value>Aufgabe hinzufügen</value>
   </data>

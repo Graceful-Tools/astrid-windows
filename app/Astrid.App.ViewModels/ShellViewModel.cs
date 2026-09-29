@@ -27,6 +27,13 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private string? _lastSelectedRowId;
     private readonly Action<Func<Task>> _post;
     private bool _hasUnsentWork;
+    private int _refusedWrites;
+    /// <summary>
+    /// How many refused writes the last retry was able to send again, or null before one was
+    /// asked for — and after one the core could not answer, which is a failure and not "none"
+    /// (task 84e077ca).
+    /// </summary>
+    private int? _lastRetryRevived;
     /// <summary>
     /// How many sync passes have been asked for and not yet answered. A count rather than a
     /// flag, because a second request is not refused — the core queues it behind the first
@@ -571,6 +578,72 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         private set => Set(ref _hasUnsentWork, value);
     }
 
+    /// <summary>
+    /// How many writes the server refused for good and the Outbox is holding (task 84e077ca).
+    /// </summary>
+    /// <remarks>
+    /// A separate fact from <see cref="HasUnsentWork"/>, not a worse version of it. The core's
+    /// "still to send" answer counts what is pending or running, so a refused write leaves that
+    /// set at the moment it stops being able to send itself — and before this the window drew
+    /// only that answer, so the one Outbox state needing a person was the one it never mentioned.
+    /// <see cref="RetryRefusedWritesAsync"/> is the way out.
+    /// </remarks>
+    public int RefusedWrites
+    {
+        get => _refusedWrites;
+        private set => Set(ref _refusedWrites, value);
+    }
+
+    /// <summary>
+    /// How many refused writes the last retry sent again — the words come from <c>.resw</c>, so
+    /// this is the number and not a sentence.
+    /// </summary>
+    public int LastRetryRevived => _lastRetryRevived ?? 0;
+
+    /// <summary>
+    /// Whether there is an outcome to report at all: false until a retry has been asked for, and
+    /// false again after one the core could not answer.
+    /// </summary>
+    /// <remarks>
+    /// Two properties rather than a nullable one on screen, because "none" and "we do not know"
+    /// have to look different. A failed retry drawn as "nothing to retry" would be the silent
+    /// button this task exists to remove, wearing a label.
+    /// </remarks>
+    public bool ShowsRetryOutcome => _lastRetryRevived is not null;
+
+    /// <summary>
+    /// Send every write the server refused again (task 84e077ca).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// What the "Try again" link beside the refused count calls. The core revives the dead-lettered
+    /// entries, drains, and answers with how many were <em>given another go</em> — not how many got
+    /// through. So this does not treat the answer as success: it re-reads the Outbox straight
+    /// afterwards, and a write refused a second time leaves <see cref="RefusedWrites"/> where it
+    /// was, with the row still saying so rather than reporting a send that did not happen.
+    /// </para>
+    /// <para>
+    /// A core that could not answer leaves no outcome and says why in
+    /// <see cref="StatusMessage"/>, the way every other refused call here does.
+    /// </para>
+    /// </remarks>
+    public async Task RetryRefusedWritesAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(Commands.RetryDeadLetters(), cancellationToken);
+        if (!response.Ok)
+        {
+            _lastRetryRevived = null;
+            Raise(nameof(LastRetryRevived));
+            Raise(nameof(ShowsRetryOutcome));
+            StatusMessage = response.Error?.Message;
+            return;
+        }
+        _lastRetryRevived = response.Read<DeadLettersRevived>()?.Revived ?? 0;
+        Raise(nameof(LastRetryRevived));
+        Raise(nameof(ShowsRetryOutcome));
+        await RefreshOutboxAsync(cancellationToken);
+    }
+
     public bool IsSyncing => _syncsInFlight > 0;
 
     /// <summary>Set when the session has gone and the user has to sign in again.</summary>
@@ -891,6 +964,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         var response = await _core.CallAsync(Commands.OutboxStats(), cancellationToken);
         var stats = response.Read<OutboxStats>();
         HasUnsentWork = stats?.HasUnsentWork ?? false;
+        RefusedWrites = stats?.Failed ?? 0;
     }
 
     /// <summary>
@@ -922,6 +996,12 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Sidebar.Selected = null;
         Tasks.Rows.Clear();
         HasUnsentWork = false;
+        // Whatever the previous session's Outbox was holding is not this window's business any
+        // more, and a count left on screen behind a sign-in card belongs to somebody else.
+        RefusedWrites = 0;
+        _lastRetryRevived = null;
+        Raise(nameof(LastRetryRevived));
+        Raise(nameof(ShowsRetryOutcome));
         NeedsSignIn = false;
     }
 

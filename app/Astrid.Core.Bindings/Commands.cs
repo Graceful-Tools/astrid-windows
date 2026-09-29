@@ -573,6 +573,16 @@ public static class Commands
     public static object OutboxStats() => new KindOnly("outboxStats");
 
     /// <summary>
+    /// Give every write the server refused another go, then drain. Answers <c>{ "revived": n }</c>.
+    /// </summary>
+    /// <remarks>
+    /// How many were given the chance, not how many got through — the core drains after reviving
+    /// them and does not wait to see. A caller that wants to know whether they landed asks
+    /// <see cref="OutboxStats"/> again afterwards (task 84e077ca).
+    /// </remarks>
+    public static object RetryDeadLetters() => new KindOnly("retryDeadLetters");
+
+    /// <summary>
     /// What a pressed key means, given what is on screen.
     /// </summary>
     /// <remarks>
