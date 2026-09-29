@@ -321,11 +321,7 @@ pub unsafe extern "C" fn astrid_subscribe(
         *slot = Some(subscriber.clone());
     }
     handle.app.realtime().on_change(move |change: &Change| {
-        deliver(
-            subscriber.callback,
-            subscriber.user_data,
-            &change_json(change),
-        );
+        deliver(subscriber.callback, subscriber.user_data, &change.to_json());
     });
 }
 
@@ -387,25 +383,11 @@ fn failure_json(message: &str) -> String {
     .to_string()
 }
 
-fn change_json(change: &Change) -> String {
-    let value = match change {
-        Change::Task(id) => serde_json::json!({ "change": "task", "id": id }),
-        Change::List(id) => serde_json::json!({ "change": "list", "id": id }),
-        Change::Comments(id) => serde_json::json!({ "change": "comments", "taskId": id }),
-        Change::Chat(id) => serde_json::json!({ "change": "chat", "channelId": id }),
-        Change::AgentTyping { channel_id, active } => serde_json::json!({
-            "change": "agentTyping", "channelId": channel_id, "active": active
-        }),
-        Change::Settings => serde_json::json!({ "change": "settings" }),
-        Change::RemindersDue => serde_json::json!({ "change": "remindersDue" }),
-        Change::NeedsSync => serde_json::json!({ "change": "needsSync" }),
-        Change::Synced { task_ids, list_ids } => serde_json::json!({
-            "change": "synced", "taskIds": task_ids, "listIds": list_ids
-        }),
-        Change::Notifications => serde_json::json!({ "change": "notifications" }),
-    };
-    value.to_string()
-}
+// `change_json` lived here until the core grew `Change::to_json` — the same vocabulary, answered
+// once so every shell hears the same words (astrid-core's Apple pass). Keeping a second spelling
+// here is how this boundary came to miss a variant: the copy had no arm for `Change::Stream`, and
+// `agentTyping` said only `channelId` and `active` while the core's event carries the task and the
+// agent's name as well.
 
 #[cfg(test)]
 mod tests {
@@ -531,17 +513,22 @@ mod tests {
         unsafe { astrid_stop(handle) };
     }
 
+    /// The boundary passes the core's own words through, unchanged.
+    ///
+    /// The vocabulary itself is the core's to specify and to test; what this asserts is that
+    /// nothing here rewrites it on the way out, which is what a second spelling in this file used
+    /// to do.
     #[test]
     fn a_change_notification_names_only_what_moved() {
         assert_eq!(
-            change_json(&Change::Task("t1".into())),
+            Change::Task("t1".into()).to_json(),
             r#"{"change":"task","id":"t1"}"#
         );
         assert_eq!(
-            change_json(&Change::Comments("t1".into())),
+            Change::Comments("t1".into()).to_json(),
             r#"{"change":"comments","taskId":"t1"}"#
         );
-        assert_eq!(change_json(&Change::NeedsSync), r#"{"change":"needsSync"}"#);
+        assert_eq!(Change::NeedsSync.to_json(), r#"{"change":"needsSync"}"#);
     }
 
     #[test]
