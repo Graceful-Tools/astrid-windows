@@ -65,6 +65,11 @@ internal sealed class FakeCore : IAstridCore
     public void NotifySynced(params string[] taskIds) =>
         Changed?.Invoke(new ChangeNotification("synced", null, taskIds));
 
+    /// <summary>Deliver a <c>stream</c> change: the live stream connected, or dropped.</summary>
+    /// <remarks>The core says each edge once, never once per frame.</remarks>
+    public void NotifyStream(bool live) =>
+        Changed?.Invoke(new ChangeNotification("stream", null, Live: live));
+
     /// <summary>
     /// Hold the answer to one kind of command until the test lets it go.
     /// </summary>

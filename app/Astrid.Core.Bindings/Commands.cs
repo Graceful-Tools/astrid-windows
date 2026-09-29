@@ -735,6 +735,16 @@ public static class Commands
 
     public static object Drain() => new KindOnly("drain");
 
+    /// <summary>
+    /// Drop the live stream and connect again now, from a clean failure count.
+    /// </summary>
+    /// <remarks>
+    /// For the moments the core cannot see: the machine woke, or the network came back, and neither
+    /// the open connection nor the backoff it chose while the network was gone describes the world
+    /// any more. Waiting one out can cost a minute of a stream that would connect immediately.
+    /// </remarks>
+    public static object ReconnectStream() => new KindOnly("reconnectStream");
+
     public static object RefreshComments(string taskId) => new WithTaskId("refreshComments", taskId);
 
     public static object SearchUsers(string query) => new SearchRequest("searchUsers", query);

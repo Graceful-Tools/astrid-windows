@@ -59,6 +59,30 @@ public sealed class CommandSerializationTests
         Assert.Contains("\"order\":[\"t2\",\"t1\"]", json, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A <c>stream</c> change carries which edge it is, and the shell has to read it (task
+    /// ef92df55). <c>Parse</c> only ever looked for ids, so both edges arrived identical and the
+    /// window could not have told them apart even with an arm for them.
+    /// </summary>
+    [Fact]
+    public void A_stream_change_carries_which_edge_it_is_task_ef92df55()
+    {
+        Assert.True(ChangeNotification.Parse("{\"change\":\"stream\",\"live\":true}").Live);
+        Assert.False(ChangeNotification.Parse("{\"change\":\"stream\",\"live\":false}").Live);
+        // Every other change says nothing about the stream, which is not the same as "down".
+        Assert.Null(ChangeNotification.Parse("{\"change\":\"task\",\"id\":\"t1\"}").Live);
+    }
+
+    /// <summary>
+    /// Starting the stream over is a command the core has and the bindings did not (task ef92df55).
+    /// </summary>
+    [Fact]
+    public void Reconnecting_the_stream_is_a_bare_command_task_ef92df55()
+    {
+        Assert.Contains("\"kind\":\"reconnectStream\"", Json(Commands.ReconnectStream()),
+            StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Fields_are_camel_case()
     {

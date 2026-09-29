@@ -35,6 +35,24 @@ public sealed class ShellViewModelTests
             .AnswerOk("sync", new { fetched = false });
 
     /// <summary>
+    /// The same, but the first sync pass reached the server.
+    /// </summary>
+    /// <remarks>
+    /// <c>StartedCore</c>'s pass answers <c>fetched: false</c>, which leaves the window saying it is
+    /// offline — and offline outranks the stream being down, so a stream test built on it would be
+    /// asserting the precedence rather than the thing it means to test (task ef92df55).
+    /// </remarks>
+    private static FakeCore OnlineCore(params (string Id, string Name, bool Favorite)[] lists) =>
+        new FakeCore()
+            .AnswerOk("isSignedIn", new { signedIn = true, waitingForCallback = false })
+            .AnswerOk("lists", Lists(lists))
+            .AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("outboxStats", new { pending = 0, running = 0, failed = 0, hasUnsentWork = false })
+            .AnswerOk("sync", new { fetched = true })
+            .AnswerOk("lists", Lists(lists))
+            .AnswerOk("rowsForList", EmptyWindow());
+
+    /// <summary>
     /// Once, and then never again on this machine. A tour that came back every launch would be
     /// the first thing anybody turned off.
     /// </summary>
@@ -738,8 +756,104 @@ public sealed class ShellViewModelTests
 
         await shell.StartAsync();
 
-        Assert.Equal("offline", shell.StatusMessage);
+        Assert.True(shell.ShowsOffline);
         Assert.False(shell.NeedsSignIn);
+    }
+
+    /// <summary>
+    /// The stream going down says so, and coming back takes it away (task ef92df55).
+    /// </summary>
+    /// <remarks>
+    /// The core says each edge once. Before this the window looked identical whether events were
+    /// flowing or the stream had died twenty minutes ago: <c>ShellViewModel</c>'s change switch
+    /// absorbed <c>stream</c> in its default arm.
+    /// </remarks>
+    [Fact]
+    public async Task The_stream_going_down_says_so_and_coming_back_clears_it()
+    {
+        var core = OnlineCore(("l1", "Home", false));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        // Nothing is said until the core says it. The stream starts down and announces itself when
+        // it connects, so a window that opened claiming "live updates are off" would be wrong for
+        // the second before the first connection, every launch.
+        Assert.False(shell.ShowsLiveUpdatesDown);
+
+        core.NotifyStream(live: false);
+        Assert.True(shell.ShowsLiveUpdatesDown);
+
+        core.AnswerOk("lists", Lists(("l1", "Home", false)))
+            .AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        core.NotifyStream(live: true);
+        Assert.False(shell.ShowsLiveUpdatesDown);
+    }
+
+    /// <summary>
+    /// Reconnecting catches up at once rather than waiting out the sixty-second timer (task
+    /// ef92df55). Events missed while the stream was down are not replayed — the core's own comment
+    /// calls that timer "a floor for the screen" — so the up edge does the refresh <c>synced</c>
+    /// does.
+    /// </summary>
+    [Fact]
+    public async Task The_stream_coming_back_catches_up_without_waiting_for_the_timer()
+    {
+        var core = OnlineCore(("l1", "Home", false)).AnswerOk("taskDetail", TaskDetail("t1"));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        await shell.OpenTaskAsync("t1");
+        core.NotifyStream(live: false);
+        var listsBefore = core.SentKinds().Count(kind => kind == "lists");
+        var rowsBefore = core.SentKinds().Count(kind => kind == "rowsForList");
+        var detailBefore = core.SentKinds().Count(kind => kind == "taskDetail");
+
+        core.AnswerOk("lists", Lists(("l1", "Home", false)))
+            .AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("taskDetail", TaskDetail("t1"))
+            .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        core.NotifyStream(live: true);
+
+        Assert.Equal(listsBefore + 1, core.SentKinds().Count(kind => kind == "lists"));
+        Assert.Equal(rowsBefore + 1, core.SentKinds().Count(kind => kind == "rowsForList"));
+        // The stream names nothing it missed, so "could not say" applies and the open task reloads.
+        Assert.Equal(detailBefore + 1, core.SentKinds().Count(kind => kind == "taskDetail"));
+    }
+
+    /// <summary>
+    /// Offline and the stream being down are different facts sharing one slot, and offline wins
+    /// (task ef92df55). When nothing at all is getting through, "live updates are off" is a second
+    /// line saying less than the first.
+    /// </summary>
+    [Fact]
+    public async Task Being_offline_outranks_the_stream_being_down()
+    {
+        // This fixture's sync pass could not reach the server.
+        var core = StartedCore(("l1", "Home", false));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        core.NotifyStream(live: false);
+
+        Assert.True(shell.ShowsOffline);
+        Assert.False(shell.ShowsLiveUpdatesDown);
+    }
+
+    /// <summary>
+    /// If the window says the stream is down, it can try again (task ef92df55) — a resume from
+    /// sleep is exactly when the core's backoff was chosen for a world that no longer exists.
+    /// </summary>
+    [Fact]
+    public async Task Reconnecting_asks_the_core_to_start_the_stream_over()
+    {
+        var core = OnlineCore(("l1", "Home", false)).AnswerOk("reconnectStream");
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        core.NotifyStream(live: false);
+
+        await shell.ReconnectStreamAsync();
+
+        Assert.Contains("reconnectStream", core.SentKinds());
     }
 
     [Fact]
