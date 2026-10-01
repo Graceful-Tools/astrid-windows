@@ -162,9 +162,9 @@ public sealed partial class SettingsView : UserControl
         // browser, so there is one copy of each (task 438494c7). The page on the right stays.
         var door = section switch
         {
-            "Help" => "https://astrid.cc/help",
-            "Privacy" => "https://astrid.cc/privacy",
-            "Terms" => "https://astrid.cc/terms",
+            "Help" => $"{App.ServerOrigin}/help",
+            "Privacy" => $"{App.ServerOrigin}/privacy",
+            "Terms" => $"{App.ServerOrigin}/terms",
             _ => null,
         };
         if (door is not null)
