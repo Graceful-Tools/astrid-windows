@@ -92,7 +92,7 @@ public sealed partial class AccountSection : UserControl
 
     /// <summary>Registering a passkey is the browser's WebAuthn ceremony; the list here follows.</summary>
     private async void OnManagePasskeys(object sender, RoutedEventArgs args) =>
-        await Windows.System.Launcher.LaunchUriAsync(new Uri("https://astrid.cc/settings"));
+        await Windows.System.Launcher.LaunchUriAsync(new Uri($"{App.ServerOrigin}/settings"));
 
     /// <summary>Rename a passkey: a box in a flyout, Enter to save (task 19fd9289).</summary>
     private void OnRenamePasskey(object sender, RoutedEventArgs args)

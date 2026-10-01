@@ -770,7 +770,7 @@ public sealed partial class TaskDetailPane : UserControl
                 await Shell.OpenListAsync(reference.Id, reference.Label);
                 break;
             default:
-                await FollowLinkAsync($"https://astrid.cc/u/{Uri.EscapeDataString(reference.Id)}");
+                await FollowLinkAsync($"{App.ServerOrigin}/u/{Uri.EscapeDataString(reference.Id)}");
                 break;
         }
     }

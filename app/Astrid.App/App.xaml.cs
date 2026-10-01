@@ -105,7 +105,7 @@ public partial class App : Application
     {
         try
         {
-            Core = AstridClient.Start(CachePath());
+            Core = AstridClient.Start(CachePath(), ServerUrl);
             Core.Subscribe();
         }
         catch (Exception error) when (error is AstridStartupException or BadImageFormatException
@@ -237,7 +237,17 @@ public partial class App : Application
     /// server in a sync — and roaming a SQLite file between machines is a good way to corrupt it
     /// while two of them have it open.
     /// </remarks>
-    private static string CachePath() => Path.Combine(DataDirectory(), "astrid.db");
+    private static string CachePath() => Path.Combine(DataDirectory(), ServerSelection.CacheFileName(ServerUrl));
+
+    /// <summary>
+    /// The deployment this app talks to when <c>ASTRID_SERVER_URL</c> names one other than Astrid;
+    /// null for Astrid. See <see cref="ServerSelection"/>.
+    /// </summary>
+    internal static string? ServerUrl { get; } =
+        ServerSelection.Parse(Environment.GetEnvironmentVariable("ASTRID_SERVER_URL"));
+
+    /// <summary>The origin web links open: the chosen server's, or Astrid's.</summary>
+    internal static string ServerOrigin => ServerSelection.Origin(ServerUrl);
 
     /// <summary>
     /// The resources beside the executable: every word <see cref="Strings.Get(string)"/> answers.
