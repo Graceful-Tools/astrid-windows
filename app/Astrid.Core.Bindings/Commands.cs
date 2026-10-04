@@ -755,6 +755,14 @@ public static class Commands
     /// </remarks>
     public static object ReconnectStream() => new KindOnly("reconnectStream");
 
+    /// <summary>The device is back online: send the writes waiting for the network now.</summary>
+    /// <remarks>
+    /// The core stopped retrying a write made with no network (astrid-core 126596f): it waits for
+    /// this, a sign-in, or a wake. Without it a change made offline sat in the outbox until one of
+    /// the others happened. <c>NetworkWatch</c> sends it when connectivity comes back.
+    /// </remarks>
+    public static object NetworkRestored() => new KindOnly("networkRestored");
+
     /// <summary>
     /// Whether the live stream is connected: <c>{ "live": bool }</c>.
     /// </summary>
