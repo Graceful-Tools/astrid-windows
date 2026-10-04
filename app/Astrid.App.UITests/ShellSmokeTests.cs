@@ -321,6 +321,8 @@ public sealed class ShellSmokeTests
         Assert.True(app.Sees("Inbox"), $"the board did not open; saw: {string.Join(", ", app.Names())}");
         Assert.True(app.Sees(Seeds.BoardCardTitle), "the seeded card is not on the board");
 
+        // A real mouse reaches only the window in front, and UIA gave no sign that it was not.
+        app.Activate();
         var card = app.Require(Seeds.BoardCardTitle).Current.BoundingRectangle;
         var ready = app.Require("Ready").Current.BoundingRectangle;
         Native.Drag(
@@ -362,6 +364,8 @@ public sealed class ShellSmokeTests
             before.IndexOf(Seeds.SecondErrand) < before.IndexOf(Seeds.FirstErrand),
             "with nothing arranged the newer errand should draw first");
 
+        // A real mouse reaches only the window in front, and UIA gave no sign that it was not.
+        app.Activate();
         var upper = app.Require(Seeds.SecondErrand).Current.BoundingRectangle;
         var lower = app.Require(Seeds.FirstErrand).Current.BoundingRectangle;
         Native.Drag(
@@ -372,7 +376,7 @@ public sealed class ShellSmokeTests
         var after = app.Names().ToList();
         Assert.True(
             after.IndexOf(Seeds.FirstErrand) < after.IndexOf(Seeds.SecondErrand),
-            $"the row did not stay where it was dropped; the tree reads: {string.Join(", ", after)}");
+            $"the row did not stay where it was dropped; {Native.LastDrag}; the tree reads: {string.Join(", ", after)}");
         Assert.False(File.Exists(app.CrashLogPath), Crash(app));
     }
 
@@ -421,6 +425,9 @@ public sealed class ShellSmokeTests
     /// <summary>Close whatever flyout is open.</summary>
     private static void Dismiss(AstridApp app)
     {
+        // A real click only reaches the window in front, same as a drag — but best-effort here, so
+        // that a machine where nothing can be activated still gets what these tests do cover.
+        app.TryActivate();
         // A flyout is light-dismissed by a click elsewhere; the window's own title is a safe
         // target that does nothing when it is pressed.
         var title = app.Find("Astrid", 500);
