@@ -106,6 +106,51 @@ public sealed class AstridApp : IDisposable
         return (process, window);
     }
 
+    /// <summary>
+    /// Bring the app in front and make it the active window, for the tests that use a real mouse.
+    /// </summary>
+    /// <remarks>
+    /// UI Automation reaches an occluded, inactive window perfectly well; a pointer does not. So
+    /// anything driven by <see cref="Native.Click"/> or <see cref="Native.Drag"/> has to ask for
+    /// this first, and has to fail loudly when it cannot get it — otherwise the click lands in
+    /// another window and the test reports whatever it was checking as broken (task f850514f).
+    /// </remarks>
+    public void Activate()
+    {
+        if (!TryActivate())
+        {
+            var handle = new IntPtr(Window.Current.NativeWindowHandle);
+            throw new InvalidOperationException(
+                $"could not bring the app to the front: its window is {handle} and in front is " +
+                $"{Native.Describe(Native.Foreground())}. A real mouse cannot reach a window that " +
+                "is not there, so anything this test went on to check would be a false failure. " +
+                "A locked session is the usual reason, and it cannot be worked around: unlock the " +
+                "machine and run these again. See docs/TESTING.md.");
+        }
+    }
+
+    /// <summary>
+    /// Try to bring the app in front, for the places where a real click is a nicety rather than
+    /// the thing being tested.
+    /// </summary>
+    /// <remarks>
+    /// Light-dismissing a flyout is the case: if the click does not land, the next <c>Find</c> simply
+    /// looks past the flyout, and failing the test over it would lose the coverage those tests do
+    /// give on a machine where no window can be activated at all.
+    /// </remarks>
+    public bool TryActivate()
+    {
+        var handle = new IntPtr(Window.Current.NativeWindowHandle);
+        if (!Native.BringToForeground(handle))
+        {
+            return false;
+        }
+        // The activation itself is a layout pass and a focus change; the first pointer message
+        // after it is the one that gets eaten if it arrives too early.
+        Thread.Sleep(300);
+        return true;
+    }
+
     /// <summary>Find one element by the name a screen reader would read.</summary>
     public AutomationElement? Find(string name, int timeoutMilliseconds = 4000)
     {

@@ -103,6 +103,21 @@ if ($Full) {
     # desktop session, they take about a minute, and they run one at a time — which is why they are
     # here rather than in the ordinary gate.
     #
+    # An UNLOCKED session, specifically. Two of these tests drive a real mouse, and a real mouse goes
+    # to whatever window is in front: on a locked machine that is the lock screen, nothing can be
+    # activated past it, and the app never receives a click. UI Automation reads the window
+    # regardless, so the tests used to report "the row did not stay where it was dropped" and look
+    # exactly like a drag regression — which is what task f850514f turned out to be.
+    #
+    # A HINT and not a failure: LockApp keeps running, suspended, after an unlock, so its presence
+    # does not prove the session is locked and failing the gate on it would be a false red. The tests
+    # themselves are the judge — AstridApp.Activate names whatever is in front and says it could not
+    # get past it. This only puts the reason in front of whoever reads the log. See docs/TESTING.md.
+    if (Get-Process -Name LockApp -ErrorAction SilentlyContinue) {
+        Write-Host "[!] LockApp is running. If the mouse-driven UI tests fail, check whether this" -ForegroundColor Yellow
+        Write-Host "    session is locked - they cannot reach the app past a lock screen (docs/TESTING.md)." -ForegroundColor Yellow
+    }
+    #
     # The Release build above is for x64 and ARM64; these run the host's, so the app is built once
     # more for the host RID in Debug, which is what the tests look for first.
     #
