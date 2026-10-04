@@ -83,6 +83,12 @@ public sealed class CommandSerializationTests
             StringComparison.Ordinal);
     }
 
+    /// <summary>The core waits for this before sending writes made offline (astrid-core 126596f).</summary>
+    [Fact]
+    public void Network_restored_is_a_bare_command() =>
+        Assert.Contains("\"kind\":\"networkRestored\"", Json(Commands.NetworkRestored()),
+            StringComparison.Ordinal);
+
     /// <summary>
     /// Asking whether the stream is live is a command the core has and the bindings did not (task
     /// 1e4c959e) — the edges are only half the answer, and a stream that never connects has no

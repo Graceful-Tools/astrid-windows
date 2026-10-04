@@ -107,6 +107,7 @@ public partial class App : Application
         {
             Core = AstridClient.Start(CachePath(), ServerUrl);
             Core.Subscribe();
+            WatchNetwork();
         }
         catch (Exception error) when (error is AstridStartupException or BadImageFormatException
             or DllNotFoundException)
@@ -237,6 +238,36 @@ public partial class App : Application
     /// server in a sync — and roaming a SQLite file between machines is a good way to corrupt it
     /// while two of them have it open.
     /// </remarks>
+    /// <summary>
+    /// Send <c>networkRestored</c> when connectivity comes back, so writes made offline go at once
+    /// rather than waiting for the next sign-in or wake. See <see cref="NetworkWatch"/>.
+    /// </summary>
+    private static void WatchNetwork()
+    {
+        static bool Online()
+        {
+            try
+            {
+                return Windows.Networking.Connectivity.NetworkInformation.GetInternetConnectionProfile()
+                    ?.GetNetworkConnectivityLevel()
+                    == Windows.Networking.Connectivity.NetworkConnectivityLevel.InternetAccess;
+            }
+            catch
+            {
+                return true;   // unknown reads as online: a missed signal costs a wait, not data
+            }
+        }
+
+        var watch = new NetworkWatch(Online());
+        Windows.Networking.Connectivity.NetworkInformation.NetworkStatusChanged += _ =>
+        {
+            if (watch.Observe(Online()) && Core is { } core)
+            {
+                _ = core.CallAsync(Commands.NetworkRestored());
+            }
+        };
+    }
+
     private static string CachePath() => Path.Combine(DataDirectory(), ServerSelection.CacheFileName(ServerUrl));
 
     /// <summary>

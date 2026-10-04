@@ -81,6 +81,11 @@ fn every_command_the_shell_sends_is_one_the_core_understands() {
 /// the core Windows deliberately leaves alone, so "not needed" is not a reason and will not pass:
 /// say what this shell does instead, or name the task that will bind it.
 const NOT_BOUND: &[(&str, &str)] = &[
+    (
+        "clearCache",
+        "For a shell whose isolation guard caught another account's rows. This shell has no such \
+         guard; signing out already clears the cache in the core.",
+    ),
     // ── This shell draws the core's projections; these answer in the wire shape ───────────────
     (
         "tasks",
