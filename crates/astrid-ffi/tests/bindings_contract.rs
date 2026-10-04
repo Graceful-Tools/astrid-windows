@@ -109,6 +109,10 @@ const NOT_BOUND: &[(&str, &str)] = &[
         "Carries writes another client's journal already applied, so an offline edit made before          that move still reaches the server. Same reason: there is no earlier Windows journal.",
     ),
     (
+        "importExternalLedger",
+        "Merges a sync ledger built by another store — an Apple client's old UserDefaults — into          the core's. Same one-off as `seedCache`: this shell has only ever had the core's ledger.",
+    ),
+    (
         "resolveIds",
         "Which real ids temporary ones became, for a shell holding its own copies of them. This          one redraws from the core after a create, so the temporary id leaves with the row.",
     ),

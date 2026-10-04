@@ -282,9 +282,11 @@ public sealed class TaskListViewModel : ObservableObject
     /// Search, or go back to the list when the query is emptied.
     /// </summary>
     /// <remarks>
-    /// The core decides what is too short to search for and answers with nothing, so a query of one
-    /// character shows an empty result list rather than flashing the whole account on the way to
-    /// the answer.
+    /// What counts as a search is the core's, and it changed under this method when the pin moved
+    /// to 7c52132: `searchTasks` now answers as iOS's search box does (AITD-459), where ONE
+    /// character is a search and only an empty query is nothing. So the whitespace check below is
+    /// the whole of this shell's rule — it goes back to the list — and everything else is asked.
+    /// A minimum length here would now disagree with every other client.
     /// </remarks>
     public async Task SearchAsync(string query, CancellationToken cancellationToken = default)
     {
