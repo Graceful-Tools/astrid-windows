@@ -408,7 +408,10 @@ public sealed class ShellSmokeTests
             System.Windows.Automation.TreeScope.Descendants,
             new System.Windows.Automation.PropertyCondition(
                 System.Windows.Automation.AutomationElement.NameProperty, "Add"));
-        Assert.True(buttons.Count >= 2, "expected an Add button for lists and one for tasks");
+        Assert.True(
+            buttons.Count >= 2,
+            "expected an Add button for lists and one for tasks, found " + buttons.Count +
+            "; the tree reads: " + string.Join(", ", app.Names()));
         var add = (System.Windows.Automation.InvokePattern)buttons[buttons.Count - 1]
             .GetCurrentPattern(System.Windows.Automation.InvokePattern.Pattern);
         add.Invoke();
