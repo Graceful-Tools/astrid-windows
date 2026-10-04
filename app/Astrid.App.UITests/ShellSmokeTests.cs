@@ -142,7 +142,7 @@ public sealed class ShellSmokeTests
         using var app = AstridApp.Launch(signedIn: true);
 
         app.Type("New list", "Shopping");
-        app.Invoke("Add");
+        app.InvokeById("AddListButton");
         Assert.True(
             app.Sees("Shopping"),
             $"the new list never appeared; saw: {string.Join(", ", app.Names())}");
@@ -188,7 +188,7 @@ public sealed class ShellSmokeTests
         using var app = AstridApp.Launch(signedIn: true, language: "de-DE");
 
         app.Type("New list", "Einkauf");
-        app.Invoke("Add");
+        app.InvokeById("AddListButton");
         Assert.True(
             app.Sees("Einkauf"),
             $"the new list never appeared; saw: {string.Join(", ", app.Names())}");
@@ -217,7 +217,7 @@ public sealed class ShellSmokeTests
     {
         using var app = AstridApp.Launch(signedIn: true);
         app.Type("New list", "Work");
-        app.Invoke("Add");
+        app.InvokeById("AddListButton");
         app.Type("Add a task", "Book flights");
         InvokeSecondAdd(app);
         Assert.True(app.Sees("Book flights"));
@@ -241,7 +241,7 @@ public sealed class ShellSmokeTests
     {
         using var app = AstridApp.Launch(signedIn: true);
         app.Type("New list", "Work");
-        app.Invoke("Add");
+        app.InvokeById("AddListButton");
 
         app.Invoke("Filters");
         Assert.True(app.Sees("Sort by"), "the filter sheet did not open");
@@ -399,26 +399,34 @@ public sealed class ShellSmokeTests
     }
 
     /// <summary>
-    /// Press the second button named Add — the one under the task box.
+    /// Press the Add button under the task box (task e785bbf3).
     /// </summary>
     /// <remarks>
-    /// Both say "Add", which is right on screen where each sits under its own box, and ambiguous to
-    /// anything that finds controls by name. Worth remembering when these grow: two identical
-    /// names is also what a screen reader reads out.
+    /// <para>
+    /// By <c>AutomationId</c>, not by name. Both Add buttons are called "Add" — right on screen,
+    /// where each sits under its own box, and ambiguous to anything that finds a control by name.
+    /// This used to take the LAST of the two, which made the test depend on tree order, so a new
+    /// control named "Add" anywhere in the window would silently have changed which button was
+    /// pressed; and it depended on the name being "Add" at all, which in German it is not.
+    /// </para>
+    /// <para>
+    /// And it waits. The old lookup was a single synchronous <c>FindAll</c> immediately after
+    /// typing, which failed about one run in three with <c>found 0</c> while printing two Add
+    /// buttons in the very same message: the count came from the instant query and the names from
+    /// <c>Names()</c> a moment later. A UIA tree mid-update answers with nothing rather than with a
+    /// partial list, so the fix is to poll for the condition, the way everything else in this suite
+    /// waits around an interaction.
+    /// </para>
     /// </remarks>
     private static void InvokeSecondAdd(AstridApp app)
     {
-        var buttons = app.Window.FindAll(
-            System.Windows.Automation.TreeScope.Descendants,
-            new System.Windows.Automation.PropertyCondition(
-                System.Windows.Automation.AutomationElement.NameProperty, "Add"));
-        Assert.True(
-            buttons.Count >= 2,
-            "expected an Add button for lists and one for tasks, found " + buttons.Count +
-            "; the tree reads: " + string.Join(", ", app.Names()));
-        var add = (System.Windows.Automation.InvokePattern)buttons[buttons.Count - 1]
-            .GetCurrentPattern(System.Windows.Automation.InvokePattern.Pattern);
-        add.Invoke();
+        var add = app.FindById("AddTaskButton")
+            ?? throw new InvalidOperationException(
+                "no control with AutomationId 'AddTaskButton' on screen. Saw: "
+                + string.Join(", ", app.Names()));
+        var pattern = (System.Windows.Automation.InvokePattern)add.GetCurrentPattern(
+            System.Windows.Automation.InvokePattern.Pattern);
+        pattern.Invoke();
         Thread.Sleep(800);
     }
 

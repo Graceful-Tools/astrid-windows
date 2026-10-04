@@ -131,7 +131,15 @@
                          CornerRadius="8"
                          Padding="12,7"
                          KeyDown="OnQuickAddKeyDown" />
+                <!--
+                  AutomationId, not just the name: this button and the sidebar's are BOTH called
+                  "Add" — right on screen, where each sits under its own box, and ambiguous to
+                  anything that finds a control by name. An id says which one is meant, does not
+                  depend on tree order, and does not change in German (task e785bbf3). It is set
+                  here rather than in the .resw because an automation id is not a translated string.
+                -->
                 <Button x:Uid="add_a_task" Grid.Column="2"
+                        AutomationProperties.AutomationId="AddTaskButton"
                         Width="36" Height="36"
                         Padding="0"
                         CornerRadius="8"
