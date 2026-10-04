@@ -169,6 +169,33 @@ public sealed class AstridApp : IDisposable
         return null;
     }
 
+    /// <summary>
+    /// Find one element by its <c>AutomationId</c> — for a control whose name is ambiguous.
+    /// </summary>
+    /// <remarks>
+    /// Polls, for the same reason <see cref="Find"/> does: a tree that has not settled answers an
+    /// immediate query with nothing at all rather than with a partial list, which reads as "the
+    /// control is not there" (task e785bbf3). An id is also stable across languages, where a name
+    /// is not.
+    /// </remarks>
+    public AutomationElement? FindById(string automationId, int timeoutMilliseconds = 4000)
+    {
+        var condition = new PropertyCondition(
+            AutomationElement.AutomationIdProperty, automationId);
+        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMilliseconds);
+        do
+        {
+            var found = Window.FindFirst(TreeScope.Descendants, condition);
+            if (found is not null)
+            {
+                return found;
+            }
+            Thread.Sleep(200);
+        }
+        while (DateTime.UtcNow < deadline);
+        return null;
+    }
+
     public AutomationElement Require(string name) =>
         Find(name)
         // With what IS on screen: a missing control is nearly always the app showing a different
@@ -180,6 +207,23 @@ public sealed class AstridApp : IDisposable
     public void Invoke(string name)
     {
         var pattern = (InvokePattern)Require(name).GetCurrentPattern(InvokePattern.Pattern);
+        pattern.Invoke();
+        Thread.Sleep(600);
+    }
+
+    /// <summary>Press a control by its <c>AutomationId</c> (task e785bbf3).</summary>
+    /// <remarks>
+    /// For the two buttons both called "Add": <see cref="Invoke"/> takes the first match in TREE
+    /// ORDER, so which one it pressed was an accident of layout, and the name it matches is not
+    /// "Add" in every language.
+    /// </remarks>
+    public void InvokeById(string automationId)
+    {
+        var element = FindById(automationId)
+            ?? throw new InvalidOperationException(
+                $"no control with AutomationId '{automationId}' on screen. Saw: "
+                + string.Join(", ", Names()));
+        var pattern = (InvokePattern)element.GetCurrentPattern(InvokePattern.Pattern);
         pattern.Invoke();
         Thread.Sleep(600);
     }

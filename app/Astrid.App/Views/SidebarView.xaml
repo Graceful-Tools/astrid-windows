@@ -228,7 +228,9 @@
                      CornerRadius="8"
                      Padding="10,6"
                      KeyDown="OnNewListKeyDown" />
+            <!-- The other "Add" — see AddTaskButton in TaskRowsView.xaml (task e785bbf3). -->
             <Button x:Uid="new_list" Grid.Column="1"
+                    AutomationProperties.AutomationId="AddListButton"
                     Width="32" Height="32"
                     Padding="0"
                     CornerRadius="8"
