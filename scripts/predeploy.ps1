@@ -40,8 +40,12 @@ function Invoke-Step {
 # FIRST, and seconds long, because the thing it guards is the scheduled loop that runs everything
 # below. A broken fixall-loop.ps1 does not fail a build - it quietly stops working the board, which
 # is how three tasks were stranded on 2026-09-27 (task 6392dfdb).
-Invoke-Step 'script tests' {
-    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'tests/fixall-loop-cleanup.Tests.ps1')
+# One step per file, so a red one names which behaviour broke rather than just "script tests".
+foreach ($scriptTest in @('tests/fixall-loop-cleanup.Tests.ps1', 'tests/fixall-sweep.Tests.ps1')) {
+    $testPath = Join-Path $PSScriptRoot $scriptTest
+    Invoke-Step "script tests - $(Split-Path -Leaf $scriptTest)" {
+        & powershell -NoProfile -ExecutionPolicy Bypass -File $testPath
+    }
 }
 if ($ScriptsOnly) {
     Write-Host ""

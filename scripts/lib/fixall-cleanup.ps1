@@ -64,6 +64,13 @@ function Invoke-CleanupGit {
 .PARAMETER WipPrefix
     Branch prefix for work found on main or on a detached HEAD.
 
+.PARAMETER ReturnToMain
+    Whether to put the checkout back on main once the work is safe. True for this repo, whose next
+    tick needs a clean main to start from. FALSE for ../astrid-core, which is a plain clone shared
+    with the other repos' loops rather than a git worktree: pushing a branch touches neither HEAD nor
+    the working tree, but `git checkout main` moves the HEAD of every run in there, and on
+    2026-09-27 that is the step that nearly destroyed another run's work.
+
 .PARAMETER Log
     Called with one line at a time. Defaults to Write-Host; the loop passes its own Say so the lines
     reach the log file too, and the tests pass a sink.
@@ -80,6 +87,7 @@ function Save-UnfinishedWork {
         [Parameter(Mandatory)][string]$RepoRoot,
         [int]$ClaudeExitCode = 0,
         [string]$WipPrefix = 'wip/fixall-windows',
+        [bool]$ReturnToMain = $true,
         [scriptblock]$Log = $null
     )
 
@@ -144,13 +152,20 @@ predeploy has not been run on this. Continue from here; do not ship it.
             $result.UnpushedBranch = $branch
             Say-Line "  WARNING: run left $branch and it could not be pushed - the work is still in $RepoRoot"
         }
-        $back = Invoke-CleanupGit -RepoRoot $RepoRoot -GitArgs @('checkout', '-q', 'main')
-        if ($back.ExitCode -eq 0) {
-            $result.ReturnedToMain = $true
-            Say-Line "  returned to main from $branch"
+        if (-not $ReturnToMain) {
+            # Deliberate, and only for a shared clone: the work is on origin, which is what makes it
+            # reviewable, and the branch guard is not applied to that checkout for exactly this reason.
+            Say-Line "  left $branch checked out - this checkout is shared, so its HEAD is not moved"
         }
         else {
-            Say-Line "  WARNING: could not return to main from $branch - the next tick will skip on the branch guard"
+            $back = Invoke-CleanupGit -RepoRoot $RepoRoot -GitArgs @('checkout', '-q', 'main')
+            if ($back.ExitCode -eq 0) {
+                $result.ReturnedToMain = $true
+                Say-Line "  returned to main from $branch"
+            }
+            else {
+                Say-Line "  WARNING: could not return to main from $branch - the next tick will skip on the branch guard"
+            }
         }
     }
     elseif ($branch -eq 'main') {

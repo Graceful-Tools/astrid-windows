@@ -51,9 +51,12 @@ Three guards, cheapest first, because the expensive thing is starting a session 
 1. **One session per working tree.** `fixall-session.ts acquire`, keyed to this repo's git
    directory, so this tree and astrid-web's never see each other and a dead holder's lock is
    reclaimed by liveness rather than by a timeout.
-2. **Never clobber work in progress.** A dirty tree, or a `HEAD` that is not `main`, skips. An
-   interactive session takes no lock, so this is the only thing between a tick and your
-   uncommitted work.
+2. **Never clobber work in progress.** A dirty tree, or a `HEAD` that is not `main`, skips — and it
+   **names which checkout** stopped the tick, because `astrid-core is dirty` is a different
+   instruction to a human than `working tree is dirty`. An interactive session takes no lock, so
+   this is the only thing between a tick and your uncommitted work. The
+   [start-of-tick sweep](#the-start-of-tick-sweep) runs just before it, since the leftovers it
+   clears are exactly what this guard trips on.
 3. **Is there any work?** `ready-tasks.ts windows --json`, which sweeps the lanes first, so a
    Waiting task whose date arrived counts this tick. A queue that cannot be read is a reason to
    run and let the agent report, never a reason to go quiet.
@@ -102,6 +105,58 @@ a note on the wrong task is worse than none, so with no task file the loop stays
 > write its task id to `ASTRID_FIXALL_TASK_FILE`. Until that line lands the file is never written
 > and the board comment is simply skipped — the cleanup above, which is the part that unjams the
 > loop, does not depend on it.
+
+### The start-of-tick sweep
+
+**A cleanup that only runs at death is the wrong shape.** Everything above happens *after* the
+`claude` child exits, inside the loop — so a kill that takes the PowerShell process down reaches
+none of it. On 2026-09-29 the 06:10 tick took a core task, worked in `../astrid-core` for about ten
+minutes and was interrupted (`LastTaskResult 3221225786` = `STATUS_CONTROL_C_EXIT`). It wrote no
+`RESULT:` line, made no WIP commit and left no comment; the `finally` that releases the lock is the
+only thing PowerShell guarantees on a kill.
+
+And **nothing looked at `astrid-core`.** Guard 2 and the save both read `$RepoRoot` only, so the
+Windows tree was clean on `main`, guard 2 passed, and every tick for the next four days reported
+`SKIPPED - nothing to do` while 449 uncommitted lines for a task in `Doing` sat in the other
+checkout. The asymmetry is the sting: CLAUDE.md sends a task whose fix is a rule, a service, the
+Outbox or sync *into* the core, so the checkout nothing checked is the one most likely to hold a
+died run's work.
+
+So `Invoke-StartOfTickSweep` (`scripts/lib/fixall-sweep.ps1`) runs at the **start** of a tick,
+after guard 1 takes the lock and before guard 2 decides anything, over **both checkouts**. It
+survives `kill -9`, a reboot and a closed console, because none of it depends on the dying process
+doing anything. It delegates the commit, the push and the unwind to the same `Save-UnfinishedWork`,
+and adds only the decision of whether and where.
+
+**Dirty is not the same as stranded,** and that is the whole design. Acting on dirtiness alone would
+trade this bug for a worse one, twice over: in this repo guard 2 exists *because* a dirty tree
+cannot be told apart from your uncommitted work or a `/fixstuff` session, and `../astrid-core` is a
+plain clone shared with the other repos' loops rather than a `git worktree`, where `git add -A` can
+swallow a live run's files. So a checkout is swept only when it has work **and is quiet**:
+
+- no **live** `fixall-session` holder (a *stale* holder is the died run itself, and must not protect
+  its own remains), and
+- nothing touched for `FIXALL_QUIET_MINUTES` — **30** by default, one whole tick interval. "Quiet
+  for longer than a tick" is the rule; a long model turn or a `cargo build` is minutes, not thirty,
+  and the real incident sat for four days. The asymmetry picks the default: sweeping a live run
+  costs work nobody can get back, while waiting costs one skipped tick that says why.
+
+A checkout with work that is *not* quiet is reported, and guard 2 then skips the tick naming it.
+
+**The core is pushed but never returned to `main`.** Pushing a branch touches neither the HEAD nor
+the working tree of a shared clone; `git checkout main` moves both, for every run in there — on
+2026-09-27 that was nearly another run's work. Which is also why a core sitting on a branch is not a
+reason to skip: it is the state the sweep itself leaves behind.
+
+**A surviving task file is how a tick knows to look.** `ASTRID_FIXALL_TASK_FILE` is
+`astrid-fixall-windows-task-<pid>.txt` and the loop deletes it in its `finally`, so a file that
+outlives its pid means a run ended without writing a `RESULT:` line. The sweep reads the id, reports
+the stranded run on that task — whether or not any code was left behind, because a task in `Doing`
+with nobody on it is worth saying either way — and clears the file so no later tick re-reports it.
+Its own file and any whose pid is still running are left alone.
+
+Whatever the sweep did is appended to this tick's `RESULT:` line. A recovery nobody can see is as
+good as the four days of `SKIPPED - nothing to do` it exists to end.
 
 **What the local loop needs on the machine:** the astrid-web checkout beside this one with
 `npm ci` run (its `tsx`, its `.env.local`, its OAuth pair), the **astrid-core checkout beside this

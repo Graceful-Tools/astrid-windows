@@ -83,7 +83,14 @@ param(
     # 2026-09-27 three runs in a row were cut off partway through a task they had already started.
     # The next tick takes the next task, so the queue still drains - it drains one task at a time,
     # each of which is finished, gated and reported. Answering RECHECK/REVIEW does not count.
-    [int]$MaxTasks = $(if ($env:FIXALL_MAX_TASKS) { [int]$env:FIXALL_MAX_TASKS } else { 1 })
+    [int]$MaxTasks = $(if ($env:FIXALL_MAX_TASKS) { [int]$env:FIXALL_MAX_TASKS } else { 1 }),
+
+    # How long a checkout must have been untouched before this tick treats its leftovers as a dead
+    # run's and commits them. THIRTY, one whole tick interval: "quiet for longer than a tick" is the
+    # rule, and a long model turn or a cargo build is minutes rather than thirty. The asymmetry picks
+    # the default - sweeping a live run costs work nobody can get back, waiting costs one skipped
+    # tick which says why. See scripts/lib/fixall-sweep.ps1.
+    [int]$QuietMinutes = $(if ($env:FIXALL_QUIET_MINUTES) { [int]$env:FIXALL_QUIET_MINUTES } else { 30 })
 )
 
 # Never stop on a native command's stderr: this script decides what is fatal, and most of what it
@@ -104,6 +111,10 @@ if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Forc
 # Save-UnfinishedWork: what this script does with a checkout its child died in the middle of. Its
 # own file so the tests can run it against a scratch repo - see scripts/tests/fixall-loop-cleanup.Tests.ps1.
 . (Join-Path $PSScriptRoot 'lib\fixall-cleanup.ps1')
+# The same thing for a run this script never got to watch exit - a kill takes the save below down
+# with it - and for astrid-core, which nothing used to look at. Task 07c3b420; the library's header
+# has the incident. It dot-sources the cleanup above, so the order of these two lines is cosmetic.
+. (Join-Path $PSScriptRoot 'lib\fixall-sweep.ps1')
 
 # Everything this script says goes to the console AND to the log, because Task Scheduler captures
 # neither. Native command output is appended separately, where it is produced.
@@ -112,7 +123,13 @@ function Say([string]$Line) {
     Add-Content -Path $LogFile -Value $Line -Encoding utf8
 }
 
+# What the start-of-tick sweep did, appended to whichever RESULT line this tick ends up printing.
+# A tick that cleans up after a killed run has to SAY so on its one line, or the recovery is as
+# invisible as the four days of `SKIPPED - nothing to do` it exists to end.
+$script:SweepNote = ''
+
 function Finish([string]$Result) {
+    if ($script:SweepNote) { $Result += " | $($script:SweepNote)" }
     Say $Result
     if ($Result.StartsWith('RESULT: OK') -or $Result.StartsWith('RESULT: SKIPPED')) { exit 0 }
     exit 1
@@ -169,6 +186,36 @@ function Send-DiedRunNote([string]$TaskFile, [string]$Reason, $Saved) {
     if ($LASTEXITCODE -ne 0) { Say '  (could not comment on the task it had taken)' }
 }
 
+# ── The checkouts a tick is responsible for ───────────────────────────────────────────────────
+# Both of them, which is the correction task 07c3b420 makes: the old guard and the old save read
+# this repo only, so a run killed while working a core task left 449 uncommitted lines in
+# astrid-core and every tick for four days reported a quiet board.
+#
+# RequireMain and ReturnToMain are false for the core ON PURPOSE. It is a plain clone shared with
+# the other repos' loops, not a git worktree: pushing a branch touches neither its HEAD nor its
+# working tree, but `git checkout main` moves the HEAD of whatever else is in there (2026-09-27).
+# So the core's work is pushed and left where it stands - and a core on a branch therefore cannot be
+# a reason to skip, or the loop would wedge on the state the sweep itself just created.
+$Checkouts = @(
+    [pscustomobject]@{ Name = 'working tree'; Path = $RepoRoot; RequireMain = $true; ReturnToMain = $true }
+    [pscustomobject]@{ Name = 'astrid-core'; Path = $CoreRepo; RequireMain = $false; ReturnToMain = $false }
+)
+
+# Does anything still live hold this checkout? The sweep asks before committing anything, because
+# the one thing worse than leftovers nobody finds is a tick committing a RUNNING session's work.
+# Reuses the same per-working-tree lock as guard 1; a STALE holder is the died run itself and must
+# not protect its own remains.
+function Get-SessionHolder([string]$Path) {
+    if (-not (Test-Path $Path)) { return $null }
+    Push-Location $Path
+    try { $out = (& $Tsx (Join-Path $WebRepo 'scripts\fixall-session.ts') 'status' 2>&1 | Out-String) }
+    finally { Pop-Location }
+    if ($LASTEXITCODE -ne 0) { return $null }
+    # "<harness> (pid <n>, live|STALE (holder is gone)) has held <tree> since <when>"
+    if ($out -notmatch '(?m)^(\S+)\s+\(pid\s+(\d+),\s+(live|STALE)') { return $null }
+    return [pscustomobject]@{ Harness = $Matches[1]; HolderPid = [int]$Matches[2]; Live = ($Matches[3] -eq 'live') }
+}
+
 # ── Guard 1: one session per working tree ─────────────────────────────────────────────────────
 # Cheap by design: no Claude session is started just to discover the tree is busy. The lock is
 # keyed to the git directory, so this tree and astrid-web's never see each other, and a lock whose
@@ -213,17 +260,36 @@ try {
     Remove-Item $taskFile -Force -ErrorAction SilentlyContinue
     $env:ASTRID_FIXALL_TASK_FILE = $taskFile
 
-    # ── Guard 2: never clobber work in progress ───────────────────────────────────────────────
-    # /fixstuff and an interactive session take no lock, so they are invisible to guard 1. This is
-    # the only thing between a half-hourly tick and somebody's uncommitted work.
+    # ── The sweep: clear up after a run this script never watched exit ────────────────────────
+    # BEFORE guard 2, because the leftovers are exactly what guard 2 trips on; a sweep after it would
+    # never run. AFTER guard 1, because holding this repo's lock is what makes its leftovers ours to
+    # move. The save at the bottom of this script is the better path when it runs - it knows why the
+    # run ended - but a CTRL_C_EVENT takes this process down before it, and on 2026-09-29 that is
+    # what left a core task's work stranded for four days (task 07c3b420).
     if (-not $Force) {
-        Push-Location $RepoRoot
-        try {
-            $dirty = (& git status --porcelain 2>$null) -join "`n"
-            $branch = (& git rev-parse --abbrev-ref HEAD 2>$null)
-        } finally { Pop-Location }
-        if ($dirty) { Finish 'RESULT: SKIPPED - working tree is dirty, leaving it alone' }
-        if ($branch -ne 'main') { Finish "RESULT: SKIPPED - HEAD is on $branch, not main" }
+        $sweep = Invoke-StartOfTickSweep -Checkouts $Checkouts -QuietMinutes $QuietMinutes `
+            -TaskFileDirectory $env:TEMP -SelfPid $PID `
+            -SessionProbe { param($Path) Get-SessionHolder $Path } `
+            -OnTaskNote {
+            param($TaskId, $Note)
+            Invoke-WebTool @('scripts/add-task-comment.ts', $TaskId, $Note) | ForEach-Object { Say "  $_" }
+            if ($LASTEXITCODE -ne 0) { Say "  (could not report the stranded run on task $TaskId)" }
+        } `
+            -Log { param($Line) Say $Line }
+        $script:SweepNote = $sweep.Summary
+    }
+
+    # ── Guard 2: never clobber work in progress ───────────────────────────────────────────────
+    # /fixstuff and an interactive session take no lock, so they are invisible to guard 1, and the
+    # sweep above deliberately leaves alone anything touched in the last $QuietMinutes. This is the
+    # only thing between a half-hourly tick and somebody's uncommitted work.
+    #
+    # It now covers BOTH checkouts and NAMES THE ONE THAT STOPPED IT: `astrid-core is dirty` is a
+    # different instruction to a human than `working tree is dirty`, and before task 07c3b420 the
+    # second was the only thing it could ever say, because the core was never looked at.
+    if (-not $Force) {
+        $verdict = Get-CheckoutGuardVerdict -Checkouts $Checkouts
+        if (-not $verdict.Ok) { Finish "RESULT: SKIPPED - $($verdict.Reason)" }
     }
 
     # ── Guard 3: is there actually any work? ──────────────────────────────────────────────────
@@ -349,6 +415,33 @@ try {
     # since it cannot tell a died run's leftovers from somebody's work in progress. THIS script can:
     # it held the lock, it started the child, and the child is gone.
     $saved = Save-UnfinishedWork -RepoRoot $RepoRoot -ClaudeExitCode $status -Log { param($Line) Say $Line }
+
+    # And the core, for the same reason one layer out. The start-of-tick sweep would reach it a tick
+    # or two later, but the run that just exited is the one that was writing in there and this script
+    # watched it go - so there is no reason to leave a core task's work invisible until then. The
+    # quiet window does not apply here (the files were touched seconds ago, by our own child); the
+    # LIVE-HOLDER check still does, because the core clone is shared with the other repos' loops.
+    $coreStatus = Get-CheckoutStatus -Path $CoreRepo -Name 'astrid-core'
+    if ($coreStatus.Exists -and $coreStatus.HasWork) {
+        $coreHolder = Get-SessionHolder $CoreRepo
+        if ($coreHolder -and $coreHolder.Live) {
+            Say "  astrid-core has leftovers but $($coreHolder.Harness) (pid $($coreHolder.HolderPid)) is live in it - leaving them"
+        }
+        else {
+            # ReturnToMain false: pushing touches neither HEAD nor the working tree of a shared clone,
+            # `git checkout main` moves both for everything else in there.
+            $savedCore = Save-UnfinishedWork -RepoRoot $CoreRepo -ClaudeExitCode $status -ReturnToMain $false `
+                -Log { param($Line) Say $Line }
+            $coreNote = Format-SavedNote $savedCore
+            if ($coreNote -ne 'nothing was pushed by this run') {
+                # Appended, not assigned: a tick can both sweep a previous run's leftovers at the
+                # start and leave some of its own in the core at the end, and the RESULT line is the
+                # only place either is visible.
+                if ($script:SweepNote) { $script:SweepNote += ' | ' }
+                $script:SweepNote += "in astrid-core, $coreNote"
+            }
+        }
+    }
 
     if ($killed) {
         $reason = "killed after the ${MaxMinutes}m watchdog timeout"

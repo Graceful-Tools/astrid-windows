@@ -41,8 +41,11 @@ if (-not (Test-Path $CleanupLib)) {
 
 $script:Failures = 0
 $script:Ran = 0
+# How many assertions have been MADE, not how many passed - see Invoke-Case for what that catches.
+$script:Checks = 0
 
 function Assert-Equal([string]$What, $Expected, $Actual) {
+    $script:Checks++
     if ([string]$Expected -ceq [string]$Actual) { return }
     Write-Host "    FAIL $What" -ForegroundColor Red
     Write-Host "      expected: [$Expected]" -ForegroundColor Red
@@ -51,6 +54,7 @@ function Assert-Equal([string]$What, $Expected, $Actual) {
 }
 
 function Assert-Match([string]$What, [string]$Pattern, [string]$Actual) {
+    $script:Checks++
     if ($Actual -match $Pattern) { return }
     Write-Host "    FAIL $What" -ForegroundColor Red
     Write-Host "      expected to match: [$Pattern]" -ForegroundColor Red
@@ -77,7 +81,21 @@ function Invoke-Case([string]$Name, [scriptblock]$Body) {
         & git -C $repo remote add origin $origin 2>&1 | Out-Null
         & git -C $repo push -q -u origin main 2>&1 | Out-Null
 
-        & $Body $repo
+        $before = $script:Checks
+        try { & $Body $repo }
+        catch {
+            Write-Host "    FAIL the case threw: $($_.Exception.Message)" -ForegroundColor Red
+            $script:Failures++
+        }
+        # THE CASE THAT ASSERTS NOTHING IS THE ONE A FAILURE COUNT CANNOT SEE. A terminating error in
+        # the code under test abandons the body, so none of its Assert-* lines run, nothing is
+        # counted, and the harness prints RESULT: OK over a case that proved nothing. That happened
+        # six times in fixall-sweep.Tests.ps1 on its first green run (task 07c3b420), and a silent
+        # false OK in the gate that guards the scheduled loop is the same bug as a quiet board.
+        if ($script:Checks -eq $before) {
+            Write-Host '    FAIL the case made no assertions - it exited early' -ForegroundColor Red
+            $script:Failures++
+        }
     }
     finally {
         Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue
