@@ -1161,6 +1161,15 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                     // asked for here does afterwards — the cache moved, so the screen has to.
                     await CatchUpAsync(notification);
                     break;
+                case "delivered":
+                    // The Outbox settled some writes (AITD-454). It used to say so as a `synced`
+                    // naming nothing; now it names what it wrote and carries the journal's
+                    // counts. This shell ignores the counts and re-reads them, because the badge
+                    // is drawn from `outboxStats` everywhere else and two sources for one number
+                    // is how they come to disagree.
+                    await CatchUpAsync(notification);
+                    await RefreshOutboxAsync();
+                    break;
                 case "stream" when notification.Live is { } live:
                     // The live stream went up or down, said once per edge (task ef92df55).
                     _isStreamDown = !live;

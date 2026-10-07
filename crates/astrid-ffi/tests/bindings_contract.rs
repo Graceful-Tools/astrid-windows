@@ -118,6 +118,14 @@ const NOT_BOUND: &[(&str, &str)] = &[
     ),
     // ── Surfaces this shell does not have yet ─────────────────────────────────────────────────
     (
+        "dropBoardCard",
+        "A drop at a SLOT in a column, writing the move and the list's manual order (AITD-461).          The board here drops onto a column, not between cards — `BoardView` hands `MoveAsync` a          column id and nothing else — so it sends `moveTaskToColumn`, which is that same move          without the reordering. Binding this needs a drop target that knows which two cards it          fell between, which the board does not draw.",
+    ),
+    (
+        "listCounts",
+        "How many tasks each list's saved filters keep, for a sidebar that draws the number beside          a saved filter (AITD-460). The sidebar here draws list names only, so there is no number          to put anywhere.",
+    ),
+    (
         "myTasksFilters",
         "My Tasks draws here (`myTasksList`, `refreshMyTasks`); its filter and sort bar does not          exist yet, so there is nothing to read the saved filters into.",
     ),

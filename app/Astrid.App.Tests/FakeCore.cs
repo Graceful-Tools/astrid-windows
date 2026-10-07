@@ -65,6 +65,16 @@ internal sealed class FakeCore : IAstridCore
     public void NotifySynced(params string[] taskIds) =>
         Changed?.Invoke(new ChangeNotification("synced", null, taskIds));
 
+    /// <summary>
+    /// Deliver a <c>delivered</c> change: the Outbox settled some writes (task 6ee938cc).
+    /// </summary>
+    /// <remarks>
+    /// The core sends this in place of the empty <c>synced</c> it used to send after a delivery, so
+    /// a shell that does not know the word redraws nothing once an offline edit reaches the server.
+    /// </remarks>
+    public void NotifyDelivered(params string[] taskIds) =>
+        Changed?.Invoke(new ChangeNotification("delivered", null, taskIds));
+
     /// <summary>Deliver a <c>stream</c> change: the live stream connected, or dropped.</summary>
     /// <remarks>The core says each edge once, never once per frame.</remarks>
     public void NotifyStream(bool live) =>

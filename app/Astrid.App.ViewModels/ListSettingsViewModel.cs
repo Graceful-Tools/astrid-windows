@@ -408,6 +408,15 @@ public sealed class ListSettingsViewModel : ObservableObject
     public ListDefaults Defaults => _defaults;
 
     private static readonly string[] Repeats = ["never", "daily", "weekly", "monthly", "yearly"];
+
+    /// <summary>The word for a repeat value, by the key the core's own preset list uses.</summary>
+    /// <remarks>
+    /// This picker is the shell's — the core has no command for a list's defaults — but it must ask
+    /// for the keys the resources carry, and those follow the core's presets (D49). "never" is the
+    /// one that is not simply the value: the core calls it <c>repeating.one_time_only</c>.
+    /// </remarks>
+    private static string RepeatKey(string value) =>
+        value == "never" ? "repeating.one_time_only" : $"repeating.{value}";
     private static readonly (string Value, string Key)[] Whens =
     [
         ("none", "picker.no_due_date"),
@@ -435,7 +444,7 @@ public sealed class ListSettingsViewModel : ObservableObject
         Replace(DefaultAssigneeChoices, assignees);
 
         Replace(DefaultRepeatChoices, Repeats
-            .Select(value => new DefaultChoice("repeating", value, $"repeat.{value}", null, defaults.Repeating == value))
+            .Select(value => new DefaultChoice("repeating", value, RepeatKey(value), null, defaults.Repeating == value))
             .ToList());
 
         Replace(DefaultWhenChoices, Whens

@@ -1036,10 +1036,10 @@ public sealed class TaskDetailViewModelTests
             repeatFrom = "DUE_DATE",
             presets = new[]
             {
-                new { value = "never", titleKey = "repeat.never", isSelected = false },
-                new { value = "weekly", titleKey = "repeat.weekly", isSelected = true },
+                new { value = "never", titleKey = "repeating.one_time_only", isSelected = false },
+                new { value = "weekly", titleKey = "repeating.weekly", isSelected = true },
             },
-            summary = new[] { new { key = "repeat.weekly" }, new { key = "repeat.from_due_date" } },
+            summary = new[] { new { key = "repeating.weekly" }, new { key = "repeat.from_due_date" } },
         });
         var view = new TaskDetailViewModel(core);
         await view.OpenAsync("t1");
@@ -1414,9 +1414,17 @@ public sealed class TaskDetailViewModelTests
         Assert.True(view.IsAllDay);
     }
 
-    /// <summary>Choosing "No due date" sends an explicit null, which is what clears the field.</summary>
+    /// <summary>
+    /// Clearing the date is the shell's own control now, and it sends an explicit null.
+    /// </summary>
+    /// <remarks>
+    /// The quick choices used to carry a "No due date" row and this was a pick like any other.
+    /// Following iOS, the core's <c>dueDateOptions</c> stopped returning it (task 6ee938cc) — so a
+    /// shell that only drew what the core offered had a date it could set and never unset. The
+    /// control is the shell's, the write is still the core's.
+    /// </remarks>
     [Fact]
-    public async Task Choosing_no_due_date_clears_it()
+    public async Task Clearing_the_date_is_the_shells_own_control_task_6ee938cc()
     {
         var core = new FakeCore()
             .AnswerOk("taskDetail", Detail())
@@ -1425,7 +1433,7 @@ public sealed class TaskDetailViewModelTests
                 isAllDay = true,
                 dates = new object[]
                 {
-                    new { titleKey = "picker.no_due_date", dueDateTime = (string?)null, isSelected = false },
+                    new { titleKey = "picker.today", dueDateTime = "2026-09-07T00:00:00Z", isSelected = true },
                 },
                 times = Array.Empty<object>(),
             })
@@ -1435,7 +1443,8 @@ public sealed class TaskDetailViewModelTests
         var view = new TaskDetailViewModel(core);
         await view.OpenAsync("t1");
 
-        await view.TakeDuePickAsync(view.DatePicks[0]);
+        Assert.DoesNotContain("picker.no_due_date", view.DatePicks.Select(pick => pick.TitleKey));
+        Assert.True(await view.ClearDueAsync());
 
         var sent = core.Sent.Last(json => json.Contains("updateTask", StringComparison.Ordinal));
         Assert.Contains("\"dueDateTime\":null", sent, StringComparison.Ordinal);

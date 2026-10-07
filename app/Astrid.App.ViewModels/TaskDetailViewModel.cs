@@ -795,6 +795,15 @@ public sealed class TaskDetailViewModel : ObservableObject
             && await SetDueDateAsync(picked.DueDateTime, IsAllDay, cancellationToken);
     }
 
+    /// <summary>Take the date off the open task.</summary>
+    /// <remarks>
+    /// The quick choices carried a "No due date" row until the core followed iOS and stopped
+    /// returning one (task 6ee938cc), which left a date that could be set and not unset. A task
+    /// with no date is all-day, which is the state it was in before one was given.
+    /// </remarks>
+    public Task<bool> ClearDueAsync(CancellationToken cancellationToken = default)
+        => SetDueDateAsync(null, isAllDay: true, cancellationToken);
+
     public Task<bool> TakeDuePickAsync(DuePick pick, CancellationToken cancellationToken = default)
         => SetDueDateAsync(pick.DueDateTime, isAllDay: pick.Hour is null && pick.DueDateTime is not null
             ? IsAllDay

@@ -381,6 +381,10 @@ public sealed partial class TaskDetailPane : UserControl
         }
     }
 
+    /// <summary>"No due date" in the when flyout: the shell's own control now (task 6ee938cc).</summary>
+    private async void OnDueCleared(object sender, RoutedEventArgs args) =>
+        await Shell.Detail.ClearDueAsync();
+
     /// <summary>The copy control in the header, on a task that can only be copied (task f6bc59e8).</summary>
     private async void OnDetailCopyClicked(object sender, RoutedEventArgs args) =>
         await Shell.Detail.CopyToMineAsync();
