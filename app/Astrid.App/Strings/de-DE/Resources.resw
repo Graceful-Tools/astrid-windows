@@ -306,22 +306,22 @@
   <data name="due_none" xml:space="preserve">
     <value>Kein Fälligkeitsdatum</value>
   </data>
-  <data name="repeat_never" xml:space="preserve">
+  <data name="repeating_one_time_only" xml:space="preserve">
     <value>Nie</value>
   </data>
-  <data name="repeat_daily" xml:space="preserve">
+  <data name="repeating_daily" xml:space="preserve">
     <value>Täglich</value>
   </data>
-  <data name="repeat_weekly" xml:space="preserve">
+  <data name="repeating_weekly" xml:space="preserve">
     <value>Wöchentlich</value>
   </data>
-  <data name="repeat_monthly" xml:space="preserve">
+  <data name="repeating_monthly" xml:space="preserve">
     <value>Monatlich</value>
   </data>
-  <data name="repeat_yearly" xml:space="preserve">
+  <data name="repeating_yearly" xml:space="preserve">
     <value>Jährlich</value>
   </data>
-  <data name="repeat_custom" xml:space="preserve">
+  <data name="repeating_custom" xml:space="preserve">
     <value>Benutzerdefiniert…</value>
   </data>
   <data name="repeat_none" xml:space="preserve">
@@ -417,14 +417,29 @@
   <data name="filter_completion_recent" xml:space="preserve">
     <value>Kürzlich erledigt</value>
   </data>
-  <data name="filter_completion_hide" xml:space="preserve">
+  <data name="filter_completion_incomplete" xml:space="preserve">
     <value>Ausblenden</value>
+  </data>
+  <data name="filter_completion_completed" xml:space="preserve">
+    <value>Nur erledigte</value>
   </data>
   <data name="filter_completion_all" xml:space="preserve">
     <value>Alle anzeigen</value>
   </data>
   <data name="filter_priority" xml:space="preserve">
     <value>Priorität</value>
+  </data>
+  <data name="lists_highest_priority" xml:space="preserve">
+    <value>Höchste</value>
+  </data>
+  <data name="lists_high_priority" xml:space="preserve">
+    <value>Hoch</value>
+  </data>
+  <data name="lists_medium_priority" xml:space="preserve">
+    <value>Mittel</value>
+  </data>
+  <data name="lists_low_priority" xml:space="preserve">
+    <value>Niedrig</value>
   </data>
   <data name="filter_due" xml:space="preserve">
     <value>Fällig</value>
@@ -851,6 +866,9 @@
   </data>
   <data name="due_date.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Fälligkeitsdatum</value>
+  </data>
+  <data name="clear_due.Content" xml:space="preserve">
+    <value>Kein Fälligkeitsdatum</value>
   </data>
   <data name="due_day_picker.PlaceholderText" xml:space="preserve">
     <value>Datum wählen</value>

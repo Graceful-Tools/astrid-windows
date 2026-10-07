@@ -351,6 +351,18 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+
+                            <!--
+                                Taking the date off. This was a row the core supplied until it
+                                followed iOS and stopped offering one (task 6ee938cc), so the
+                                control is the shell's now. The write is still the core's: an
+                                explicit null, which is what clears the field.
+                            -->
+                            <Button x:Uid="clear_due" Content="No due date"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Margin="0,8,0,0"
+                                    Click="OnDueCleared" />
                         </StackPanel>
                     </Flyout>
                 </Button.Flyout>

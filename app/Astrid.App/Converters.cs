@@ -595,7 +595,9 @@ public sealed partial class RepeatSummaryConverter : IValueConverter
         // in English and differently wrong in languages with more than two plural forms.
         return part.Key switch
         {
-            "repeat.daily" or "repeat.weekly" or "repeat.monthly" or "repeat.yearly"
+            // The four cadences took iOS's spelling when the core followed it (D49); the
+            // qualifiers below kept theirs.
+            "repeating.daily" or "repeating.weekly" or "repeating.monthly" or "repeating.yearly"
                 or "repeat.from_due_date" => Strings.Get(part.Key),
             "repeat.every_n_days" => count == 1
                 ? Strings.Get("repeat.every_day")

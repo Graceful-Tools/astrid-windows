@@ -1173,6 +1173,40 @@ public sealed class ShellViewModelTests
     }
 
     /// <summary>
+    /// An Outbox delivery redraws the screen, as the empty <c>synced</c> it replaced did.
+    /// </summary>
+    /// <remarks>
+    /// The core announced each delivery as a <c>synced</c> naming nothing until AITD-454 gave it
+    /// its own word, <c>delivered</c>, carrying what it wrote and the journal's counts. An unknown
+    /// change falls through to the silent default here — so without this arm, an offline edit
+    /// reaching the server left the list showing the old row and the badge still saying "not synced
+    /// yet" until something else happened to refresh (task 6ee938cc).
+    /// </remarks>
+    [Fact]
+    public async Task A_delivered_notification_redraws_and_re_reads_the_outbox_task_6ee938cc()
+    {
+        var core = StartedCore(("l1", "Home", false))
+            .AnswerOk("taskDetail", TaskDetail("t1"));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        await shell.OpenTaskAsync("t1");
+        var rowsBefore = core.SentKinds().Count(kind => kind == "rowsForList");
+        var detailBefore = core.SentKinds().Count(kind => kind == "taskDetail");
+        var outboxBefore = core.SentKinds().Count(kind => kind == "outboxStats");
+
+        core.AnswerOk("lists", Lists(("l1", "Home", false)))
+            .AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("taskDetail", TaskDetail("t1"))
+            .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        core.NotifyDelivered("t1");
+
+        Assert.Equal(rowsBefore + 1, core.SentKinds().Count(kind => kind == "rowsForList"));
+        Assert.Equal(detailBefore + 1, core.SentKinds().Count(kind => kind == "taskDetail"));
+        Assert.True(core.SentKinds().Count(kind => kind == "outboxStats") > outboxBefore,
+            "the delivery changed the journal's counts, so the badge has to be re-read");
+    }
+
+    /// <summary>
     /// The open task is reloaded only when the pass names it. Reloading it for every pass that
     /// moved some other task would make it flicker once a minute while a colleague works.
     /// </summary>

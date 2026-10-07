@@ -307,22 +307,22 @@
   <data name="due_none" xml:space="preserve">
     <value>No due date</value>
   </data>
-  <data name="repeat_never" xml:space="preserve">
+  <data name="repeating_one_time_only" xml:space="preserve">
     <value>Never</value>
   </data>
-  <data name="repeat_daily" xml:space="preserve">
+  <data name="repeating_daily" xml:space="preserve">
     <value>Daily</value>
   </data>
-  <data name="repeat_weekly" xml:space="preserve">
+  <data name="repeating_weekly" xml:space="preserve">
     <value>Weekly</value>
   </data>
-  <data name="repeat_monthly" xml:space="preserve">
+  <data name="repeating_monthly" xml:space="preserve">
     <value>Monthly</value>
   </data>
-  <data name="repeat_yearly" xml:space="preserve">
+  <data name="repeating_yearly" xml:space="preserve">
     <value>Yearly</value>
   </data>
-  <data name="repeat_custom" xml:space="preserve">
+  <data name="repeating_custom" xml:space="preserve">
     <value>Custom…</value>
   </data>
   <data name="repeat_none" xml:space="preserve">
@@ -418,14 +418,29 @@
   <data name="filter_completion_recent" xml:space="preserve">
     <value>Recently finished</value>
   </data>
-  <data name="filter_completion_hide" xml:space="preserve">
+  <data name="filter_completion_incomplete" xml:space="preserve">
     <value>Hide them</value>
+  </data>
+  <data name="filter_completion_completed" xml:space="preserve">
+    <value>Only finished ones</value>
   </data>
   <data name="filter_completion_all" xml:space="preserve">
     <value>Show them all</value>
   </data>
   <data name="filter_priority" xml:space="preserve">
     <value>Priority</value>
+  </data>
+  <data name="lists_highest_priority" xml:space="preserve">
+    <value>Highest</value>
+  </data>
+  <data name="lists_high_priority" xml:space="preserve">
+    <value>High</value>
+  </data>
+  <data name="lists_medium_priority" xml:space="preserve">
+    <value>Medium</value>
+  </data>
+  <data name="lists_low_priority" xml:space="preserve">
+    <value>Low</value>
   </data>
   <data name="filter_due" xml:space="preserve">
     <value>Due</value>
@@ -852,6 +867,9 @@
   </data>
   <data name="due_date.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Due date</value>
+  </data>
+  <data name="clear_due.Content" xml:space="preserve">
+    <value>No due date</value>
   </data>
   <data name="due_day_picker.PlaceholderText" xml:space="preserve">
     <value>Pick a date</value>
