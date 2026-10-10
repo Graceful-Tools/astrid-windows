@@ -81,6 +81,67 @@ function Invoke-CleanupGit {
     UnpushedBranch - the branch left only locally, if the push failed
     ReturnedToMain - whether the checkout is back on main
 #>
+
+<#
+.SYNOPSIS
+    Why the run failed, from what the child actually said. Task 73aa3492.
+
+.DESCRIPTION
+    The loop used to append "(the $N budget cap is the usual cause)" to every exit 1, diagnosed or
+    not. On 2026-10-07 two ticks did that while the line above read "Failed to authenticate: OAuth
+    session expired and could not be refreshed" — and a `claude -p` that cannot sign in exits in
+    seconds, never reads the board and spends nothing, so the verdict sent the reader after the
+    wrong thing entirely.
+
+    The untrusted-workspace check in the loop has always done this properly, and its comment says
+    why: the CLI names the condition precisely, so read its words rather than guessing. This is the
+    same discipline for the rest of the exits.
+
+    A guess is still allowed where there is nothing to read — the cap genuinely is the usual cause
+    of an undiagnosed exit 1 — but it is worded as the guess it is, and only then.
+
+.OUTPUTS
+    A hashtable: Kind ('auth' | 'budget' | 'unknown') and Reason (the text for the RESULT line and
+    the task note).
+#>
+function Resolve-RunFailure {
+    [CmdletBinding()]
+    param(
+        # The child's captured output, one element per line.
+        [string[]]$Output = @(),
+        [Parameter(Mandatory = $true)][int]$Status,
+        # The cap this run was given, for the hedge. 0 or absent leaves it out.
+        [int]$MaxUsd = 0
+    )
+
+    $said = { param($pattern) @($Output | Where-Object { $_ -match $pattern }).Count -gt 0 }
+
+    # The CLI's own sign-in, not the board's OAuth scripts: this is `claude` itself refusing to
+    # start, and no amount of retrying from a scheduled task will fix it.
+    if ((& $said 'Failed to authenticate') -or (& $said 'OAuth session expired')) {
+        return @{
+            Kind   = 'auth'
+            Reason = "the CLI's sign-in expired and could not be refreshed, so the run could not " +
+                     'start; run claude interactively at the machine and sign in again'
+        }
+    }
+
+    if (& $said 'Exceeded USD budget') {
+        $cap = if ($MaxUsd) { " of `$$MaxUsd" } else { '' }
+        return @{
+            Kind   = 'budget'
+            Reason = "the run reached its budget$cap and stopped where it was"
+        }
+    }
+
+    $reason = "claude exited $Status"
+    # Only where nothing could be read, and only for the code the cap exits with.
+    if ($Status -eq 1 -and $MaxUsd) {
+        $reason += " (the `$$MaxUsd budget cap is the usual cause)"
+    }
+    return @{ Kind = 'unknown'; Reason = $reason }
+}
+
 function Save-UnfinishedWork {
     [CmdletBinding()]
     param(

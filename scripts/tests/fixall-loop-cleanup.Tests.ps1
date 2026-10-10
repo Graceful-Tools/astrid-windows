@@ -53,6 +53,18 @@ function Assert-Equal([string]$What, $Expected, $Actual) {
     $script:Failures++
 }
 
+function Assert-NotMatch([string]$What, [string]$Pattern, [string]$Actual) {
+    $script:Assertions++
+    if ($Actual -match $Pattern) {
+        Write-Host "    FAIL $What" -ForegroundColor Red
+        Write-Host "      should not match: $Pattern" -ForegroundColor DarkGray
+        Write-Host "      got:              $Actual" -ForegroundColor DarkGray
+        $script:Failures++
+        return
+    }
+    Write-Host "    ok   $What" -ForegroundColor DarkGray
+}
+
 function Assert-Match([string]$What, [string]$Pattern, [string]$Actual) {
     $script:Checks++
     if ($Actual -match $Pattern) { return }
@@ -244,6 +256,57 @@ Assert-Match 'the loop exports the path' '\$env:ASTRID_FIXALL_TASK_FILE\s*=' $Lo
 Assert-Match 'and reports on that task when the run dies' 'Send-DiedRunNote' $Loop
 Assert-Match 'and AUTOMATION.md says so' 'ASTRID_FIXALL_TASK_FILE' $Automation
 
+
+# ── The RESULT line says what the child said, not what usually goes wrong (task 73aa3492) ──────
+#
+# On 2026-10-07 two ticks reported "claude exited 1 (the $10 budget cap is the usual cause)" when
+# the line above read "Failed to authenticate: OAuth session expired and could not be refreshed".
+# A `claude -p` that cannot sign in exits in seconds and spends nothing, so the verdict sent the
+# reader after entirely the wrong thing. These drive the classifier directly: scripts/tests cannot
+# run a real `claude`, which is why the decision is a function rather than inline matching.
+
+Invoke-Case 'the expired sign-in is named, not the budget' {
+    $verdict = Resolve-RunFailure -Output @(
+        '-> /fixall (opus, watchdog 75m, cap $10)',
+        'Failed to authenticate: OAuth session expired and could not be refreshed'
+    ) -Status 1 -MaxUsd 10
+
+    Assert-Equal 'the kind' 'auth' $verdict.Kind
+    Assert-Match 'says the sign-in expired' 'sign-in' $verdict.Reason
+    Assert-Match 'and what to run at the machine' 'claude' $verdict.Reason
+    Assert-NotMatch 'and does not mention the budget' 'budget|cap' $verdict.Reason
+}
+
+Invoke-Case 'a cap that was actually reached is stated, not guessed at' {
+    $verdict = Resolve-RunFailure -Output @(
+        'Error: Exceeded USD budget (10)'
+    ) -Status 1 -MaxUsd 10
+
+    Assert-Equal 'the kind' 'budget' $verdict.Kind
+    Assert-Match 'names the cap' 'budget' $verdict.Reason
+    Assert-NotMatch 'as a fact, not as the usual cause' 'usual cause' $verdict.Reason
+}
+
+Invoke-Case 'an exit 1 nobody can explain keeps the hedge' {
+    $verdict = Resolve-RunFailure -Output @('something nobody has seen before') -Status 1 -MaxUsd 10
+
+    Assert-Equal 'the kind' 'unknown' $verdict.Kind
+    Assert-Match 'reports the exit code' 'exited 1' $verdict.Reason
+    Assert-Match 'and hedges, because the cap IS the usual cause' 'usual cause' $verdict.Reason
+}
+
+Invoke-Case 'any other exit code is reported as itself' {
+    $verdict = Resolve-RunFailure -Output @('') -Status 137 -MaxUsd 10
+
+    Assert-Equal 'the kind' 'unknown' $verdict.Kind
+    Assert-Match 'reports the exit code' 'exited 137' $verdict.Reason
+    Assert-NotMatch 'and guesses nothing, since the cap exits 1' 'usual cause' $verdict.Reason
+}
+
+
+Write-Host '  - and the loop uses the classifier rather than guessing inline'
+Assert-Match 'the loop asks Resolve-RunFailure' 'Resolve-RunFailure -Output \$runText' $Loop
+Assert-NotMatch 'and no longer appends the hedge itself' '\$reason \+= " \(the' $Loop
 Write-Host ''
 if ($script:Failures -gt 0) {
     Write-Host ("RESULT: FAILED - {0} assertion(s) across {1} case(s)" -f $script:Failures, $script:Ran) -ForegroundColor Red

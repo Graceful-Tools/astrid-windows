@@ -466,10 +466,21 @@ try {
 
     # A run that died cannot write its own completion comment, and this is precisely the outcome
     # worth hearing about, so the wrapper says it on the task itself.
-    $reason = "claude exited $status"
-    if ($status -eq 1 -and $MaxUsd) { $reason += " (the `$$MaxUsd budget cap is the usual cause)" }
-    Send-DiedRunNote -TaskFile $taskFile -Reason $reason -Saved $saved
-    Finish "RESULT: FAILED - $reason; $(Format-SavedNote $saved)"
+    #
+    # WHY THE OUTPUT IS READ FIRST. This line used to append "the budget cap is the usual cause" to
+    # every exit 1, and on 2026-10-07 it said that twice while the line above read "Failed to
+    # authenticate: OAuth session expired" — a run that cannot sign in exits in seconds and spends
+    # nothing, so the verdict sent the reader after the wrong thing. Same discipline as the
+    # untrusted check above: read the child's words, and guess only where there is nothing to read
+    # (task 73aa3492).
+    $verdict = Resolve-RunFailure -Output $runText -Status $status -MaxUsd $MaxUsd
+    if ($verdict.Kind -ne 'unknown') {
+        Say '  the CLI said:'
+        @($runText | Where-Object { $_ -match 'Failed to authenticate|OAuth session expired|Exceeded USD budget' }) |
+            Select-Object -First 2 | ForEach-Object { Say "     $_" }
+    }
+    Send-DiedRunNote -TaskFile $taskFile -Reason $verdict.Reason -Saved $saved
+    Finish "RESULT: FAILED - $($verdict.Reason); $(Format-SavedNote $saved)"
 }
 finally {
     if ($taskFile) { Remove-Item $taskFile -Force -ErrorAction SilentlyContinue }
