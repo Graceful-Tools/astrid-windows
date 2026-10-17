@@ -63,6 +63,12 @@ diagnosed as one: task `f850514f` was filed naming fifteen commits and a prime s
 `git bisect` across them found the same failure at every commit, including ones that predated the
 suspect by a day. Nothing had broken. The machine had locked.
 
+That stayed an inference for twelve days, because every run that could have tested it found the
+machine locked again. It was confirmed on 2026-10-16: a run that happened to land on an unlocked
+session passed both drag tests three times in a row, and the full suite 10 of 10. So the paragraph
+above is now a finding rather than the best available explanation — there was no drag bug behind
+the lock screen.
+
 `AstridApp.Activate()` is the fix. It brings the window to the front before any real-mouse
 interaction and **throws, naming what is in front and which process owns it**, when it cannot. A
 locked machine now says
