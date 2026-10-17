@@ -34,7 +34,6 @@ public sealed class TaskDetailViewModel : ObservableObject
     private bool _isLoading;
     private string? _errorMessage;
     private DueLabel _due = new();
-    private string _priorityGlyph = "○";
     private UserSummary? _assignee;
     private string _commentDraft = string.Empty;
     private bool _repeatsFromDueDate;
@@ -142,6 +141,23 @@ public sealed class TaskDetailViewModel : ObservableObject
     public ObservableCollection<CommentSummary> Comments { get; } = [];
 
     public ObservableCollection<SubtaskSummary> Subtasks { get; } = [];
+
+    /// <summary>
+    /// How many of this task's children are done, over how many there are — "1/3" (task
+    /// 439e94a4).
+    /// </summary>
+    /// <remarks>
+    /// The count the Mac and iOS have shown beside "Sub tasks" for a long time, and the one web
+    /// gained as AWTD-1227. Empty for a task with no children: the heading stays, because the
+    /// add row lives under it, but "0/0" over an empty section is a number about nothing — the
+    /// same rule web's section applies when it hides its count.
+    ///
+    /// Digits and a slash, so there is nothing here for a translator; the word above it is the
+    /// resw's.
+    /// </remarks>
+    public string SubtaskCount => Subtasks.Count == 0
+        ? string.Empty
+        : $"{Subtasks.Count(subtask => subtask.Completed)}/{Subtasks.Count}";
 
     /// <summary>Whether the detail pane is showing anything.</summary>
     public bool IsOpen
@@ -510,12 +526,26 @@ public sealed class TaskDetailViewModel : ObservableObject
     /// <summary>Whether the row has nothing to list, which is its own line of copy.</summary>
     public bool HasNoBlockers => WaitingOnChips.Count == 0;
 
-    /// <summary>The mark that stands for this task's priority — the core's, not the shell's.</summary>
-    public string PriorityGlyph
-    {
-        get => _priorityGlyph;
-        private set => Set(ref _priorityGlyph, value);
-    }
+    /// <summary>
+    /// The mark that NAMES the priority row — <c>!!!</c>, and the same <c>!!!</c> whatever the
+    /// open task's priority is (task 439e94a4).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Constant by design: the row's marker names the field while the four swatches beside it
+    /// report the value, so it must not follow the task's own priority. This pane used to bind
+    /// the slot to the core's <c>priorityGlyph</c>, which is
+    /// <c>priority_glyph(task.priority)</c> — so the row was marked <c>○</c> on a task with no
+    /// priority, which is most tasks. Web's <c>PRIORITY_ROW_GLYPH</c> and
+    /// <c>PriorityGlyph.rowIcon</c> on iOS and Mac are the same constant for the same reason,
+    /// and the core states it as <c>rows::detail::PRIORITY_ROW_ICON</c>.
+    /// </para>
+    /// <para>
+    /// A property rather than a XAML literal so the marks are not offered to a translator: a
+    /// uid'd <c>Text="!!!"</c> is a string somebody could render as a word.
+    /// </para>
+    /// </remarks>
+    public string PriorityRowMarker => "!!!";
 
     public UserSummary? Assignee
     {
@@ -663,6 +693,7 @@ public sealed class TaskDetailViewModel : ObservableObject
         TaskId = null;
         Comments.Clear();
         Subtasks.Clear();
+        Raise(nameof(SubtaskCount));
         ListChips.Clear();
         FieldOrder.Clear();
         DatePicks.Clear();
@@ -1882,9 +1913,6 @@ public sealed class TaskDetailViewModel : ObservableObject
         Link = value.TryGetProperty("link", out var link) && link.ValueKind == JsonValueKind.String
             ? link.GetString()
             : null;
-        PriorityGlyph = value.TryGetProperty("priorityGlyph", out var glyph)
-            ? glyph.GetString() ?? "○"
-            : "○";
         Due = value.TryGetProperty("due", out var due)
             ? due.Deserialize<DueLabel>(CommandJson.Options) ?? new DueLabel()
             : new DueLabel();
@@ -1903,6 +1931,7 @@ public sealed class TaskDetailViewModel : ObservableObject
             })
             .ToList());
         Replace(Subtasks, Read<SubtaskSummary>(value, "subtasks"));
+        Raise(nameof(SubtaskCount));
         // The repeat comes with the screen rather than with the picker: the row has to say how the
         // task repeats before anybody opens anything.
         Replace(RepeatSummary, Read<SummaryPart>(value, "repeatSummary"));

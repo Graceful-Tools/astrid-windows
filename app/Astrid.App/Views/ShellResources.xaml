@@ -119,6 +119,28 @@
         <Setter Property="MinHeight" Value="36" />
     </Style>
 
+    <!--
+        The task detail's alignment invariant, as two numbers rather than as prose (task
+        439e94a4).
+
+        The icon column is exactly as wide as the title row's leading control, and shares the
+        title row's gap inside the same container padding — so each field icon lands centred
+        under the checkbox and each value's left edge lands on the title's. The sum is
+        16 + 32 + 8 = 56px, where the 16 is the padding on the pane's header Border and on its
+        body ScrollViewer. Web states the same invariant in the same terms in
+        `components/task-detail/TaskFieldRow.tsx`; iOS and Mac state it with their own, 16 + 34
+        + 12 = 62pt.
+
+        Stated here because the pane used to retype `ColumnSpacing="8"` over
+        `<ColumnDefinition Width="32" />` for all eleven rows, with the sum written down only in
+        a comment. Each of the other two platforms had to fix that same drift, and both now
+        name the terms and pin them — `TaskDetailAlignmentTests` is this one's pin, and it
+        covers the container padding too, since changing one term without the other is what
+        breaks the columns.
+    -->
+    <x:Double x:Key="DetailFieldIconColumn">32</x:Double>
+    <x:Double x:Key="DetailFieldGap">8</x:Double>
+
     <Style x:Key="SidebarRowStyle" TargetType="ListViewItem">
         <!--
             Keyboard focus stays visible — it has to — but as a hairline in the accent rather
