@@ -46,11 +46,26 @@ rather than metered spend. The log is `%LOCALAPPDATA%\Astrid\logs\fixall-windows
 last line is always exactly one `RESULT:` line — `OK`, `SKIPPED` or `FAILED` — so a glance tells
 you what happened. **A skip is the healthy common case:** most ticks have nothing to do.
 
-Three guards, cheapest first, because the expensive thing is starting a session at all:
+Four guards (1, 1b, 2, 3), cheapest first, because the expensive thing is starting a session at
+all:
 
-1. **One session per working tree.** `fixall-session.ts acquire`, keyed to this repo's git
-   directory, so this tree and astrid-web's never see each other and a dead holder's lock is
-   reclaimed by liveness rather than by a timeout.
+1. **One session per working tree.** `fixall-session.ts acquire --scheduled`, keyed to this repo's
+   git directory, so this tree and astrid-web's never see each other and a dead holder's lock is
+   reclaimed by liveness rather than by a timeout. **`--scheduled` is load-bearing:** without it the
+   acquire also publishes a machine-wide "someone is working here" and logs *the scheduled /fixall
+   loops will stand down until this session exits* — about itself. The loop omitted it until task
+   `38a93fca`, so every tick said that, untruthfully, to anyone reading the log.
+   - **Guard 1b — stand down while someone is working.** `fixall-pause.ts yield --self-pid`. Guard 1
+     is per **working tree**; contention for a machine is per **machine** — on 2026-10-11 three
+     concurrent builds drove the 5-minute load average over 890 and turned green tests red on
+     timeouts. A tick here runs `npm run predeploy`, which cross-builds ARM64 every run, so it is
+     worth standing down. An interactive `acquire` in *any* checkout on this machine stands this
+     loop down, and `npm run fixall:pause` (run it from the astrid-web checkout — the state is
+     machine-local, `~/.cache/astrid-fixall`) covers work no session knows about, like a manual
+     build. An unreadable pause state **runs the tick** and says so: a loop that stalls on a bad
+     state file is a worse outage than one run too many. It runs *before* the start-of-tick sweep,
+     which commits and comments; standing down after those would be standing down too late. Added
+     by task `38a93fca` — before it, nothing could pause this loop.
 2. **Never clobber work in progress.** A dirty tree, or a `HEAD` that is not `main`, skips — and it
    **names which checkout** stopped the tick, because `astrid-core is dirty` is a different
    instruction to a human than `working tree is dirty`. An interactive session takes no lock, so

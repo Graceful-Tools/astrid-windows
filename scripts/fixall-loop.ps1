@@ -221,8 +221,21 @@ function Get-SessionHolder([string]$Path) {
 # keyed to the git directory, so this tree and astrid-web's never see each other, and a lock whose
 # holder is gone is reclaimed by liveness rather than expiring under a working session. Run from
 # THIS repo, which is what makes it this repo's lock.
+#
+# --scheduled IS NOT OPTIONAL, and omitting it is invisible (task 38a93fca). Without it
+# `fixall-session.ts` (astrid-web, lines 143-163) takes the branch written for a HUMAN session: it
+# also calls `registerHolder()`, publishing a machine-wide "someone is working here" that stands the
+# scheduled loops down, and prints
+#
+#     the scheduled /fixall loops will stand down until this session exits
+#
+# which this loop then logged about ITSELF on every tick - read, by anyone debugging a quiet board,
+# as an interactive session holding the tree. `shouldYield` filters the caller out by pid so the
+# loop never actually blocked itself; what it did was lie in the log, and leave a holder file behind
+# on any tick hard-killed before its `release`. astrid-web's loop has always passed it
+# (fixall-loop.sh:122).
 Push-Location $RepoRoot
-try { & $Tsx (Join-Path $WebRepo 'scripts\fixall-session.ts') 'acquire' '--pid' $PID '--harness' 'claude-code' 2>&1 | ForEach-Object { Say "  $_" } }
+try { & $Tsx (Join-Path $WebRepo 'scripts\fixall-session.ts') 'acquire' '--pid' $PID '--harness' 'claude-code' '--scheduled' 2>&1 | ForEach-Object { Say "  $_" } }
 finally { Pop-Location }
 $lockStatus = $LASTEXITCODE
 if ($lockStatus -eq 2) { Finish 'RESULT: SKIPPED - another live session holds this checkout' }
@@ -259,6 +272,39 @@ try {
     $taskFile = Join-Path $env:TEMP "astrid-fixall-windows-task-$PID.txt"
     Remove-Item $taskFile -Force -ErrorAction SilentlyContinue
     $env:ASTRID_FIXALL_TASK_FILE = $taskFile
+
+    # ── Guard 1b: stand down while someone is working ──────────────────────────────────────────
+    # Guard 1 is per WORKING TREE; contention for a machine is per MACHINE. On 2026-10-11 a session
+    # worked astrid-web while the iOS loop ran a simulator suite and the web loop ran predeploy: the
+    # 5-minute load average peaked over 890, which is how a run ends up red on test timeouts in
+    # files that pass alone (AWTD-1192, AWTD-1197). A tick here starts `npm run predeploy`, which
+    # cross-builds ARM64 every run, so it is one of the heavy things worth standing down.
+    #
+    # So an interactive `fixall-session.ts acquire` in ANY checkout on this machine stands this loop
+    # down, and `npm run fixall:pause` covers the work no session knows about - a manual build, a
+    # profiling run (AWTD-1212). Until task 38a93fca neither did: this script never called
+    # fixall-pause.ts at all, and `npm run fixall:pause` simply did not apply to Windows.
+    #
+    # HERE, and not later: the sweep below makes git commits in two checkouts and posts comments on
+    # tasks, and a tick that stands down after doing those has stood down too late. And inside the
+    # try, so the `finally` releases the working-tree lock - a skip from outside it would leak the
+    # lock and the next tick would refuse this checkout as held by a process that is gone.
+    #
+    # An unreadable pause state RUNS THE TICK and says so, which is fixall-pause.ts's own call (its
+    # header) and the same one guard 2b makes about an unreadable load average: a loop that stalls on
+    # a bad state file is a worse outage than one run too many.
+    $yieldOut = Invoke-WebTool @('scripts/fixall-pause.ts', 'yield', '--self-pid', $PID)
+    $yieldStatus = $LASTEXITCODE
+    # One line, whatever the tool said: the header promises the last line of a tick is exactly one
+    # RESULT: line, and this text is pasted straight into it.
+    $yieldReason = ((($yieldOut | Out-String) -replace '\s+', ' ')).Trim()
+    if ($yieldStatus -eq 2) {
+        if (-not $yieldReason) { $yieldReason = 'something is working this machine' }
+        Finish "RESULT: SKIPPED - $yieldReason"
+    }
+    if ($yieldStatus -ne 0) {
+        Say "  WARNING: could not read the pause state, running anyway: $yieldReason"
+    }
 
     # ── The sweep: clear up after a run this script never watched exit ────────────────────────
     # BEFORE guard 2, because the leftovers are exactly what guard 2 trips on; a sweep after it would
