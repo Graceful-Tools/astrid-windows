@@ -41,6 +41,20 @@ public sealed partial class ShellPage : UserControl
     /// <summary>The strip the window is dragged by, for <c>Window.SetTitleBar</c>.</summary>
     internal UIElement TitleBarDragRegion => TitleBar.DragRegion;
 
+    /// <summary>
+    /// Open search: the palette, focused and ready to be typed into.
+    /// </summary>
+    /// <remarks>
+    /// The one way in, because there are two ways to ask — the Ctrl+K chord and the brand
+    /// header's icon (task 20dcc235). Opening and focusing were two loose statements before, and
+    /// a second caller copying the pair is how one of them later stops taking focus.
+    /// </remarks>
+    private async Task OpenSearchAsync()
+    {
+        await Shell.ShowPaletteAsync(true);
+        Palette.TakeFocus();
+    }
+
     public ShellPage()
     {
         InitializeComponent();
@@ -72,6 +86,7 @@ public sealed partial class ShellPage : UserControl
         Settings.Shell = Shell;
 
         // What one part has to tell another.
+        TitleBar.SearchRequested += async () => await OpenSearchAsync();
         Palette.RowRun += Sidebar.SyncSelectionFromViewModel;
         Rows.RowActivated += OnRowActivated;
         Board.CardOpened += Detail.SyncPriority;
@@ -237,8 +252,7 @@ public sealed partial class ShellPage : UserControl
                     // The palette. Ctrl+K is what every other app with one uses, so it is the
                     // chord people try first.
                     args.Handled = true;
-                    await Shell.ShowPaletteAsync(true);
-                    Palette.TakeFocus();
+                    await OpenSearchAsync();
                     return;
                 default:
                     // Any other chord belongs to Windows or to a control. Not ours to swallow.

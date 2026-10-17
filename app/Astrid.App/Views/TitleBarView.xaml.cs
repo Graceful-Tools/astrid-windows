@@ -13,6 +13,18 @@ public sealed partial class TitleBarView : UserControl
         InitializeComponent();
     }
 
-    /// <summary>What <c>Window.SetTitleBar</c> is given: the strip a person drags the window by.</summary>
-    internal UIElement DragRegion => Bar;
+    /// <summary>
+    /// What <c>Window.SetTitleBar</c> is given: the strip a person drags the window by.
+    /// </summary>
+    /// <remarks>
+    /// The run of the strip to the RIGHT of the brand header, not the whole bar. Windows eats the
+    /// input over whatever it is handed, so the header's search control has to sit outside it —
+    /// inside, the button draws and does nothing at all (task 20dcc235).
+    /// </remarks>
+    internal UIElement DragRegion => DragStrip;
+
+    /// <summary>Someone asked for search from the header. <c>ShellPage</c> owns what that means.</summary>
+    internal event Action? SearchRequested;
+
+    private void OnSearch(object sender, RoutedEventArgs args) => SearchRequested?.Invoke();
 }

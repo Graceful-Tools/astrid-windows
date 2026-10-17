@@ -940,6 +940,12 @@
   <data name="help_nav_label.Text" xml:space="preserve">
     <value>Help &amp; Support</value>
   </data>
+  <data name="header_search.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="header_search.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Search</value>
+  </data>
   <data name="integrations.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Integrations</value>
   </data>
