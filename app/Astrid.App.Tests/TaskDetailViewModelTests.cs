@@ -7,7 +7,8 @@ namespace Astrid.App.Tests;
 public sealed class TaskDetailViewModelTests
 {
     private static object Detail(string title = "Plan the trip", int priority = 3,
-        bool completed = false, string[]? subtasks = null, string[]? comments = null,
+        bool completed = false, string[]? subtasks = null, string[]? doneSubtasks = null,
+        string[]? comments = null,
         bool isCanceled = false, object? boardState = null, object? blockers = null,
         string? identifier = null, bool showsIdentifier = false,
         bool offersCopyIdentifier = false) => new
@@ -31,13 +32,17 @@ public sealed class TaskDetailViewModelTests
                 content,
                 createdAt = "2026-09-07T12:00:00Z",
             }).ToArray(),
-            subtasks = (subtasks ?? []).Select((sub, index) => new
-            {
-                id = $"s{index}",
-                title = sub,
-                completed = false,
-                isPending = false,
-            }).ToArray(),
+            // Open ones first, then the finished ones, which is the order the core sends them in:
+            // subtasks come back by creation time, not by state.
+            subtasks = (subtasks ?? []).Select(sub => (title: sub, done: false))
+                .Concat((doneSubtasks ?? []).Select(sub => (title: sub, done: true)))
+                .Select((sub, index) => new
+                {
+                    id = $"s{index}",
+                    title = sub.title,
+                    completed = sub.done,
+                    isPending = false,
+                }).ToArray(),
         };
 
     /// <summary>
@@ -1220,7 +1225,6 @@ public sealed class TaskDetailViewModelTests
         Assert.Equal("Plan the trip", view.Title);
         Assert.Equal("two weeks", view.Description);
         Assert.Equal(3, view.Priority);
-        Assert.Equal("!!!", view.PriorityGlyph);
         Assert.Equal("today", view.Due.Key);
         Assert.Equal("Home", view.ListChips[0].Name);
         Assert.Equal("Book flights", view.Subtasks[0].Title);
@@ -1279,6 +1283,43 @@ public sealed class TaskDetailViewModelTests
         await view.OpenAsync("t1");
 
         Assert.Equal(["assignee", "when", "priority", "lists"], view.FieldOrder);
+    }
+
+    /// <summary>
+    /// The subtasks section says how many of its rows are done — "1/3", the count the Mac and
+    /// web both show (task 439e94a4).
+    /// </summary>
+    /// <remarks>
+    /// Digits and a slash, so there is nothing to translate; the word above it is the resw's. The
+    /// data was already arriving — <c>SubtaskSummary.Completed</c> comes from the same
+    /// <c>taskDetail</c> payload the rows do and was simply unread.
+    /// </remarks>
+    [Fact]
+    public async Task The_subtasks_section_counts_the_finished_ones_task_439e94a4()
+    {
+        var core = new FakeCore().AnswerOk("taskDetail",
+            Detail(subtasks: ["Book flights", "Pack"], doneSubtasks: ["Renew passport"]));
+        var view = new TaskDetailViewModel(core);
+
+        await view.OpenAsync("t1");
+
+        Assert.Equal("1/3", view.SubtaskCount);
+    }
+
+    /// <summary>
+    /// A task with no children has no count. The heading stays — the add row lives under it — but
+    /// "0/0" over an empty section is a number about nothing.
+    /// </summary>
+    [Fact]
+    public async Task A_task_with_no_subtasks_has_no_count_task_439e94a4()
+    {
+        var core = new FakeCore().AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+
+        await view.OpenAsync("t1");
+
+        Assert.Empty(view.Subtasks);
+        Assert.Equal(string.Empty, view.SubtaskCount);
     }
 
     /// <summary>Completing goes through the command that rolls a repeating task forward.</summary>

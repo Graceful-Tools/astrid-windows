@@ -56,31 +56,35 @@
             title of the thing you are reading should not scroll away from the thread you are
             reading about it.
 
-            The 16px padding and the 32px mark are the alignment invariant that file states in
-            its own words — content starts at 16 + 32 + 8 = 56px on the header row and on every
-            field row under it, so the icons land under the mark and the values under the title.
-            Changing one without the other is what made the web's own panel drift before
-            somebody wrote the sum down.
+            The 16px padding here and the mark's own width are the alignment invariant that file
+            states in its own words — content starts at 16 + 32 + 8 = 56px on the header row and
+            on every field row under it, so the icons land under the mark and the values under
+            the title. Changing one without the other is what made the web's own panel drift
+            before somebody wrote the sum down, so the two shared terms are named once, as
+            `DetailFieldIconColumn` and `DetailFieldGap` in ShellResources.xaml, and all three
+            are pinned by TaskDetailAlignmentTests (task 439e94a4).
         -->
         <Border Grid.Row="0"
                 Padding="16"
                 BorderThickness="0,0,0,1"
                 BorderBrush="{ThemeResource AstridBorder}">
-                <Grid ColumnSpacing="8">
+                <Grid ColumnSpacing="{StaticResource DetailFieldGap}">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="32" />
+                        <ColumnDefinition Width="Auto" MinWidth="{StaticResource DetailFieldIconColumn}" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <Button x:Uid="complete_this_task" Grid.Column="0"
                             Background="Transparent" BorderThickness="0" Padding="0"
-                            Width="32" Height="32"
+                            Width="{StaticResource DetailFieldIconColumn}"
+                            Height="{StaticResource DetailFieldIconColumn}"
                             VerticalAlignment="Top"
                             AutomationProperties.Name="Complete this task"
                             Visibility="{x:Bind Shell.Detail.IsCopyOnly, Mode=OneWay, Converter={StaticResource NotVisible}}"
                             Click="OnDetailMarkClicked">
                         <Image Source="{x:Bind Shell.Detail.CheckboxAsset, Mode=OneWay}"
-                               Width="32" Height="32" />
+                               Width="{StaticResource DetailFieldIconColumn}"
+                               Height="{StaticResource DetailFieldIconColumn}" />
                     </Button>
                     <!--
                         A task in a public list the reader cannot edit (task f6bc59e8): the web's
@@ -88,7 +92,8 @@
                     -->
                     <Button x:Uid="copy_this_task" Grid.Column="0"
                             Background="Transparent" BorderThickness="0" Padding="0"
-                            Width="32" Height="32"
+                            Width="{StaticResource DetailFieldIconColumn}"
+                            Height="{StaticResource DetailFieldIconColumn}"
                             VerticalAlignment="Top"
                             AutomationProperties.Name="Copy this task"
                             ToolTipService.ToolTip="Copy to my tasks"
@@ -250,9 +255,9 @@
             -->
             <Button x:Uid="assignee_2" Style="{StaticResource DetailField}"
                     AutomationProperties.Name="Assignee">
-                <Grid ColumnSpacing="8">
+                <Grid ColumnSpacing="{StaticResource DetailFieldGap}">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="32" />
+                        <ColumnDefinition Width="Auto" MinWidth="{StaticResource DetailFieldIconColumn}" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" Text="&#xE77B;"
@@ -301,9 +306,9 @@
             -->
             <Button x:Uid="due_date" Style="{StaticResource DetailField}"
                     AutomationProperties.Name="Due date">
-                <Grid ColumnSpacing="8">
+                <Grid ColumnSpacing="{StaticResource DetailFieldGap}">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="32" />
+                        <ColumnDefinition Width="Auto" MinWidth="{StaticResource DetailFieldIconColumn}" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" Text="&#xE787;"
@@ -384,9 +389,9 @@
             -->
             <Button x:Uid="reminder" Style="{StaticResource DetailField}"
                     AutomationProperties.Name="Reminder">
-                <Grid ColumnSpacing="8">
+                <Grid ColumnSpacing="{StaticResource DetailFieldGap}">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="32" />
+                        <ColumnDefinition Width="Auto" MinWidth="{StaticResource DetailFieldIconColumn}" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" Text="&#xE91C;"
@@ -423,9 +428,9 @@
             -->
             <Button x:Uid="repeat_2" Style="{StaticResource DetailField}"
                     AutomationProperties.Name="Repeat">
-                <Grid ColumnSpacing="8">
+                <Grid ColumnSpacing="{StaticResource DetailFieldGap}">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="32" />
+                        <ColumnDefinition Width="Auto" MinWidth="{StaticResource DetailFieldIconColumn}" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" Text="&#xE895;"
@@ -504,17 +509,26 @@
 
                 Which square is on is set in code-behind rather than by four bindings that each
                 re-derive the same comparison; see SyncDetailPriority.
+
+                The marker in the icon column NAMES the row and is the same !!! whatever the
+                task's priority is, in the muted colour every other field icon wears (task
+                439e94a4). It used to be the core's priorityGlyph, which follows the value — so
+                the row was marked with a ○ on a task with no priority, which is most tasks.
+                Web's PRIORITY_ROW_GLYPH and PriorityGlyph.rowIcon on iOS and Mac are the same
+                constant, for the reason the swatches beside it make plain: the marker says
+                which field this is, the swatches say what it is set to.
             -->
-            <Grid ColumnSpacing="8" Margin="0,4">
+            <Grid ColumnSpacing="{StaticResource DetailFieldGap}" Margin="0,4">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="32" />
+                    <ColumnDefinition Width="Auto" MinWidth="{StaticResource DetailFieldIconColumn}" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0"
-                           Text="{x:Bind Shell.Detail.PriorityGlyph, Mode=OneWay}"
-                           FontSize="13"
+                           Text="{x:Bind Shell.Detail.PriorityRowMarker}"
+                           FontSize="12"
+                           FontWeight="Bold"
                            HorizontalAlignment="Center" VerticalAlignment="Center"
-                           Foreground="{x:Bind Shell.Detail.Priority, Mode=OneWay, Converter={StaticResource PriorityBrush}}" />
+                           Foreground="{ThemeResource AstridTextMuted}" />
                 <StackPanel x:Uid="priority_2" Grid.Column="1" Orientation="Horizontal" Spacing="6"
                             AutomationProperties.Name="Priority">
                     <Button x:Uid="priority_none_2" x:Name="PriorityNone" Tag="0" Content="&#x25CB;"
@@ -550,9 +564,9 @@
             -->
             <Button x:Uid="lists_2" Style="{StaticResource DetailField}"
                     AutomationProperties.Name="Lists">
-                <Grid ColumnSpacing="8">
+                <Grid ColumnSpacing="{StaticResource DetailFieldGap}">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="32" />
+                        <ColumnDefinition Width="Auto" MinWidth="{StaticResource DetailFieldIconColumn}" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" Text="&#xE8FD;"
@@ -674,11 +688,11 @@
                 the core says the key means something here; a task moved off every board keeps its
                 id without displaying it.
             -->
-            <Grid x:Uid="task_id_row" ColumnSpacing="8" Padding="0,6" MinHeight="36"
+            <Grid x:Uid="task_id_row" ColumnSpacing="{StaticResource DetailFieldGap}" Padding="0,6" MinHeight="36"
                   AutomationProperties.Name="Task id"
                   Visibility="{x:Bind Shell.Detail.ShowsIdentifier, Mode=OneWay, Converter={StaticResource Visible}}">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="32" />
+                    <ColumnDefinition Width="Auto" MinWidth="{StaticResource DetailFieldIconColumn}" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="&#xE8C8;"
@@ -702,11 +716,11 @@
                 chip makes the very move a dragged card makes, through the same command as the
                 menu's Status.
             -->
-            <Grid x:Uid="board_state_row" ColumnSpacing="8" Padding="0,6" MinHeight="36"
+            <Grid x:Uid="board_state_row" ColumnSpacing="{StaticResource DetailFieldGap}" Padding="0,6" MinHeight="36"
                   AutomationProperties.Name="Board state"
                   Visibility="{x:Bind Shell.Detail.ShowsBoardState, Mode=OneWay, Converter={StaticResource Visible}}">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="32" />
+                    <ColumnDefinition Width="Auto" MinWidth="{StaticResource DetailFieldIconColumn}" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="&#xF0E2;"
@@ -749,11 +763,11 @@
                 The icon is an inverted triangle — a yield sign, not an hourglass — which is the
                 mark the other clients use for this row.
             -->
-            <Grid x:Uid="waiting_on_row" ColumnSpacing="8" Padding="0,6" MinHeight="36"
+            <Grid x:Uid="waiting_on_row" ColumnSpacing="{StaticResource DetailFieldGap}" Padding="0,6" MinHeight="36"
                   AutomationProperties.Name="Waiting on"
                   Visibility="{x:Bind Shell.Detail.ShowsWaitingOn, Mode=OneWay, Converter={StaticResource Visible}}">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="32" />
+                    <ColumnDefinition Width="Auto" MinWidth="{StaticResource DetailFieldIconColumn}" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="&#xE96E;"
@@ -890,9 +904,9 @@
                 on a tinted ground, which is how the web draws its textarea - a boxed control
                 here read as a form field rather than as the task's own notes.
             -->
-            <Grid ColumnSpacing="8" Margin="0,4,0,0">
+            <Grid ColumnSpacing="{StaticResource DetailFieldGap}" Margin="0,4,0,0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="32" />
+                    <ColumnDefinition Width="Auto" MinWidth="{StaticResource DetailFieldIconColumn}" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="&#xE8A5;"
@@ -942,7 +956,19 @@
                          KeyDown="OnDetailDescriptionKeyDown" />
             </Grid>
             </StackPanel>
-                <TextBlock x:Uid="subtasks" Text="Subtasks" Style="{StaticResource DetailSection}" />
+                <!--
+                    The heading, and how many of the children are done — "1/3", the count the
+                    Mac and iOS have shown beside "Sub tasks" for a long time and web gained as
+                    AWTD-1227 (task 439e94a4). The heading stays on a task with no children,
+                    because the add row lives under it; the count does not, since "0/0" over an
+                    empty section is a number about nothing.
+                -->
+                <StackPanel Orientation="Horizontal" Spacing="{StaticResource DetailFieldGap}">
+                    <TextBlock x:Uid="subtasks" Text="Subtasks" Style="{StaticResource DetailSection}" />
+                    <TextBlock Text="{x:Bind Shell.Detail.SubtaskCount, Mode=OneWay}"
+                               Style="{StaticResource DetailSection}"
+                               FontWeight="Normal" />
+                </StackPanel>
                 <ItemsControl ItemsSource="{x:Bind Shell.Detail.Subtasks, Mode=OneWay}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="viewmodels:SubtaskSummary">
@@ -986,7 +1012,7 @@
                                         Padding="0,4"
                                         Tag="{x:Bind Id}"
                                         Click="OnOpenAttachment">
-                                    <Grid ColumnSpacing="8" HorizontalAlignment="Stretch">
+                                    <Grid ColumnSpacing="{StaticResource DetailFieldGap}" HorizontalAlignment="Stretch">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
