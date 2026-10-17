@@ -164,17 +164,34 @@
                                    FontSize="16" />
                         <Button.Flyout>
                             <!--
-                                astrid-web's `TaskActionMenu`: Copy link, Share, Status,
-                                Won't do / Reopen, Delete (task 016ce981). The words and the
-                                Status rows are set when the menu opens — see
+                                astrid-web's `TaskActionMenu`, in web's order: Copy, Share, Copy
+                                task id, then Status, Won't do / Reopen and Delete behind
+                                separators (tasks 016ce981, ffcc6abf — AWTD-1181, where Jon chose
+                                both web patterns). Web's "Copy" is this pane's "Copy to a
+                                list…": its `onCopy` is `handleCopyTask(taskId, targetListId)`.
+
+                                Two items are this client's own, and each sits after the group
+                                web shares rather than inside it. Copy link: a window has no
+                                address bar, so the menu is the only place a URL can come from.
+                                Close: the detail is a pane, and web's routed page has no
+                                equivalent to shut. Both are recorded in docs/CONTRACTS.md.
+
+                                The words and the Status rows are set when the menu opens — see
                                 OnTaskActionsOpening — because "Won't do" reads "Reopen" on a
                                 canceled task and the columns are the task's board's.
                             -->
                             <MenuFlyout Opening="OnTaskActionsOpening">
-                                <MenuFlyoutItem x:Name="CopyLinkItem" Click="OnCopyTaskLink"
+                                <MenuFlyoutItem x:Uid="copy_to_a_list" x:Name="CopyTaskItem" Text="Copy to a list..."
+                                                Click="OnCopyTask"
                                                 IsEnabled="{x:Bind Shell.Detail.CanCopyLink, Mode=OneWay}">
                                     <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE71B;" />
+                                        <FontIcon Glyph="&#xE8C8;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem x:Name="ShareItem" Click="OnShareTask"
+                                                IsEnabled="{x:Bind Shell.Detail.CanCopyLink, Mode=OneWay}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE72D;" />
                                     </MenuFlyoutItem.Icon>
                                 </MenuFlyoutItem>
                                 <!--
@@ -189,17 +206,10 @@
                                         <FontIcon Glyph="&#xE8C8;" />
                                     </MenuFlyoutItem.Icon>
                                 </MenuFlyoutItem>
-                                <MenuFlyoutItem x:Name="ShareItem" Click="OnShareTask"
+                                <MenuFlyoutItem x:Name="CopyLinkItem" Click="OnCopyTaskLink"
                                                 IsEnabled="{x:Bind Shell.Detail.CanCopyLink, Mode=OneWay}">
                                     <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE72D;" />
-                                    </MenuFlyoutItem.Icon>
-                                </MenuFlyoutItem>
-                                <MenuFlyoutItem x:Uid="copy_to_a_list" x:Name="CopyTaskItem" Text="Copy to a list..."
-                                                Click="OnCopyTask"
-                                                IsEnabled="{x:Bind Shell.Detail.CanCopyLink, Mode=OneWay}">
-                                    <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE8C8;" />
+                                        <FontIcon Glyph="&#xE71B;" />
                                     </MenuFlyoutItem.Icon>
                                 </MenuFlyoutItem>
                                 <MenuFlyoutSeparator />

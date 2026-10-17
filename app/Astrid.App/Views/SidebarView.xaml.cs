@@ -34,6 +34,12 @@ public sealed partial class SidebarView : UserControl
         InitializeComponent();
     }
 
+    /// <summary>
+    /// The footer entry opens the settings screen; the shell owns whether it is open. It came
+    /// from the list header with the account row (task ffcc6abf).
+    /// </summary>
+    private void OnOpenSettings(object sender, RoutedEventArgs args) => Shell.ShowSettings(true);
+
     /// <summary>Make every live row resolve its style's theme brushes again; see <c>ShellPage.ApplyTheme</c>.</summary>
     internal void Restyle()
     {

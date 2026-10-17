@@ -64,6 +64,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!--
@@ -240,5 +241,55 @@
                 <FontIcon FontSize="14" Glyph="&#xE710;" />
             </Button>
         </Grid>
+
+        <!--
+            The account, at the foot of the sidebar (task ffcc6abf — AWTD-1179, where Jon chose
+            the web-desktop pattern). astrid-web's LeftSidebar ends in exactly this row: the
+            signed-in user's photo, their name, and a gear, and the whole row opens Settings.
+            There is no menu in between on web, and there is none here.
+
+            It was a bare person glyph in the list header before — the far end of the window from
+            where web keeps it, and it never said whose account it was. The name comes from the
+            account the shell reads at startup (ShellViewModel.StartAsync), so it is there before
+            the screen behind this row has ever been opened.
+        -->
+        <Border Grid.Row="3"
+                BorderThickness="0,1,0,0"
+                BorderBrush="{ThemeResource AstridBorder}">
+            <Button x:Uid="account_and_settings"
+                    AutomationProperties.AutomationId="AccountButton"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Padding="12"
+                    AutomationProperties.Name="Account"
+                    ToolTipService.ToolTip="Account and settings"
+                    Click="OnOpenSettings">
+                <Grid ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Width="28" Height="28" CornerRadius="14"
+                            VerticalAlignment="Center"
+                            Background="{ThemeResource AstridBorder}">
+                        <Image x:Uid="profile_photo"
+                               Source="{x:Bind Shell.Settings.Account.PhotoUrl, Mode=OneWay, Converter={StaticResource RemoteImage}}"
+                               Stretch="UniformToFill"
+                               AutomationProperties.Name="Profile photo" />
+                    </Border>
+                    <TextBlock Grid.Column="1"
+                               Text="{x:Bind Shell.Settings.Account.DisplayName, Mode=OneWay}"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"
+                               Foreground="{ThemeResource AstridTextSecondary}" />
+                    <FontIcon Grid.Column="2" FontSize="14" Glyph="&#xE713;"
+                              VerticalAlignment="Center"
+                              Foreground="{ThemeResource AstridTextMuted}" />
+                </Grid>
+            </Button>
+        </Border>
     </Grid>
 </UserControl>

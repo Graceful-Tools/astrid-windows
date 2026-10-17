@@ -36,9 +36,6 @@ public sealed partial class ListHeaderView : UserControl
     /// <summary>The list's flyout binds to the same view model this row does.</summary>
     private void OnShellChanged() => ListSettings.Shell = Shell;
 
-    /// <summary>The account button opens the settings screen; the shell owns whether it is open.</summary>
-    private void OnOpenSettings(object sender, RoutedEventArgs args) => Shell.ShowSettings(true);
-
     /// <summary>
     /// Try the live stream again (task ef92df55). The button goes away when the core says the
     /// stream is back, not when this returns — whether it worked is the core's to say.
