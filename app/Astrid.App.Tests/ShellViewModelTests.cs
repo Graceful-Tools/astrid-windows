@@ -464,6 +464,31 @@ public sealed class ShellViewModelTests
     }
 
     /// <summary>
+    /// Startup reads the account, so the sidebar's footer entry can say whose it is before
+    /// anybody opens Settings (task ffcc6abf).
+    /// </summary>
+    /// <remarks>
+    /// The account used to arrive only on <c>Settings.LoadAsync</c>, which runs when the screen
+    /// opens — so web's pattern, a footer carrying the signed-in user's name, would have been
+    /// nameless until the one screen it leads to had already been visited. This is the cache read
+    /// alone (<c>settings</c>, not <c>refreshSettings</c>): no network before the first paint.
+    /// </remarks>
+    [Fact]
+    public async Task Startup_reads_the_account_for_the_sidebars_footer_task_ffcc6abf()
+    {
+        var core = StartedCore(("l1", "Home", false))
+            .AnswerOk("settings", SettingsFixtures.AccountOf(
+                new { id = "me", name = "Jon Paris", email = "jon@example.test" }));
+        using var shell = new ShellViewModel(core, RunInline);
+
+        await shell.StartAsync();
+
+        Assert.Equal("Jon Paris", shell.Settings.Account.DisplayName);
+        Assert.Contains("settings", core.SentKinds());
+        Assert.DoesNotContain("refreshSettings", core.SentKinds());
+    }
+
+    /// <summary>
     /// The empty state is the list's, not the board's: it shows when the list has nothing and
     /// goes away on the board, which draws its own.
     /// </summary>

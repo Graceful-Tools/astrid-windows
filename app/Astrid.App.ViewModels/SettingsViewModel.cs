@@ -81,6 +81,18 @@ public sealed class SettingsViewModel : ObservableObject
     /// <summary>The session has expired; see <see cref="SettingsSession.NeedsSignIn"/>.</summary>
     public bool NeedsSignIn => _session.NeedsSignIn;
 
+    /// <summary>
+    /// Read the account from the cache alone (task ffcc6abf).
+    /// </summary>
+    /// <remarks>
+    /// What the sidebar's footer entry needs: web's pattern names the signed-in user there, and
+    /// the window has to say who that is without waiting for the screen the entry leads to. The
+    /// cache read only — the catch-up in <see cref="LoadAsync"/> is a round trip, and this one
+    /// happens before the first paint.
+    /// </remarks>
+    public Task LoadAccountAsync(CancellationToken cancellationToken = default) =>
+        _session.ReadAsync(Commands.Settings(), cancellationToken);
+
     /// <summary>Read the account from the cache, then catch it up.</summary>
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {

@@ -104,3 +104,11 @@ other — is written up in [CONTRACTS.md](./CONTRACTS.md) with the reason it was
 than fixed. D7 (an unknown due-date filter hides undated tasks), D8 (the two Apple clients order
 the assignee picker differently) and D9 (auto-link duplicates a list Apple cannot get to the
 server) are the ones that touch this app today.
+
+Two items in the task-detail overflow menu are this client's own, and are kept on purpose
+(task ffcc6abf, AWTD-1181, where Jon chose web's menu). They are shell shape rather than a rule, so
+they are recorded here and not in the core's CONTRACTS.md: **Copy link**, because a window has no
+address bar and the menu is the only place a URL can come from; and **Close**, because the detail is
+a pane with something to shut, where web's routed page has nothing. Everything web's
+`TaskActionMenu` offers is there, in web's order, each of the two extras after the group it belongs
+to — pinned by `WebUxParityTests`.

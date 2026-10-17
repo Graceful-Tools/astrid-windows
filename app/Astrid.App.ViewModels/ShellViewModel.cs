@@ -768,6 +768,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
         await Sidebar.LoadAsync(cancellationToken);
         await OpenSelectedAsync(cancellationToken);
+        // Who is signed in, from the cache: the sidebar's own footer entry carries their name and
+        // photo, and it is on screen before anybody opens Settings (task ffcc6abf). After the
+        // rows, because the rows are what somebody opened the window to read.
+        await Settings.LoadAccountAsync(cancellationToken);
         await RefreshOutboxAsync(cancellationToken);
         await SeedStreamStateAsync(cancellationToken);
         // The badge from the cache, before the network: it is right the moment the window opens.
