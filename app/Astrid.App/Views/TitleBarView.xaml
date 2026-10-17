@@ -19,28 +19,68 @@
 
         A transparent background would not do: the drag region has to be hit-testable, and the
         layer brush is what lets this strip read as part of the sidebar rather than a bar over
-        it. Nothing in here is interactive yet; the right-hand run of the strip is empty on
-        purpose, for what may move up here later.
+        it.
+
+        The left 260 of the strip is the BRAND HEADER — web's sidebar header, in the control that
+        owns this corner of the window (task 20dcc235, the Windows half of AWTD-1180). It is
+        exactly as wide as the sidebar column beneath it, so the search control at its end lands
+        at the sidebar's right edge, which is where web puts it. Those two widths have to match
+        and are pinned together by BrandHeaderSearchTests; WinUI has no neat way to share one
+        GridLength across two files, so the number is stated twice and a test keeps it honest.
+
+        The rest of the strip is the drag region, and ONLY the rest of it: Window.SetTitleBar
+        hands an element to Windows, which then swallows the input over it, so a button inside
+        would be drawn and never clickable.
     -->
-    <Grid x:Name="Bar"
-          Height="36"
-          Padding="14,0,0,0"
-          ColumnSpacing="8"
-          Background="{ThemeResource LayerFillColorDefaultBrush}">
+    <Grid Height="36" Background="{ThemeResource LayerFillColorDefaultBrush}">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
-        <Image x:Uid="title_mark" Grid.Column="0"
-               Source="{x:Bind local:Brand.SmallMark}"
-               Width="20" Height="20"
-               VerticalAlignment="Center"
-               AutomationProperties.Name="Astrid" />
-        <TextBlock x:Uid="astrid" Grid.Column="1" Text="Astrid"
-                   FontSize="13"
-                   FontWeight="SemiBold"
+
+        <!-- The brand header: the mark and the wordmark left, search at the far right. -->
+        <Grid Grid.Column="0"
+              Width="260"
+              Padding="14,0,6,0"
+              ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Image x:Uid="title_mark" Grid.Column="0"
+                   Source="{x:Bind local:Brand.SmallMark}"
+                   Width="20" Height="20"
                    VerticalAlignment="Center"
-                   Foreground="{ThemeResource AstridTextPrimary}" />
+                   AutomationProperties.Name="Astrid" />
+            <TextBlock x:Uid="astrid" Grid.Column="1" Text="Astrid"
+                       FontSize="13"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"
+                       Foreground="{ThemeResource AstridTextPrimary}" />
+            <!--
+                Column 2 is the gap, so this is hard against the sidebar's right edge however
+                long the wordmark gets in translation.
+            -->
+            <Button x:Uid="header_search" Grid.Column="3"
+                    Click="OnSearch"
+                    Content="&#xE721;"
+                    FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                    FontSize="14"
+                    Width="28" Height="28"
+                    Padding="0"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    VerticalAlignment="Center"
+                    Foreground="{ThemeResource AstridTextMuted}"
+                    AutomationProperties.Name="Search"
+                    ToolTipService.ToolTip="Search" />
+        </Grid>
+
+        <!-- What the window is dragged by: the strip right of the brand header. -->
+        <Border x:Name="DragStrip" Grid.Column="1"
+                Background="Transparent"
+                AutomationProperties.AutomationId="TitleBarDragStrip" />
     </Grid>
 </UserControl>
