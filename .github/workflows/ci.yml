@@ -10,6 +10,11 @@
 # The shell has its own job. It used to have none, which left 6,800 lines of C# and 200-odd tests
 # outside the gate: a compile break in the shell landed on `main` green, and the only thing that
 # would have said otherwise was somebody's local predeploy.
+#
+# One job here is NOT in `npm run predeploy`, and deliberately: `supply-chain` asks the RustSec
+# advisory database about this repo's lockfile, which needs the network and a tool nobody has
+# installed locally. It is also the only job that runs on a schedule, since it is the only one whose
+# answer can change while the repository does not.
 
 name: CI
 
@@ -18,6 +23,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  # An advisory is published between commits, so a push-only gate learns about it on whatever day
+  # someone happens to touch the repo. astrid-web learned this on AWTD-914 and runs its npm audit
+  # weekly for the same reason. Monday 06:00 UTC, before the Dependabot PRs land.
+  schedule:
+    - cron: "0 6 * * 1"
 
 env:
   CARGO_TERM_COLOR: always
@@ -28,8 +38,45 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ── The supply chain ──────────────────────────────────────────────────────────────────────────
+  # `cargo deny` over THIS repo's lockfile: advisories, licences, wildcard requirements and where
+  # the crates came from. The ffi crate pins the core by revision but resolves its own tree, so this
+  # is a real gate of its own and not a restatement of astrid-core's. The rules are in `deny.toml`
+  # at the root, which says why each licence in the allow list is there and why the core's git URL
+  # is the one `allow-git` entry.
+  #
+  # Not part of `npm run predeploy`: the check needs the advisory database, which means the network,
+  # and cargo-deny is not installed on the dev machines.
+  #
+  # Two invocations rather than one, because the two halves fail for unrelated reasons and a single
+  # red job would not say which: `advisories` goes red when the WORLD changed (an advisory was
+  # published against a version this repo already pinned), `licenses bans sources` when THIS REPO
+  # changed (a new dependency arrived with a licence or from a place nobody has accepted). Both
+  # block — a gate that cannot fail is documentation.
+  #
+  # ubuntu, though nothing here ships for Linux: cargo-deny reads the lockfile and the advisory
+  # database, never the compiler, so the host is irrelevant and the cheap runner is the right one.
+  supply-chain:
+    name: cargo-deny (${{ matrix.checks }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        checks:
+          - advisories
+          - licenses bans sources
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check ${{ matrix.checks }}
+
   core:
     name: ffi over the pinned core (${{ matrix.name }})
+    # The weekly tick exists to ask the advisory database a question, not to rebuild the crate and
+    # the shell. fmt, clippy, the tests and the cross-build answer to a commit, so they run when
+    # there is one.
+    if: github.event_name != 'schedule'
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -69,6 +116,7 @@ jobs:
 
   cross-build:
     name: ARM64 cross-build
+    if: github.event_name != 'schedule'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -79,6 +127,7 @@ jobs:
 
   shell:
     name: shell (build + tests)
+    if: github.event_name != 'schedule'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4

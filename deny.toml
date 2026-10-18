@@ -1,0 +1,64 @@
+# What this workspace accepts from crates.io, and what fails the build.
+#
+# The Rust half of astrid-web's `npm audit --audit-level=high` gate. Until this file existed the
+# three Rust workspaces — astrid-core, this one, and astrid-ios' `core/` — had no advisory gate at
+# all, so an advisory against the HTTP stack, TLS, SQLite or the PKCE crates on the sign-in path
+# would have hit every client at once with nothing to say so.
+#
+# This repo PINS the core by revision but resolves its own dependency tree, so this is a gate over a
+# real lockfile of its own and not a restatement of the core's. The file is COPIED from astrid-core
+# rather than referenced across repos: the repos are pinned to each other by revision precisely so
+# that nothing crosses between them implicitly, and a licence decision made in one must not silently
+# change the gate in the other two.
+#
+# It is a CI gate, not part of `npm run predeploy`: cargo-deny is not installed on the dev machines
+# and the check needs the advisory database, which means the network. Run it by hand with
+# `cargo deny check` after `cargo install cargo-deny --locked`.
+
+# One graph for every target. This repo ships x64 and ARM64 Windows, and a platform-gated dependency
+# with an advisory against it is still an advisory. `all-features` for the same reason — a feature
+# nobody enables today is enabled by the next caller.
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+
+# A vulnerability, an unmaintained crate or an unsound one fails the build; that is version 2's
+# behaviour and it is not configurable per-kind. To ACCEPT one deliberately, add its id here with
+# the date and the reason — an empty list is a claim that nothing has been waved through.
+ignore = []
+
+# A yank is not a vulnerability. Upstream yanks for a bad release as often as for a security
+# problem, and a lockfile that lags a yank by a day should not stop a release.
+yanked = "warn"
+
+# Computed from the real graph (`cargo metadata --all-features`, 215 packages on 2026-10-18), not
+# copied from a list of licences that are usually fine. Every term here is REQUIRED by something in
+# the tree: BSD-3-Clause and Unicode-3.0 and ISC each arrive through an `AND` that no `OR` branch can
+# satisfy, and Zlib arrives alone. A new licence in the graph is meant to fail here and be read.
+[licenses]
+version = 2
+allow = [
+    "Apache-2.0",
+    "MIT",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Zlib",
+]
+
+[bans]
+# Duplicate versions are a fact of a Rust graph this size and failing on them would make the gate
+# noise rather than signal. A wildcard requirement is different: it is a dependency whose version
+# nothing records, so the lockfile is the only thing that knows what shipped.
+multiple-versions = "allow"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+# The one git dependency this repo has, and the reason it has one: `crates/astrid-ffi/Cargo.toml`
+# pins the shared core by revision. Matched by URL, not by revision, so bumping the pin — which is
+# how every shared-behaviour change reaches this app — does not need this list touched.
+allow-git = ["https://github.com/Graceful-Tools/astrid-core.git"]
