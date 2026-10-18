@@ -65,7 +65,9 @@ public sealed partial class ShellPage : UserControl
         IAstridCore core = App.Core is { } running
             ? running
             : new UnavailableCore(App.StartupError);
-        Shell = new ShellViewModel(core, Post);
+        // The third argument is what this screen remembers about its own furniture (task ab4cb9ee)
+        // — which of the two side panes were left open. Nothing else in the window reads it.
+        Shell = new ShellViewModel(core, Post, DevicePreferences.ForThisDevice());
         _reminders = new Reminders(Shell, Post);
         _shortcuts = new ShortcutDispatcher(core, Shell);
         Shell.PaletteCommandRequested += OnPaletteCommand;

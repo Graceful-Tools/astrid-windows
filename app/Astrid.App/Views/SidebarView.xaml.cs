@@ -161,6 +161,18 @@ public sealed partial class SidebarView : UserControl
         }
     }
 
+    /// <summary>
+    /// Hide the sidebar, and bring it back from the rail (task ab4cb9ee).
+    /// </summary>
+    /// <remarks>
+    /// Two handlers for the two controls, for the reason <see cref="ChatPane"/> gives: an
+    /// <c>x:Uid</c> names a static resource, so a button whose label changed would be a string
+    /// no translator could reach.
+    /// </remarks>
+    private void OnHideSidebar(object sender, RoutedEventArgs args) => Shell.ShowSidebar(false);
+
+    private void OnShowSidebar(object sender, RoutedEventArgs args) => Shell.ShowSidebar(true);
+
     /// <summary>Put the highlight where the view model says the selection is.</summary>
     internal void SyncSelectionFromViewModel()
     {

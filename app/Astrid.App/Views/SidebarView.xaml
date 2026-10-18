@@ -58,8 +58,16 @@
         screen-reader user can reach the previous session's lists from behind the sign-in
         screen.
     -->
-    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}"
-          Visibility="{x:Bind Shell.SignIn.IsSignedIn, Mode=OneWay, Converter={StaticResource Visible}}">
+    <!--
+        The sidebar, and the rail it leaves behind when it is hidden (task ab4cb9ee). Exactly one
+        of the two is ever visible, so the column in ShellPage takes whichever it is — see the
+        matching pair in ChatPane.xaml, which this is the mirror image of.
+    -->
+    <Grid Visibility="{x:Bind Shell.SignIn.IsSignedIn, Mode=OneWay, Converter={StaticResource Visible}}">
+
+    <Grid Width="260"
+          Background="{ThemeResource LayerFillColorDefaultBrush}"
+          Visibility="{x:Bind Shell.IsSidebarOpen, Mode=OneWay, Converter={StaticResource Visible}}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -71,7 +79,19 @@
             The mark and the wordmark used to be here, as the web's sidebar header has them. They
             are the title bar now (TitleBarView), which sits directly above this column and wears
             the same layer, so the top left reads as one surface with the brand at its corner.
+
+            What is here instead is the hide button, at this column's INNER corner — its right —
+            which is what makes it and the messages pane's one pair of controls rather than two.
         -->
+        <Button x:Uid="hide_sidebar" Grid.Row="0"
+                HorizontalAlignment="Right"
+                Margin="0,8,12,0"
+                AutomationProperties.Name="Hide sidebar"
+                ToolTipService.ToolTip="Hide sidebar"
+                Style="{StaticResource PaneToggleButton}"
+                Click="OnHideSidebar">
+            <FontIcon FontSize="14" Glyph="&#xE8A0;" />
+        </Button>
 
         <ScrollViewer Grid.Row="1">
             <StackPanel Margin="12,8,12,8" Spacing="4">
@@ -291,5 +311,22 @@
                 </Grid>
             </Button>
         </Border>
+    </Grid>
+
+    <!-- Hidden: a 48px rail holding only the way back, the width astrid-web's rail is. -->
+    <Border Width="48"
+            Background="{ThemeResource LayerFillColorDefaultBrush}"
+            Visibility="{x:Bind Shell.IsSidebarOpen, Mode=OneWay, Converter={StaticResource NotVisible}}">
+        <Button x:Uid="show_sidebar"
+                VerticalAlignment="Top"
+                Margin="0,8,0,0"
+                AutomationProperties.Name="Show sidebar"
+                ToolTipService.ToolTip="Show sidebar"
+                Style="{StaticResource PaneToggleButton}"
+                Click="OnShowSidebar">
+            <FontIcon FontSize="14" Glyph="&#xE89F;" />
+        </Button>
+    </Border>
+
     </Grid>
 </UserControl>

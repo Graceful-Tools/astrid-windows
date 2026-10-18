@@ -110,6 +110,24 @@
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
 
+    <!--
+        The pair that closes the window's two side panels towards the work (task ab4cb9ee): the
+        sidebar's on the left, the messages pane's mirroring it on the right. One style, because
+        a mirror image that had drifted into a slightly different button would read as two
+        unrelated controls — which is the thing this task is fixing.
+    -->
+    <Style x:Key="PaneToggleButton" TargetType="Button">
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{ThemeResource AstridTextMuted}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
     <Style x:Key="DetailField" TargetType="Button">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />

@@ -26,7 +26,12 @@
     <Grid x:Name="RootGrid" KeyDown="OnKeyDown"
           Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="260" />
+            <!--
+                Auto rather than 260 since task ab4cb9ee: the sidebar is 260 wide open and a 48px
+                rail hidden, and which of those it is belongs to the sidebar rather than to the
+                page. Signed out it draws neither, and the sign-in screen spans this column anyway.
+            -->
+            <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
             <!--
                 The conversation, then the detail pane. Auto rather than fixed widths so each
