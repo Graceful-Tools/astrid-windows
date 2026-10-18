@@ -365,15 +365,10 @@ public partial class App : Application
     /// test that wrote a fake session over somebody's real one would be a test nobody runs twice.
     /// It is also the honest way to try a second account without signing out of the first.
     /// </remarks>
-    private static string DataDirectory()
-    {
-        var chosen = Environment.GetEnvironmentVariable("ASTRID_DATA_DIR");
-        var directory = string.IsNullOrWhiteSpace(chosen)
-            ? Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Astrid")
-            : chosen;
-        Directory.CreateDirectory(directory);
-        return directory;
-    }
+    /// <remarks>
+    /// One definition, in <see cref="DevicePreferences.DataDirectory"/> — the window's remembered
+    /// panes live in the same folder as the core's data, and two copies of this would drift until
+    /// the smoke tests were pointed at a directory the app does not use.
+    /// </remarks>
+    private static string DataDirectory() => DevicePreferences.DataDirectory();
 }

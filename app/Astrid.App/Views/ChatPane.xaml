@@ -10,9 +10,18 @@
     xmlns:viewmodels="using:Astrid.App.ViewModels">
 
     <!--
-        The conversation. Beside the list, and collapsed rather than narrow when it is shut, so
-        it is out of the tab order as well as out of the way.
+        The conversation, and the rail it leaves behind when it is hidden (task ab4cb9ee).
+
+        Two children of one cell rather than one child that changes width: exactly one is ever
+        visible, so the Auto column in ShellPage takes whichever it is, and neither state has to
+        know the other's measurements. The rail is how astrid-web does it too — hiding a pane into
+        nothing would put the way back on a different part of the screen from the way out.
+
+        Both are gone while signed out: the sign-in screen covers this column, and a rail drawn
+        under it would be a control for a window nobody is in yet.
     -->
+    <Grid Visibility="{x:Bind Shell.SignIn.IsSignedIn, Mode=OneWay, Converter={StaticResource Visible}}">
+
     <Grid Width="320"
           Background="{ThemeResource AstridSurface}"
           BorderThickness="1,0,0,0"
@@ -29,10 +38,26 @@
                 Padding="16,14"
                 BorderThickness="0,0,0,1"
                 BorderBrush="{ThemeResource AstridBorder}">
-            <TextBlock x:Uid="chat" Text="Chat"
-                       FontSize="16"
-                       FontWeight="SemiBold"
-                       Foreground="{ThemeResource AstridTextPrimary}" />
+            <!--
+                The hide button at the pane's INNER top corner — its left — so it is the mirror
+                image of the sidebar's, which sits at the sidebar's inner corner on the right.
+                That symmetry is the whole request (task ab4cb9ee): one pair of controls that
+                close the window's two side panels towards the work in the middle.
+            -->
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button x:Uid="hide_messages"
+                        AutomationProperties.Name="Hide messages"
+                        ToolTipService.ToolTip="Hide messages"
+                        Style="{StaticResource PaneToggleButton}"
+                        Click="OnHideChat">
+                    <FontIcon FontSize="14" Glyph="&#xE89F;" />
+                </Button>
+                <TextBlock x:Uid="chat" Text="Chat"
+                           VerticalAlignment="Center"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           Foreground="{ThemeResource AstridTextPrimary}" />
+            </StackPanel>
         </Border>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="16,12">
@@ -137,5 +162,26 @@
                 </Grid>
             </StackPanel>
         </Border>
+    </Grid>
+
+    <!--
+        Hidden: a 48px rail holding only the way back, the same width astrid-web's is.
+    -->
+    <Border Width="48"
+            Background="{ThemeResource AstridSurface}"
+            BorderThickness="1,0,0,0"
+            BorderBrush="{ThemeResource AstridBorder}"
+            Visibility="{x:Bind Shell.IsChatOpen, Mode=OneWay, Converter={StaticResource NotVisible}}">
+        <Button x:Uid="show_messages"
+                VerticalAlignment="Top"
+                Margin="0,14,0,0"
+                AutomationProperties.Name="Show messages"
+                ToolTipService.ToolTip="Show messages"
+                Style="{StaticResource PaneToggleButton}"
+                Click="OnShowChat">
+            <FontIcon FontSize="14" Glyph="&#xE8A0;" />
+        </Button>
+    </Border>
+
     </Grid>
 </UserControl>

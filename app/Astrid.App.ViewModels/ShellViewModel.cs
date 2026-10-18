@@ -26,6 +26,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// <summary>The task whose row was last chosen, by tap or by moving the selection.</summary>
     private string? _lastSelectedRowId;
     private readonly Action<Func<Task>> _post;
+    /// <summary>What this screen remembers about its own furniture (task ab4cb9ee).</summary>
+    private readonly IDevicePreferences _device;
     private bool _hasUnsentWork;
     private int _refusedWrites;
     /// <summary>
@@ -56,6 +58,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private bool _isBoardView;
     private string? _listImageSource;
     private bool _isChatOpen;
+    private bool _isSidebarOpen;
     private bool _isPaletteOpen;
     private bool _isSettingsOpen;
     private bool _isTourOpen;
@@ -63,10 +66,20 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// <param name="post">
     /// Runs work on the UI thread. Given by the shell; a test passes something that runs it inline.
     /// </param>
-    public ShellViewModel(IAstridCore core, Action<Func<Task>> post)
+    /// <param name="device">
+    /// Which panes this screen was left with. Optional, and a store that remembers nothing by
+    /// default: a window that opens with both panes beside the work is the right answer when there
+    /// is nowhere to read an answer from, and a test gets a predictable window without a file.
+    /// </param>
+    public ShellViewModel(IAstridCore core, Action<Func<Task>> post, IDevicePreferences? device = null)
     {
         _core = core;
         _post = post;
+        _device = device ?? NoDevicePreferences.Instance;
+        // Read before anything can write: both default to open, which is how the three-column
+        // layout is meant to read and what astrid-web's two hooks default to.
+        _isSidebarOpen = _device.Flag(DevicePreferences.SidebarOpen, true);
+        _isChatOpen = _device.Flag(DevicePreferences.ChatOpen, true);
         Sidebar = new SidebarViewModel(core);
         Tasks = new TaskListViewModel(core);
         SignIn = new SignInViewModel(core);
@@ -369,6 +382,27 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         NeedsSignIn |= Settings.NeedsSignIn;
     }
 
+    /// <summary>
+    /// Whether the list sidebar is beside the work (task ab4cb9ee).
+    /// </summary>
+    /// <remarks>
+    /// Hidden, the column becomes a 48px rail holding only the button that brings it back, which
+    /// is what astrid-web's <c>sidebar-rail</c> is — the alternative, a column that vanishes
+    /// entirely, leaves the way back somewhere else on the screen from the way out.
+    /// </remarks>
+    public bool IsSidebarOpen
+    {
+        get => _isSidebarOpen;
+        private set => Set(ref _isSidebarOpen, value);
+    }
+
+    /// <summary>Show or hide the list sidebar, and remember which on this device.</summary>
+    public void ShowSidebar(bool open)
+    {
+        IsSidebarOpen = open;
+        _device.SetFlag(DevicePreferences.SidebarOpen, open);
+    }
+
     /// <summary>Whether the conversation is on screen.</summary>
     public bool IsChatOpen
     {
@@ -377,9 +411,14 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>Show or hide the conversation for the open list.</summary>
+    /// <remarks>
+    /// Remembered per device since task ab4cb9ee. It used to default to shut at every launch, so
+    /// the messages pane was something you re-opened each time rather than part of the layout.
+    /// </remarks>
     public async Task ShowChatAsync(bool open, CancellationToken cancellationToken = default)
     {
         IsChatOpen = open;
+        _device.SetFlag(DevicePreferences.ChatOpen, open);
         if (open)
         {
             await Chat.OpenAsync(Tasks.ListId, cancellationToken);
@@ -884,6 +923,24 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Sidebar.Selected = Sidebar.Favorites.Concat(Sidebar.Lists)
             .FirstOrDefault(list => list.Id == listId) ?? Sidebar.Selected;
         await RefreshListImageAsync(cancellationToken);
+        await FollowListIntoChatAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// A messages pane that is already on screen follows the list into it (task ab4cb9ee).
+    /// </summary>
+    /// <remarks>
+    /// The pane is remembered open now, so a launch — and every list change after it — has to load
+    /// the conversation the pane is already showing. While the pane always started shut, the toggle
+    /// was the only thing that ever needed to fetch a channel; left as it was, a remembered-open
+    /// pane would draw an empty panel until somebody closed and re-opened it.
+    /// </remarks>
+    private async Task FollowListIntoChatAsync(CancellationToken cancellationToken)
+    {
+        if (IsChatOpen && !string.IsNullOrEmpty(Tasks.ListId))
+        {
+            await Chat.OpenAsync(Tasks.ListId, cancellationToken);
+        }
     }
 
     /// <summary>
@@ -941,6 +998,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         await Tasks.OpenAsync(selected.Id, selected.Name, cancellationToken);
         NeedsSignIn |= Tasks.NeedsSignIn;
         await RefreshListImageAsync(cancellationToken);
+        await FollowListIntoChatAsync(cancellationToken);
     }
 
     /// <summary>One sync pass: push what is queued, fetch what is new.</summary>

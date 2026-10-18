@@ -726,6 +726,30 @@
   <data name="chat_toggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Chat</value>
   </data>
+  <data name="hide_messages.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Nachrichten ausblenden</value>
+  </data>
+  <data name="hide_messages.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Nachrichten ausblenden</value>
+  </data>
+  <data name="show_messages.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Nachrichten anzeigen</value>
+  </data>
+  <data name="show_messages.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Nachrichten anzeigen</value>
+  </data>
+  <data name="hide_sidebar.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Seitenleiste ausblenden</value>
+  </data>
+  <data name="hide_sidebar.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Seitenleiste ausblenden</value>
+  </data>
+  <data name="show_sidebar.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Seitenleiste anzeigen</value>
+  </data>
+  <data name="show_sidebar.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Seitenleiste anzeigen</value>
+  </data>
   <data name="client_id.Header" xml:space="preserve">
     <value>Client-ID</value>
   </data>

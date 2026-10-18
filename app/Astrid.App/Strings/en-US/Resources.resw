@@ -727,6 +727,30 @@
   <data name="chat_toggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Chat</value>
   </data>
+  <data name="hide_messages.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Hide messages</value>
+  </data>
+  <data name="hide_messages.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Hide messages</value>
+  </data>
+  <data name="show_messages.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Show messages</value>
+  </data>
+  <data name="show_messages.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Show messages</value>
+  </data>
+  <data name="hide_sidebar.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Hide sidebar</value>
+  </data>
+  <data name="hide_sidebar.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Hide sidebar</value>
+  </data>
+  <data name="show_sidebar.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Show sidebar</value>
+  </data>
+  <data name="show_sidebar.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Show sidebar</value>
+  </data>
   <data name="client_id.Header" xml:space="preserve">
     <value>Client id</value>
   </data>
