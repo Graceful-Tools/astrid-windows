@@ -186,6 +186,24 @@ function Send-DiedRunNote([string]$TaskFile, [string]$Reason, $Saved) {
     if ($LASTEXITCODE -ne 0) { Say '  (could not comment on the task it had taken)' }
 }
 
+# Put a run's abandoned Doing claims back. ONE call site for the tool, two callers: the after-run
+# pass over this tick's own claims, and the start-of-tick pass over a dead tick's (task 1b9fed0a).
+#
+# EVERY RULE ABOUT WHAT A RELEASE DOES IS THE SCRIPT'S, not this loop's — it keeps the agent
+# assignment so the next run resumes from the branch rather than starting over, comments with the
+# branch carrying the task's id, hands the task back to its human creator in Waiting on a SECOND
+# release rather than retrying it a third time, and never touches a Doing task assigned to a person
+# (astrid-web lib/doing-release.ts). Writing any of that here would be a second implementation of
+# "release", and the drift would be silent.
+#
+# --repo is THIS repo, because that is where the task branches are: the release names the branch
+# that carries the work, and run from astrid-web it would otherwise read astrid-web's branches.
+function Invoke-DoingRelease([string]$ClaimsFile) {
+    Invoke-WebTool @('scripts/release-stuck-doing.ts', '--agent', 'claude',
+        '--claims-file', $ClaimsFile, '--repo', $RepoRoot) | ForEach-Object { Say "  $_" }
+    return ($LASTEXITCODE -eq 0)
+}
+
 # ── The checkouts a tick is responsible for ───────────────────────────────────────────────────
 # Both of them, which is the correction task 07c3b420 makes: the old guard and the old save read
 # this repo only, so a run killed while working a core task left 449 uncommitted lines in
@@ -273,6 +291,20 @@ try {
     Remove-Item $taskFile -Force -ErrorAction SilentlyContinue
     $env:ASTRID_FIXALL_TASK_FILE = $taskFile
 
+    # WHICH TASKS IT CLAIMED, so the ones it leaves in Doing can be released after it — exactly,
+    # with no heuristic and no board read. `claim-fixall-task.ts` appends every Ready claim here and
+    # does nothing at all when the variable is absent, which it was until task 1b9fed0a: so this
+    # loop never recorded a claim, never released one, and a task whose run died left the queue for
+    # good. Named for this loop's pid, like the task file above, which is what lets a LATER tick tell
+    # a dead run's claims from a live one's.
+    $claimsFile = Join-Path $env:TEMP "astrid-fixall-windows-claims-$PID.txt"
+    Remove-Item $claimsFile -Force -ErrorAction SilentlyContinue
+    $env:ASTRID_FIXALL_CLAIMS_FILE = $claimsFile
+    # Whether the after-run release below got through. The `finally` deletes the claims file only
+    # then: a file whose release FAILED is the only record of which tasks are stranded, and the next
+    # tick's start-of-tick pass is what retries it.
+    $claimsReleased = $false
+
     # ── Guard 1b: stand down while someone is working ──────────────────────────────────────────
     # Guard 1 is per WORKING TREE; contention for a machine is per MACHINE. On 2026-10-11 a session
     # worked astrid-web while the iOS loop ran a simulator suite and the web loop ran predeploy: the
@@ -323,6 +355,25 @@ try {
         } `
             -Log { param($Line) Say $Line }
         $script:SweepNote = $sweep.Summary
+    }
+
+    # ── Doing must not be a dead end ──────────────────────────────────────────────────────────
+    # The board half of the sweep above, and the other half of task 1b9fed0a. A claims file whose
+    # owning loop is GONE is a tick that was killed before its own after-run pass could run — the one
+    # case that pass structurally cannot cover, since a hard kill is what stops it. Releasing exactly
+    # those ids needs no board id, which is why it is this pass and not astrid-web's.
+    #
+    # BEFORE GUARD 3, so a task released this tick counts as work for THIS tick rather than waiting
+    # half an hour for the next one. Before guard 2 as well, deliberately: this is a board operation,
+    # not a tree one, and a dirty checkout is no reason to leave a task stranded in Doing.
+    #
+    # NOT under -not $Force either, for the same reason — -Force is about the tree guards.
+    $claimRelease = Invoke-StrandedClaimRelease -ClaimsFileDirectory $env:TEMP -SelfPid $PID `
+        -Release { param($Path) Invoke-DoingRelease $Path } `
+        -Log { param($Line) Say $Line }
+    if ($claimRelease.Summary) {
+        if ($script:SweepNote) { $script:SweepNote += ' | ' }
+        $script:SweepNote += $claimRelease.Summary
     }
 
     # ── Guard 2: never clobber work in progress ───────────────────────────────────────────────
@@ -489,6 +540,16 @@ try {
         }
     }
 
+    # ── Anything this run claimed and did not finish goes back to Ready ──────────────────────
+    # A finished task is completed, a blocked one is in Waiting: anything still in `Doing` was
+    # abandoned mid-task. AFTER the save above, which is what pushes the branch — the release
+    # comments with the branch that carries the task's id, so that branch has to exist first.
+    #
+    # AND BEFORE THE WATCHDOG BRANCH BELOW, which ends the tick: a killed run is the likeliest way a
+    # claim is abandoned, so a release placed after that Finish would never run in the case it exists
+    # for. Both failure paths below reach this line.
+    $claimsReleased = Invoke-DoingRelease $claimsFile
+
     if ($killed) {
         $reason = "killed after the ${MaxMinutes}m watchdog timeout"
         Send-DiedRunNote -TaskFile $taskFile -Reason $reason -Saved $saved
@@ -530,5 +591,10 @@ try {
 }
 finally {
     if ($taskFile) { Remove-Item $taskFile -Force -ErrorAction SilentlyContinue }
+    # ONLY when the release got through. A task file is deleted either way — it has been reported on
+    # by then — but a claims file whose release failed is the only record of which tasks are sitting
+    # in Doing, and the next tick's start-of-tick pass is what retries it. Deleting it here would
+    # strand them exactly as before task 1b9fed0a.
+    if ($claimsFile -and $claimsReleased) { Remove-Item $claimsFile -Force -ErrorAction SilentlyContinue }
     & $releaseLock
 }

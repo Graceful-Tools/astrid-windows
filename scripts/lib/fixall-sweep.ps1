@@ -259,6 +259,157 @@ function Get-StrandedTaskFile {
 
 <#
 .SYNOPSIS
+    The claims files of runs that died before releasing their own Doing claims. Task 1b9fed0a.
+
+.DESCRIPTION
+    THE SAME SHAPE AS Get-StrandedTaskFile ABOVE, AND FOR THE SAME REASON. `Ready` -> `Doing` is how
+    a run claims a task, and every way the workflow ends a task moves it on again — completed,
+    parked in Waiting, or handed back. So a task still in `Doing` after its session is gone was
+    abandoned mid-task, and the queue never takes `Doing` on purpose: a `Doing` task is one a peer
+    session or a person is working right now. Nothing moved one back, and the cost was one task per
+    killed run, permanently (astrid-web docs/FIXALL_WORKFLOW.md -> *Doing must not be a dead end*).
+
+    The loop hands each run `ASTRID_FIXALL_CLAIMS_FILE` as `...-claims-<its own pid>.txt` and
+    `claim-fixall-task.ts` appends every Ready claim to it. The loop's own after-run pass releases
+    whatever is still in Doing and then deletes the file — so A SURVIVING CLAIMS FILE IS A TICK THAT
+    WAS KILLED BEFORE IT COULD, which is precisely the case the after-run pass cannot cover, since a
+    hard kill is what stops it.
+
+    This needs NO BOARD ID, which is why it is the start-of-tick pass that exists here.
+    astrid-web's loop asks the board instead — every `Doing` claim of this agent's with no activity
+    for FIXALL_STALE_DOING_MINUTES — and that form of `release-stuck-doing.ts` takes `--list
+    <listId>`. This board's id is deliberately nowhere in this repo (docs/AUTOMATION.md: it is
+    resolved by NAME, because a hardcoded id fails by answering "nothing to do", which reads exactly
+    like a quiet day), so that half waits on a `--board windows` flag filed on the Astrid Web board.
+
+    Liveness is checked rather than assumed, as above: a live loop is mid-run and will do its own
+    after-run pass, and releasing a task out from under it would hand somebody's work back to the
+    queue while they were still on it.
+#>
+function Get-StrandedClaimsFile {
+    [CmdletBinding()]
+    param(
+        [AllowEmptyString()][string]$Directory,
+        [int]$SelfPid = $PID,
+        [scriptblock]$IsAlive = $null
+    )
+
+    $found = New-Object System.Collections.ArrayList
+    if (-not $Directory -or -not (Test-Path $Directory)) { return $found.ToArray() }
+
+    $files = @(Get-ChildItem -Path $Directory -Filter 'astrid-fixall-windows-claims-*.txt' -File -ErrorAction SilentlyContinue)
+    foreach ($file in $files) {
+        if ($file.Name -notmatch '^astrid-fixall-windows-claims-(\d+)\.txt$') { continue }
+        $holder = [int]$Matches[1]
+        if ($holder -eq $SelfPid) { continue }
+        $alive = $false
+        if ($IsAlive) { $alive = [bool](& $IsAlive $holder) }
+        else { $alive = [bool](Get-Process -Id $holder -ErrorAction SilentlyContinue) }
+        if ($alive) { continue }
+
+        $ids = @(@((Get-Content $file.FullName -ErrorAction SilentlyContinue)) |
+                ForEach-Object { if ($null -ne $_) { $_.Trim() } } |
+                Where-Object { $_ })
+        if ($ids.Count -eq 0) {
+            # A run that claimed nothing. Leaving the file would make every later tick look at it
+            # again, and there is nothing to release.
+            Remove-Item $file.FullName -Force -ErrorAction SilentlyContinue
+            continue
+        }
+        $null = $found.Add([pscustomobject]@{ Path = $file.FullName; HolderPid = $holder; TaskIds = $ids })
+    }
+    return $found.ToArray()
+}
+
+<#
+.SYNOPSIS
+    Release the Doing claims of runs that are gone. Task 1b9fed0a.
+
+.DESCRIPTION
+    THE DECISION IS ALL THAT IS HERE, as everywhere else in this file. What a release DOES —
+    keeping the agent assignment so the next run resumes rather than starting over, commenting with
+    the branch that carries the task's id, handing the task back to its human creator in `Waiting`
+    on a SECOND release rather than retrying it a third time, and never touching a `Doing` task
+    assigned to a person — is `astrid-web/lib/doing-release.ts`, reached through
+    `scripts/release-stuck-doing.ts`. A second implementation here would drift, and the drift would
+    be silent: a loop that releases the wrong thing looks exactly like a loop that releases nothing.
+
+.PARAMETER Release
+    Called with one claims file path; returns truthy when the release succeeded. Injected so this
+    library stays the clock and the filesystem, nothing else.
+
+.OUTPUTS
+    Files   - the claims files acted on
+    TaskIds - every id that was in them
+    Failed  - the files whose release did not succeed, and which are therefore KEPT
+    Summary - one clause for this tick's RESULT line, empty when nothing was stranded
+#>
+function Invoke-StrandedClaimRelease {
+    [CmdletBinding()]
+    param(
+        [AllowEmptyString()][string]$ClaimsFileDirectory = $env:TEMP,
+        [int]$SelfPid = $PID,
+        [scriptblock]$IsAlive = $null,
+        [Parameter(Mandatory)][scriptblock]$Release,
+        [scriptblock]$Log = $null
+    )
+
+    # A closure under a unique name, for the reason Invoke-StartOfTickSweep spells out below: a
+    # scriptblock's free variables resolve in the scope it is INVOKED from, so a sink called $Log
+    # can be handed somewhere that has its own $Log and recurse to a call-depth overflow.
+    $ReleaseLogSink = $Log
+    $say = {
+        param([string]$Line)
+        if ($ReleaseLogSink) { & $ReleaseLogSink $Line } else { Write-Host $Line }
+    }.GetNewClosure()
+
+    $files = New-Object System.Collections.ArrayList
+    $ids = New-Object System.Collections.ArrayList
+    $failed = New-Object System.Collections.ArrayList
+
+    foreach ($item in @(Get-StrandedClaimsFile -Directory $ClaimsFileDirectory -SelfPid $SelfPid -IsAlive $IsAlive)) {
+        & $say "  RELEASE: the run that claimed $(@($item.TaskIds) -join ', ') (pid $($item.HolderPid)) is gone - releasing its Doing claim(s)"
+        $ok = $false
+        # NEVER FATAL TO THE TICK. A release that fails leaves the task in Doing, which is the state
+        # it was already in; a release that TAKES THE TICK DOWN costs the whole queue. Same call the
+        # script's own header makes.
+        try { $ok = [bool](& $Release $item.Path) }
+        catch {
+            $ok = $false
+            & $say "  RELEASE: failed for pid $($item.HolderPid) - $($_.Exception.Message)"
+        }
+        $null = $files.Add($item.Path)
+        foreach ($id in @($item.TaskIds)) { $null = $ids.Add($id) }
+        if ($ok) {
+            Remove-Item $item.Path -Force -ErrorAction SilentlyContinue
+        }
+        else {
+            # KEPT, deliberately, unlike the task file above. A task file has been reported on either
+            # way; a claims file is the only record of WHICH tasks are stranded, and deleting one
+            # whose release failed means nothing ever retries them. It clears itself on the first
+            # tick that succeeds — including the one where the task has already left Doing, which the
+            # script treats as "nothing to release" and exits 0.
+            & $say "  RELEASE: keeping $(Split-Path -Leaf $item.Path) so the next tick tries again"
+            $null = $failed.Add($item.Path)
+        }
+    }
+
+    $summary = ''
+    if ($files.Count -gt 0) {
+        $summary = "released $($ids.Count) abandoned Doing claim(s) from $($files.Count) dead run(s)"
+        if ($failed.Count -gt 0) { $summary += ", $($failed.Count) of which could not be reached" }
+    }
+
+    return [pscustomobject]@{
+        Files   = $files.ToArray()
+        TaskIds = $ids.ToArray()
+        Failed  = $failed.ToArray()
+        Summary = $summary
+    }
+}
+
+<#
+.SYNOPSIS
     The sweep itself: run it at the start of a tick, before guard 2 decides anything.
 
 .PARAMETER Checkouts
