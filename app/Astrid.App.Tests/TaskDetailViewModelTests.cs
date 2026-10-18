@@ -402,6 +402,77 @@ public sealed class TaskDetailViewModelTests
     }
 
     /// <summary>
+    /// Taking the time off a task makes it all-day and keeps the day it was showing — and the day
+    /// is the core's answer, never the instant the shell already had (task 0616f2d1).
+    /// </summary>
+    /// <remarks>
+    /// The write that looks obvious here — the task's current <c>dueDateTime</c> with
+    /// <c>isAllDay: true</c> — moves the date. Nothing on either side normalises that pair, and an
+    /// all-day date is read as its UTC day, so a task due in the evening west of UTC would jump to
+    /// tomorrow. <c>dueDateAllDay</c> answers the task's local day at UTC midnight; the shell sends
+    /// that back untouched.
+    /// </remarks>
+    [Fact]
+    public async Task Clearing_the_time_keeps_the_day_and_asks_the_core_for_it_task_0616f2d1()
+    {
+        var core = OpenedTask()
+            .AnswerOk("dueDateAllDay", new { dueDateTime = "2026-12-14T00:00:00Z", isAllDay = true })
+            .AnswerOk("updateTask")
+            .AnswerOk("taskDetail", Detail())
+            .AnswerOk("dueDateOptions", NoDuePicks());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.True(await view.ClearDueTimeAsync());
+
+        var asked = core.Sent.First(sent => sent.Contains("dueDateAllDay"));
+        Assert.Contains("\"taskId\":\"t1\"", asked);
+
+        // 20:00 on the 14th in California is 03:00Z on the 15th. The 14th is what the reader saw.
+        var written = core.Sent.First(sent => sent.Contains("updateTask"));
+        Assert.Contains("\"dueDateTime\":\"2026-12-14T00:00:00Z\"", written);
+        Assert.Contains("\"isAllDay\":true", written);
+    }
+
+    /// <summary>
+    /// A task with no date has no day to keep: the core answers a null date and that is written as
+    /// one, rather than the shell inventing today (task 0616f2d1).
+    /// </summary>
+    [Fact]
+    public async Task Clearing_the_time_on_a_dateless_task_writes_no_date_task_0616f2d1()
+    {
+        var core = OpenedTask()
+            .AnswerOk("dueDateAllDay", new { dueDateTime = (string?)null, isAllDay = true })
+            .AnswerOk("updateTask")
+            .AnswerOk("taskDetail", Detail())
+            .AnswerOk("dueDateOptions", NoDuePicks());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.True(await view.ClearDueTimeAsync());
+
+        var written = core.Sent.First(sent => sent.Contains("updateTask"));
+        Assert.Contains("\"dueDateTime\":null", written);
+        Assert.Contains("\"isAllDay\":true", written);
+    }
+
+    /// <summary>
+    /// A refused ask writes nothing — the shell has no day of its own to fall back on, which is
+    /// the whole reason it asked (task 0616f2d1).
+    /// </summary>
+    [Fact]
+    public async Task A_refused_all_day_question_leaves_the_date_alone_task_0616f2d1()
+    {
+        var core = OpenedTask()
+            .AnswerFailure("dueDateAllDay", AstridFailureKind.Refused, "no such task");
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.False(await view.ClearDueTimeAsync());
+        Assert.DoesNotContain(core.Sent, sent => sent.Contains("updateTask"));
+    }
+
+    /// <summary>
     /// The menu's closing entry reads "Won't do" on an open task and sends the reason; on a task
     /// closed that way it reads "Reopen" and sends null. What canceled means is the core's
     /// (task 016ce981).

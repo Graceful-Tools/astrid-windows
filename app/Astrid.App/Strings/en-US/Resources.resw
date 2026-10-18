@@ -895,6 +895,9 @@
   <data name="clear_due.Content" xml:space="preserve">
     <value>No due date</value>
   </data>
+  <data name="clear_due_time.Content" xml:space="preserve">
+    <value>All day</value>
+  </data>
   <data name="due_day_picker.PlaceholderText" xml:space="preserve">
     <value>Pick a date</value>
   </data>

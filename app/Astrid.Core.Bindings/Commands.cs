@@ -124,6 +124,21 @@ public static class Commands
         new TimeRequest("dueDateAtTime", taskId, hour, minute);
 
     /// <summary>
+    /// Taking the time off a task: all-day, on the day it was already showing (task 0616f2d1).
+    /// </summary>
+    /// <remarks>
+    /// The inverse of <see cref="DueDateAtTime"/>, and asked rather than computed for a reason
+    /// sharper than the others: the write that looks obvious here — the instant the task already
+    /// has, with <c>isAllDay: true</c> — moves the date. Nothing normalises that pair on either
+    /// side of the wire, and an all-day date means its UTC day, so a task due 20:00 in California
+    /// would read back as tomorrow. The answer is the task's local day at UTC midnight, in the
+    /// same shape a quick pick comes in; a task with no date has no day to keep and answers a null
+    /// date. See <c>astrid_core</c>'s <c>docs/CONTRACTS.md</c> D58.
+    /// </remarks>
+    public static object DueDateAllDay(string taskId) =>
+        new WithTaskId("dueDateAllDay", taskId);
+
+    /// <summary>
     /// Who a task can be assigned to, in the order the picker shows them.
     /// </summary>
     /// <remarks>

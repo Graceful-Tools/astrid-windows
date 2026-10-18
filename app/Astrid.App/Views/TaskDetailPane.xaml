@@ -386,6 +386,26 @@
                                         SelectedTimeChanged="OnDueTimePicked" />
 
                             <!--
+                                Taking the time off, which the clock above cannot do: a
+                                TimePicker has no empty value to choose (task 0616f2d1).
+                                A button rather than a switch, and beside the other one for
+                                the same reason — switching the other way would have to
+                                invent a time of day, and the task's own clock is right
+                                there to set one.
+
+                                What the DAY means is asked of the core, as everywhere else
+                                here, and this is the case where guessing is worst: the
+                                instant this pane already holds, written back with
+                                isAllDay true, moves the date — an all-day date means its
+                                UTC day, and an evening west of UTC is already tomorrow's.
+                            -->
+                            <Button x:Uid="clear_due_time" Content="All day"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Margin="0,4,0,0"
+                                    Click="OnDueTimeCleared" />
+
+                            <!--
                                 Taking the date off. This was a row the core supplied until it
                                 followed iOS and stopped offering one (task 6ee938cc), so the
                                 control is the shell's now. The write is still the core's: an
