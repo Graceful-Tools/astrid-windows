@@ -51,6 +51,25 @@
   <Dependencies>
     <!-- Windows 10 1809 is what the app targets; earlier builds have no Windows App SDK. -->
     <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+    <!--
+      The Windows App SDK runtime, which the app is FRAMEWORK-DEPENDENT on.
+
+      `package.ps1` publishes self-contained, and that is the .NET runtime only.
+      WinUI and everything under `Microsoft.Windows.*` still come from this framework package, so
+      without this line a package installs perfectly and then dies on its first Windows App SDK
+      call: `AppInstance.GetCurrent()` in Program.cs throws REGDB_E_CLASSNOTREG, "class not
+      registered", because inside a package WinRT activation resolves only through the declared
+      dependencies. No PackageDependency had ever been here, so no MSIX this repo built had ever
+      started — installing was as far as it had been tested.
+
+      MinVersion is the runtime that ships with the Microsoft.WindowsAppSDK version the csproj
+      references (1.7.250606001); keep the two in step when that is bumped. The alternative is
+      `-p:WindowsAppSDKSelfContained=true`, which copies these binaries into the package instead —
+      bigger, and not what the Store build should be.
+    -->
+    <PackageDependency Name="Microsoft.WindowsAppRuntime.1.7"
+                       MinVersion="7000.785.2325.0"
+                       Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" />
   </Dependencies>
 
   <Resources>
