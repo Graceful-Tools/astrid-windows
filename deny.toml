@@ -37,12 +37,19 @@ yanked = "warn"
 # copied from a list of licences that are usually fine. Every term here is REQUIRED by something in
 # the tree: BSD-3-Clause and Unicode-3.0 and ISC each arrive through an `AND` that no `OR` branch can
 # satisfy, and Zlib arrives alone. A new licence in the graph is meant to fail here and be read.
+# CDLA-Permissive-2.0 is the one entry NOT in this repo's graph today. It is `webpki-roots`, which
+# carries the Mozilla root certificate set rather than code; it reached astrid-core with rustls on
+# Android (AATD-4) after the revision pinned here, and `cargo metadata` reports every platform's
+# dependencies, so it arrives the day someone bumps the pin. Allowing it now means that bump is a
+# pin bump and not also a red gate nobody expected. An allowed licence nothing uses is a warning in
+# cargo-deny, never a failure.
 [licenses]
 version = 2
 allow = [
     "Apache-2.0",
     "MIT",
     "BSD-3-Clause",
+    "CDLA-Permissive-2.0",
     "ISC",
     "Unicode-3.0",
     "Zlib",
