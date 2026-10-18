@@ -41,6 +41,15 @@ top of `dist/` are what the Store takes and are never touched. With `-Install` i
 bundle and reports which architecture Windows chose; with `-Launch` it starts the app from its
 packaged identity and checks the process is the packaged one.
 
+**Install it and then START it.** An install proves almost nothing: the app is framework-dependent
+on the Windows App SDK runtime, and until 2026-10-18 the manifest declared no `PackageDependency`
+for it, so every package this repo had ever built installed perfectly and then died on the first
+line of `Main` with `REGDB_E_CLASSNOTREG` — `AppInstance.GetCurrent()` cannot resolve inside a
+package whose manifest does not name the runtime. Unpackaged builds reach it through the
+bootstrapper instead, which is why `F5` and the UI smoke tests never saw it. `-Launch` is the
+switch that would have caught it; `scripts/tests/packaging-manifest.Tests.ps1` now keeps the
+manifest and the csproj's `Microsoft.WindowsAppSDK` version in step, in `predeploy`.
+
 Adding a certificate to a machine's store is a change to the machine, not to this repository,
 which is why it took a decision (Jon approved it on 2026-09-13, task edf273c3). The certificate
 is named "Astrid local test signing" in certmgr, and `-RemoveCertificate` takes it out again;
