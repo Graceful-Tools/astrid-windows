@@ -116,18 +116,18 @@ against the web, from a read of the source rather than of the docs, with what ha
   count from the cache, refreshed on every sync pass, mark-read and mark-all-read.
 - **The search grammar** (`assignee:me priority:high due:week is:open status:ready list:Work
   label:bug AST-142`), ported from `lib/search-query-parser.ts` and locked by
-  `contracts/fixtures/search.json`; applied over the cache, which holds every task including
+  astrid-core's `contracts/fixtures/search.json`; applied over the cache, which holds every task including
   the finished ones, so the server's search adds nothing here.
 - **Task identifiers** (`AST-142`) on the model, the row and the search.
 - **Label lists** (`listType: "label"`): chips on the rows they belong to, never a sidebar entry.
 - **Copy a task** into a list, with or without its comments, from the task menu.
 - **The editing-session machine** (`astrid_core::editing`), ported from `lib/editing-session.ts`
-  and locked by `contracts/fixtures/editing.json`. Since 2026-09-12 the detail pane's editors
+  and locked by astrid-core's `contracts/fixtures/editing.json`. Since 2026-09-12 the detail pane's editors
   go through it: the core holds the session and steps it by command (`beginEditing`,
   `endEditing`, `cancelEditing`, `commitAllEditing`), and the pane does what each answer names.
 - **Natural-language quick-add** (`astrid_core::parse::smart`): "Call mum tomorrow urgent
   #health", "Standup weekly mon and wed", "Rent monthly" — in twelve languages, whose keyword
-  tables ride in `contracts/fixtures/smart.json` beside 220 of the web's own answers. Closes
+  tables ride in astrid-core's `contracts/fixtures/smart.json` beside 220 of the web's own answers. Closes
   CONTRACTS.md D11; D12 and D13 record the two deliberate differences.
 - **Feature flags** (`/api/v1/features`): the board toggle and Google list linking follow
   `project_mode` and `google_tasks`, refreshed with every sync pass. A flag never fetched hides

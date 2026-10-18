@@ -7,8 +7,11 @@ direct download, on x64 and ARM64.
 **Web app and API:** https://github.com/Graceful-Tools/astrid-web
 **iOS and Mac apps:** https://github.com/Graceful-Tools/astrid-ios
 
-> **Status: early development.** The shared core is being built; the app shell has not landed yet.
-> There is nothing to install. Watch the milestones in [docs/ASTRID.md](./docs/ASTRID.md) §4.
+> **Status: in development, and the app runs.** The WinUI shell (M2) is done — windows, the task
+> list and detail, board view, search, chat, the notification inbox — with MSIX packaging, a
+> release workflow and UI smoke tests. It is not in the Microsoft Store yet: a release is a
+> deliberate, manually triggered act, so there is nothing to install *for you* until one is cut.
+> [docs/PROGRESS.md](./docs/PROGRESS.md) is where the milestones actually stand.
 
 ## How it is built
 
@@ -21,19 +24,34 @@ change on web reaches it for free. Windows cannot compile Swift, so the shared l
 in Rust and the same rule applies: **the shell decides nothing**. One port, paid once, instead of a
 second set of business rules to keep in step forever.
 
+What is in this repository:
+
 ```
 app/Astrid.App          WinUI 3, C#   windows, XAML, key dispatch, platform adapters
 app/Astrid.Core.Bindings              hand-written C# over the core's C ABI, checked by a test
 crates/astrid-ffi       Rust          the C ABI over the core, and the Windows platform services
-astrid-core (own repo)  Rust          models, services, cache, Outbox, sync, contracts — pinned by revision
-        |
-        v  HTTPS /api/v1/*
-astrid-web (astrid.cc)
 ```
 
+And where it sits among the four repositories — this app is one of two clients of a core it does
+not contain:
+
+```
+astrid-windows   app/Astrid.App (WinUI, C#)  ──  crates/astrid-ffi (C ABI)  ──┐
+astrid-ios       Astrid App / Astrid Mac (Swift)  ──  UniFFI (astrid-ios/core) ──┤──  astrid-core
+                                                                                 │
+                                                        HTTPS /api/v1/*  ◄───────┘
+                                                        astrid-web (astrid.cc)
+```
+
+[astrid-core](https://github.com/Graceful-Tools/astrid-core) — models, services, the cache, the
+Outbox, sync and the contract fixtures — is **its own repository**, pinned here by revision in
+`crates/astrid-ffi/Cargo.toml`. A core change reaches this app only when somebody bumps that pin.
+
 Rules that must read identically across web, Apple and Windows — the keyboard scheme, repeating-task
-rollover, permissions, date handling — are locked by fixtures generated from the astrid-web sources,
-so a change there fails this repo's tests instead of shipping a silent divergence.
+rollover, permissions, date handling — are locked by fixtures generated from the astrid-web sources.
+Those fixtures and the check over them live in astrid-core, not here; see its
+[`contracts/README.md`](https://github.com/Graceful-Tools/astrid-core/blob/main/contracts/README.md)
+for how they are made.
 
 ## Getting started
 
@@ -48,7 +66,7 @@ winget install Microsoft.VisualStudio.2022.BuildTools   # with the ARM64 MSVC co
 Then:
 
 ```powershell
-npm run predeploy       # the standard gate: format, lint, test, ARM64 cross-build, contracts
+npm run predeploy       # the standard gate: format, lint, test, ARM64 cross-build, shell build and tests
 cargo test --workspace  # the inner loop
 ```
 

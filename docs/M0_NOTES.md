@@ -20,8 +20,13 @@ every `npm run predeploy`; a dependency that cannot target it is caught the day 
 
 ### The contract mechanism works, and it reads the guard
 
-`contracts/export-from-web.mjs` generates `contracts/fixtures/shortcuts.json` from
-`astrid-web/hooks/useKeyboardShortcuts.ts`, and the Rust tests compile it in with `include_str!`.
+The exporter generates `shortcuts.json` from `astrid-web/hooks/useKeyboardShortcuts.ts`, and the
+Rust tests compile it in with `include_str!`.
+
+*(As of AWTD-1186 the exporter is astrid-web's `scripts/export-contract-fixtures.ts` and the
+fixtures live in astrid-core's `contracts/fixtures/`. At the time of M0 both sat in this repo, under
+`contracts/`, and the exporter was a local script since retired. The note below is about what the
+exporter must read, which has not changed.)*
 
 The part worth recording: the shortcut table alone is only half the contract. Whether a shortcut
 requires a selected task lives in the dispatch `switch`, as `if (selectedTask)`, not in the table —
