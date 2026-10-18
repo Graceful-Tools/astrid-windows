@@ -949,6 +949,34 @@ public sealed class TaskDetailViewModel : ObservableObject
             && await SetDueDateAsync(picked.DueDateTime, isAllDay: false, cancellationToken);
     }
 
+    /// <summary>
+    /// Take the time off the open task, leaving it all-day on the day it was showing
+    /// (task 0616f2d1).
+    /// </summary>
+    /// <remarks>
+    /// Two steps, like <see cref="SetDueTimeAsync"/>, and here the shortcut is not merely
+    /// unavailable but wrong: writing the <c>DueDateTime</c> this view model already holds with
+    /// <c>isAllDay: true</c> moves the date, because an all-day date means its UTC day and a timed
+    /// instant west of UTC is already tomorrow's. So the day is the core's answer
+    /// (<c>dueDateAllDay</c>), written back untouched — including the null it gives for a task
+    /// that has no date to keep.
+    /// </remarks>
+    public async Task<bool> ClearDueTimeAsync(CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(Commands.DueDateAllDay(TaskId), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        var picked = response.Read<DuePick>();
+        return picked is not null
+            && await SetDueDateAsync(picked.DueDateTime, isAllDay: true, cancellationToken);
+    }
+
     /// <summary>Take the date off the open task.</summary>
     /// <remarks>
     /// The quick choices carried a "No due date" row until the core followed iOS and stopped

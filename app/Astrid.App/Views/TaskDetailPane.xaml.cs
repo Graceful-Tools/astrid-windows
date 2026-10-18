@@ -401,6 +401,11 @@ public sealed partial class TaskDetailPane : UserControl
     private async void OnDueCleared(object sender, RoutedEventArgs args) =>
         await Shell.Detail.ClearDueAsync();
 
+    /// <summary>"All day" in the when flyout: the clock's off switch, which it hasn't got
+    /// (task 0616f2d1). The day it keeps is the core's answer.</summary>
+    private async void OnDueTimeCleared(object sender, RoutedEventArgs args) =>
+        await Shell.Detail.ClearDueTimeAsync();
+
     /// <summary>The copy control in the header, on a task that can only be copied (task f6bc59e8).</summary>
     private async void OnDetailCopyClicked(object sender, RoutedEventArgs args) =>
         await Shell.Detail.CopyToMineAsync();

@@ -894,6 +894,9 @@
   <data name="clear_due.Content" xml:space="preserve">
     <value>Kein Fälligkeitsdatum</value>
   </data>
+  <data name="clear_due_time.Content" xml:space="preserve">
+    <value>Ganztägig</value>
+  </data>
   <data name="due_day_picker.PlaceholderText" xml:space="preserve">
     <value>Datum wählen</value>
   </data>
