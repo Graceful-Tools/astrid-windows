@@ -350,6 +350,58 @@ public sealed class TaskDetailViewModelTests
         new { isAllDay = true, dates = Array.Empty<object>(), times = Array.Empty<object>() };
 
     /// <summary>
+    /// A time of day from the picker becomes a timed due date: the core is asked what that time
+    /// means for this task, and its answer is what gets written (task 974d37d2).
+    /// </summary>
+    /// <remarks>
+    /// Two steps, like a day pick, and for the same reason. The shell knows the hour the reader
+    /// chose and nothing else — not which calendar day it lands on for an all-day task, not that a
+    /// task with no date at all anchors on today, and not what the offset is where the reader is.
+    /// <c>dueDateAtTime</c> answers all three, so the instant below is read back and sent on
+    /// untouched.
+    /// </remarks>
+    [Fact]
+    public async Task A_chosen_time_of_day_is_asked_of_the_core_and_written_back_task_974d37d2()
+    {
+        var core = OpenedTask()
+            .AnswerOk("dueDateAtTime", new { dueDateTime = "2026-11-01T21:30:00Z", isAllDay = false })
+            .AnswerOk("updateTask")
+            .AnswerOk("taskDetail", Detail())
+            .AnswerOk("dueDateOptions", NoDuePicks());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.True(await view.SetDueTimeAsync(14, 30));
+
+        var asked = core.Sent.First(sent => sent.Contains("dueDateAtTime"));
+        Assert.Contains("\"taskId\":\"t1\"", asked);
+        Assert.Contains("\"hour\":14", asked);
+        Assert.Contains("\"minute\":30", asked);
+
+        // The instant written is the core's, verbatim — 14:30 where the reader is, which is not
+        // 14:30 UTC — and a time of day is what stops a task being all-day.
+        var written = core.Sent.First(sent => sent.Contains("updateTask"));
+        Assert.Contains("\"dueDateTime\":\"2026-11-01T21:30:00Z\"", written);
+        Assert.Contains("\"isAllDay\":false", written);
+    }
+
+    /// <summary>
+    /// A refused ask writes nothing: the shell has no instant of its own to fall back on
+    /// (task 974d37d2).
+    /// </summary>
+    [Fact]
+    public async Task A_refused_time_question_leaves_the_date_alone_task_974d37d2()
+    {
+        var core = OpenedTask()
+            .AnswerFailure("dueDateAtTime", AstridFailureKind.Refused, "no such task");
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.False(await view.SetDueTimeAsync(9, 0));
+        Assert.DoesNotContain(core.Sent, sent => sent.Contains("updateTask"));
+    }
+
+    /// <summary>
     /// The menu's closing entry reads "Won't do" on an open task and sends the reason; on a task
     /// closed that way it reads "Reopen" and sends null. What canceled means is the core's
     /// (task 016ce981).

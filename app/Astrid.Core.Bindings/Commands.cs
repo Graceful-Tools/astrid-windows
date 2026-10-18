@@ -110,6 +110,20 @@ public static class Commands
         new DayRequest("dueDateOnDay", taskId, day);
 
     /// <summary>
+    /// What a chosen time of day means for this task, as an instant (AATD-25).
+    /// </summary>
+    /// <remarks>
+    /// Asked for the same reasons <see cref="DueDateOnDay"/> is, plus one of its own: a clock hands
+    /// back an hour with no day attached, and which day it belongs on depends on the task — an
+    /// all-day task's calendar date, a timed one's local day, or today when there is no date at
+    /// all. The answer always says <c>isAllDay: false</c>, because a time of day is what makes a
+    /// task timed. The same anchor the quick time picks use, so "14:30" and "Afternoon" land on the
+    /// same date.
+    /// </remarks>
+    public static object DueDateAtTime(string taskId, int hour, int minute) =>
+        new TimeRequest("dueDateAtTime", taskId, hour, minute);
+
+    /// <summary>
     /// Who a task can be assigned to, in the order the picker shows them.
     /// </summary>
     /// <remarks>
@@ -1037,6 +1051,13 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("day")] string Day);
+
+    /// <summary>A time of day on a 24-hour clock, with no date attached.</summary>
+    private sealed record TimeRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("taskId")] string TaskId,
+        [property: JsonPropertyName("hour")] int Hour,
+        [property: JsonPropertyName("minute")] int Minute);
 
     /// <summary>A pair is addressed by its public half — the route matches nothing else.</summary>
     private sealed record ClientIdRequest(

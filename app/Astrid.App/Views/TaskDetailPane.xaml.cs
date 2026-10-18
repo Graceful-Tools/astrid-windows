@@ -367,6 +367,22 @@ public sealed partial class TaskDetailPane : UserControl
         await Shell.Detail.SetDueDayAsync(day);
     }
 
+    /// <summary>
+    /// A time of day was chosen from the clock (task 974d37d2).
+    /// </summary>
+    /// <remarks>
+    /// Guarded against the null the control raises while it is being reset, the same way the
+    /// calendar is: the flyout closing would otherwise read as a time of midnight.
+    /// </remarks>
+    private async void OnDueTimePicked(TimePicker sender, TimePickerSelectedValueChangedEventArgs args)
+    {
+        if (args.NewTime is not { } time)
+        {
+            return;
+        }
+        await Shell.Detail.SetDueTimeAsync(time.Hours, time.Minutes);
+    }
+
     private async void OnDuePickChosen(object sender, RoutedEventArgs args)
     {
         if (sender is not FrameworkElement { Tag: string key })

@@ -118,13 +118,6 @@ const NOT_BOUND: &[(&str, &str)] = &[
     ),
     // ── Surfaces this shell does not have yet ─────────────────────────────────────────────────
     (
-        "dueDateAtTime",
-        "A time of day from a picker, on the task's own day (AATD-25). The due row in \
-         `TaskDetailPane` draws a `CalendarDatePicker` and the quick picks — a day, never a \
-         clock — so `dueDateOnDay` is the only question it can ask, and it already keeps a timed \
-         task's existing time of day. Binding this needs a time control beside the day picker.",
-    ),
-    (
         "dropBoardCard",
         "A drop at a SLOT in a column, writing the move and the list's manual order (AITD-461).          The board here drops onto a column, not between cards — `BoardView` hands `MoveAsync` a          column id and nothing else — so it sends `moveTaskToColumn`, which is that same move          without the reordering. Binding this needs a drop target that knows which two cards it          fell between, which the board does not draw.",
     ),

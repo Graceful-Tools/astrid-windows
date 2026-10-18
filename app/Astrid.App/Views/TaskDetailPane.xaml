@@ -369,6 +369,23 @@
                             </ItemsControl>
 
                             <!--
+                                Any other time. The quick choices are morning, afternoon and
+                                evening; an hour between them had nowhere to be typed, so a
+                                reader could give a task a day but not a clock (task 974d37d2).
+
+                                What the time MEANS is asked of the core, not worked out here:
+                                which day an hour with no date attached belongs on depends on
+                                the task — an all-day task's calendar date, a timed one's local
+                                day, or today when there is no date at all.
+                            -->
+                            <TimePicker x:Uid="due_time_picker" x:Name="DueTimePicker"
+                                        AutomationProperties.Name="Pick a time"
+                                        HorizontalAlignment="Stretch"
+                                        Margin="0,4,0,0"
+                                        ClockIdentifier="12HourClock"
+                                        SelectedTimeChanged="OnDueTimePicked" />
+
+                            <!--
                                 Taking the date off. This was a row the core supplied until it
                                 followed iOS and stopped offering one (task 6ee938cc), so the
                                 control is the shell's now. The write is still the core's: an

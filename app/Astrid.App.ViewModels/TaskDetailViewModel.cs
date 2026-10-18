@@ -919,6 +919,36 @@ public sealed class TaskDetailViewModel : ObservableObject
             && await SetDueDateAsync(picked.DueDateTime, IsAllDay, cancellationToken);
     }
 
+    /// <summary>
+    /// Set the due date's time of day, from a clock (task 974d37d2).
+    /// </summary>
+    /// <remarks>
+    /// Two steps, like <see cref="SetDueDayAsync"/>, because the first is again a question only the
+    /// core can answer: a clock hands back an hour and a minute with no day attached, and which day
+    /// they belong on depends on the task — an all-day task's calendar date (never the local
+    /// reading of its UTC midnight, which is the day before west of UTC), a timed one's local day,
+    /// or today when there is no date yet. A time of day is also what makes a task timed, which is
+    /// why this always writes <c>isAllDay: false</c> rather than keeping the flag the way a day
+    /// pick does.
+    /// </remarks>
+    public async Task<bool> SetDueTimeAsync(int hour, int minute,
+        CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(
+            Commands.DueDateAtTime(TaskId, hour, minute), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        var picked = response.Read<DuePick>();
+        return picked is not null
+            && await SetDueDateAsync(picked.DueDateTime, isAllDay: false, cancellationToken);
+    }
+
     /// <summary>Take the date off the open task.</summary>
     /// <remarks>
     /// The quick choices carried a "No due date" row until the core followed iOS and stopped
