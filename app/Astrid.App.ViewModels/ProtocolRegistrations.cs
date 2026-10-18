@@ -75,6 +75,32 @@ public static class ProtocolRegistrations
         return executable.Length > 0 ? executable : null;
     }
 
+    /// <summary>
+    /// Whether a resolved open command is the shell's "How do you want to open this?" picker
+    /// rather than an app.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Windows answers <c>OpenWith.exe</c> when several apps claim a scheme and no default has been
+    /// recorded. That is not a registration failure — every claimant's command is intact — so it
+    /// cannot be found by inspecting the registrations; only what the shell resolves shows it. And
+    /// it is not caught by asking whether the resolved command looks runnable, because the picker
+    /// is a real executable of the host's own architecture and its command carries the URL.
+    /// </para>
+    /// <para>
+    /// Matched on the executable's file name, so it holds for either command shape and whatever
+    /// spelling or casing of the System32 path the shell hands back. The name must match exactly:
+    /// an app of one's own called <c>MyOpenWith.exe</c> is a claimant, not the picker.
+    /// </para>
+    /// </remarks>
+    public static bool IsShellPicker(string? command)
+    {
+        var executable = ExecutableOf(command);
+        return executable is not null
+            && string.Equals(
+                Path.GetFileName(executable), "OpenWith.exe", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string Normalise(string path)
     {
         try

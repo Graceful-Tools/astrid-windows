@@ -26,6 +26,41 @@ namespace Astrid.App.UITests;
 [Collection("ui")]
 public sealed class ShellSmokeTests
 {
+    private readonly Xunit.Abstractions.ITestOutputHelper _output;
+
+    public ShellSmokeTests(Xunit.Abstractions.ITestOutputHelper output) => _output = output;
+
+    /// <summary>
+    /// What the shell resolves <c>astrid://</c> to, without starting anything.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The other test here launches the app first, and an unpackaged build registers the scheme as
+    /// it starts — so it can only ever report the association *after* a dev build has claimed it.
+    /// The state that matters for a machine with the Store build installed is the one nothing has
+    /// just rewritten, and only a probe that starts nothing can see it (task 02a8b67e).
+    /// </para>
+    /// <para>
+    /// It reports the command as well as asserting on it, because "which of the claimants won" is
+    /// the question every failure in this area has turned out to be, and it is invisible in a
+    /// passing run otherwise.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void The_scheme_resolves_to_an_app_before_anything_is_launched()
+    {
+        var command = RegisteredProtocolCommand();
+        _output.WriteLine($"astrid:// resolves to: {command ?? "(nothing)"}");
+
+        Assert.False(string.IsNullOrWhiteSpace(command), "astrid:// resolves to nothing");
+        Assert.False(
+            string.Equals(
+                Path.GetFileName(FirstQuoted(command!)),
+                "OpenWith.exe",
+                System.StringComparison.OrdinalIgnoreCase),
+            $"astrid:// resolves to the shell's picker, not to an app: {command}");
+    }
+
     /// <summary>
     /// The sign-in callback can find the app, and finds one that can start.
     /// </summary>
@@ -61,6 +96,19 @@ public sealed class ShellSmokeTests
         Assert.Contains("%1", command!, System.StringComparison.Ordinal);
 
         var executable = FirstQuoted(command!);
+
+        // Several claimants and no default recorded, which is what a packaged build installed
+        // beside an unpackaged one produces: the shell hands the URL to its picker instead of to
+        // an app, and whatever is chosen there becomes the default (task 02a8b67e). Every
+        // assertion around this one passes for the picker — it is a real executable of the host's
+        // architecture and its command carries the URL — so it has to be named to be caught. The
+        // rule itself is stated and tested as ProtocolRegistrations.IsShellPicker, in the standard
+        // gate; this project takes no project references, because it tests the built app rather
+        // than the source, so the check is spelt out here against the command already parsed.
+        Assert.False(
+            string.Equals(
+                Path.GetFileName(executable), "OpenWith.exe", System.StringComparison.OrdinalIgnoreCase),
+            $"astrid:// resolves to the shell's picker, not to an app: {command}");
         Assert.True(File.Exists(executable), $"astrid:// points at a missing file: {executable}");
         Assert.Equal(
             System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture,
