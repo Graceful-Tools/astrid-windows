@@ -72,7 +72,7 @@ jobs:
       # newer than the ref that one pins, and a checkout without it fails with "Unknown board".
       # Pin a ref here once this repo's loop has a contract of its own worth freezing.
       - name: Checkout Astrid task tooling
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: Graceful-Tools/astrid-web
           path: astrid-web
@@ -151,10 +151,10 @@ jobs:
     if: ${{ inputs.dry_run != true && needs.list-ready-tasks.outputs.has_tasks == 'true' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Checkout Astrid task tooling
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: Graceful-Tools/astrid-web
           path: astrid-web
