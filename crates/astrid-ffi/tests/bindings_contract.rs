@@ -118,6 +118,13 @@ const NOT_BOUND: &[(&str, &str)] = &[
     ),
     // ── Surfaces this shell does not have yet ─────────────────────────────────────────────────
     (
+        "dueDateAtTime",
+        "A time of day from a picker, on the task's own day (AATD-25). The due row in \
+         `TaskDetailPane` draws a `CalendarDatePicker` and the quick picks — a day, never a \
+         clock — so `dueDateOnDay` is the only question it can ask, and it already keeps a timed \
+         task's existing time of day. Binding this needs a time control beside the day picker.",
+    ),
+    (
         "dropBoardCard",
         "A drop at a SLOT in a column, writing the move and the list's manual order (AITD-461).          The board here drops onto a column, not between cards — `BoardView` hands `MoveAsync` a          column id and nothing else — so it sends `moveTaskToColumn`, which is that same move          without the reordering. Binding this needs a drop target that knows which two cards it          fell between, which the board does not draw.",
     ),
@@ -146,6 +153,19 @@ const NOT_BOUND: &[(&str, &str)] = &[
         "Deleting a board detaches its lists rather than deleting them, which needs explaining on          screen before it is offered. No such screen here yet.",
     ),
     (
+        "taskProjectFields",
+        "A GitHub board's project fields for one task, schema and values (AITD-491). Nothing here \
+         draws a GitHub-backed list at all — `model::Task.fields` and `model::TaskList.remote`, \
+         the two keys that carry one, are not modelled yet either (task faa32e20). There is no \
+         task detail section for these rows to land in.",
+    ),
+    (
+        "setTaskProjectField",
+        "The write half of the same. Setting a field this shell cannot show would change a \
+         GitHub project from a screen with no control for it — the same reason \
+         `setMyTasksFilters` is not bound.",
+    ),
+    (
         "cancelInvitation",
         "A list can be invited to here (`inviteToList`), but a pending invitation has no surface          to list, re-role or withdraw it from.",
     ),
@@ -172,6 +192,15 @@ const NOT_BOUND: &[(&str, &str)] = &[
     (
         "requestAstridResponse",
         "Asks the server to answer as Astrid when the device cannot. Reached through the agent          and chat surfaces here rather than as a command of its own.",
+    ),
+    // ── Another platform's wake-up model ──────────────────────────────────────────────────────
+    (
+        "nextReminder",
+        "The earliest reminder still to come, so a shell can schedule its own OS alarm — \
+         Android's AlarmManager (AATD-21). This shell notices a reminder by asking \
+         `remindersDue` while it is running (`ShellViewModel.RaiseRemindersAsync`) and leaves \
+         the rest to the server's push and email. It registers no background task that would \
+         have a wake-up to set.",
     ),
 ];
 
