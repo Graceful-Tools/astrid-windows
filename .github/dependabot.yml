@@ -1,0 +1,49 @@
+# Who proposes the bumps that `deny.toml` would otherwise only complain about.
+#
+# The advisory gate says an advisory exists; this says what to do about it, as a PR. Grouped
+# minor/patch so a week of routine bumps is one PR to read rather than fifteen — the same shape as
+# astrid-web's and astrid-core's.
+#
+# `nuget` is here too, over `/app`, where the five project files live. The shell's own packages —
+# the Windows App SDK, xunit, Microsoft.Data.Sqlite — are as much of this app's supply chain as the
+# crates are, and adding a dependency watch that covered only half of it is the sort of half-measure
+# this task was filed about. No `npm`: this repo's package.json has no dependencies, it only wires
+# the PowerShell gates together.
+version: 2
+updates:
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "nuget"
+    directory: "/app"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "github-actions"

@@ -59,7 +59,14 @@ installs. The ARM64 MSVC component is required — `predeploy` cross-builds ARM6
 | `npm run predeploy` | the above plus the ARM64 cross-build and the shell build and tests — **the standard gate** |
 | `npm run predeploy:full` | adds the UI smoke tests, which drive the built app |
 | `powershell -File scripts/package.ps1` | the MSIX packages and the bundle — unsigned, see `packaging/README.md` |
+| `cargo deny check` | the dependency gate — advisories, licences, wildcards, crate sources (`deny.toml`) |
 | (in astrid-core) `cargo xtask check-contracts` | the fixtures against a local astrid-web checkout |
+
+**`cargo deny check` is CI's, not `predeploy`'s.** It asks the RustSec advisory database about this
+repo's lockfile, so it needs the network and `cargo install cargo-deny --locked`; the `supply-chain`
+job in `.github/workflows/ci.yml` runs it on every push and PR and again every Monday, because an
+advisory is published between commits. astrid-core and astrid-ios carry their own copies of
+`deny.toml` over their own lockfiles. `.github/dependabot.yml` proposes the bumps.
 
 ## Test locations
 
