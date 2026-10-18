@@ -19,10 +19,11 @@ tasks, the Outbox, sync, chat, list members, permissions, or an API call.
 ### Critical rules (full detail in docs/ASTRID.md §0)
 
 1. **Backend writes go through a service** — never the API client from the shell or a worker.
-2. **Complete a task ONLY via `TaskService::complete_task`** — `update_task(completed: true)` skips
-   repeat rollover.
-3. **Next-occurrence math lives ONLY in `astrid_core::repeating`** — mirror changes into
-   `astrid-web/types/repeating.ts` and `astrid-ios/.../RepeatingTaskHandler.swift`.
+2. **Complete a task ONLY via `TaskService::complete`** (or `complete_as`) —
+   `update_task(completed: true)` skips repeat rollover.
+3. **Next-occurrence math lives ONLY in `astrid_core::repeating`** — a change starts in
+   `astrid-web/types/repeating.ts`; the clients take it by bumping their pinned revision. No Swift
+   mirror: iOS has asked the core for this math since 2026-09-28.
 4. **No business logic in `app/`.** The WinUI shell renders and dispatches; it decides nothing.
 5. **API paths are `/api/v1/...` only.**
 6. **Preserve offline behaviour.** Everything writes through the Outbox.
@@ -66,8 +67,8 @@ installs. The ARM64 MSVC component is required — `predeploy` cross-builds ARM6
 |---|---|
 | Core tests | in astrid-core, beside the code and under `crates/astrid-core/tests/` |
 | The bindings contract (`Commands.cs` against the core's command list) | `crates/astrid-ffi/tests/` |
-| Shell view-model tests | `app/Astrid.App.Tests/` (from M2) |
-| UI smoke tests | `app/Astrid.App.UITests/` (from M2) |
+| Shell view-model tests | `app/Astrid.App.Tests/` |
+| UI smoke tests | `app/Astrid.App.UITests/` |
 
 ---
 

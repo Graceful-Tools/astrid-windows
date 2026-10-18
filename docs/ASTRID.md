@@ -20,13 +20,15 @@ regression on another platform.
 1. **All backend writes go through a service.** Never call the API client directly from the shell, a
    timer, a notification handler or a sync worker. If a service lacks the method you need, add it to
    the service first.
-2. **Complete a task ONLY via `TaskService::complete_task`.** Never `update_task(completed: true)` —
-   that path skips repeat rollover.
+2. **Complete a task ONLY via `TaskService::complete`** (or `complete_as`, which backdates).
+   Never `update_task(completed: true)` — that path skips repeat rollover.
 3. **Completing from a view that lets the user edit fields first?** Copy the edited fields (due date,
    all-day flag, repeating, repeating data, repeat-from) into the task argument first, so rollover
    anchors on what the user sees rather than on stale cache.
-4. **Next-occurrence math lives ONLY in `repeating`.** Never inline pattern math. Mirror any change
-   into `astrid-web/types/repeating.ts` and `astrid-ios/.../RepeatingTaskHandler.swift`.
+4. **Next-occurrence math lives ONLY in `astrid_core::repeating`.** Never inline pattern math. A
+   change starts in `astrid-web/types/repeating.ts` and lands in astrid-core; the clients take it
+   by bumping their pinned revision. There is no Swift mirror to update — iOS has asked the core
+   for this math since 2026-09-28.
 5. **Preserve offline behaviour.** Task, list, comment, chat, attachment and account-settings
    writes journal through the Outbox; local-first caching and dedup must keep working. A few
    writes are online-only **on purpose** — membership (an optimistic member row would fool every
@@ -81,11 +83,18 @@ the crate testable on any machine and keeps the platform boundary visible.
 ## 2. Cross-platform contracts
 
 Rules that must read identically on web, Apple and Windows are locked by **generated fixtures**, not
-by prose. `contracts/fixtures/*.json` is produced from the astrid-web sources by
-astrid-core's `contracts/export-from-web.mjs`; the Rust tests compile those files in, so a web change fails that
-crate's tests instead of shipping a silent divergence.
+by prose. There is **one** exporter and it lives in astrid-web
+(`scripts/export-contract-fixtures.ts`, AWTD-1186); it writes astrid-core's
+`contracts/fixtures/*.json`, and the Rust tests there compile those files in, so a web change fails
+astrid-core's tests instead of shipping a silent divergence.
 
-`cargo xtask check-contracts` in astrid-core (part of its CI) regenerates and diffs them.
+**None of that is in this repository** — there is no `contracts/` directory here. The fixtures and
+the check over them belong to astrid-core, and reach this app through the pin. `cargo xtask
+check-contracts` there (part of its CI) *compares* the fixtures against a local astrid-web checkout;
+it does not regenerate them. astrid-core's `contracts/README.md` is the mechanism — read it there
+rather than trusting a summary here, since the summary is what went stale.
+
+What follows is therefore a map of which rules are locked, not a description of local machinery.
 
 | Contract | Canonical | Here | Status |
 |---|---|---|---|
