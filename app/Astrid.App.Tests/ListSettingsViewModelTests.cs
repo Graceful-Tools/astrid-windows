@@ -29,6 +29,43 @@ public sealed class ListSettingsViewModelTests
     };
 
     /// <summary>
+    /// The defaults section offers a default only for a field the list actually has (task
+    /// 897e25c5): a default priority for a board with no Priority field mapped is a setting that
+    /// can never apply. Absent is classic, so a list the server says nothing about keeps all five
+    /// choices it has always had.
+    /// </summary>
+    [Fact]
+    public async Task A_board_offers_no_default_for_a_field_it_does_not_have_task_897e25c5()
+    {
+        var board = new FakeCore().AnswerOk("listMembers", new
+        {
+            listId = "l1",
+            name = "Roadmap",
+            canManageList = true,
+            supports = new { priority = false, dueDate = false },
+            members = Array.Empty<object>(),
+        });
+        var view = new ListSettingsViewModel(board);
+        await view.LoadAsync("l1");
+        Assert.False(view.ShowsDefaultPriority);
+        Assert.False(view.ShowsDefaultDueDate);
+
+        var classic = new ListSettingsViewModel(new FakeCore().AnswerOk("listMembers", Settings()));
+        await classic.LoadAsync("l1");
+        Assert.True(classic.ShowsDefaultPriority);
+        Assert.True(classic.ShowsDefaultDueDate);
+
+        // And a reader who cannot manage the list is offered no default either way — the two
+        // answers are both needed, which is why they are ANDed rather than one standing in for
+        // the other.
+        var reader = new ListSettingsViewModel(
+            new FakeCore().AnswerOk("listMembers", Settings(canManage: false)));
+        await reader.LoadAsync("l1");
+        Assert.False(reader.ShowsDefaultPriority);
+        Assert.False(reader.ShowsDefaultDueDate);
+    }
+
+    /// <summary>
     /// The flyout opens from the cache and then catches up: the roster the server answers with
     /// replaces the one the cache had, in one open.
     /// </summary>

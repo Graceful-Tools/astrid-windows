@@ -1237,6 +1237,9 @@ public sealed record ListSettings
     /// <summary>What a task added to this list starts as (task c4102c67).</summary>
     [JsonPropertyName("defaults")] public ListDefaults Defaults { get; init; } = new();
 
+    /// <summary>What this list permits, which decides which of the defaults above it is offered (task 897e25c5).</summary>
+    [JsonPropertyName("supports")] public ListSupports Supports { get; init; } = new();
+
     [JsonPropertyName("canManageMembers")] public bool CanManageMembers { get; init; }
 
     [JsonPropertyName("canManageList")] public bool CanManageList { get; init; }
@@ -1251,6 +1254,32 @@ public sealed record ListSettings
     [JsonPropertyName("currentUserId")] public string? CurrentUserId { get; init; }
 
     [JsonPropertyName("members")] public IReadOnlyList<ListMember> Members { get; init; } = [];
+}
+
+/// <summary>
+/// What a list permits, as the core answers it on both the task detail and the list settings
+/// (task 897e25c5, astrid-web's GITHUB_PROJECTS_WHITELABEL §11.2).
+/// </summary>
+/// <remarks>
+/// Every default here is the CLASSIC value, which is what makes a missing block safe: a core older
+/// than these keys, or one that could not resolve a task's list, leaves every control exactly
+/// where it was. The one key that defaults false is multiple assignees, because a classic list
+/// holds at most one.
+/// </remarks>
+public sealed record ListSupports
+{
+    [JsonPropertyName("priority")] public bool Priority { get; init; } = true;
+
+    [JsonPropertyName("dueDate")] public bool DueDate { get; init; } = true;
+
+    [JsonPropertyName("comments")] public bool Comments { get; init; } = true;
+
+    [JsonPropertyName("privateTasks")] public bool PrivateTasks { get; init; } = true;
+
+    [JsonPropertyName("multipleAssignees")] public bool MultipleAssignees { get; init; }
+
+    /// <summary><c>delete</c>, or <c>remove_from_list</c> where the item comes off a project and the issue stays.</summary>
+    [JsonPropertyName("deleteTask")] public string DeleteTask { get; init; } = "delete";
 }
 
 /// <summary>What a list's coding-agent settings can be set to (task f44b4a0c).</summary>

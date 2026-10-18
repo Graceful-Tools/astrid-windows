@@ -263,8 +263,14 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
+            <!--
+                Priority, When and When time are gated on the list's own supports (task 897e25c5):
+                a GitHub board with no Priority or date field mapped has nowhere for the default to
+                land, so the choice is not offered. The core decides; these only draw its answer.
+            -->
             <ComboBox x:Uid="priority" Grid.Row="0" Grid.Column="0" Header="Priority"
                       HorizontalAlignment="Stretch"
+                      Visibility="{x:Bind Shell.ListSettings.ShowsDefaultPriority, Mode=OneWay, Converter={StaticResource Visible}}"
                       AutomationProperties.Name="Default priority"
                       ItemsSource="{x:Bind Shell.ListSettings.DefaultPriorityChoices, Mode=OneWay}"
                       ItemTemplate="{StaticResource DefaultChoiceTemplate}"
@@ -286,6 +292,7 @@
                       SelectionChanged="OnDefaultChosen" />
             <ComboBox x:Uid="when" Grid.Row="1" Grid.Column="1" Header="When"
                       HorizontalAlignment="Stretch"
+                      Visibility="{x:Bind Shell.ListSettings.ShowsDefaultDueDate, Mode=OneWay, Converter={StaticResource Visible}}"
                       AutomationProperties.Name="Default when"
                       ItemsSource="{x:Bind Shell.ListSettings.DefaultWhenChoices, Mode=OneWay}"
                       ItemTemplate="{StaticResource DefaultChoiceTemplate}"
@@ -293,6 +300,7 @@
                       SelectionChanged="OnDefaultChosen" />
             <ComboBox x:Uid="when_time" Grid.Row="2" Grid.Column="0" Header="When time"
                       HorizontalAlignment="Stretch"
+                      Visibility="{x:Bind Shell.ListSettings.ShowsDefaultDueDate, Mode=OneWay, Converter={StaticResource Visible}}"
                       AutomationProperties.Name="Default when time"
                       ItemsSource="{x:Bind Shell.ListSettings.DefaultTimeChoices, Mode=OneWay}"
                       ItemTemplate="{StaticResource DefaultChoiceTemplate}"
