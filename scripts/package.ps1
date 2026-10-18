@@ -37,6 +37,11 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
+# Runs the native tools below so that a failure prints the tool's own diagnosis. It also contains
+# the reason this is not done inline: under the Stop above, a redirected native stderr is a
+# terminating error even on a zero exit, so a tool that merely warns would fail the build.
+. (Join-Path $PSScriptRoot 'lib\invoke-build-tool.ps1')
+
 if ($Version -notmatch '^\d+\.\d+\.\d+\.\d+$') {
     throw "Version must have four parts, e.g. 0.1.0.0 — MSIX will not accept anything else."
 }
@@ -80,9 +85,10 @@ foreach ($architecture in $Architectures) {
 
     # Self-contained, so the package carries its own runtime: a person installing from the Store
     # should not then be told to install .NET.
-    dotnet publish (Join-Path $repoRoot 'app/Astrid.App/Astrid.App.csproj') `
-        -c $Configuration -r $rid --self-contained true -p:AstridPackaged=true -o $publish | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "publish failed for $rid" }
+    Invoke-BuildTool "publish failed for $rid" {
+        dotnet publish (Join-Path $repoRoot 'app/Astrid.App/Astrid.App.csproj') `
+            -c $Configuration -r $rid --self-contained true -p:AstridPackaged=true -o $publish
+    }
 
     # AstridPackaged=true above leaves WindowsPackageType unset, which is how the SDK is told to
     # build for MSIX. Without it these are unpackaged binaries, and the astrid:// scheme is written
@@ -124,8 +130,9 @@ foreach ($architecture in $Architectures) {
 
     $package = Join-Path $dist "Astrid-$Version-$architecture.msix"
     Remove-Item -Force $package -ErrorAction SilentlyContinue
-    & $makeappx.FullName pack /d $publish /p $package /o | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "makeappx pack failed for $architecture" }
+    Invoke-BuildTool "makeappx pack failed for $architecture" {
+        & $makeappx.FullName pack /d $publish /p $package /o
+    }
     Write-Host "[+] $package" -ForegroundColor Green
     $packages += $package
 }
@@ -140,8 +147,9 @@ if ($packages.Count -gt 1) {
 
     $bundle = Join-Path $dist "Astrid-$Version.msixbundle"
     Remove-Item -Force $bundle -ErrorAction SilentlyContinue
-    & $makeappx.FullName bundle /d $bundleInput /p $bundle /o | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "makeappx bundle failed" }
+    Invoke-BuildTool 'makeappx bundle failed' {
+        & $makeappx.FullName bundle /d $bundleInput /p $bundle /o
+    }
     Write-Host ""
     Write-Host "[+] $bundle" -ForegroundColor Green
 
