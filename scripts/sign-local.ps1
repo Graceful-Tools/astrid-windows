@@ -77,6 +77,11 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
+# Runs signtool and makeappx below so that a failure prints the tool's own diagnosis - and holds
+# the reason it is not done inline: under the Stop above, a redirected native stderr is a
+# terminating error even on a zero exit, so a tool that merely warns would fail the run.
+. (Join-Path $PSScriptRoot 'lib\invoke-build-tool.ps1')
+
 # --- 0. installing needs MACHINE trust, and finding that out later is expensive ----------------
 # The certificate is validated by the AppX deployment service, which is a system service and does
 # not read a user's certificate store. So a package signed with a self-signed certificate that is
@@ -231,16 +236,19 @@ foreach ($architecture in $Architectures) {
     if (-not (Test-Path $source)) { throw "Missing $source. Run scripts/package.ps1 -Version $Version first." }
     $signed = Join-Path $bundleInput (Split-Path $source -Leaf)
     Copy-Item $source $signed
-    & $signtool sign /fd SHA256 /sha1 $cert.Thumbprint /s My $signed | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "signtool failed on $signed" }
+    Invoke-BuildTool "signtool failed on $signed" {
+        & $signtool sign /fd SHA256 /sha1 $cert.Thumbprint /s My $signed
+    }
     Write-Host "[+] signed $signed" -ForegroundColor Green
 }
 
 $bundle = Join-Path $signedDir "Astrid-$Version.msixbundle"
-& $makeappx bundle /d $bundleInput /p $bundle /o | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "makeappx bundle failed" }
-& $signtool sign /fd SHA256 /sha1 $cert.Thumbprint /s My $bundle | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "signtool failed on $bundle" }
+Invoke-BuildTool 'makeappx bundle failed' {
+    & $makeappx bundle /d $bundleInput /p $bundle /o
+}
+Invoke-BuildTool "signtool failed on $bundle" {
+    & $signtool sign /fd SHA256 /sha1 $cert.Thumbprint /s My $bundle
+}
 Write-Host "[+] $bundle (signed)" -ForegroundColor Green
 
 if (-not $Install) {
