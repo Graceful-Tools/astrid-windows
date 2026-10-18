@@ -305,6 +305,7 @@
                 from the core with the instant each one means already worked out.
             -->
             <Button x:Uid="due_date" Style="{StaticResource DetailField}"
+                    Visibility="{x:Bind Shell.Detail.ShowsDueDate, Mode=OneWay, Converter={StaticResource Visible}}"
                     AutomationProperties.Name="Due date">
                 <Grid ColumnSpacing="{StaticResource DetailFieldGap}">
                     <Grid.ColumnDefinitions>
@@ -518,7 +519,8 @@
                 constant, for the reason the swatches beside it make plain: the marker says
                 which field this is, the swatches say what it is set to.
             -->
-            <Grid ColumnSpacing="{StaticResource DetailFieldGap}" Margin="0,4">
+            <Grid ColumnSpacing="{StaticResource DetailFieldGap}" Margin="0,4"
+                  Visibility="{x:Bind Shell.Detail.ShowsPriority, Mode=OneWay, Converter={StaticResource Visible}}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" MinWidth="{StaticResource DetailFieldIconColumn}" />
                     <ColumnDefinition Width="*" />
@@ -1267,7 +1269,16 @@
                         <FontIcon FontSize="16" Glyph="&#xE723;"
                                   Foreground="{ThemeResource AstridTextMuted}" />
                     </Button>
+                    <!--
+                        The composer, and only the composer, is gated on supports.comments (task
+                        897e25c5): on a board whose comments live on the GitHub issue there is
+                        nowhere for a new one to go. The thread above stays drawn — a comment that
+                        already exists is worth reading where a new one cannot be written — and the
+                        paperclip and the timer stay, because neither is a comment. With the box
+                        gone CanSendComment is false, so the send button cannot appear either.
+                    -->
                     <TextBox x:Uid="comment_box" x:Name="CommentBox" Grid.Column="1"
+                             Visibility="{x:Bind Shell.Detail.ShowsCommentComposer, Mode=OneWay, Converter={StaticResource Visible}}"
                              PlaceholderText="Add a comment..."
                              Background="{ThemeResource AstridSurfaceHover}"
                              BorderThickness="0"

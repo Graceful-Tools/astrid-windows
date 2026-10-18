@@ -50,6 +50,19 @@ public sealed class TaskDetailViewModel : ObservableObject
     private string _blockerSearch = string.Empty;
     private string? _blockerErrorKey;
     private string? _link;
+    // What the open task's list permits (task 897e25c5). Classic until the core says otherwise, so
+    // the pane never starts out hiding a control that works.
+    private bool _showsPriority = true;
+    private bool _showsDueDate = true;
+    private bool _showsCommentComposer = true;
+    private bool _supportsPrivateTasks = true;
+    private bool _supportsMultipleAssignees;
+    private string _deleteTaskMode = ClassicDeleteTaskMode;
+
+    /// <summary>
+    /// What <c>supports.deleteTask</c> says on a classic list: the task is deleted outright.
+    /// </summary>
+    public const string ClassicDeleteTaskMode = "delete";
 
     public TaskDetailViewModel(IAstridCore core)
     {
@@ -525,6 +538,86 @@ public sealed class TaskDetailViewModel : ObservableObject
 
     /// <summary>Whether the row has nothing to list, which is its own line of copy.</summary>
     public bool HasNoBlockers => WaitingOnChips.Count == 0;
+
+    /// <summary>
+    /// Whether this task's list has a priority to set at all (task 897e25c5). A GitHub-backed
+    /// board with no Priority field mapped in its binding has none, so the row and its four
+    /// swatches are not drawn.
+    /// </summary>
+    /// <remarks>
+    /// The core's answer, read straight through — <c>taskDetail.supports.priority</c>, decided from
+    /// the task's own list. The pane holds no predicate: working it out here from a backend name
+    /// would be the fourth implementation of the rule, and the one that offers a swatch whose
+    /// write 403s. <strong>An absent key is classic</strong>, the same default the core applies, so
+    /// a list the server says nothing about keeps every control it has always had.
+    /// </remarks>
+    public bool ShowsPriority
+    {
+        get => _showsPriority;
+        private set => Set(ref _showsPriority, value);
+    }
+
+    /// <summary>
+    /// Whether this task's list has a due date to set (task 897e25c5). False on a board with no
+    /// date field mapped, which hides the date row and its pickers.
+    /// </summary>
+    public bool ShowsDueDate
+    {
+        get => _showsDueDate;
+        private set => Set(ref _showsDueDate, value);
+    }
+
+    /// <summary>
+    /// Whether tasks on this list take comments in Astrid (task 897e25c5). On a board whose
+    /// comments live on the issue the composer is not drawn — the thread that is already there is
+    /// still shown, because a comment that exists is worth reading even where a new one cannot go.
+    /// </summary>
+    public bool ShowsCommentComposer
+    {
+        get => _showsCommentComposer;
+        private set => Set(ref _showsCommentComposer, value);
+    }
+
+    /// <summary>
+    /// Whether a task's private flag means anything on this list (task 897e25c5).
+    /// </summary>
+    /// <remarks>
+    /// Nothing in this shell draws a per-task private toggle yet, so this gates no control today.
+    /// It is carried because the decision belongs in the core either way: whichever shell grows
+    /// that toggle first finds the answer already in the DTO rather than deriving it a second time.
+    /// </remarks>
+    public bool SupportsPrivateTasks
+    {
+        get => _supportsPrivateTasks;
+        private set => Set(ref _supportsPrivateTasks, value);
+    }
+
+    /// <summary>
+    /// Whether a task here may hold several assignees (task 897e25c5). This shell's assignee
+    /// picker is single-select, so like <see cref="SupportsPrivateTasks"/> this is the core's
+    /// answer held ready rather than a control being gated.
+    /// </summary>
+    public bool SupportsMultipleAssignees
+    {
+        get => _supportsMultipleAssignees;
+        private set => Set(ref _supportsMultipleAssignees, value);
+    }
+
+    /// <summary>
+    /// What destroying a task on this list does — <c>"delete"</c>, or <c>"remove_from_list"</c> on
+    /// a board whose item comes off the project while the issue stays (task 897e25c5).
+    /// </summary>
+    /// <remarks>
+    /// Task detail offers "Remove from list" per chip and no task delete, so this gates no wording
+    /// here yet. It decides both the word and what gets sent the moment one is added, which is why
+    /// a shell must never infer it: "Delete" on a GitHub board would promise something it does not
+    /// do.
+    /// </remarks>
+    public string DeleteTaskMode
+    {
+        get => _deleteTaskMode;
+        private set => Set(ref _deleteTaskMode, value);
+    }
 
     /// <summary>
     /// The mark that NAMES the priority row — <c>!!!</c>, and the same <c>!!!</c> whatever the
@@ -1887,6 +1980,27 @@ public sealed class TaskDetailViewModel : ObservableObject
         OffersCopyIdentifier = value.TryGetProperty("offersCopyIdentifier", out var offersCopy)
                                && offersCopy.ValueKind == JsonValueKind.True;
 
+        // What the task's list permits (task 897e25c5). Read the other way round from the flags
+        // above: absent means CLASSIC, not false, so a core older than the block — or one that
+        // could not resolve the task's list — leaves every control exactly where it was. Hiding a
+        // working picker because a field was missing is the one failure mode worth designing out.
+        var supports = value.TryGetProperty("supports", out var block)
+                       && block.ValueKind == JsonValueKind.Object
+            ? block
+            : default;
+        ShowsPriority = Supported(supports, "priority");
+        ShowsDueDate = Supported(supports, "dueDate");
+        ShowsCommentComposer = Supported(supports, "comments");
+        SupportsPrivateTasks = Supported(supports, "privateTasks");
+        SupportsMultipleAssignees = supports.ValueKind == JsonValueKind.Object
+                                    && supports.TryGetProperty("multipleAssignees", out var many)
+                                    && many.ValueKind == JsonValueKind.True;
+        DeleteTaskMode = supports.ValueKind == JsonValueKind.Object
+                         && supports.TryGetProperty("deleteTask", out var mode)
+                         && mode.ValueKind == JsonValueKind.String
+            ? mode.GetString() ?? ClassicDeleteTaskMode
+            : ClassicDeleteTaskMode;
+
         IsCanceled = value.TryGetProperty("isCanceled", out var canceled)
                      && canceled.ValueKind == JsonValueKind.True;
         IsCopyOnly = value.TryGetProperty("isCopyOnly", out var copyOnly)
@@ -1941,6 +2055,15 @@ public sealed class TaskDetailViewModel : ObservableObject
             ? timer.Deserialize<TimerState>(CommandJson.Options) ?? new TimerState()
             : new TimerState();
     }
+
+    /// <summary>
+    /// One <c>supports</c> boolean, where <strong>absent is classic</strong> — the same
+    /// <c>unwrap_or_default</c> rule the core applies on the way in (task 897e25c5).
+    /// </summary>
+    private static bool Supported(JsonElement supports, string name) =>
+        supports.ValueKind != JsonValueKind.Object
+        || !supports.TryGetProperty(name, out var key)
+        || key.ValueKind != JsonValueKind.False;
 
     private static List<T> Read<T>(JsonElement value, string name) =>
         value.TryGetProperty(name, out var element) && element.ValueKind == JsonValueKind.Array

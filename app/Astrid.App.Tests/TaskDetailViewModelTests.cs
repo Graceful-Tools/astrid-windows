@@ -11,12 +11,15 @@ public sealed class TaskDetailViewModelTests
         string[]? comments = null,
         bool isCanceled = false, object? boardState = null, object? blockers = null,
         string? identifier = null, bool showsIdentifier = false,
-        bool offersCopyIdentifier = false) => new
+        bool offersCopyIdentifier = false, object? supports = null) => new
         {
             task = new { id = "t1", title, description = "two weeks", priority, completed, identifier },
             isCanceled,
             boardState,
             blockers,
+            // Absent by default, which is what a classic list answers with and what a core older
+            // than the block sends (task 897e25c5).
+            supports,
             showsIdentifier,
             offersCopyIdentifier,
             link = "https://astrid.cc/tasks/t1",
@@ -474,6 +477,62 @@ public sealed class TaskDetailViewModelTests
 
         Assert.False(view.ShowsBoardState);
         Assert.Empty(view.BoardStateChips);
+    }
+
+    /// <summary>
+    /// A control is offered only where it would work (task 897e25c5). A GitHub-backed board with
+    /// no Priority or date field mapped in its binding, and whose comments live on the issue, hides
+    /// the priority row, the date row and the composer — and the pane holds no predicate of its
+    /// own: it draws <c>taskDetail.supports</c>, which the core decided from the task's own list.
+    /// </summary>
+    [Fact]
+    public async Task A_board_offers_no_control_its_binding_cannot_write_task_897e25c5()
+    {
+        var core = new FakeCore().AnswerOk("taskDetail", Detail(supports: new
+        {
+            priority = false,
+            dueDate = false,
+            comments = false,
+            privateTasks = false,
+            multipleAssignees = true,
+            deleteTask = "remove_from_list",
+        }));
+        var view = new TaskDetailViewModel(core);
+
+        await view.OpenAsync("t1");
+
+        Assert.False(view.ShowsPriority);
+        Assert.False(view.ShowsDueDate);
+        Assert.False(view.ShowsCommentComposer);
+        // No control in this shell yet, so the core's answer is carried rather than drawn — but it
+        // is carried, so the first shell to grow one does not re-derive it.
+        Assert.False(view.SupportsPrivateTasks);
+        Assert.True(view.SupportsMultipleAssignees);
+        Assert.Equal("remove_from_list", view.DeleteTaskMode);
+    }
+
+    /// <summary>
+    /// The case that matters most, because getting it wrong hides working controls from everybody:
+    /// <strong>absent is classic</strong> (task 897e25c5). No <c>supports</c> block at all — a
+    /// classic list, or a core older than the keys — and a block that merely omits one key both
+    /// leave every control exactly where it was.
+    /// </summary>
+    [Fact]
+    public async Task A_list_that_says_nothing_keeps_every_control_task_897e25c5()
+    {
+        foreach (var supports in new object?[] { null, new { multipleAssignees = true } })
+        {
+            var core = new FakeCore().AnswerOk("taskDetail", Detail(supports: supports));
+            var view = new TaskDetailViewModel(core);
+
+            await view.OpenAsync("t1");
+
+            Assert.True(view.ShowsPriority);
+            Assert.True(view.ShowsDueDate);
+            Assert.True(view.ShowsCommentComposer);
+            Assert.True(view.SupportsPrivateTasks);
+            Assert.Equal("delete", view.DeleteTaskMode);
+        }
     }
 
     /// <summary>

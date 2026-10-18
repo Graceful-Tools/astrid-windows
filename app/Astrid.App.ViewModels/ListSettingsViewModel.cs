@@ -31,6 +31,8 @@ public sealed class ListSettingsViewModel : ObservableObject
     private bool _canDeleteList;
     private bool _canLeave;
     private bool _canTransferOwnership;
+    private bool _showsDefaultPriority;
+    private bool _showsDefaultDueDate;
     private string? _transferAvailability;
     private bool _isLoading;
     private string? _errorMessage;
@@ -579,6 +581,31 @@ public sealed class ListSettingsViewModel : ObservableObject
         private set => Set(ref _canDeleteList, value);
     }
 
+    /// <summary>
+    /// Whether the "Defaults for new tasks" section offers a default PRIORITY (task 897e25c5).
+    /// </summary>
+    /// <remarks>
+    /// Two answers, both needed: the list is still the owner's to manage, and the board still has
+    /// no Priority field for a default to land in. A default for a field that does not exist is a
+    /// setting that can never apply, so it is not offered — <c>supports.priority</c> is the core's
+    /// answer, and absent means classic, so a list the server says nothing about keeps the choice.
+    /// </remarks>
+    public bool ShowsDefaultPriority
+    {
+        get => _showsDefaultPriority;
+        private set => Set(ref _showsDefaultPriority, value);
+    }
+
+    /// <summary>
+    /// Whether the defaults section offers a default When and When-time (task 897e25c5): the same
+    /// rule as <see cref="ShowsDefaultPriority"/>, on <c>supports.dueDate</c>.
+    /// </summary>
+    public bool ShowsDefaultDueDate
+    {
+        get => _showsDefaultDueDate;
+        private set => Set(ref _showsDefaultDueDate, value);
+    }
+
     /// <summary>Leaving is for a list somebody else owns; an owner leaving would strand it.</summary>
     public bool CanLeave
     {
@@ -789,6 +816,10 @@ public sealed class ListSettingsViewModel : ObservableObject
             CanManageMembers = settings.CanManageMembers;
             CanManageList = settings.CanManageList;
             CanDeleteList = settings.CanDeleteList;
+            // A default is offered where the list both may be managed and has the field for it to
+            // land in (task 897e25c5).
+            ShowsDefaultPriority = settings.CanManageList && settings.Supports.Priority;
+            ShowsDefaultDueDate = settings.CanManageList && settings.Supports.DueDate;
             CanLeave = settings.CanLeave;
             CanTransferOwnership = settings.CanTransferOwnership;
             Replace(Members, settings.Members
