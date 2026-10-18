@@ -901,6 +901,9 @@
   <data name="due_day_picker.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Pick a date</value>
   </data>
+  <data name="due_time_picker.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Pick a time</value>
+  </data>
   <data name="due_offset_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Default due date</value>
   </data>
