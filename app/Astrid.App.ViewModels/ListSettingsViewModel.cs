@@ -47,8 +47,8 @@ public sealed class ListSettingsViewModel : ObservableObject
         _core = core;
     }
 
-    /// <summary>Who the list is shared with, as the server has them.</summary>
-    public ObservableCollection<ListMember> Members { get; } = [];
+    /// <summary>Who the list is shared with, as the server has them, and what may be done to each.</summary>
+    public ObservableCollection<ListMemberRow> Members { get; } = [];
 
     public string ListId
     {
@@ -550,7 +550,7 @@ public sealed class ListSettingsViewModel : ObservableObject
             DueDate = choice.Field == "dueDate" ? choice.Value ?? "none" : _defaults.DueDate,
             DueTime = choice.Field == "dueTime" ? choice.Value : _defaults.DueTime,
         };
-        RefreshDefaultChoices(updated, Members.ToList());
+        RefreshDefaultChoices(updated, Members.Select(row => row.Member).ToList());
         return true;
     }
 
@@ -791,7 +791,9 @@ public sealed class ListSettingsViewModel : ObservableObject
             CanDeleteList = settings.CanDeleteList;
             CanLeave = settings.CanLeave;
             CanTransferOwnership = settings.CanTransferOwnership;
-            Replace(Members, settings.Members);
+            Replace(Members, settings.Members
+                .Select(member => new ListMemberRow(member, settings.CanManageMembers))
+                .ToList());
         }
     }
 
@@ -924,6 +926,25 @@ public sealed class ListSettingsViewModel : ObservableObject
 /// how it is named — by a resource key, or by a member's name.
 /// </summary>
 public sealed record DefaultChoice(string Field, string? Value, string? TitleKey, string? Text, bool IsSelected);
+
+/// <summary>
+/// One person on the list, as the flyout draws them: the member the core answered with, plus
+/// whether this account may take them off it (task 93ffa9ea).
+/// </summary>
+/// <remarks>
+/// <c>CanRemove</c> is carried, not worked out: whether a roster can be changed at all is the
+/// core's answer — the permission rules, and then whether the backend keeps its membership in
+/// Astrid at all, which a GitHub-backed board does not. A row that decided it would be the
+/// implementation that 403s.
+/// </remarks>
+public sealed record ListMemberRow(ListMember Member, bool CanRemove)
+{
+    public string UserId => Member.UserId;
+
+    public string DisplayName => Member.DisplayName;
+
+    public string RoleKey => Member.RoleKey;
+}
 
 /// <summary>One colour the list could wear, and whether it does.</summary>
 public sealed record ColorSwatch(string Hex, bool IsSelected)

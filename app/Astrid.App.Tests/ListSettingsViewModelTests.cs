@@ -455,6 +455,32 @@ public sealed class ListSettingsViewModelTests
     }
 
     /// <summary>
+    /// Every member row carries whether this account may take that person off the list, so the
+    /// Remove button is drawn per row rather than on every roster regardless. It used to be on
+    /// every roster regardless — a viewer on somebody else's list, and now a GitHub-backed board
+    /// whose roster is the project's (<c>supports.membership: false</c>), were both offered a
+    /// Remove that 403s. The row carries the core's answer; it does not work one out
+    /// (task 93ffa9ea).
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Remove_is_offered_per_member_only_where_the_core_says_the_roster_can_change(bool canManage)
+    {
+        var core = new FakeCore().AnswerOk("listMembers", Settings(canManage: canManage));
+        var view = new ListSettingsViewModel(core);
+
+        await view.LoadAsync("l1");
+
+        Assert.Equal(2, view.Members.Count);
+        Assert.All(view.Members, row => Assert.Equal(canManage, row.CanRemove));
+        Assert.Equal(canManage, view.CanManageMembers);
+        // The roster itself is still shown either way: who is on the list is worth seeing even
+        // where it cannot be changed from here.
+        Assert.Equal("Dana", view.Members[1].DisplayName);
+    }
+
+    /// <summary>
     /// A member whose user record never arrived is still a person on screen. The Mac put a raw
     /// UUID where a name goes, which reads as a bug because it is one.
     /// </summary>

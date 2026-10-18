@@ -337,7 +337,7 @@
                    Margin="0,8,0,0" />
         <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.Members, Mode=OneWay}">
             <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="bindings:ListMember">
+                <DataTemplate x:DataType="viewmodels:ListMemberRow">
                     <Grid ColumnSpacing="8" Padding="0,2">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -352,9 +352,16 @@
                                    VerticalAlignment="Center"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                    Style="{ThemeResource CaptionTextBlockStyle}" />
+                        <!--
+                            Who is on the list is worth seeing wherever it is shown; taking
+                            somebody off it is not always offered. A viewer, and a GitHub-backed
+                            board whose roster is the project's, both used to get a Remove that
+                            403s (task 93ffa9ea).
+                        -->
                         <Button x:Uid="remove" Grid.Column="2"
                                 Content="Remove"
                                 Tag="{x:Bind UserId}"
+                                Visibility="{x:Bind CanRemove, Converter={StaticResource Visible}}"
                                 Click="OnRemoveMember" />
                     </Grid>
                 </DataTemplate>
