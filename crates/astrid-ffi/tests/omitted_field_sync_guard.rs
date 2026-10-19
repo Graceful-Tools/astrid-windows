@@ -62,15 +62,18 @@ fn cached_description(store: &Arc<Store>) -> String {
         .task("t1")
         .expect("reads")
         .expect("the task is still there")
-        .description
+        .description_text()
+        .to_string()
 }
 
 /// Task `e988defa`: a page whose `meta.omitted` names a field this client never asked to drop is
 /// refused, and the description already on the device is the one that survives.
 ///
-/// Without the guard `Task::description` is `#[serde(default)]`, so the row above — which has no
-/// `description` key at all — decodes as `""`, the merge writes that over the real text, and the
-/// next edit pushes the blank to the server. That is the path this closes.
+/// Without the guard the row above — which has no `description` key at all — applies, and the
+/// merge writes whatever it decoded over the real text. Core task `ebe0966b` since made
+/// `Task::description` an `Option<String>`, so a second line of defence now reads that row as
+/// "not said" rather than `""`; this test is still about the FIRST one, which refuses the page
+/// outright and leaves no delta stamp behind. Either failing alone blanks a person's description.
 #[tokio::test]
 async fn e988defa_a_page_trimmed_of_description_leaves_the_cached_description_alone() {
     let app = app_over(
