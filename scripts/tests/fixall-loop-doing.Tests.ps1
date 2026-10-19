@@ -20,21 +20,27 @@
     "in progress elsewhere; not touched" - which is what the sweep is supposed to say about a LIVE
     peer.
 
-    THE TWO PASSES NEED DIFFERENT THINGS, which is why only one of them is wired here.
+    THREE PASSES, EACH REACHING A CLAIM THE OTHERS CANNOT. Two of them are claims-file passes and
+    one reads the board.
 
       * The AFTER-RUN pass takes `--claims-file` and nothing else, so it is exact: it releases
         precisely what this run claimed and left behind, no heuristic and no board read.
-      * The START-OF-TICK pass in astrid-web takes `--list <listId>`, and this board's id is
-        deliberately nowhere in this repo (docs/AUTOMATION.md - it is resolved by NAME, because a
-        hardcoded id fails by answering "nothing to do", which reads exactly like a quiet day).
-        `release-stuck-doing.ts` has no `--board windows` yet; that half is filed on the Astrid Web
-        board.
+      * The START-OF-TICK CLAIMS pass reads a claims file whose owning loop is GONE, which is the
+        same shape as `Get-StrandedTaskFile`: the loop hands each run a claims file named for its
+        OWN pid. That covers the killed-loop case - the case the after-run pass structurally cannot
+        cover, since a hard kill is what stops it. It needs no board id either.
+      * The START-OF-TICK BOARD pass (task 1cc6ac2f) is the only one that can reach a claim in NO
+        claims file: one made by an interactive session, or by a session that died before a claims
+        file was ever written. `f8dfc84e` sat in Doing from 01:25 on 2026-10-18 for exactly that
+        reason and had to be released by hand.
 
-    So the start-of-tick pass here is the one that needs no board id at all, and it is the same shape
-    as `Get-StrandedTaskFile`: the loop hands each run a claims file named for its OWN pid, and a
-    claims file whose owning loop is GONE is a tick that was killed before its after-run pass could
-    run. Releasing exactly those ids covers the killed-loop case - the case the after-run pass
-    structurally cannot cover, since a hard kill is what stops it.
+    WHY THE BOARD PASS COULD NOT BE WRITTEN UNTIL NOW. It used to need `--list <listId>`, and this
+    board's id is deliberately nowhere in this repo (docs/AUTOMATION.md - it is resolved by NAME,
+    because a hardcoded id fails by answering "nothing to do", which reads exactly like a quiet
+    day). AWTD-1267 added `release-stuck-doing.ts --board <web|ios|windows|android>`, which resolves
+    the board through `GET /api/v1/lists` and exits 1 rather than reporting an empty board when the
+    name is not found. With that merged to astrid-web `main` the pass costs this repo no id at all,
+    which is the whole of what this task was waiting for.
 
     WHY THE WIRING IS ASSERTED OVER THE PARSED AST, like fixall-loop-guards.Tests.ps1 and unlike
     fixall-sweep.Tests.ps1: the release itself is a shell-out to astrid-web's tsx and a branch on an
@@ -164,6 +170,20 @@ $StrandedRelease = Find-LoopCommand @('Invoke-StrandedClaimRelease')
 $QueueGuard = Find-LoopCommand @('ready-tasks\.ts')
 $StartRun = Find-LoopCommand @('Start-Process')
 $SaveWork = Find-LoopCommand @('Save-UnfinishedWork', '\$RepoRoot')
+# The board pass, and the two guards it has to precede. Task 1cc6ac2f.
+$BoardRelease = Find-LoopCommand @('^Invoke-DoingRelease\b', '-Board')
+# The helper itself, because the flags are now built across two statements - a selector chosen per
+# pass, then one shell-out that concatenates it with the shared arguments. Asserting the flags over
+# the single command node would only ever see the shared half.
+$ReleaseFn = @($Ast.FindAll({
+            param($n)
+            $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and
+            $n.Name -eq 'Invoke-DoingRelease'
+        }, $true)) | Select-Object -First 1
+$TreeGuard = Find-LoopCommand @('Get-CheckoutGuardVerdict')
+# The whole file as text, for the two things that are not commands: the parameter default that
+# carries the env fallback, and the absence of a hardcoded board id anywhere in it.
+$LoopText = Get-Content $LoopPath -Raw
 $ClaimsExport = @($Assignments | Where-Object { $_.Left.Extent.Text -match 'env:ASTRID_FIXALL_CLAIMS_FILE' }) |
     Select-Object -First 1
 # The path the export names, which is where the pid actually is. Asserted separately from the export
@@ -191,13 +211,25 @@ Invoke-Case 'the loop exports ASTRID_FIXALL_CLAIMS_FILE before starting the run'
 Invoke-Case 'the release is delegated to astrid-web, not reimplemented' {
     Assert-True 'the loop calls release-stuck-doing.ts' ($null -ne $ReleaseTool)
     if (-not $ReleaseTool) { return }
-    $text = $ReleaseTool.Extent.Text
-    Assert-Match 'as this harness' "'claude'" $text
-    Assert-Match 'over the claims this run recorded' "--claims-file" $text
+    $shared = $ReleaseTool.Extent.Text
+    Assert-Match 'as this harness' "'claude'" $shared
     # --repo is where the task branches live, so the release comment can name the branch carrying the
-    # work; without it the script would read astrid-web's branches instead of this repo's.
-    Assert-Match 'pointed at THIS repo for the branch names' "--repo" $text
-    Assert-Match 'by path' '\$RepoRoot' $text
+    # work; without it the script would read astrid-web's branches instead of this repo's. Shared by
+    # every pass, so it belongs on the one shell-out rather than in a selector.
+    Assert-Match 'pointed at THIS repo for the branch names' "--repo" $shared
+    Assert-Match 'by path' '\$RepoRoot' $shared
+
+    Assert-True 'the helper that builds its argv is there' ($null -ne $ReleaseFn)
+    if (-not $ReleaseFn) { return }
+    $fn = $ReleaseFn.Extent.Text
+    Assert-Match 'it selects over the claims this run recorded' "--claims-file" $fn
+    # And over the board, for a claim that is in no claims file at all (task 1cc6ac2f).
+    Assert-Match 'and over the board for claims no file records' '--board' $fn
+    Assert-Match 'with a staleness bound rather than releasing live work' '--stale-minutes' $fn
+    # STILL ONE call site for the tool. Three callers build one argv between them; a second shell-out
+    # is where --agent, --repo or the output handling drifts out of step with the first.
+    $shellOuts = @(Find-LoopCommands @('release-stuck-doing\.ts'))
+    Assert-Equal 'from exactly one place in the loop' 1 $shellOuts.Count
     # Keeping the agent assignment, naming the branch and handing back on a second release are
     # lib/doing-release.ts's. A loop that wrote statuses itself would be a second implementation.
     $own = @(Find-LoopCommands @('set-task-status\.ts'))
@@ -243,6 +275,68 @@ Invoke-Case 'the start-of-tick pass runs before the is-there-work guard' {
         }) | Select-Object -First 1
     Assert-True 'and inside the try that releases the lock' ($null -ne $main)
     if ($main) { Assert-Match 'by calling the release closure' 'releaseLock' $main.Finally.Extent.Text }
+}
+
+Write-Host ''
+Write-Host 'the board pass reaches a claim that is in no claims file (task 1cc6ac2f)' -ForegroundColor Cyan
+
+Invoke-Case 'the loop asks the board, not just its own claims files' {
+    # The case neither claims-file pass can cover: a claim made by an interactive session, or by a
+    # session that died before a claims file was ever written. f8dfc84e sat in Doing all of
+    # 2026-10-18 for that reason. Without this call the loop is blind to it for ever.
+    Assert-True 'the board pass is called' ($null -ne $BoardRelease)
+    if (-not $BoardRelease) { return }
+    $text = $BoardRelease.Extent.Text
+    # BY NAME. The whole reason this task waited for AWTD-1267 is that `--list <id>` would have put
+    # account data in this repo, and a stale id fails by answering "nothing to do".
+    Assert-Match 'naming this board' "windows" $text
+    Assert-Match 'with a staleness bound' '-StaleMinutes' $text
+}
+
+Invoke-Case 'the board id stays out of this repo' {
+    # docs/AUTOMATION.md: resolved by NAME, never by a hardcoded id, because a stale id fails by
+    # returning an empty list - which reads exactly like a quiet day. Asserted over the whole loop
+    # rather than the one call, since the id would be just as wrong in a variable at the top.
+    $uuid = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
+    $hits = @([regex]::Matches($LoopText, $uuid) | ForEach-Object { $_.Value })
+    Assert-Equal 'no list id is written down anywhere in the loop' '' (@($hits) -join ',')
+}
+
+Invoke-Case 'the board pass runs before both of the remaining guards' {
+    if (-not $BoardRelease) { Assert-True 'the board pass is called' $false; return }
+    # Before guard 3, so a task released on THIS tick counts as work for this tick rather than
+    # waiting half an hour for the next one.
+    Assert-True 'before guard 3 counts the queue' ($null -ne $QueueGuard)
+    if ($QueueGuard) {
+        Assert-True 'and the release comes first' ($BoardRelease.Extent.StartOffset -lt $QueueGuard.Extent.StartOffset)
+    }
+    # Before guard 2 as well, deliberately: this is a board operation, not a tree one, and a dirty
+    # checkout is no reason to leave somebody's task stranded in Doing.
+    Assert-True 'before the dirty-checkout guard too' ($null -ne $TreeGuard)
+    if ($TreeGuard) {
+        Assert-True 'which can end the tick' ($BoardRelease.Extent.StartOffset -lt $TreeGuard.Extent.StartOffset)
+    }
+}
+
+Invoke-Case 'a failed board release does not stop the tick' {
+    if (-not $BoardRelease) { Assert-True 'the board pass is called' $false; return }
+    # A release that cannot reach the board leaves the task exactly where it already was, which is
+    # no worse than not having tried. Ending the tick on it would turn a board outage into a day of
+    # no work at all.
+    $statement = @($Assignments | Where-Object {
+            $_.Extent.StartOffset -le $BoardRelease.Extent.StartOffset -and
+            $_.Extent.EndOffset -ge $BoardRelease.Extent.EndOffset
+        } | Sort-Object { $_.Extent.EndOffset - $_.Extent.StartOffset } | Select-Object -First 1)
+    Assert-True 'its verdict is kept rather than discarded' ($statement.Count -eq 1)
+    if ($statement.Count -ne 1) { return }
+    Assert-Equal 'and the tick does not end on it' $false ([bool]($statement[0].Extent.Text -match '\bFinish\b'))
+}
+
+Invoke-Case 'the staleness bound is configurable and sits past the watchdog' {
+    # 180 by default, and the watchdog kills a run at 75: a bound inside the watchdog window would
+    # release a task out from under a session that is still working it.
+    Assert-Match 'the env knob the Mac loop uses is read here too' 'FIXALL_STALE_DOING_MINUTES' $LoopText
+    Assert-Match 'with the same default' 'FIXALL_STALE_DOING_MINUTES[^\r\n]*\b180\b' $LoopText
 }
 
 Invoke-Case 'a claims file outlives the tick only when its release failed' {
@@ -362,7 +456,7 @@ Invoke-Case 'nothing stranded costs nothing and says nothing' {
 }
 
 Write-Host ''
-if ($script:Checks -lt 28) {
+if ($script:Checks -lt 40) {
     Write-Host "FAIL: only $($script:Checks) assertion(s) ran - this file is meant to make more" -ForegroundColor Red
     $script:Failures++
 }

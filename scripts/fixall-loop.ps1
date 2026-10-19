@@ -90,7 +90,14 @@ param(
     # rule, and a long model turn or a cargo build is minutes rather than thirty. The asymmetry picks
     # the default - sweeping a live run costs work nobody can get back, waiting costs one skipped
     # tick which says why. See scripts/lib/fixall-sweep.ps1.
-    [int]$QuietMinutes = $(if ($env:FIXALL_QUIET_MINUTES) { [int]$env:FIXALL_QUIET_MINUTES } else { 30 })
+    [int]$QuietMinutes = $(if ($env:FIXALL_QUIET_MINUTES) { [int]$env:FIXALL_QUIET_MINUTES } else { 30 }),
+
+    # How long a task may sit in Doing before the start-of-tick board pass calls the claim abandoned.
+    # 180, which is astrid-web's default and well past the $MaxMinutes watchdog: a bound inside the
+    # watchdog window would release a task out from under a session still working it. The asymmetry
+    # is the opposite way round to $QuietMinutes - releasing early costs a live run its claim, while
+    # waiting costs a few hours on a task nobody is working.
+    [int]$StaleDoingMinutes = $(if ($env:FIXALL_STALE_DOING_MINUTES) { [int]$env:FIXALL_STALE_DOING_MINUTES } else { 180 })
 )
 
 # Never stop on a native command's stderr: this script decides what is fatal, and most of what it
@@ -186,8 +193,16 @@ function Send-DiedRunNote([string]$TaskFile, [string]$Reason, $Saved) {
     if ($LASTEXITCODE -ne 0) { Say '  (could not comment on the task it had taken)' }
 }
 
-# Put a run's abandoned Doing claims back. ONE call site for the tool, two callers: the after-run
-# pass over this tick's own claims, and the start-of-tick pass over a dead tick's (task 1b9fed0a).
+# Put a run's abandoned Doing claims back. ONE call site for the tool, THREE callers: the after-run
+# pass over this tick's own claims, the start-of-tick pass over a dead tick's (task 1b9fed0a), and
+# the start-of-tick pass over the BOARD (task 1cc6ac2f), which is the only one of the three that can
+# reach a claim no claims file records at all - one made by an interactive session, or by a session
+# that died before a claims file was ever written.
+#
+# The board is named, never carried as an id: `--board windows` resolves it through
+# GET /api/v1/lists (AWTD-1267) and exits 1 rather than reporting an empty board when the name is
+# not found. A hardcoded id is account data, and a stale one fails by answering "nothing to do" -
+# which reads exactly like a quiet day (docs/AUTOMATION.md).
 #
 # EVERY RULE ABOUT WHAT A RELEASE DOES IS THE SCRIPT'S, not this loop's — it keeps the agent
 # assignment so the next run resumes from the branch rather than starting over, comments with the
@@ -198,9 +213,23 @@ function Send-DiedRunNote([string]$TaskFile, [string]$Reason, $Saved) {
 #
 # --repo is THIS repo, because that is where the task branches are: the release names the branch
 # that carries the work, and run from astrid-web it would otherwise read astrid-web's branches.
-function Invoke-DoingRelease([string]$ClaimsFile) {
-    Invoke-WebTool @('scripts/release-stuck-doing.ts', '--agent', 'claude',
-        '--claims-file', $ClaimsFile, '--repo', $RepoRoot) | ForEach-Object { Say "  $_" }
+function Invoke-DoingRelease {
+    [CmdletBinding(DefaultParameterSetName = 'Claims')]
+    param(
+        [Parameter(Mandatory = $true, ParameterSetName = 'Claims')][string]$ClaimsFile,
+        [Parameter(Mandatory = $true, ParameterSetName = 'Board')][string]$Board,
+        [Parameter(ParameterSetName = 'Board')][int]$StaleMinutes = 180
+    )
+    # Which claims to consider is the ONLY thing that differs between the passes. --agent, --repo and
+    # the output handling are shared on purpose: a second shell-out is where they drift apart.
+    $selector = if ($PSCmdlet.ParameterSetName -eq 'Board') {
+        @('--board', $Board, '--stale-minutes', [string]$StaleMinutes)
+    }
+    else {
+        @('--claims-file', $ClaimsFile)
+    }
+    Invoke-WebTool (@('scripts/release-stuck-doing.ts', '--agent', 'claude') + $selector +
+        @('--repo', $RepoRoot)) | ForEach-Object { Say "  $_" }
     return ($LASTEXITCODE -eq 0)
 }
 
@@ -369,12 +398,31 @@ try {
     #
     # NOT under -not $Force either, for the same reason — -Force is about the tree guards.
     $claimRelease = Invoke-StrandedClaimRelease -ClaimsFileDirectory $env:TEMP -SelfPid $PID `
-        -Release { param($Path) Invoke-DoingRelease $Path } `
+        -Release { param($Path) Invoke-DoingRelease -ClaimsFile $Path } `
         -Log { param($Line) Say $Line }
     if ($claimRelease.Summary) {
         if ($script:SweepNote) { $script:SweepNote += ' | ' }
         $script:SweepNote += $claimRelease.Summary
     }
+
+    # ── And the claims no file records at all ─────────────────────────────────────────────────
+    # The pass above is exact but can only see what a loop wrote down. Two kinds of claim are in no
+    # claims file: one made by an INTERACTIVE session, which has no loop and no file, and one made by
+    # a run that died between claiming and writing. `f8dfc84e` was the second kind - it sat in Doing
+    # from 01:25 on 2026-10-18 and a human had to release it, because every claims-file pass on every
+    # tick after it was structurally blind to it.
+    #
+    # So this pass asks the BOARD instead, and takes a staleness bound rather than a file: anything
+    # in Doing and untouched for $StaleDoingMinutes. Delegated to astrid-web for the same reason as
+    # the others, and placed here for the same two reasons - before guard 3 so a release counts as
+    # work for THIS tick, and before guard 2 because a dirty checkout is no reason to leave somebody
+    # else's task stranded.
+    #
+    # NEVER FATAL, and not guarded by -IgnoreQueue. A release that cannot reach the board leaves the
+    # task exactly where it already was, so there is nothing to abort for; ending the tick here would
+    # turn a board outage into a day of no work at all.
+    $boardRelease = Invoke-DoingRelease -Board 'windows' -StaleMinutes $StaleDoingMinutes
+    if (-not $boardRelease) { Say '  RELEASE: could not sweep Doing on the board; leaving it as it was' }
 
     # ── Guard 2: never clobber work in progress ───────────────────────────────────────────────
     # /fixstuff and an interactive session take no lock, so they are invisible to guard 1, and the
@@ -548,7 +596,7 @@ try {
     # AND BEFORE THE WATCHDOG BRANCH BELOW, which ends the tick: a killed run is the likeliest way a
     # claim is abandoned, so a release placed after that Finish would never run in the case it exists
     # for. Both failure paths below reach this line.
-    $claimsReleased = Invoke-DoingRelease $claimsFile
+    $claimsReleased = Invoke-DoingRelease -ClaimsFile $claimsFile
 
     if ($killed) {
         $reason = "killed after the ${MaxMinutes}m watchdog timeout"
