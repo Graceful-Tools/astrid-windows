@@ -42,6 +42,10 @@ public sealed class BrandProfileTests
         ("Scheme", "astrid"),
         ("SchemeDisplayName", "Astrid"),
         ("ServerUrl", "https://astrid.cc"),
+        // The words, added by task 8d241526 — held to the same "hosted Astrid is unchanged" rule.
+        ("InboundTaskEmail", "remindme@astrid.cc"),
+        ("AgentName", "Astrid"),
+        ("Wordmark", "astrid"),
     ];
 
     /// <summary>
@@ -337,7 +341,7 @@ public sealed class BrandProfileTests
     /// of the mapping would be a second thing to keep in step, and the one the tests agreed with
     /// would not be the one that builds the package.
     /// </remarks>
-    private static Dictionary<string, string?> LoadProfile(string? brand)
+    internal static Dictionary<string, string?> LoadProfile(string? brand)
     {
         var root = RepoRoot().Replace("'", "''");
         var loader = Path.Combine(RepoRoot(), "scripts", "lib", "brand-profile.ps1").Replace("'", "''");

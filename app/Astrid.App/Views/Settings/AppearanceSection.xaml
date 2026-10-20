@@ -35,8 +35,7 @@
                      Header="Quick-add shortcut"
                      AutomationProperties.Name="Quick-add shortcut"
                      Text="{x:Bind Shell.Settings.Appearance.HotkeyChord, Mode=OneWay}" />
-            <TextBlock x:Uid="hotkey_hint"
-                       Text="Brings Astrid forward from anywhere, ready for a new task. Ctrl, Alt or Win, plus one letter or digit."
+            <TextBlock Text="{x:Bind local:BrandCopy.HotkeyHint}"
                        TextWrapping="Wrap"
                        Style="{ThemeResource CaptionTextBlockStyle}"
                        Foreground="{ThemeResource AstridTextMuted}" />

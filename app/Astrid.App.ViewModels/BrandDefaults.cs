@@ -50,6 +50,43 @@ public static class BrandDefaults
     public static string ShortName { get; } = Read("AstridBrandShortName") ?? AstridShortName;
 
     /// <summary>
+    /// The host a reader is sent to when the client cannot finish a job — "…at astrid.cc".
+    /// </summary>
+    /// <remarks>
+    /// Derived from <see cref="ServerOrigin"/> rather than carried beside it. A build that talks to
+    /// one host and names another in its copy sends a partner's user to our sign-in page, and two
+    /// properties that have to agree eventually do not. The baked-in server, not the
+    /// <c>ASTRID_SERVER_URL</c> one: a developer pointed at a staging host is still reading the
+    /// product's own documentation.
+    /// </remarks>
+    public static string Domain { get; } = new Uri(ServerOrigin).Host;
+
+    /// <summary>The address a task can be mailed to, as the Tasks settings page prints it.</summary>
+    /// <remarks>
+    /// Its own value, because an inbound address need not live on the web domain — a partner
+    /// routing mail through their own provider is the ordinary case. The fallback is this brand's
+    /// own domain and never ours: a partner who sets nothing should print an address that at worst
+    /// bounces, rather than one that files their user's task in someone else's account.
+    /// </remarks>
+    public static string InboundTaskEmail { get; } = ReadInboundTaskEmail();
+
+    /// <summary>The assistant's name: "Let Astrid choose".</summary>
+    /// <remarks>
+    /// astrid-web's <c>BRAND.agentIdentityName</c>, which falls back to the brand name for the same
+    /// reason this does — most deployments call the assistant after the product, and the ones that
+    /// do not say so once.
+    /// </remarks>
+    public static string AgentName { get; } = Read("AstridBrandAgentName") ?? ShortName;
+
+    /// <summary>The handle the assistant is mentioned by: "The model behind @astrid".</summary>
+    /// <remarks>
+    /// astrid-web's <c>BRAND.wordmark</c>. Lower case by default because a mention is, and
+    /// <see cref="AgentName"/> is not: "@Astrid" is not the handle the server would match.
+    /// </remarks>
+    public static string Wordmark { get; } =
+        Read("AstridBrandWordmark")?.ToLowerInvariant() ?? ShortName.ToLowerInvariant();
+
+    /// <summary>
     /// The origin the build named, if it is one this app would accept at runtime.
     /// </summary>
     /// <remarks>
@@ -90,6 +127,29 @@ public static class BrandDefaults
         return configured.All(c => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c == '-')
             ? configured
             : AstridScheme;
+    }
+
+    /// <summary>
+    /// The inbound address the build named, if it is one a reader could actually mail.
+    /// </summary>
+    /// <remarks>
+    /// Held to the same "validated, not trusted" rule as the server and the scheme, and for the
+    /// same reason: the value comes from a command line. A local part and a host, no spaces — not
+    /// RFC 5322, which would accept a quoted string with a comma in it and tell a reader nothing.
+    /// A build with a typo prints this brand's own default rather than a line that cannot be mailed.
+    /// </remarks>
+    private static string ReadInboundTaskEmail()
+    {
+        var fallback = $"remindme@{Domain}";
+        var configured = Read("AstridBrandInboundTaskEmail");
+        if (configured is null)
+        {
+            return fallback;
+        }
+        var at = configured.IndexOf('@');
+        var usable = at > 0 && at == configured.LastIndexOf('@') && at < configured.Length - 1
+            && !configured.Any(char.IsWhiteSpace);
+        return usable ? configured : fallback;
     }
 
     /// <summary>

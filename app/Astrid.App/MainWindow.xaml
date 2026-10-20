@@ -3,8 +3,7 @@
     x:Class="Astrid.App.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:Astrid.App"
-    Title="Astrid">
+    xmlns:local="using:Astrid.App">
 
     <!--
         The window is a frame and nothing else. Everything it shows lives in ShellPage, because

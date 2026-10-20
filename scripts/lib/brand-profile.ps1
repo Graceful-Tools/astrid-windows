@@ -17,6 +17,13 @@
         NEXT_PUBLIC_BRAND_TAGLINE          the one-line description
         NEXT_PUBLIC_BRAND_APP_URL_SCHEME   the scheme the installer registers, without "://"
         NEXT_PUBLIC_BRAND_DOMAIN           the server the build talks to, as https://<domain>
+        NEXT_PUBLIC_BRAND_INBOUND_TASK_EMAIL  the address a task can be mailed to
+        NEXT_PUBLIC_BRAND_AGENT_NAME       what the assistant is called on screen
+        NEXT_PUBLIC_BRAND_WORDMARK         the handle it is mentioned by, without the "@"
+
+    The last three are the words a reader sees rather than the package's identity (task 8d241526),
+    and each falls back the way astrid-web's does: the agent's name and handle to the brand name,
+    the address to remindme@<this brand's domain>.
 
     Four things are Windows's alone and have nowhere to live in the shared block, so they come from
     an optional `windows` object in the same file - the same arrangement as the `ios` block
@@ -69,6 +76,9 @@ function Get-AstridBrandProfile {
         Scheme               = 'astrid'
         SchemeDisplayName    = 'Astrid'
         ServerUrl            = 'https://astrid.cc'
+        InboundTaskEmail     = 'remindme@astrid.cc'
+        AgentName            = 'Astrid'
+        Wordmark             = 'astrid'
         AssetsDirectory      = (Join-Path $RepoRoot 'packaging/Assets')
         IdentityName         = $null
         IdentityPublisher    = $null
@@ -88,6 +98,9 @@ function Get-AstridBrandProfile {
     $tagline = Get-AstridBrandMember $shared 'NEXT_PUBLIC_BRAND_TAGLINE'
     $scheme = Get-AstridBrandMember $shared 'NEXT_PUBLIC_BRAND_APP_URL_SCHEME'
     $domain = Get-AstridBrandMember $shared 'NEXT_PUBLIC_BRAND_DOMAIN'
+    $inbound = Get-AstridBrandMember $shared 'NEXT_PUBLIC_BRAND_INBOUND_TASK_EMAIL'
+    $agentName = Get-AstridBrandMember $shared 'NEXT_PUBLIC_BRAND_AGENT_NAME'
+    $wordmark = Get-AstridBrandMember $shared 'NEXT_PUBLIC_BRAND_WORDMARK'
 
     $profileName = Get-AstridBrandMember $json 'name'
     if ($profileName) { $values.Name = $profileName }
@@ -99,11 +112,26 @@ function Get-AstridBrandProfile {
         $values.PublisherDisplayName = $name
         $values.ShortName = $name
         $values.SchemeDisplayName = $name
+        # Most deployments call the assistant after the product, and the handle it is mentioned by
+        # is that name in lower case - astrid-web's BRAND.agentIdentityName and BRAND.wordmark,
+        # which fall back the same way. A deployment that disagrees says so below.
+        $values.AgentName = $name
+        $values.Wordmark = $name.ToLowerInvariant()
     }
     if ($title) { $values.DisplayName = $title }
     if ($tagline) { $values.Description = $tagline }
     if ($scheme) { $values.Scheme = $scheme }
-    if ($domain) { $values.ServerUrl = "https://$domain" }
+    if ($domain) {
+        $values.ServerUrl = "https://$domain"
+        # THE BRAND'S OWN DOMAIN, never ours. astrid-web's BRAND.inboundTaskEmail falls back to the
+        # literal remindme@astrid.cc, which is harmless on a server that knows its own routing and
+        # is not harmless in a window: it is the address a partner's user would be told to mail,
+        # and it would file their task in someone else's account. A deliberate divergence from web.
+        $values.InboundTaskEmail = "remindme@$domain"
+    }
+    if ($inbound) { $values.InboundTaskEmail = $inbound }
+    if ($agentName) { $values.AgentName = $agentName }
+    if ($wordmark) { $values.Wordmark = $wordmark.ToLowerInvariant() }
 
     # The Windows block, last, because it is the only one written for this platform and so it wins.
     foreach ($pair in @(
@@ -114,6 +142,9 @@ function Get-AstridBrandProfile {
             @('scheme', 'Scheme'),
             @('schemeDisplayName', 'SchemeDisplayName'),
             @('serverUrl', 'ServerUrl'),
+            @('inboundTaskEmail', 'InboundTaskEmail'),
+            @('agentName', 'AgentName'),
+            @('wordmark', 'Wordmark'),
             @('identityName', 'IdentityName'),
             @('identityPublisher', 'IdentityPublisher'))) {
         $value = Get-AstridBrandMember $windows $pair[0]
@@ -184,6 +215,11 @@ function Assert-AstridBrandProfile {
     }
     if ($Values.ServerUrl -notmatch '^https://[^/\s]+$') {
         throw "brand profile $File has an unusable server URL '$($Values.ServerUrl)': https and a host, no path."
+    }
+    # Printed on the Tasks settings page as the address to mail a task to. A typo here is a line a
+    # reader copies, mails, and never hears back from - and nothing else in the build would notice.
+    if ($Values.InboundTaskEmail -notmatch '^[^@\s]+@[^@\s]+$') {
+        throw "brand profile $File has an unusable inbound task address '$($Values.InboundTaskEmail)': one local part, one host, no spaces."
     }
     if (-not (Test-Path -LiteralPath $Values.AssetsDirectory)) {
         throw "brand profile $File names an assets directory that does not exist: $($Values.AssetsDirectory)"

@@ -147,9 +147,6 @@
   <data name="smart_email_to_task_hint" xml:space="preserve">
     <value>Aufgaben erstellen, indem Sie eine E-Mail senden an</value>
   </data>
-  <data name="smart_email_address" xml:space="preserve">
-    <value>remindme@astrid.cc</value>
-  </data>
   <data name="smart_default_due_date" xml:space="preserve">
     <value>Standard-Fälligkeitsdatum</value>
   </data>
@@ -573,9 +570,6 @@
   <data name="dialog_close" xml:space="preserve">
     <value>Schließen</value>
   </data>
-  <data name="app_name" xml:space="preserve">
-    <value>Astrid</value>
-  </data>
   <data name="settings_account" xml:space="preserve">
     <value>Konto</value>
   </data>
@@ -677,9 +671,6 @@
   </data>
   <data name="assignee_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Zugewiesen an</value>
-  </data>
-  <data name="astrid.Text" xml:space="preserve">
-    <value>Astrid</value>
   </data>
   <data name="attach_a_file.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Datei anhängen</value>
@@ -815,9 +806,6 @@
   </data>
   <data name="ctrl_k_finds_a_list_a.Text" xml:space="preserve">
     <value>Strg+K findet eine Liste, eine Aufgabe oder einen Befehl.</value>
-  </data>
-  <data name="ctrl_shift_a_brings_astrid_forward.Text" xml:space="preserve">
-    <value>Strg+Umschalt+A holt Astrid von überall in den Vordergrund, bereit für eine neue Aufgabe.</value>
   </data>
   <data name="custom.Text" xml:space="preserve">
     <value>Benutzerdefiniert</value>
@@ -1410,9 +1398,6 @@
   <data name="timer_button.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Timer</value>
   </data>
-  <data name="turn_one_on_for_this_list.Text" xml:space="preserve">
-    <value>Schalten Sie eines für diese Liste in astrid.app ein, und seine Spalten erscheinen hier.</value>
-  </data>
   <data name="verification_state.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Verifizierungsstatus</value>
   </data>
@@ -1501,7 +1486,28 @@
     <value>Schnellzugriff-Tastenkürzel</value>
   </data>
   <data name="appearance_hotkey_hint" xml:space="preserve">
-    <value>Holt Astrid von überall in den Vordergrund, bereit für eine neue Aufgabe. Strg, Alt oder Win plus ein Buchstabe oder eine Ziffer.</value>
+    <value>Holt {0} von überall in den Vordergrund, bereit für eine neue Aufgabe. Strg, Alt oder Win plus ein Buchstabe oder eine Ziffer.</value>
+  </data>
+  <data name="brand_board_turn_one_on" xml:space="preserve">
+    <value>Schalten Sie eines für diese Liste in {0} ein, und seine Spalten erscheinen hier.</value>
+  </data>
+  <data name="brand_connections_web_session" xml:space="preserve">
+    <value>Der Server verlangt dafür einen angemeldeten Browser. Öffnen Sie auf {0} die Einstellungen, dann Verbindungen.</value>
+  </data>
+  <data name="brand_tour_hotkey" xml:space="preserve">
+    <value>Strg+Umschalt+A holt {0} von überall in den Vordergrund, bereit für eine neue Aufgabe.</value>
+  </data>
+  <data name="brand_agent_model_heading" xml:space="preserve">
+    <value>Das Modell hinter @{0}</value>
+  </data>
+  <data name="brand_agent_model_none" xml:space="preserve">
+    <value>Fügen Sie unten einen API-Schlüssel hinzu oder registrieren Sie einen eigenen Agenten, um {0} zu betreiben.</value>
+  </data>
+  <data name="brand_agent_model_auto" xml:space="preserve">
+    <value>{0} wählen lassen</value>
+  </data>
+  <data name="brand_agent_model_hint" xml:space="preserve">
+    <value>Wählen Sie das Modell, das {0} für „Meine Aufgaben“ und Ihre privaten Listen antreibt.</value>
   </data>
   <data name="appearance_apply" xml:space="preserve">
     <value>Anwenden</value>
@@ -1560,9 +1566,6 @@
   <data name="hotkey_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Schnellzugriff-Tastenkürzel</value>
   </data>
-  <data name="hotkey_hint.Text" xml:space="preserve">
-    <value>Holt Astrid von überall in den Vordergrund, bereit für eine neue Aufgabe. Strg, Alt oder Win plus ein Buchstabe oder eine Ziffer.</value>
-  </data>
   <data name="list_image_caption.Text" xml:space="preserve">
     <value>Bild</value>
   </data>
@@ -1599,23 +1602,8 @@
   <data name="copy_this_task.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>In meine Aufgaben kopieren</value>
   </data>
-  <data name="astrid_model_heading.Text" xml:space="preserve">
-    <value>Das Modell hinter @astrid</value>
-  </data>
-  <data name="astrid_model_none.Text" xml:space="preserve">
-    <value>Fügen Sie unten einen API-Schlüssel hinzu oder registrieren Sie einen eigenen Agenten, um Astrid zu betreiben.</value>
-  </data>
-  <data name="astrid_model_auto.Content" xml:space="preserve">
-    <value>Astrid wählen lassen</value>
-  </data>
-  <data name="astrid_model_auto.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
-    <value>Astrid wählen lassen</value>
-  </data>
   <data name="powered_by.Text" xml:space="preserve">
     <value>Unterstützt von </value>
-  </data>
-  <data name="astrid_model_hint.Text" xml:space="preserve">
-    <value>Wählen Sie das Modell, das Astrid für „Meine Aufgaben“ und Ihre privaten Listen antreibt.</value>
   </data>
   <data name="agent_modes.Text" xml:space="preserve">
     <value>Agenten</value>
@@ -1731,9 +1719,6 @@
   <data name="settings_terms_line" xml:space="preserve">
     <value>Die Bedingungen, denen Sie zugestimmt haben</value>
   </data>
-  <data name="title_mark.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
-    <value>Astrid</value>
-  </data>
   <data name="rows_empty" xml:space="preserve">
     <value>Zeit, sich zu organisieren! Fügen Sie Ihre erste Aufgabe hinzu, um zu starten.</value>
   </data>
@@ -1796,9 +1781,6 @@
   </data>
   <data name="connections_web_session.Title" xml:space="preserve">
     <value>Bitte im Web erledigen</value>
-  </data>
-  <data name="connections_web_session_line.Text" xml:space="preserve">
-    <value>Der Server verlangt dafür einen angemeldeten Browser. Öffnen Sie auf astrid.cc die Einstellungen, dann Verbindungen.</value>
   </data>
   <data name="acts_as.Text" xml:space="preserve">
     <value>Handelt als </value>

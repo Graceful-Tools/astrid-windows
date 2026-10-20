@@ -108,7 +108,7 @@
                        FontWeight="SemiBold"
                        HorizontalAlignment="Center"
                        Foreground="{ThemeResource AstridTextSecondary}" />
-            <TextBlock x:Uid="turn_one_on_for_this_list" Text="Turn one on for this list in astrid.app, and its columns show up here."
+            <TextBlock Text="{x:Bind local:BrandCopy.BoardTurnOneOn}"
                        FontSize="12"
                        MaxWidth="320"
                        TextAlignment="Center"

@@ -54,10 +54,10 @@
                         <Image x:Uid="title_mark"
                                Source="{x:Bind local:Brand.Mark}"
                                Stretch="Uniform"
-                               AutomationProperties.Name="Astrid" />
+                               AutomationProperties.Name="{x:Bind local:BrandCopy.AppName}" />
                     </Border>
                     <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
-                        <TextBlock x:Uid="astrid" Text="Astrid"
+                        <TextBlock Text="{x:Bind local:BrandCopy.AppName}"
                                    Style="{ThemeResource TitleLargeTextBlockStyle}"
                                    Foreground="{ThemeResource AstridTextPrimary}" />
                         <TextBlock x:Uid="your_tasks_on_this_machine_and" Text="Your tasks, on this machine and everywhere else."
