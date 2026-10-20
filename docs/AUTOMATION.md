@@ -116,11 +116,6 @@ as it takes the task. Not list chat — that needs a board id, and this board's 
 nowhere in this repo. Not the pre-run queue either, which holds candidates rather than the choice;
 a note on the wrong task is worse than none, so with no task file the loop stays quiet.
 
-> **Not yet wired on the agent side.** `.claude/commands/fixall.md` still has to tell the run to
-> write its task id to `ASTRID_FIXALL_TASK_FILE`. Until that line lands the file is never written
-> and the board comment is simply skipped — the cleanup above, which is the part that unjams the
-> loop, does not depend on it.
-
 ### The start-of-tick sweep
 
 **A cleanup that only runs at death is the wrong shape.** Everything above happens *after* the
@@ -211,11 +206,12 @@ half hour for a path nobody is using, and the board is covered by the local Clau
 To put it back: add the four secrets **first**, then restore the `schedule:` block — the cron line
 it used is kept in a comment there, already interleaved with the other loops' clock minutes.
 
-Note that the atomic claim this path depends on cannot work for this board yet either:
-`claim-fixall-task.ts` POSTs to `astrid.cc`, whose allowlist
-(`astrid-web/lib/fixall-claim.ts`, `DEFAULT_FIXALL_CLAIM_BOARD_IDS`) names only the web and iOS
-boards, so every Windows task answers `CLAIM_CONFLICT`. Filed on the Astrid Web board as
-`db965bb1`; it needs a deploy of astrid-web, not a change here.
+The atomic claim that path depends on now works for this board: `claim-fixall-task.ts` POSTs to
+`astrid.cc`, and that allowlist (`astrid-web/lib/fixall-claim.ts`,
+`DEFAULT_FIXALL_CLAIM_BOARD_IDS`) has named the Windows board alongside web and iOS since
+2026-10-18 — task `db965bb1` on the Astrid Web board, deployed and verified. So a
+`CLAIM_CONFLICT` here now means what it means everywhere else, a peer session got there first,
+and not the old permanent refusal.
 
 ## The queue is astrid-web's, on purpose
 

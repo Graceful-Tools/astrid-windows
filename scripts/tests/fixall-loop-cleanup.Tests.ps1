@@ -239,12 +239,18 @@ Write-Host 'the loop takes one task per run and can name the task it took' -Fore
 # variable the next change silently drops.
 $Loop = Get-Content (Join-Path $RepoRoot 'scripts\fixall-loop.ps1') -Raw
 $Automation = Get-Content (Join-Path $RepoRoot 'docs\AUTOMATION.md') -Raw
+# The third end of the contract (task 24bbc870): the loop exports these and AUTOMATION.md documents
+# them, but the agent only ever reads `.claude/commands/fixall.md`. A variable the run is never told
+# to write is a variable the loop waits on forever — which is exactly how ASTRID_FIXALL_TASK_FILE
+# shipped: exported, documented, and never written, so a died run reported on nothing.
+$Command = Get-Content (Join-Path $RepoRoot '.claude\commands\fixall.md') -Raw
 
 $script:Ran++
 Write-Host '  - caps the run at one task so it fits inside the watchdog'
 Assert-Match 'the loop exports the cap' '\$env:ASTRID_FIXALL_MAX_TASKS\s*=' $Loop
 Assert-Match 'and it defaults to one task' 'FIXALL_MAX_TASKS.*\}\s*else\s*\{\s*1\s*\}' ($Loop -replace '\r?\n', ' ')
 Assert-Match 'and AUTOMATION.md says so' 'ASTRID_FIXALL_MAX_TASKS' $Automation
+Assert-Match 'and the run is told to obey the cap' 'ASTRID_FIXALL_MAX_TASKS' $Command
 
 $script:Ran++
 Write-Host '  - gives one task a watchdog it can finish inside'
@@ -255,6 +261,7 @@ Write-Host '  - hands the run a file to name the task it takes, so a died run ca
 Assert-Match 'the loop exports the path' '\$env:ASTRID_FIXALL_TASK_FILE\s*=' $Loop
 Assert-Match 'and reports on that task when the run dies' 'Send-DiedRunNote' $Loop
 Assert-Match 'and AUTOMATION.md says so' 'ASTRID_FIXALL_TASK_FILE' $Automation
+Assert-Match 'and the run is told to write its task id there' 'ASTRID_FIXALL_TASK_FILE' $Command
 
 
 # ── The RESULT line says what the child said, not what usually goes wrong (task 73aa3492) ──────

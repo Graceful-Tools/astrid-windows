@@ -10,6 +10,17 @@ or bump its date) and `REVIEW` (Waiting with no recorded condition — give it o
 back) sections: those are part of the run, not commentary. It stops on its own when all three
 are clear, so a scheduled re-run that finds nothing is a no-op, not busywork.
 
+**When `ASTRID_FIXALL_TASK_FILE` is set, write the task's id to that path as you take it** (one
+line, overwriting). It is how the loop knows which task to report on if this run dies before it
+can report for itself — there is no other way for it to tell, and a note on the wrong task is
+worse than none.
+
+**If `ASTRID_FIXALL_MAX_TASKS` is set, stop after working that many Ready tasks**, and say so.
+`scripts/fixall-loop.ps1` sets it to `1`. `RECHECK` / `REVIEW` do not count toward it.
+
+**A branch whose tip reads `wip: … UNFINISHED, UNVERIFIED` is a resume point** — check it out and
+continue from it rather than starting over. It has passed no gate; never treat it as done.
+
 ## The workflow itself is shared
 
 **Read [`../astrid-web/docs/FIXALL_WORKFLOW.md`](../../../astrid-web/docs/FIXALL_WORKFLOW.md)
