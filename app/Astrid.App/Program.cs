@@ -30,7 +30,16 @@ public static partial class Program
     /// The key every copy of the app registers under. One key, so the second launch finds the
     /// first.
     /// </summary>
-    private const string InstanceKey = "Astrid.Main";
+    /// <remarks>
+    /// Per brand, because the key is per user rather than per app for an unpackaged build: a
+    /// partner build and an Astrid build on one machine shared <c>Astrid.Main</c>, so whichever
+    /// started first answered the other's activations — including the other's sign-in callback.
+    /// The brand's short name rather than its scheme, which would be the stronger guarantee: for
+    /// Astrid the short name is "Astrid", so this key is the one it has always been. Hosted Astrid
+    /// not changing is the constraint; two partners picking the same short name is a collision they
+    /// would see in Start long before they saw it here.
+    /// </remarks>
+    private static readonly string InstanceKey = $"{BrandDefaults.ShortName}.Main";
 
     [STAThread]
     public static int Main(string[] args)
@@ -181,7 +190,7 @@ public static partial class Program
                 }
                 using var associations = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
                     $@"{capabilities}\URLAssociations");
-                if (associations?.GetValue("astrid") is not string progId)
+                if (associations?.GetValue(BrandDefaults.UrlScheme) is not string progId)
                 {
                     continue;
                 }
@@ -198,11 +207,12 @@ public static partial class Program
             {
                 try
                 {
-                    ActivationRegistrationManager.UnregisterForProtocolActivation("astrid", other);
+                    ActivationRegistrationManager.UnregisterForProtocolActivation(
+                        BrandDefaults.UrlScheme, other);
                 }
                 catch (Exception error)
                 {
-                    App.Log($"could not unregister astrid:// for {other}: {error.Message}");
+                    App.Log($"could not unregister {BrandDefaults.UrlScheme}:// for {other}: {error.Message}");
                 }
             }
 
@@ -221,12 +231,13 @@ public static partial class Program
                 Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(appKey, throwOnMissingSubKey: false);
                 Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(
                     $@"Software\Classes\{claimant.ProgId}", throwOnMissingSubKey: false);
-                App.Log($"removed a stale astrid:// registration {claimant.Name} ({itsExecutable ?? "no command"})");
+                App.Log($"removed a stale {BrandDefaults.UrlScheme}:// registration {claimant.Name}"
+                    + $" ({itsExecutable ?? "no command"})");
             }
         }
         catch (Exception error)
         {
-            App.Log($"could not tidy astrid:// registrations: {error.Message}");
+            App.Log($"could not tidy {BrandDefaults.UrlScheme}:// registrations: {error.Message}");
         }
     }
 
@@ -247,14 +258,14 @@ public static partial class Program
         try
         {
             ActivationRegistrationManager.RegisterForProtocolActivation(
-                scheme: "astrid",
+                scheme: BrandDefaults.UrlScheme,
                 logo: $"{executable},1",
-                displayName: "Astrid",
+                displayName: BrandDefaults.ShortName,
                 exePath: executable);
         }
         catch (Exception error)
         {
-            App.Log($"could not register astrid:// through the App SDK: {error.Message}");
+            App.Log($"could not register {BrandDefaults.UrlScheme}:// through the App SDK: {error.Message}");
         }
 
         try
@@ -263,8 +274,8 @@ public static partial class Program
             // ProgId — the shell prefers the association when there is one — and the only thing
             // there is to resolve when there is not.
             using var scheme = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(
-                @"Software\Classes\astrid");
-            scheme.SetValue(null, "URL:Astrid");
+                $@"Software\Classes\{BrandDefaults.UrlScheme}");
+            scheme.SetValue(null, $"URL:{BrandDefaults.ShortName}");
             scheme.SetValue("URL Protocol", string.Empty);
 
             using var icon = scheme.CreateSubKey("DefaultIcon");
@@ -277,7 +288,7 @@ public static partial class Program
         }
         catch (Exception error)
         {
-            App.Log($"could not register astrid:// — sign-in will not come back: {error.Message}");
+            App.Log($"could not register {BrandDefaults.UrlScheme}:// — sign-in will not come back: {error.Message}");
         }
     }
 }

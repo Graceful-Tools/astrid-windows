@@ -1,0 +1,16 @@
+{
+  "name": "astrid",
+  "description": "Hosted Astrid, stated as a profile. Exists to prove that the brand plumbing changed nothing: `-Brand astrid` and no -Brand at all must produce identical values, which is asserted by BrandProfileTests. Keep it in step with astrid-web/brands/astrid.brand.json; the Windows block below holds the three things that have nowhere to live in the shared env block.",
+  "env": {
+    "NEXT_PUBLIC_BRAND_NAME": "Astrid",
+    "NEXT_PUBLIC_BRAND_TITLE": "Astrid Tasks",
+    "NEXT_PUBLIC_BRAND_TAGLINE": "Tasks, shared with the people you share them with.",
+    "NEXT_PUBLIC_BRAND_DOMAIN": "astrid.cc",
+    "NEXT_PUBLIC_BRAND_APP_URL_SCHEME": "astrid"
+  },
+  "windows": {
+    "publisherDisplayName": "Graceful Tools LLC",
+    "identityName": "GracefulToolsLLC.AstridTasks",
+    "identityPublisher": "CN=36A769F1-10B3-4F80-ACB6-472631B598DC"
+  }
+}

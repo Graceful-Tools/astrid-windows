@@ -23,7 +23,16 @@ namespace Astrid.App.ViewModels;
 /// </remarks>
 public static class ServerSelection
 {
-    public const string DefaultOrigin = "https://astrid.cc";
+    /// <summary>
+    /// The server this build was made for — Astrid's, unless a brand profile named another.
+    /// </summary>
+    /// <remarks>
+    /// It was a <c>const</c>, which made <c>ASTRID_SERVER_URL</c> the only way to reach a partner
+    /// deployment: a branded build started against astrid.cc every time it was launched without
+    /// the variable set. A property rather than a static field on purpose — see
+    /// <c>BrandDefaults.ReadOrigin</c>, which this would otherwise deadlock at initialisation.
+    /// </remarks>
+    public static string DefaultOrigin => BrandDefaults.ServerOrigin;
 
     /// <summary>
     /// The origin <paramref name="value"/> names, or null for the default. Accepts https anywhere
@@ -32,13 +41,27 @@ public static class ServerSelection
     /// </summary>
     public static string? Parse(string? value)
     {
+        var origin = ParseOrigin(value);
+        return origin == DefaultOrigin ? null : origin;
+    }
+
+    /// <summary>
+    /// As <see cref="Parse"/>, but answering the default origin by name rather than as null.
+    /// </summary>
+    /// <remarks>
+    /// Split out for <c>BrandDefaults</c>, which validates the origin the BUILD named and so
+    /// cannot ask what the default is — it is the thing being decided. Nothing else should prefer
+    /// it: "the same as the default" and "chosen" are different states everywhere else, and
+    /// <see cref="CacheFileName"/> depends on the difference.
+    /// </remarks>
+    public static string? ParseOrigin(string? value)
+    {
         if (string.IsNullOrWhiteSpace(value)) return null;
         if (!Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri)) return null;
         var secure = uri.Scheme == Uri.UriSchemeHttps;
         var loopback = uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback;
         if (!secure && !loopback) return null;
-        var origin = uri.GetLeftPart(UriPartial.Authority).ToLowerInvariant();
-        return origin == DefaultOrigin ? null : origin;
+        return uri.GetLeftPart(UriPartial.Authority).ToLowerInvariant();
     }
 
     /// <summary>The origin links should open: the chosen server, or Astrid.</summary>
