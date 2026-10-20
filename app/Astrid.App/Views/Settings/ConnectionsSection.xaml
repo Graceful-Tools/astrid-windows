@@ -52,8 +52,8 @@
                  Severity="Warning"
                  IsClosable="False"
                  Title="Do this on the web">
-            <TextBlock x:Uid="connections_web_session_line" TextWrapping="Wrap" FontSize="12"
-                       Text="The server wants a signed-in browser for this. Open Settings, then Connections, at astrid.cc." />
+            <TextBlock TextWrapping="Wrap" FontSize="12"
+                       Text="{x:Bind local:BrandCopy.ConnectionsWebSession}" />
         </InfoBar>
 
         <ItemsControl ItemsSource="{x:Bind Shell.Settings.Connections.Sections, Mode=OneWay}">

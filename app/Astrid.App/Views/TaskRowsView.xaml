@@ -203,7 +203,7 @@
                    Source="{x:Bind local:Brand.Mark}"
                    Width="150" Height="150"
                    VerticalAlignment="Top"
-                   AutomationProperties.Name="Astrid" />
+                   AutomationProperties.Name="{x:Bind local:BrandCopy.AppName}" />
             <Grid Grid.Column="1" VerticalAlignment="Top" Margin="0,10,0,0">
                 <Border CornerRadius="16"
                         Padding="16"

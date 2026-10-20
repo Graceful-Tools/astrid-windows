@@ -30,7 +30,9 @@
 .PARAMETER Brand
     A brand profile — a name resolved against packaging/brands/ then ../astrid-web/brands/, or a
     path to a *.brand.json file. It sets the display name, the publisher display name, the
-    description, the URL scheme, the default server and the tile set.
+    description, the URL scheme, the default server and the tile set - and the words the window
+    itself says: the product's name, the host a reader is sent to, the address a task is mailed to
+    and what the assistant is called (task 8d241526).
 
     OMITTED MEANS HOSTED ASTRID, byte for byte as before this parameter existed. That is asserted
     by BrandProfileTests rather than left to care: the whole point of a brand profile is that
@@ -125,6 +127,9 @@ foreach ($architecture in $Architectures) {
             "-p:AstridDefaultServerUrl=$($brand.ServerUrl)" `
             "-p:AstridUrlScheme=$($brand.Scheme)" `
             "-p:AstridBrandShortName=$($brand.ShortName)" `
+            "-p:AstridBrandInboundTaskEmail=$($brand.InboundTaskEmail)" `
+            "-p:AstridBrandAgentName=$($brand.AgentName)" `
+            "-p:AstridBrandWordmark=$($brand.Wordmark)" `
             -o $publish
     }
 

@@ -33,12 +33,22 @@
     <AstridDefaultServerUrl Condition="'$(AstridDefaultServerUrl)' == ''">https://astrid.cc</AstridDefaultServerUrl>
     <AstridUrlScheme Condition="'$(AstridUrlScheme)' == ''">astrid</AstridUrlScheme>
     <AstridBrandShortName Condition="'$(AstridBrandShortName)' == ''">Astrid</AstridBrandShortName>
+    <!--
+      The words, as opposed to the identity (task 8d241526). Each is left EMPTY by default rather
+      than restating Astrid's: BrandDefaults derives the inbound address from the server and the
+      agent's name and handle from the short name, so a value here is an override and an absent one
+      is the derivation. Spelling them out would be a second place for a partner's build to go
+      half-branded.
+    -->
   </PropertyGroup>
 
   <ItemGroup>
     <AssemblyMetadata Include="AstridDefaultServerUrl" Value="$(AstridDefaultServerUrl)" />
     <AssemblyMetadata Include="AstridUrlScheme" Value="$(AstridUrlScheme)" />
     <AssemblyMetadata Include="AstridBrandShortName" Value="$(AstridBrandShortName)" />
+    <AssemblyMetadata Include="AstridBrandInboundTaskEmail" Value="$(AstridBrandInboundTaskEmail)" />
+    <AssemblyMetadata Include="AstridBrandAgentName" Value="$(AstridBrandAgentName)" />
+    <AssemblyMetadata Include="AstridBrandWordmark" Value="$(AstridBrandWordmark)" />
   </ItemGroup>
 
   <ItemGroup>

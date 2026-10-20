@@ -53,8 +53,8 @@
                    Source="{x:Bind local:Brand.SmallMark}"
                    Width="20" Height="20"
                    VerticalAlignment="Center"
-                   AutomationProperties.Name="Astrid" />
-            <TextBlock x:Uid="astrid" Grid.Column="1" Text="Astrid"
+                   AutomationProperties.Name="{x:Bind local:BrandCopy.AppName}" />
+            <TextBlock Grid.Column="1" Text="{x:Bind local:BrandCopy.AppName}"
                        FontSize="13"
                        FontWeight="SemiBold"
                        VerticalAlignment="Center"

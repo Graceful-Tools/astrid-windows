@@ -126,7 +126,7 @@ internal static class Strings
         ["smart.title"] = "Tasks",
         ["smart.email_to_task"] = "Email-to-Task",
         ["smart.email_to_task_hint"] = "Create tasks by sending email to",
-        ["smart.email_address"] = "remindme@astrid.cc",
+        // The address itself is not a word: it comes from the build, through BrandCopy.
         ["smart.default_due_date"] = "Default due date",
         ["smart.default_due_date_hint"] = "Tasks created by email are due this long after they are sent.",
         ["smart.default_due_time"] = "Default due time",
@@ -294,7 +294,6 @@ internal static class Strings
         ["agents.secret_title"] = "Copy this now — it is not shown again",
         ["dialog.close"] = "Close",
         ["agents.no_key"] = "No key",
-        ["app.name"] = "Astrid",
         ["settings.account"] = "Account",
         ["settings.reminders"] = "Reminders",
         ["settings.appearance"] = "Appearance",
@@ -336,8 +335,19 @@ internal static class Strings
         ["outbox.retry_sent"] = "{0} sent again",
         ["outbox.retry_none"] = "Nothing to retry",
         ["appearance.hotkey"] = "Quick-add shortcut",
-        ["appearance.hotkey_hint"] = "Brings Astrid forward from anywhere, ready for a new task. Ctrl, Alt or Win, plus one letter or digit.",
         ["appearance.apply"] = "Apply",
+        // The lines that have to name the brand (task 8d241526). {0} is filled in by BrandCopy
+        // from the build's own profile, so a translator owns the sentence and the packager owns
+        // the noun — and hosted Astrid reads exactly as it always did.
+        ["appearance.hotkey_hint"] = "Brings {0} forward from anywhere, ready for a new task. Ctrl, Alt or Win, plus one letter or digit.",
+        // Said "astrid.app" until task 8d241526, which is not a host this product has ever been on.
+        ["brand.board_turn_one_on"] = "Turn one on for this list in {0}, and its columns show up here.",
+        ["brand.connections_web_session"] = "The server wants a signed-in browser for this. Open Settings, then Connections, at {0}.",
+        ["brand.tour_hotkey"] = "Ctrl+Shift+A brings {0} forward from anywhere, ready for a new task.",
+        ["brand.agent_model_heading"] = "The model behind @{0}",
+        ["brand.agent_model_none"] = "Add an API key or register a custom agent below to power {0}.",
+        ["brand.agent_model_auto"] = "Let {0} choose",
+        ["brand.agent_model_hint"] = "Choose the model that powers {0} for My Tasks and your private lists.",
     };
 
     /// <summary>The fallback table, for the tests that check every key has a string.</summary>

@@ -148,9 +148,6 @@
   <data name="smart_email_to_task_hint" xml:space="preserve">
     <value>Create tasks by sending email to</value>
   </data>
-  <data name="smart_email_address" xml:space="preserve">
-    <value>remindme@astrid.cc</value>
-  </data>
   <data name="smart_default_due_date" xml:space="preserve">
     <value>Default due date</value>
   </data>
@@ -574,9 +571,6 @@
   <data name="dialog_close" xml:space="preserve">
     <value>Close</value>
   </data>
-  <data name="app_name" xml:space="preserve">
-    <value>Astrid</value>
-  </data>
   <data name="settings_account" xml:space="preserve">
     <value>Account</value>
   </data>
@@ -678,9 +672,6 @@
   </data>
   <data name="assignee_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Assignee</value>
-  </data>
-  <data name="astrid.Text" xml:space="preserve">
-    <value>Astrid</value>
   </data>
   <data name="attach_a_file.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Attach a file</value>
@@ -816,9 +807,6 @@
   </data>
   <data name="ctrl_k_finds_a_list_a.Text" xml:space="preserve">
     <value>Ctrl+K finds a list, a task or a command.</value>
-  </data>
-  <data name="ctrl_shift_a_brings_astrid_forward.Text" xml:space="preserve">
-    <value>Ctrl+Shift+A brings Astrid forward from anywhere, ready for a new task.</value>
   </data>
   <data name="custom.Text" xml:space="preserve">
     <value>Custom</value>
@@ -1411,9 +1399,6 @@
   <data name="timer_button.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Timer</value>
   </data>
-  <data name="turn_one_on_for_this_list.Text" xml:space="preserve">
-    <value>Turn one on for this list in astrid.app, and its columns show up here.</value>
-  </data>
   <data name="verification_state.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Verification state</value>
   </data>
@@ -1502,7 +1487,28 @@
     <value>Quick-add shortcut</value>
   </data>
   <data name="appearance_hotkey_hint" xml:space="preserve">
-    <value>Brings Astrid forward from anywhere, ready for a new task. Ctrl, Alt or Win, plus one letter or digit.</value>
+    <value>Brings {0} forward from anywhere, ready for a new task. Ctrl, Alt or Win, plus one letter or digit.</value>
+  </data>
+  <data name="brand_board_turn_one_on" xml:space="preserve">
+    <value>Turn one on for this list in {0}, and its columns show up here.</value>
+  </data>
+  <data name="brand_connections_web_session" xml:space="preserve">
+    <value>The server wants a signed-in browser for this. Open Settings, then Connections, at {0}.</value>
+  </data>
+  <data name="brand_tour_hotkey" xml:space="preserve">
+    <value>Ctrl+Shift+A brings {0} forward from anywhere, ready for a new task.</value>
+  </data>
+  <data name="brand_agent_model_heading" xml:space="preserve">
+    <value>The model behind @{0}</value>
+  </data>
+  <data name="brand_agent_model_none" xml:space="preserve">
+    <value>Add an API key or register a custom agent below to power {0}.</value>
+  </data>
+  <data name="brand_agent_model_auto" xml:space="preserve">
+    <value>Let {0} choose</value>
+  </data>
+  <data name="brand_agent_model_hint" xml:space="preserve">
+    <value>Choose the model that powers {0} for My Tasks and your private lists.</value>
   </data>
   <data name="appearance_apply" xml:space="preserve">
     <value>Apply</value>
@@ -1561,9 +1567,6 @@
   <data name="hotkey_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Quick-add shortcut</value>
   </data>
-  <data name="hotkey_hint.Text" xml:space="preserve">
-    <value>Brings Astrid forward from anywhere, ready for a new task. Ctrl, Alt or Win, plus one letter or digit.</value>
-  </data>
   <data name="list_image_caption.Text" xml:space="preserve">
     <value>Image</value>
   </data>
@@ -1600,23 +1603,8 @@
   <data name="copy_this_task.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Copy to my tasks</value>
   </data>
-  <data name="astrid_model_heading.Text" xml:space="preserve">
-    <value>The model behind @astrid</value>
-  </data>
-  <data name="astrid_model_none.Text" xml:space="preserve">
-    <value>Add an API key or register a custom agent below to power Astrid.</value>
-  </data>
-  <data name="astrid_model_auto.Content" xml:space="preserve">
-    <value>Let Astrid choose</value>
-  </data>
-  <data name="astrid_model_auto.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
-    <value>Let Astrid choose</value>
-  </data>
   <data name="powered_by.Text" xml:space="preserve">
     <value>Powered by </value>
-  </data>
-  <data name="astrid_model_hint.Text" xml:space="preserve">
-    <value>Choose the model that powers Astrid for My Tasks and your private lists.</value>
   </data>
   <data name="agent_modes.Text" xml:space="preserve">
     <value>Agents</value>
@@ -1732,9 +1720,6 @@
   <data name="settings_terms_line" xml:space="preserve">
     <value>The terms you agreed to</value>
   </data>
-  <data name="title_mark.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
-    <value>Astrid</value>
-  </data>
   <data name="rows_empty" xml:space="preserve">
     <value>Time to get organized! Add your first task to get started.</value>
   </data>
@@ -1797,9 +1782,6 @@
   </data>
   <data name="connections_web_session.Title" xml:space="preserve">
     <value>Do this on the web</value>
-  </data>
-  <data name="connections_web_session_line.Text" xml:space="preserve">
-    <value>The server wants a signed-in browser for this. Open Settings, then Connections, at astrid.cc.</value>
   </data>
   <data name="acts_as.Text" xml:space="preserve">
     <value>Acts as </value>
