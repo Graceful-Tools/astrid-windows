@@ -26,11 +26,27 @@
 
 .PARAMETER Version
     Four parts, as MSIX requires: 0.1.0.0. The last must be 0 for a Store submission.
+
+.PARAMETER Brand
+    A brand profile — a name resolved against packaging/brands/ then ../astrid-web/brands/, or a
+    path to a *.brand.json file. It sets the display name, the publisher display name, the
+    description, the URL scheme, the default server and the tile set.
+
+    OMITTED MEANS HOSTED ASTRID, byte for byte as before this parameter existed. That is asserted
+    by BrandProfileTests rather than left to care: the whole point of a brand profile is that
+    Astrid's own build does not notice it.
+
+    See scripts/lib/brand-profile.ps1 for the mapping and packaging/brands/README.md for how to add
+    a partner.
+
+.EXAMPLE
+    powershell -File scripts/package.ps1 -Brand acme
 #>
 param(
     [string]$Version = '0.1.0.0',
     [string[]]$Architectures = @('x64', 'arm64'),
-    [string]$Configuration = 'Release'
+    [string]$Configuration = 'Release',
+    [string]$Brand = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -41,6 +57,10 @@ Set-Location $repoRoot
 # the reason this is not done inline: under the Stop above, a redirected native stderr is a
 # terminating error even on a zero exit, so a tool that merely warns would fail the build.
 . (Join-Path $PSScriptRoot 'lib\invoke-build-tool.ps1')
+
+# Which brand this package is. Everything a partner can change comes from here, and with no -Brand
+# every value is today's Astrid one.
+. (Join-Path $PSScriptRoot 'lib\brand-profile.ps1')
 
 if ($Version -notmatch '^\d+\.\d+\.\d+\.\d+$') {
     throw "Version must have four parts, e.g. 0.1.0.0 — MSIX will not accept anything else."
@@ -54,12 +74,21 @@ if (-not $makeappx) {
     throw "makeappx.exe was not found. Restore the app project first: it comes with Microsoft.Windows.SDK.BuildTools."
 }
 
+$brand = Get-AstridBrandProfile -Brand $Brand -RepoRoot $repoRoot
+if ($Brand) {
+    Write-Host ''
+    Write-Host "[*] brand: $($brand.Name) - $($brand.DisplayName), $($brand.Scheme)://, $($brand.ServerUrl)" -ForegroundColor Cyan
+}
+
 # The identity Partner Center assigned. Substituted rather than written into the manifest, because
 # a package whose Identity differs from the reservation by one character is rejected at upload.
+#
+# A brand profile may carry its own, because the reservation belongs to the PARTNER's Partner
+# Center account: store-identity.json is this repo's, and a partner cannot edit it.
 $identityFile = Join-Path $repoRoot 'packaging/store-identity.json'
 $identity = Get-Content $identityFile -Raw | ConvertFrom-Json
-$identityName = $identity.identityName
-$identityPublisher = $identity.identityPublisher
+$identityName = if ($brand.IdentityName) { $brand.IdentityName } else { $identity.identityName }
+$identityPublisher = if ($brand.IdentityPublisher) { $brand.IdentityPublisher } else { $identity.identityPublisher }
 
 if ($identityName -like 'REPLACE*' -or $identityPublisher -like 'REPLACE*') {
     # Obviously fake, so a package built before the reservation exists cannot be mistaken for one
@@ -85,20 +114,39 @@ foreach ($architecture in $Architectures) {
 
     # Self-contained, so the package carries its own runtime: a person installing from the Store
     # should not then be told to install .NET.
+    # The brand values the RUNNING app needs, as build properties: the manifest is read by Windows,
+    # not by the app, so a package with a partner's manifest over a default build would show the
+    # partner's name in Start and then sign in to astrid.cc. ASTRID_SERVER_URL still overrides the
+    # baked-in server at runtime - see ServerSelection - which is what makes a partner build
+    # testable against a staging host.
     Invoke-BuildTool "publish failed for $rid" {
         dotnet publish (Join-Path $repoRoot 'app/Astrid.App/Astrid.App.csproj') `
-            -c $Configuration -r $rid --self-contained true -p:AstridPackaged=true -o $publish
+            -c $Configuration -r $rid --self-contained true -p:AstridPackaged=true `
+            "-p:AstridDefaultServerUrl=$($brand.ServerUrl)" `
+            "-p:AstridUrlScheme=$($brand.Scheme)" `
+            "-p:AstridBrandShortName=$($brand.ShortName)" `
+            -o $publish
     }
 
     # AstridPackaged=true above leaves WindowsPackageType unset, which is how the SDK is told to
     # build for MSIX. Without it these are unpackaged binaries, and the astrid:// scheme is written
     # into HKCU at startup instead of coming from the manifest — see Program.cs.
 
-    # The manifest, with this architecture, version and identity in it.
+    # The manifest, with this architecture, version, identity and brand in it.
+    #
+    # The brand's text is XML-escaped: a partner's name can hold an ampersand ("Smith & Sons"),
+    # and makeappx rejects the whole manifest for one. The scheme is not, because the loader
+    # already refuses anything outside [a-z0-9-].
     $manifest = Get-Content (Join-Path $repoRoot 'packaging/AppxManifest.xml') -Raw
     $manifest = $manifest.Replace('{VERSION}', $Version).Replace('{ARCHITECTURE}', $architecture)
     $manifest = $manifest.Replace('{IDENTITY_NAME}', $identityName)
     $manifest = $manifest.Replace('{IDENTITY_PUBLISHER}', $identityPublisher)
+    $manifest = $manifest.Replace('{DISPLAY_NAME}', [System.Security.SecurityElement]::Escape($brand.DisplayName))
+    $manifest = $manifest.Replace('{PUBLISHER_DISPLAY_NAME}', [System.Security.SecurityElement]::Escape($brand.PublisherDisplayName))
+    $manifest = $manifest.Replace('{DESCRIPTION}', [System.Security.SecurityElement]::Escape($brand.Description))
+    $manifest = $manifest.Replace('{SHORT_NAME}', [System.Security.SecurityElement]::Escape($brand.ShortName))
+    $manifest = $manifest.Replace('{SCHEME}', $brand.Scheme)
+    $manifest = $manifest.Replace('{SCHEME_DISPLAY_NAME}', [System.Security.SecurityElement]::Escape($brand.SchemeDisplayName))
     Set-Content -Path (Join-Path $publish 'AppxManifest.xml') -Value $manifest -Encoding utf8
 
     # The Store tiles go INTO the published Assets folder, alongside the app's own.
@@ -110,9 +158,11 @@ foreach ($architecture in $Architectures) {
     # and then failed at INSTALL with 0x80073CF6, "the splash screen image cannot be located" -
     # which nobody saw, because nobody had ever installed it. Found on the first real install,
     # 2026-09-27. Copying the CONTENTS merges the two folders, which is what was always meant.
+    # From the BRAND's tile set, which is packaging/Assets unless a profile names another. A
+    # partner's icons are the one thing substitution cannot do: they are files, not strings.
     $assetsDest = Join-Path $publish 'Assets'
     New-Item -ItemType Directory -Force -Path $assetsDest | Out-Null
-    Copy-Item -Recurse -Force (Join-Path $repoRoot 'packaging/Assets/*') $assetsDest
+    Copy-Item -Recurse -Force (Join-Path $brand.AssetsDirectory '*') $assetsDest
 
     # Every asset the manifest names has to be where it says it is. Windows only checks at install
     # time, names one missing file, and stops - so a layout mistake costs a full build, a signature

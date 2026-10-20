@@ -1,0 +1,17 @@
+{
+  "name": "acme",
+  "description": "A fully rebranded deployment: a different name, publisher, description, URL scheme, server and tile set, sharing nothing with Astrid. The counterpart to astrid-web's acme.brand.json, and it exists for the same reason - a profile that merely loads is not a white-labelled build, so BrandProfileTests asserts that every value moves and that no Astrid value is left behind. Not a real partner; nothing here is deployed.",
+  "env": {
+    "NEXT_PUBLIC_BRAND_NAME": "Acme",
+    "NEXT_PUBLIC_BRAND_TITLE": "Acme Tasks",
+    "NEXT_PUBLIC_BRAND_TAGLINE": "Everything the roadrunner is working on.",
+    "NEXT_PUBLIC_BRAND_DOMAIN": "tasks.acme.example",
+    "NEXT_PUBLIC_BRAND_APP_URL_SCHEME": "acmetasks"
+  },
+  "windows": {
+    "publisherDisplayName": "Acme Corporation",
+    "identityName": "AcmeCorporation.AcmeTasks",
+    "identityPublisher": "CN=00000000-0000-0000-0000-000000000000",
+    "assets": "acme-assets"
+  }
+}

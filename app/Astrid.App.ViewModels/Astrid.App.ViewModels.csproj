@@ -18,6 +18,29 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
+  <!--
+    The brand this build is for, as assembly metadata BrandDefaults reads back.
+
+    Set by `scripts/package.ps1` from a brand profile and passed to `dotnet publish` of the app
+    project, from where MSBuild carries a global property down into every project reference — so
+    these land here without the app project restating them.
+
+    THE DEFAULTS ARE ASTRID'S, and an ordinary `dotnet build` of this repo is an Astrid build. The
+    values live on THIS project rather than on the shell's: BrandDefaults reads its own assembly,
+    because under the test runner the entry assembly is the test host and these would be invisible.
+  -->
+  <PropertyGroup>
+    <AstridDefaultServerUrl Condition="'$(AstridDefaultServerUrl)' == ''">https://astrid.cc</AstridDefaultServerUrl>
+    <AstridUrlScheme Condition="'$(AstridUrlScheme)' == ''">astrid</AstridUrlScheme>
+    <AstridBrandShortName Condition="'$(AstridBrandShortName)' == ''">Astrid</AstridBrandShortName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="AstridDefaultServerUrl" Value="$(AstridDefaultServerUrl)" />
+    <AssemblyMetadata Include="AstridUrlScheme" Value="$(AstridUrlScheme)" />
+    <AssemblyMetadata Include="AstridBrandShortName" Value="$(AstridBrandShortName)" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Astrid.Core.Bindings\Astrid.Core.Bindings.csproj" />
   </ItemGroup>

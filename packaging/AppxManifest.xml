@@ -41,10 +41,19 @@
     Version="{VERSION}"
     ProcessorArchitecture="{ARCHITECTURE}" />
 
+  <!--
+    Brand values, substituted by scripts/package.ps1 from a brand profile — Astrid's own unless
+    `-Brand` names another (scripts/lib/brand-profile.ps1). Placeholders rather than literals
+    because a partner cannot edit a file this repo owns: "Astrid Tasks" and "Graceful Tools LLC"
+    written here were two of the four things that stopped Windows producing a branded build at all.
+
+    PublisherDisplayName must match the Partner Center account's publisher display name exactly, so
+    it moves with the Identity above rather than independently of it.
+  -->
   <Properties>
-    <DisplayName>Astrid Tasks</DisplayName>
-    <PublisherDisplayName>Graceful Tools LLC</PublisherDisplayName>
-    <Description>Tasks, shared with the people you share them with.</Description>
+    <DisplayName>{DISPLAY_NAME}</DisplayName>
+    <PublisherDisplayName>{PUBLISHER_DISPLAY_NAME}</PublisherDisplayName>
+    <Description>{DESCRIPTION}</Description>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
@@ -91,13 +100,13 @@
         colour of ours that would fight it.
       -->
       <uap:VisualElements
-        DisplayName="Astrid Tasks"
-        Description="Tasks, shared with the people you share them with."
+        DisplayName="{DISPLAY_NAME}"
+        Description="{DESCRIPTION}"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
         <uap:DefaultTile
-          ShortName="Astrid"
+          ShortName="{SHORT_NAME}"
           Square71x71Logo="Assets\Square71x71Logo.png"
           Square310x310Logo="Assets\Square310x310Logo.png"
           Wide310x150Logo="Assets\Wide310x150Logo.png" />
@@ -114,9 +123,9 @@
             The display name is an element rather than an attribute: the uap schema puts it inside
             Protocol, and makeappx rejects the attribute form outright.
           -->
-          <uap:Protocol Name="astrid">
+          <uap:Protocol Name="{SCHEME}">
             <uap:Logo>Assets\Square44x44Logo.png</uap:Logo>
-            <uap:DisplayName>Astrid</uap:DisplayName>
+            <uap:DisplayName>{SCHEME_DISPLAY_NAME}</uap:DisplayName>
           </uap:Protocol>
         </uap:Extension>
       </Extensions>
