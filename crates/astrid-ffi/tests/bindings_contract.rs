@@ -218,6 +218,14 @@ const NOT_BOUND: &[(&str, &str)] = &[
          The same absent gesture as `dropBoardCard`, one level down.",
     ),
     (
+        "profileTasks",
+        "The public tasks a profile shares, beneath its three numbers, as iOS's UserProfileView \
+         draws them (task da326190). The only profile this shell has is the account page in \
+         Settings — `profileStats` is bound and the three numbers are drawn there — and it is \
+         your own account's settings, not a person's profile: nothing here opens somebody else's, \
+         so there is no section for these rows and nobody to be reading about.",
+    ),
+    (
         "reminderTriageDeck",
         "iOS's swipeable deck: the reminded task first, then what else is due today (AATD-54). A \
          reminder here is one Windows toast with buttons on it (`Reminders.cs`, raised from \
