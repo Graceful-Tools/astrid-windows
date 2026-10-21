@@ -105,7 +105,10 @@ public partial class App : Application
     {
         try
         {
-            Core = AstridClient.Start(CachePath(), ServerUrl);
+            // The brand's scheme, which is also what Program.cs registers and SignInCallback reads,
+            // so the core's own callback check follows the build rather than assuming `astrid`
+            // (task 8cbed184).
+            Core = AstridClient.Start(CachePath(), ServerUrl, BrandDefaults.UrlScheme);
             Core.Subscribe();
             WatchNetwork();
         }

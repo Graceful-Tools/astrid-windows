@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Astrid.App.ViewModels;
+using Astrid.Core.Bindings;
 using Xunit;
 
 namespace Astrid.App.Tests;
@@ -213,13 +214,50 @@ public sealed class BrandProfileTests
     }
 
     /// <summary>
+    /// The core is started with the brand's scheme, so its own callback check follows the build.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The last half of the white-label sign-in. <c>SignInCallback</c> has read the configured
+    /// scheme since <c>ac40a6ee</c>, but the core compared the callback against its own
+    /// <c>URL_SCHEME</c> constant — so a brand build whose manifest and registry registration use
+    /// its own scheme got as far as <c>AuthService::complete</c> and was answered
+    /// <c>CallbackOnAnotherScheme</c>, losing the sign-in with no error a user could act on. That
+    /// is what task 8cbed184 was filed about.
+    /// </para>
+    /// <para>
+    /// astrid-core <c>31882e0</c> (AWTD2-95) gave <c>Config</c> an optional <c>urlScheme</c>, and
+    /// this is the shell sending it. Absence still means <c>astrid</c>, so the key is omitted
+    /// rather than sent empty when there is nothing to say — a client that sends no scheme is
+    /// today's client.
+    /// </para>
+    /// <para>
+    /// Asserted on the config the shell builds rather than through a running core: the key IS the
+    /// contract, and a core without the field would ignore it in silence, since serde skips
+    /// unknown keys. There is nothing observable at the boundary to assert instead.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void The_core_is_started_with_the_brands_url_scheme_task_8cbed184()
+    {
+        var astrid = AstridClient.BuildStartConfig(":memory:", null, BrandDefaults.UrlScheme);
+        Assert.Contains("\"urlScheme\":\"astrid\"", astrid, StringComparison.Ordinal);
+
+        var partner = AstridClient.BuildStartConfig(":memory:", null, "acme");
+        Assert.Contains("\"urlScheme\":\"acme\"", partner, StringComparison.Ordinal);
+
+        var unsaid = AstridClient.BuildStartConfig(":memory:", null, null);
+        Assert.DoesNotContain("urlScheme", unsaid, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// A callback on the configured scheme is found; one on another scheme is not.
     /// </summary>
     /// <remarks>
     /// <c>SignInCallback</c> held <c>"astrid://"</c> as a constant, so a partner build registering
     /// its own scheme would have dropped every sign-in it was handed. It reads the configured
-    /// scheme now; the core still compares against its own <c>URL_SCHEME</c>, which is the half
-    /// that has to move there.
+    /// scheme now, and since task 8cbed184 the core is started with that same scheme, so both
+    /// ends of the comparison follow the build.
     /// </remarks>
     [Fact]
     public void The_callback_parser_follows_the_configured_scheme_task_ac40a6ee()

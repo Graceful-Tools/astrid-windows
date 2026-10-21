@@ -56,12 +56,6 @@ Both live here rather than only in astrid-web because CI checks out this repo al
 
 ## What is still Astrid's, and why
 
-- **The sign-in callback.** astrid-web already returns the browser to
-  `<NEXT_PUBLIC_BRAND_APP_URL_SCHEME>://auth/callback`, and this app now registers and reads the
-  configured scheme — but `astrid-core` compares the callback against its own `URL_SCHEME`
-  constant (`crates/astrid-core/src/services/auth.rs`), so a build on any other scheme still has
-  its sign-in refused. That is the core's half; until it lands, a partner build must keep
-  `astrid` as its scheme.
 - **The cache file name** (`astrid.db`, or `astrid-<host>.db` per server). A path on disk, not
   anything a reader sees, and renaming it per brand would strand the cache of every install that
   already exists.
