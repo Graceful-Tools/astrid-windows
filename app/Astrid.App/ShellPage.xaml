@@ -140,8 +140,19 @@
                        Visibility="{x:Bind Shell.Tasks.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
         </Grid>
 
-        <!-- The conversation. Beside the list, and collapsed rather than narrow when it is shut. -->
-        <views:ChatPane x:Name="Chat" Grid.Row="1" Grid.Column="2" />
+        <!--
+            The conversation. Beside the list, and collapsed rather than narrow when it is shut.
+
+            It yields its column to the open task's detail (task 1ffc12af): the pane used to be the
+            column after this one, which left the conversation wedged between the list and the
+            detail — the pane's arrow pointing at this pane's edge instead of at the row it
+            measured, and this pane's own hide control sitting beside the open task. With the column
+            at nothing the 360-wide pane in column 3 is flush against the list, which is where the
+            arrow has always aimed. A board card holding the detail is not the side pane, so the
+            board keeps its conversation.
+        -->
+        <views:ChatPane x:Name="Chat" Grid.Row="1" Grid.Column="2"
+                        Visibility="{x:Bind Shell.ShowsConversation, Mode=OneWay, Converter={StaticResource Visible}}" />
 
         <!--
             The task detail. Collapsed rather than merely narrow when nothing is open, so it is out

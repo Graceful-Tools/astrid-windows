@@ -552,6 +552,31 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public bool ShowsDetailPane => Detail.IsOpen && !ShowsDetailInline;
 
     /// <summary>
+    /// Whether the conversation has its column, or the side pane has taken its place
+    /// (task 1ffc12af).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The detail was the column <i>after</i> the chat's, so an open task left the conversation
+    /// wedged between the list and the detail — with the pane's arrow hanging off the chat pane's
+    /// edge rather than reaching the row it had measured, and the message panel's hide control
+    /// still on screen beside the open task.
+    /// </para>
+    /// <para>
+    /// Yielded rather than drawn behind: the layout comes to the same 360 either way, since an Auto
+    /// column the chat holds at 320 with the pane spanning both columns totals exactly what a
+    /// collapsed column and the pane alone do. So this is the reading of "cover" that does not
+    /// leave a composer and a hide button tab-reachable under an opaque pane — the rule
+    /// <see cref="ShowsDetailPane"/>'s own pane already follows.
+    /// </para>
+    /// <para>
+    /// The side pane only: a board card holding the detail is drawn in the list's column, so the
+    /// conversation beside it is not in anybody's way.
+    /// </para>
+    /// </remarks>
+    public bool ShowsConversation => !ShowsDetailPane;
+
+    /// <summary>
     /// Whether the list has nothing in it to show — the web's empty state, with the character
     /// and a word of encouragement. Off the board only: the board has its own.
     /// </summary>
@@ -585,6 +610,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         }
         Raise(nameof(ShowsDetailInline));
         Raise(nameof(ShowsDetailPane));
+        Raise(nameof(ShowsConversation));
         Raise(nameof(ShowsDetailFullScreen));
         Raise(nameof(CanEnterFullScreen));
         Raise(nameof(CanExitFullScreen));
