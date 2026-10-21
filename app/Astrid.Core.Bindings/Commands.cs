@@ -366,6 +366,13 @@ public static class Commands
     /// <summary>Send the verification email again.</summary>
     public static object ResendVerification() => new KindOnly("resendVerification");
 
+    /// <summary>
+    /// Change the signed-in user's email address (task 4c285039). The address changes only when
+    /// the link in the mail is followed, so the answer says verification was asked for — the
+    /// account screen keeps showing the old address until the server says otherwise.
+    /// </summary>
+    public static object ChangeEmail(string email) => new EmailRequest("changeEmail", email);
+
     /// <summary>The contacts this account imported for collaborator suggestions (task 438494c7).</summary>
     public static object Contacts() => new KindOnly("contacts");
 
@@ -381,6 +388,24 @@ public static class Commands
 
     /// <summary>Revoke a passkey.</summary>
     public static object RevokePasskey(string id) => new WithId("revokePasskey", id);
+
+    /// <summary>
+    /// Begin registering a passkey (task 4c285039). Answers the server's registration options and
+    /// a <c>sessionId</c>: the options go to Windows Hello unchanged, and the session id comes
+    /// back to <see cref="RegisterPasskey"/>. The two calls are one ceremony.
+    /// </summary>
+    public static object PasskeyRegistrationOptions() => new KindOnly("passkeyRegistrationOptions");
+
+    /// <summary>
+    /// Finish registering a passkey (task 4c285039) with what Windows Hello signed.
+    /// <paramref name="attestation"/> is the platform's registration response, passed through
+    /// whole — its shape is the WebAuthn spec's, and neither this shell nor the core reads it.
+    /// </summary>
+    public static object RegisterPasskey(
+        IReadOnlyDictionary<string, object?> attestation,
+        string sessionId,
+        string? name) =>
+        new RegisterPasskeyRequest("registerPasskey", sessionId, attestation, name);
 
     /// <summary>
     /// Delete the account for good. The core refuses anything but the exact phrase, as the server
@@ -1223,6 +1248,16 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("id")] string Id,
         [property: JsonPropertyName("name")] string Name);
+
+    private sealed record EmailRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("email")] string Email);
+
+    private sealed record RegisterPasskeyRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("sessionId")] string SessionId,
+        [property: JsonPropertyName("attestation")] IReadOnlyDictionary<string, object?> Attestation,
+        [property: JsonPropertyName("name")] string? Name);
 
     private sealed record ClosedReasonRequest(
         [property: JsonPropertyName("kind")] string Kind,
