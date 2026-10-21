@@ -271,6 +271,24 @@ public static class Commands
     public static object ExternalSync(string listId) =>
         new WithListId("externalSync", listId);
 
+    /// <summary>
+    /// The account's side of external sync: per provider, whether it is connected, which account
+    /// it is connected as, and every list it has linked — both ends of each named.
+    /// </summary>
+    /// <remarks>
+    /// Account-wide where <see cref="ExternalSync"/> is one list's, because that is the shape of
+    /// the Integrations page: a section per provider, headed "Connected as …" over its links.
+    /// </remarks>
+    public static object ExternalAccounts() => new KindOnly("externalAccounts");
+
+    /// <summary>Google's "New List": make a list on Google and bind it to an Astrid list.</summary>
+    /// <remarks>
+    /// One command because it is one gesture. The core also owns the half-done state — a list made
+    /// on Google that could not be bound is adopted by the next attempt rather than duplicated.
+    /// </remarks>
+    public static object CreateAndLinkGoogleList(string listId, string name) =>
+        new ListNamedRequest("createAndLinkGoogleList", listId, name);
+
     /// <summary>The URL to open in a browser to connect a provider.</summary>
     public static object ConnectProvider(string provider) =>
         new ProviderRequest("connectProvider", provider);
@@ -1017,6 +1035,11 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("name")] string Name,
         [property: JsonPropertyName("color")] string? Color);
+
+    private sealed record ListNamedRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("listId")] string ListId,
+        [property: JsonPropertyName("name")] string Name);
 
     private sealed record FavoriteRequest(
         [property: JsonPropertyName("kind")] string Kind,

@@ -32,7 +32,7 @@ dependencies = [
 [[package]]
 name = "astrid-core"
 version = "0.1.0"
-source = "git+https://github.com/Graceful-Tools/astrid-core.git?rev=395e35c598ad02109135c2ea96465343302e0ee9#395e35c598ad02109135c2ea96465343302e0ee9"
+source = "git+https://github.com/Graceful-Tools/astrid-core.git?rev=30d545f8410615501120403343a61953f4381d66#30d545f8410615501120403343a61953f4381d66"
 dependencies = [
  "astrid-rules",
  "async-trait",
@@ -69,7 +69,7 @@ dependencies = [
 [[package]]
 name = "astrid-rules"
 version = "0.1.0"
-source = "git+https://github.com/Graceful-Tools/astrid-core.git?rev=395e35c598ad02109135c2ea96465343302e0ee9#395e35c598ad02109135c2ea96465343302e0ee9"
+source = "git+https://github.com/Graceful-Tools/astrid-core.git?rev=30d545f8410615501120403343a61953f4381d66#30d545f8410615501120403343a61953f4381d66"
 dependencies = [
  "chrono",
  "chrono-tz",
@@ -326,7 +326,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -1105,7 +1105,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -1242,7 +1242,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -1439,7 +1439,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -1512,7 +1512,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
