@@ -62,7 +62,7 @@ milestones; this tracks the *product*.
 | Label lists | ❌ | ✅ | `listType: "label"` draws as a tag on the rows that carry it and is never a sidebar entry (the web's list flavours) |
 | Copy a task | ❌ | ✅ | Into a list, with or without its comments, from the task menu — the web's Copy |
 | Natural-language quick-add | ✅ | ✅ | "Call mum tomorrow urgent #health", "Standup weekly mon and wed" — the web's parser, in twelve languages, locked by `smart.json` (CONTRACTS D11, closed; D12 and D13 for what differs) |
-| Feature flags | ✅ | ✅ | The board and Google list linking follow `project_mode` and `google_tasks` from `/api/v1/features` |
+| Feature flags | ✅ | ✅ | The board and Google list linking follow `project_mode` and `google_tasks` from `/api/v1/features`. The board toggle needs both: the flag, and a list that actually belongs to a board — the sidebar's own `projectId`, the field web gates on (task a66f0a16) |
 | Global quick-add hotkey | ✅ | ✅ | Ctrl+Shift+A, and now rebindable from Appearance; the core judges the chord |
 | The leading control's three states | ✅ | ✅ | Your checkbox, someone else's initial in a priority square, the localised unassigned mark (PRODUCT_CONTRACT §4) |
 
