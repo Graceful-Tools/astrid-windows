@@ -17,6 +17,23 @@ public sealed class ShellViewModelTests
             isFavorite = list.Favorite,
         }).ToArray();
 
+    /// <summary>
+    /// The same lists, some of which belong to a project board (task a66f0a16).
+    /// </summary>
+    /// <remarks>
+    /// <c>projectId</c> is the field the board is offered on, so a test about the board has to be
+    /// able to say which of these lists has one. Favourites are beside the point here; everything
+    /// this builds lands in the sidebar's ordinary lists.
+    /// </remarks>
+    private static object Lists(params (string Id, string Name, string? ProjectId)[] lists) =>
+        lists.Select(list => new
+        {
+            id = list.Id,
+            name = list.Name,
+            isFavorite = false,
+            projectId = list.ProjectId,
+        }).ToArray();
+
     private static object EmptyWindow() => new { total = 0, offset = 0, rows = Array.Empty<object>() };
 
     /// <summary>
@@ -27,9 +44,13 @@ public sealed class ShellViewModelTests
     /// on it, and loading a sidebar behind a sign-in screen would show the previous user's lists.
     /// </remarks>
     private static FakeCore StartedCore(params (string Id, string Name, bool Favorite)[] lists) =>
+        StartedCoreWith(Lists(lists));
+
+    /// <summary>The same, for a sidebar payload a caller has built itself.</summary>
+    private static FakeCore StartedCoreWith(object lists) =>
         new FakeCore()
             .AnswerOk("isSignedIn", new { signedIn = true, waitingForCallback = false })
-            .AnswerOk("lists", Lists(lists))
+            .AnswerOk("lists", lists)
             .AnswerOk("rowsForList", EmptyWindow())
             .AnswerOk("outboxStats", new { pending = 0, running = 0, failed = 0, hasUnsentWork = false })
             .AnswerOk("sync", new { fetched = false });
@@ -326,6 +347,101 @@ public sealed class ShellViewModelTests
         await shell.SelectRowAsync("t2");
         Assert.True(shell.Detail.IsOpen, "a different task is a choice");
         Assert.Equal("t2", shell.Detail.TaskId);
+    }
+
+    /// <summary>
+    /// The board is offered only on a list that has one (task a66f0a16).
+    /// </summary>
+    /// <remarks>
+    /// The toggle used to be drawn for every list, and switching to it on a list belonging to no
+    /// project board showed a notice saying so — a control whose only outcome is an apology.
+    /// astrid-web has never offered it: <c>ListHeaderActions</c> draws nothing when the selected
+    /// list has no <c>projectId</c>, which the sidebar already knows for every list.
+    /// </remarks>
+    [Fact]
+    public async Task The_board_is_not_offered_on_a_list_with_no_board_task_a66f0a16()
+    {
+        var core = StartedCoreWith(Lists(("l1", "Home", null)));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        Assert.True(shell.ProjectModeEnabled, "the feature is on; it is this list that has no board");
+        Assert.False(shell.OpenListHasBoard);
+        Assert.False(shell.ShowsBoardToggle);
+    }
+
+    /// <summary>And offered on one that does, which is the whole point of hiding it elsewhere.</summary>
+    [Fact]
+    public async Task The_board_is_offered_on_a_list_that_belongs_to_one_task_a66f0a16()
+    {
+        var core = StartedCoreWith(Lists(("p1", "Launch", "proj-1")));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        Assert.True(shell.OpenListHasBoard);
+        Assert.True(shell.ShowsBoardToggle);
+    }
+
+    /// <summary>
+    /// My Tasks is a filter rather than a list, so it has no board and is never offered one
+    /// (task a66f0a16). It is also the view the app opens on, which made it the first thing
+    /// anybody met the empty board pane from.
+    /// </summary>
+    [Fact]
+    public async Task My_Tasks_is_never_offered_a_board_task_a66f0a16()
+    {
+        var core = StartedCoreWith(Lists(("l1", "Home", null)))
+            .AnswerOk("myTasksList", new { id = "virtual:my-tasks", name = "My Tasks", isVirtual = true });
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        Assert.Equal("virtual:my-tasks", shell.Tasks.ListId);
+        Assert.False(shell.ShowsBoardToggle);
+    }
+
+    /// <summary>
+    /// Opening a list with no board while the board is on screen goes back to the list
+    /// (task a66f0a16) — the effect astrid-web has in <c>TaskManagerView</c>.
+    /// </summary>
+    /// <remarks>
+    /// Without it the board stays on screen with its notice, and the toggle that would have
+    /// dismissed it is now hidden: no way out but to open the board list again.
+    /// </remarks>
+    [Fact]
+    public async Task Opening_a_list_with_no_board_leaves_the_board_task_a66f0a16()
+    {
+        var core = StartedCoreWith(Lists(("p1", "Launch", "proj-1"), ("l1", "Home", null)))
+            .AnswerOk("board", BoardWith("t1"))
+            .AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("rowsForList", EmptyWindow());
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        // The sidebar is in name order, so the app opened Home: go to the board's own list first.
+        await shell.OpenListAsync("p1", "Launch");
+        await shell.ShowBoardAsync(true);
+        Assert.True(shell.IsBoardView);
+
+        await shell.OpenListAsync("l1", "Home");
+
+        Assert.False(shell.IsBoardView, "the list it moved to has no board");
+        Assert.False(shell.ShowsBoardToggle);
+        Assert.False(shell.ShowsNoBoardNotice, "and nothing is left apologising for it");
+    }
+
+    /// <summary>
+    /// The feature flag still outranks the list: <c>project_mode</c> off hides the toggle on a
+    /// list that does have a board (task a66f0a16).
+    /// </summary>
+    [Fact]
+    public async Task The_project_mode_flag_still_hides_the_board_on_a_board_list_task_a66f0a16()
+    {
+        var core = StartedCoreWith(Lists(("p1", "Launch", "proj-1")))
+            .AnswerOk("features", new { projectMode = false });
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        Assert.True(shell.OpenListHasBoard, "the list has one");
+        Assert.False(shell.ShowsBoardToggle, "the account is not offered boards at all");
     }
 
     /// <summary>

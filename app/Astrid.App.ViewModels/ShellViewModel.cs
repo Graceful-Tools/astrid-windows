@@ -140,7 +140,17 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             {
                 Raise(nameof(ShowsEmptyList));
             }
+            if (args.PropertyName == nameof(TaskListViewModel.ListId))
+            {
+                OnOpenListChanged();
+            }
         };
+        // A list whose board was created or taken away elsewhere: the sidebar's next load carries
+        // the new answer, so the header follows it without being told. The raise only — leaving a
+        // board somebody is looking at is for a list CHANGE, since these collections are rebuilt
+        // several times a minute and a momentary gap is not somebody moving.
+        Sidebar.Favorites.CollectionChanged += (_, _) => RaiseBoardAvailability();
+        Sidebar.Lists.CollectionChanged += (_, _) => RaiseBoardAvailability();
         Board.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName != nameof(BoardViewModel.ExpandedTaskId))
@@ -198,8 +208,39 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public bool ProjectModeEnabled
     {
         get => _projectModeEnabled;
-        private set => Set(ref _projectModeEnabled, value);
+        private set
+        {
+            if (Set(ref _projectModeEnabled, value))
+            {
+                Raise(nameof(ShowsBoardToggle));
+            }
+        }
     }
+
+    /// <summary>
+    /// Whether the open list belongs to a project board at all — astrid-web's
+    /// <c>hasProjectBoard</c> (task a66f0a16).
+    /// </summary>
+    /// <remarks>
+    /// Read from the sidebar's own summary of the open list, which carries <c>projectId</c> for
+    /// every real list, rather than by asking the core for the board: the question has to be
+    /// answered before the header is drawn, and one more round trip per list opened would be a
+    /// toggle that appears a moment late. A list the sidebar has not loaded yet, and My Tasks —
+    /// a filter, not a list — have no board, which is the right answer for both.
+    /// </remarks>
+    public bool OpenListHasBoard =>
+        !string.IsNullOrEmpty(Sidebar.Favorites.Concat(Sidebar.Lists)
+            .FirstOrDefault(list => list.Id == Tasks.ListId)?.ProjectId);
+
+    /// <summary>
+    /// Whether the list header offers the board at all (task a66f0a16).
+    /// </summary>
+    /// <remarks>
+    /// Both gates: the account has to be offered boards, and this list has to have one.
+    /// astrid-web's header draws nothing at all in either case — a control whose only outcome is
+    /// a notice saying there is nothing to show is worse than no control.
+    /// </remarks>
+    public bool ShowsBoardToggle => ProjectModeEnabled && OpenListHasBoard;
 
     /// <summary>Whether Google Tasks linking is offered (the <c>google_tasks</c> flag).</summary>
     public bool GoogleTasksEnabled
@@ -504,12 +545,38 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// Whether to say that this list has no board.
     /// </summary>
     /// <remarks>
-    /// The board toggle is offered for every list, because whether a list belongs to a board is
-    /// something only the answer to <c>board</c> tells us. Switching to it on a list that has none
-    /// left a blank white pane, which reads as a board that failed to load rather than one that
-    /// was never there.
+    /// A backstop rather than the ordinary case since task a66f0a16: the toggle is now offered
+    /// only on a list the sidebar says has a board, so the way to reach this is for the board to
+    /// have gone between that answer and the <c>board</c> one. It is still worth drawing — a blank
+    /// white pane reads as a board that failed to load rather than one that was never there.
     /// </remarks>
     public bool ShowsNoBoardNotice => IsBoardView && !Board.HasBoard;
+
+    /// <summary>The header's board toggle may have come or gone: redraw it.</summary>
+    private void RaiseBoardAvailability()
+    {
+        Raise(nameof(OpenListHasBoard));
+        Raise(nameof(ShowsBoardToggle));
+    }
+
+    /// <summary>
+    /// A different list is open: the toggle follows it, and a board it does not have is left
+    /// (task a66f0a16).
+    /// </summary>
+    /// <remarks>
+    /// astrid-web does the same in <c>TaskManagerView</c>. Without it the board would stay on
+    /// screen showing its no-board notice, and the toggle that would have dismissed it is now
+    /// hidden — no way back to the list but to open the board's own list again.
+    /// </remarks>
+    private void OnOpenListChanged()
+    {
+        RaiseBoardAvailability();
+        if (IsBoardView && !OpenListHasBoard)
+        {
+            // Synchronous in this direction: leaving the board loads nothing.
+            _ = ShowBoardAsync(false);
+        }
+    }
 
     /// <summary>Swap between the list and its board.</summary>
     /// <remarks>
