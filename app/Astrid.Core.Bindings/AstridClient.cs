@@ -67,13 +67,9 @@ public sealed class AstridClient : IAstridCore, IDisposable
     /// there is nothing the app can do without it, and a null client that fails on every later call
     /// reports the problem in the wrong place.
     /// </exception>
-    public static AstridClient Start(string cachePath, string? baseUrl = null)
+    public static AstridClient Start(string cachePath, string? baseUrl = null, string? urlScheme = null)
     {
-        var config = JsonSerializer.Serialize(new Dictionary<string, string?>
-        {
-            ["cachePath"] = cachePath,
-            ["baseUrl"] = baseUrl,
-        }.Where(entry => entry.Value is not null).ToDictionary(entry => entry.Key, entry => entry.Value));
+        var config = BuildStartConfig(cachePath, baseUrl, urlScheme);
 
         var handle = NativeMethods.Start(config, out var error);
         if (handle == IntPtr.Zero)
@@ -85,6 +81,30 @@ public sealed class AstridClient : IAstridCore, IDisposable
         client._self = GCHandle.Alloc(client, GCHandleType.Normal);
         return client;
     }
+
+    /// <summary>
+    /// The JSON the core is started from — what the shell has to tell it before anything else.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A key the shell has nothing to say about is LEFT OUT rather than sent null or empty, because
+    /// the core's <c>Config</c> gives each one a default and absence is how a shell asks for it.
+    /// For <paramref name="urlScheme"/> that default is <c>astrid</c>, so a build that does not
+    /// name a scheme behaves exactly as every client did before the field existed.
+    /// </para>
+    /// <para>
+    /// Separate from <see cref="Start"/> so the contract can be asserted without a running core:
+    /// the core ignores a key it does not know, which makes a wrong or missing one invisible at the
+    /// boundary (task 8cbed184).
+    /// </para>
+    /// </remarks>
+    public static string BuildStartConfig(string cachePath, string? baseUrl, string? urlScheme) =>
+        JsonSerializer.Serialize(new Dictionary<string, string?>
+        {
+            ["cachePath"] = cachePath,
+            ["baseUrl"] = baseUrl,
+            ["urlScheme"] = urlScheme,
+        }.Where(entry => entry.Value is not null).ToDictionary(entry => entry.Key, entry => entry.Value));
 
     /// <summary>
     /// Send a command and await the answer.

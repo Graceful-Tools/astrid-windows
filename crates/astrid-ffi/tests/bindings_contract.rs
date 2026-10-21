@@ -195,6 +195,54 @@ const NOT_BOUND: &[(&str, &str)] = &[
          the rest to the server's push and email. It registers no background task that would \
          have a wake-up to set.",
     ),
+    // ── iOS surfaces this shell does not draw (arrived with the core pin bump, task 8cbed184) ──
+    (
+        "featuredRows",
+        "A featured public list's rows, fetched from the server rather than the cache (AATD-46). \
+         The sidebar here lists public lists and copies one into the account (`publicLists`, \
+         `copyList`, `PublicListsViewModel`); it never opens one to browse, so there is no screen \
+         for these rows to fill.",
+    ),
+    (
+        "listBadges",
+        "The sidebar's number beside each list, as iOS's ListTaskCount draws it (AATD-39) — a \
+         list's open tasks, a saved filter what its filters keep, My Tasks what is assigned to the \
+         reader. The sidebar here draws list names only, so this has the same nowhere to go as \
+         `listCounts`, which it supersedes.",
+    ),
+    (
+        "nestTask",
+        "A row dropped inside a list's tree — onto a row, on a line between rows, or indented and \
+         outdented (AATD-42). Rows arrive already subtask-spliced from `taskRows` and the list \
+         draws them without a drop target, so nothing here can say which row a drop landed on. \
+         The same absent gesture as `dropBoardCard`, one level down.",
+    ),
+    (
+        "reminderTriageDeck",
+        "iOS's swipeable deck: the reminded task first, then what else is due today (AATD-54). A \
+         reminder here is one Windows toast with buttons on it (`Reminders.cs`, raised from \
+         `remindersDue`), so there is no deck to swipe and no assistant for an up-swipe to hand a \
+         task to.",
+    ),
+    (
+        "resolveShortcode",
+        "What an `astrid.cc/s/<code>` share link opens (AATD-59). This shell is activated on its \
+         own URL scheme for the sign-in callback alone (`SignInCallback`, and the registration in \
+         `Program.cs`); it claims no handler for a shared link, so no code ever arrives to \
+         resolve.",
+    ),
+    (
+        "shareList",
+        "Mints a link to a LIST, as iOS's Share List does (AATD-44). `shareTask` is bound and a \
+         task can be shared from here; the sidebar draws no share control on a list itself.",
+    ),
+    (
+        "toggleAssignee",
+        "Adds or removes one person in a MULTI-assignee picker, agents first and at most ten \
+         (AATD-51). A task here carries a single assignee — `updateTask`'s `assigneeId`, chosen \
+         from `assigneeOptions` — so picking somebody replaces the assignee rather than toggling \
+         one of several.",
+    ),
 ];
 
 /// Every core command is either bound or registered — and a new one fails the gate.
