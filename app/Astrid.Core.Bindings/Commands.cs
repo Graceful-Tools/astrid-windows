@@ -196,6 +196,13 @@ public static class Commands
     public static object DeleteCustomAgent(string agentId) =>
         new AgentIdRequest("deleteCustomAgent", agentId);
 
+    /// <summary>
+    /// Set a registered agent's photo, or clear it back to the default by passing null. A URL,
+    /// not an upload. The answer says which image the server settled on (task 959b24b5).
+    /// </summary>
+    public static object SetCustomAgentPhoto(string agentId, string? image) =>
+        new AgentPhotoRequest("setCustomAgentPhoto", agentId, image);
+
     // ── Connections ──────────────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -1108,6 +1115,13 @@ public static class Commands
     private sealed record AgentIdRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("agentId")] string? AgentId);
+
+    private sealed record AgentPhotoRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("agentId")] string AgentId,
+        // Written even when null: the route only acts on an `image` key that is present, and the
+        // core clears a photo by sending null rather than by leaving it out.
+        [property: JsonPropertyName("image")] string? Image);
 
     /// <summary>A calendar day, as <c>YYYY-MM-DD</c>.</summary>
     private sealed record DayRequest(
