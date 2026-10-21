@@ -140,6 +140,9 @@
             <!--
                 The board and the list are two views of one list's work, not two
                 screens: the toggle swaps what is drawn and nothing else moves.
+                Drawn only on a list that HAS a board (task a66f0a16), as
+                astrid-web's header is — the account's project_mode flag alone was
+                offering it on every list, with a notice as the only outcome.
             -->
             <ToggleButton x:Uid="board_toggle" x:Name="BoardToggle"
                           VerticalAlignment="Center"
@@ -148,7 +151,7 @@
                           Content="&#xF0E2;"
                           FontFamily="{ThemeResource SymbolThemeFontFamily}"
                           IsChecked="{x:Bind Shell.IsBoardView, Mode=OneWay}"
-                          Visibility="{x:Bind Shell.ProjectModeEnabled, Mode=OneWay, Converter={StaticResource Visible}}"
+                          Visibility="{x:Bind Shell.ShowsBoardToggle, Mode=OneWay, Converter={StaticResource Visible}}"
                           Click="OnToggleBoard" />
                 <!--
                     Search collapses to its icon, which is what astrid-web does when the
