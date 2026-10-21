@@ -523,6 +523,41 @@ public sealed class ShellViewModelTests
         Assert.False(shell.ShowsDetailInline);
     }
 
+    /// <summary>
+    /// The side pane takes the conversation's place rather than standing beyond it (task 1ffc12af).
+    /// </summary>
+    /// <remarks>
+    /// The detail used to be the column after the chat's, so an open task left the conversation
+    /// wedged between the list and the detail: the pane's arrow pointed at the chat pane instead of
+    /// at the row it had measured, and the message panel's own hide control sat beside the open
+    /// task. A card holding the detail is not the side pane, so the board keeps its conversation.
+    /// </remarks>
+    [Fact]
+    public async Task The_side_pane_takes_the_conversations_place_task_1ffc12af()
+    {
+        var core = StartedCore(("l1", "Home", false))
+            .AnswerOk("taskDetail", TaskDetail("t1"))
+            .AnswerOk("board", BoardWith("t1"));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        Assert.True(shell.ShowsConversation, "nothing open, so the conversation has its column");
+
+        await shell.OpenOrCloseTaskAsync("t1");
+        Assert.True(shell.ShowsDetailPane);
+        Assert.False(shell.ShowsConversation, "the pane is where the conversation was");
+
+        await shell.OpenOrCloseTaskAsync("t1");
+        Assert.False(shell.ShowsDetailPane);
+        Assert.True(shell.ShowsConversation, "and it comes back when the task is shut");
+
+        // A board card taking the detail is not the side pane, so nothing moves out of its way.
+        await shell.ShowBoardAsync(true);
+        await shell.ToggleCardAsync("t1");
+        Assert.True(shell.ShowsDetailInline);
+        Assert.True(shell.ShowsConversation);
+    }
+
     private static object BoardWith(params string[] cards) => new
     {
         projectId = "p1",
