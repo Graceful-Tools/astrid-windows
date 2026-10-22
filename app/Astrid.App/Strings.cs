@@ -128,6 +128,15 @@ internal static class Strings
         ["account.delete_warning"] = "This permanently removes your tasks, lists, comments, files, integrations and settings, and your access to shared lists. It cannot be undone. Consider exporting your data first, under Your data.",
         ["account.type_to_confirm"] = "Type DELETE MY ACCOUNT to confirm",
         ["account.delete_button"] = "Permanently delete account",
+        // The Integrations page's account panel (task e32f1322). "Connected as " ends in a space
+        // because the address follows it in the same line.
+        ["integrations.google"] = "Google Tasks",
+        ["integrations.github"] = "GitHub",
+        ["integrations.connected_as"] = "Connected as ",
+        ["integrations.google_not_connected"] = "No Google account connected.",
+        ["integrations.github_not_connected"] = "No GitHub account connected.",
+        ["integrations.no_links"] = "No lists linked yet.",
+        ["integrations.new_list"] = "New List",
         ["smart.title"] = "Tasks",
         ["smart.email_to_task"] = "Email-to-Task",
         ["smart.email_to_task_hint"] = "Create tasks by sending email to",

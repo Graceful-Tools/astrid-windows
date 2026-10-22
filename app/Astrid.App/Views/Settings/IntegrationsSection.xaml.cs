@@ -41,6 +41,21 @@ public sealed partial class IntegrationsSection : UserControl
     public IntegrationsSection()
     {
         InitializeComponent();
+        WordIntegrationsSection();
+    }
+
+    /// <summary>The account panel's words, from the strings table (task e32f1322).</summary>
+    private void WordIntegrationsSection()
+    {
+        GoogleTitle.Text = Strings.Get("integrations.google");
+        GoogleConnectedAsPrefix.Text = Strings.Get("integrations.connected_as");
+        GoogleNotConnected.Text = Strings.Get("integrations.google_not_connected");
+        GoogleNoLinks.Text = Strings.Get("integrations.no_links");
+        NewGoogleListButton.Content = Strings.Get("integrations.new_list");
+        GitHubTitle.Text = Strings.Get("integrations.github");
+        GitHubConnectedAsPrefix.Text = Strings.Get("integrations.connected_as");
+        GitHubNotConnected.Text = Strings.Get("integrations.github_not_connected");
+        GitHubNoLinks.Text = Strings.Get("integrations.no_links");
     }
 
     /// <summary>Choose how Google lists get linked.</summary>
@@ -73,4 +88,11 @@ public sealed partial class IntegrationsSection : UserControl
     {
         await Shell.Settings.Agents.SetCopilotAsync(connect: false);
     }
+
+    /// <summary>
+    /// Google's "New List" (task e32f1322): one gesture, one command — the core makes the list on
+    /// Google and binds it to the chosen Astrid list, and the panel is read back as it answers.
+    /// </summary>
+    private async void OnNewGoogleList(object sender, RoutedEventArgs args) =>
+        await Shell.Settings.Integrations.CreateGoogleListAsync();
 }

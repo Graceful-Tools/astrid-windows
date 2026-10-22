@@ -121,6 +121,7 @@ public sealed partial class SettingsView : UserControl
                 Shell.Settings.Agents.LoadAgentsAsync(),
                 Shell.Settings.Agents.LoadAstridModelAsync(),
                 Shell.Settings.Integrations.LoadGoogleSyncModeAsync(),
+                Shell.Settings.Integrations.LoadExternalAccountsAsync(),
                 Shell.Settings.Agents.LoadWebhookAsync());
             await Shell.LoadSettingsAsync();
             await others;
