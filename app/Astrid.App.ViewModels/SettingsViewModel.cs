@@ -26,10 +26,17 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly SettingsSession _session;
     private bool _isLoading;
 
-    public SettingsViewModel(IAstridCore core)
+    /// <param name="core">The core every page sends its commands to.</param>
+    /// <param name="passkeys">
+    /// Windows Hello, for the one page that needs the platform (task e61a3e60). Optional, and a
+    /// ceremony that cannot run by default: a test gets a predictable Account page without an
+    /// authenticator, and a machine whose Hello the shell could not reach says so rather than
+    /// spending a challenge it cannot answer.
+    /// </param>
+    public SettingsViewModel(IAstridCore core, IPasskeyCeremony? passkeys = null)
     {
         _session = new SettingsSession(core);
-        Account = new AccountSettingsViewModel(_session);
+        Account = new AccountSettingsViewModel(_session, passkeys);
         Tasks = new TaskSettingsViewModel(_session);
         Contacts = new ContactsSettingsViewModel(_session);
         Reminders = new ReminderSettingsViewModel(_session);

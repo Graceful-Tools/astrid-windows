@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Astrid.App.ViewModels;
 using Astrid.Core.Bindings;
 using Xunit;
@@ -170,6 +171,192 @@ public sealed class AccountSettingsViewModelTests
         Assert.Equal(string.Empty, view.DeleteConfirmation);
         Assert.Contains(core.Sent, json =>
             json.Contains("\"kind\":\"deleteAccount\"") && json.Contains("\"confirmation\":\"DELETE MY ACCOUNT\""));
+    }
+
+    /// <summary>
+    /// Task e61a3e60: the address does not change when <c>changeEmail</c> returns — the server mails
+    /// the new address and swaps on the link — so the page keeps showing the old one and says a
+    /// confirmation was sent. A 409 arrives as a sentence and belongs on the error line.
+    /// </summary>
+    [Fact]
+    public async Task Changing_the_email_asks_for_verification_and_keeps_the_old_address_task_e61a3e60()
+    {
+        var core = new FakeCore()
+            .AnswerOk("settings", AccountOf(new { id = "me", name = "Jon", email = "jon@x.io", verified = true }))
+            .AnswerOk("refreshSettings", AccountOf(new { id = "me", name = "Jon", email = "jon@x.io", verified = true }))
+            .AnswerOk("changeEmail", new
+            {
+                verificationRequired = true,
+                message = "Account updated successfully. Please check your email to verify the new address.",
+            })
+            .AnswerFailure("changeEmail", AstridFailureKind.Refused, "Email address is already in use");
+        var settings = new SettingsViewModel(core);
+        var view = settings.Account;
+        await settings.LoadAsync();
+
+        Assert.False(view.CanChangeEmail, "nothing typed is nothing to change");
+        view.EmailDraft = "   ";
+        Assert.False(view.CanChangeEmail);
+        view.EmailDraft = " jon@x.io ";
+        Assert.False(view.CanChangeEmail, "the address the account already has is not a change");
+
+        view.EmailDraft = " grace@example.com ";
+        Assert.True(view.CanChangeEmail);
+        Assert.True(await view.ChangeEmailAsync());
+
+        Assert.Equal("jon@x.io", view.Email);
+        Assert.True(view.EmailChangeAsked);
+        Assert.Contains("verify the new address", view.EmailChangeMessage);
+        Assert.Null(settings.ErrorMessage);
+        Assert.Contains(core.Sent, json =>
+            json.Contains("\"kind\":\"changeEmail\"") && json.Contains("\"email\":\"grace@example.com\""));
+
+        // A 409 is a sentence from the core, and the page stops claiming it asked for anything.
+        view.EmailDraft = "taken@example.com";
+        Assert.False(await view.ChangeEmailAsync());
+        Assert.Equal("Email address is already in use", settings.ErrorMessage);
+        Assert.False(view.EmailChangeAsked);
+        Assert.Equal("jon@x.io", view.Email);
+
+        Assert.Equal(2, core.SentKinds().Count(kind => kind == "changeEmail"));
+    }
+
+    /// <summary>
+    /// Task e61a3e60: registering a passkey is two commands around one Windows Hello ceremony. The
+    /// server's options go to the platform unchanged, the <c>sessionId</c> comes back with the
+    /// attestation, and the list is reloaded from the server afterwards.
+    /// </summary>
+    [Fact]
+    public async Task Adding_a_passkey_is_one_ceremony_between_the_two_commands_task_e61a3e60()
+    {
+        var core = new FakeCore()
+            .AnswerOk("passkeyRegistrationOptions", new
+            {
+                options = new { challenge = "Y2hhbGxlbmdl", rp = new { id = "astrid.cc" } },
+                sessionId = "s1",
+            })
+            .AnswerOk("registerPasskey")
+            .AnswerOk("passkeys", new { passkeys = new[]
+            {
+                new { id = "k1", name = (string?)"Surface", createdAt = "2026-10-22T00:00:00Z", isSynced = false },
+            } });
+        var hello = new FakeCeremony().Answer(PasskeyCeremonyResult.Signed(new Dictionary<string, object?>
+        {
+            ["id"] = "new",
+            ["rawId"] = "new",
+            ["type"] = "public-key",
+        }));
+        var settings = new SettingsViewModel(core, hello);
+        var view = settings.Account;
+
+        Assert.True(await view.AddPasskeyAsync("Surface"));
+
+        Assert.Equal("Y2hhbGxlbmdl", Assert.Single(hello.Challenges));
+        Assert.Contains(core.Sent, json =>
+            json.Contains("\"kind\":\"registerPasskey\"") && json.Contains("\"sessionId\":\"s1\"")
+            && json.Contains("\"rawId\":\"new\"") && json.Contains("\"name\":\"Surface\""));
+        Assert.Equal(
+            new[] { "passkeyRegistrationOptions", "registerPasskey", "passkeys" },
+            core.SentKinds());
+        Assert.Single(view.Passkeys);
+        Assert.Null(settings.ErrorMessage);
+        Assert.False(view.IsAddingPasskey);
+    }
+
+    /// <summary>
+    /// Task e61a3e60: an abandoned ceremony is ordinary — the list simply does not gain a row, and
+    /// nothing is said. A ceremony that failed says why, and a machine without Windows Hello says
+    /// so before any command goes out.
+    /// </summary>
+    [Fact]
+    public async Task An_abandoned_or_refused_passkey_ceremony_adds_nothing_task_e61a3e60()
+    {
+        var core = new FakeCore()
+            .AnswerOk("passkeyRegistrationOptions", new { options = new { challenge = "c" }, sessionId = "s1" })
+            .AnswerOk("passkeyRegistrationOptions", new { options = new { challenge = "c" }, sessionId = "s2" })
+            .AnswerFailure("passkeyRegistrationOptions", AstridFailureKind.Offline, "no network");
+        var hello = new FakeCeremony()
+            .Answer(PasskeyCeremonyResult.Abandoned)
+            .Answer(PasskeyCeremonyResult.Failed("Windows Hello could not create a passkey."));
+        var settings = new SettingsViewModel(core, hello);
+        var view = settings.Account;
+
+        Assert.False(await view.AddPasskeyAsync());
+        Assert.Empty(view.Passkeys);
+        // Cancelling is not an error to report.
+        Assert.Null(settings.ErrorMessage);
+        Assert.DoesNotContain(core.SentKinds(), kind => kind == "registerPasskey");
+
+        Assert.False(await view.AddPasskeyAsync());
+        Assert.Equal("Windows Hello could not create a passkey.", settings.ErrorMessage);
+        Assert.DoesNotContain(core.SentKinds(), kind => kind == "registerPasskey");
+
+        // Offline: the challenge is the server's, so there is nothing to ask Windows Hello for.
+        Assert.False(await view.AddPasskeyAsync());
+        Assert.NotNull(settings.ErrorMessage);
+        Assert.Equal(2, hello.Challenges.Count);
+
+        // No Windows Hello on this machine: said before a challenge is asked for and spent.
+        var bare = new FakeCore();
+        var without = new SettingsViewModel(bare, new FakeCeremony { IsAvailable = false });
+        Assert.False(await without.Account.AddPasskeyAsync());
+        Assert.NotNull(without.ErrorMessage);
+        Assert.Empty(bare.SentKinds());
+    }
+
+    /// <summary>
+    /// Task e61a3e60: the server names the new key by finding the account's newest authenticator, so
+    /// two ceremonies at once would name the wrong one. The second press is refused, not queued.
+    /// </summary>
+    [Fact]
+    public async Task Only_one_passkey_registration_runs_at_a_time_task_e61a3e60()
+    {
+        var core = new FakeCore()
+            .AnswerOk("passkeyRegistrationOptions", new { options = new { challenge = "c" }, sessionId = "s1" })
+            .AnswerOk("registerPasskey")
+            .AnswerOk("passkeys", new { passkeys = Array.Empty<object>() })
+            .Hold("passkeyRegistrationOptions");
+        var hello = new FakeCeremony().Answer(PasskeyCeremonyResult.Signed(
+            new Dictionary<string, object?> { ["rawId"] = "new" }));
+        var settings = new SettingsViewModel(core, hello);
+        var view = settings.Account;
+
+        var first = view.AddPasskeyAsync();
+        Assert.True(view.IsAddingPasskey);
+        Assert.False(await view.AddPasskeyAsync(), "one at a time");
+        Assert.Single(core.SentKinds());
+
+        core.Release("passkeyRegistrationOptions");
+        Assert.True(await first);
+        Assert.False(view.IsAddingPasskey);
+        Assert.Single(hello.Challenges);
+    }
+
+    /// <summary>A Windows Hello that answers from a script, so the ceremony's three ends are tests.</summary>
+    private sealed class FakeCeremony : IPasskeyCeremony
+    {
+        private readonly Queue<PasskeyCeremonyResult> _answers = new();
+
+        /// <summary>The challenge each ceremony was handed, so "unchanged" is checkable.</summary>
+        public List<string> Challenges { get; } = [];
+
+        public bool IsAvailable { get; init; } = true;
+
+        public FakeCeremony Answer(PasskeyCeremonyResult result)
+        {
+            _answers.Enqueue(result);
+            return this;
+        }
+
+        public Task<PasskeyCeremonyResult> SignAsync(JsonElement options, CancellationToken cancellationToken = default)
+        {
+            Challenges.Add(options.TryGetProperty("challenge", out var challenge)
+                ? challenge.GetString() ?? string.Empty
+                : string.Empty);
+            return Task.FromResult(_answers.Count > 0
+                ? _answers.Dequeue()
+                : PasskeyCeremonyResult.Abandoned);
+        }
     }
 
     /// <summary>

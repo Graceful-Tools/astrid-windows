@@ -17,18 +17,24 @@ namespace Astrid.App.ViewModels;
 public sealed class AccountSettingsViewModel : ObservableObject
 {
     private readonly SettingsSession _session;
+    private readonly IPasskeyCeremony _ceremony;
     private UserSummary? _user;
     private ProfileStats _stats = new();
     private string _nameDraft = string.Empty;
+    private string _emailDraft = string.Empty;
     private string _deleteConfirmation = string.Empty;
     private bool _verificationSent;
+    private bool _emailChangeAsked;
+    private string? _emailChangeMessage;
     private bool _isDeleting;
     private string? _passkeysUnavailable;
     private bool _passkeysLoaded;
+    private bool _isAddingPasskey;
 
-    public AccountSettingsViewModel(SettingsSession session)
+    public AccountSettingsViewModel(SettingsSession session, IPasskeyCeremony? ceremony = null)
     {
         _session = session;
+        _ceremony = ceremony ?? NoPasskeyCeremony.Instance;
         _session.AccountRead += account => User = account.User;
     }
 
@@ -49,6 +55,7 @@ public sealed class AccountSettingsViewModel : ObservableObject
                 Raise(nameof(CreatedOn));
                 Raise(nameof(UpdatedOn));
                 Raise(nameof(AccountId));
+                Raise(nameof(CanChangeEmail));
                 // The name box follows the account — what is typed there is a draft of this, and
                 // an edit somebody made on another client should show up here, not be fought.
                 NameDraft = value?.Name ?? string.Empty;
@@ -112,6 +119,91 @@ public sealed class AccountSettingsViewModel : ObservableObject
     /// <summary>There is a name to save, and it is not the one the account already has.</summary>
     public bool CanSaveName =>
         !string.IsNullOrWhiteSpace(NameDraft) && NameDraft.Trim() != (User?.Name ?? string.Empty);
+
+    // ── Changing the email address (task e61a3e60) ───────────────────────────────────────────
+
+    /// <summary>The new address as it is being typed.</summary>
+    public string EmailDraft
+    {
+        get => _emailDraft;
+        set
+        {
+            if (Set(ref _emailDraft, value))
+            {
+                Raise(nameof(CanChangeEmail));
+            }
+        }
+    }
+
+    /// <summary>There is an address to ask for, and it is not the one the account already has.</summary>
+    public bool CanChangeEmail =>
+        !string.IsNullOrWhiteSpace(EmailDraft)
+        && !string.Equals(EmailDraft.Trim(), Email, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// A change of address was asked for on this visit, so the page can say a confirmation went out.
+    /// </summary>
+    public bool EmailChangeAsked
+    {
+        get => _emailChangeAsked;
+        private set => Set(ref _emailChangeAsked, value);
+    }
+
+    /// <summary>What the server said when it took the request, when it said anything.</summary>
+    public string? EmailChangeMessage
+    {
+        get => _emailChangeMessage;
+        private set
+        {
+            if (Set(ref _emailChangeMessage, value))
+            {
+                Raise(nameof(HasEmailChangeMessage));
+            }
+        }
+    }
+
+    public bool HasEmailChangeMessage => !string.IsNullOrEmpty(EmailChangeMessage);
+
+    /// <summary>
+    /// Ask for the address to change.
+    /// </summary>
+    /// <remarks>
+    /// <b><see cref="Email"/> does not move here.</b> The server mails the new address and swaps on
+    /// the link, so the account still has the old one when this returns — and a page that showed the
+    /// new one would be telling somebody their address had changed when it had not, and leave them
+    /// with no way to see which address the mail went to. What changes is
+    /// <see cref="EmailChangeAsked"/>. The next <c>refreshSettings</c> brings the pending address
+    /// down as <see cref="PendingEmail"/>, which the page was already drawing.
+    /// </remarks>
+    public async Task<bool> ChangeEmailAsync(CancellationToken cancellationToken = default)
+    {
+        if (!CanChangeEmail)
+        {
+            return false;
+        }
+        var response = await _session.Core.CallAsync(
+            Commands.ChangeEmail(EmailDraft.Trim()), cancellationToken);
+        if (!response.Ok)
+        {
+            EmailChangeAsked = false;
+            EmailChangeMessage = null;
+            // A 409 — the address is somebody else's — arrives from the core as a sentence, and
+            // this is where it belongs.
+            _session.ErrorMessage = response.IsStillPending
+                ? "Changing your email address needs a connection."
+                : response.Error?.Message;
+            return false;
+        }
+        _session.ErrorMessage = null;
+        EmailChangeMessage =
+            response.Value.ValueKind == JsonValueKind.Object
+            && response.Value.TryGetProperty("message", out var message)
+                ? message.GetString()
+                : null;
+        EmailChangeAsked = true;
+        EmailDraft = string.Empty;
+        return true;
+    }
 
     /// <summary>The verification email went out on this visit, so the page can say so.</summary>
     public bool VerificationSent
@@ -249,6 +341,106 @@ public sealed class AccountSettingsViewModel : ObservableObject
         PasskeysLoaded = true;
         Raise(nameof(HasNoPasskeys));
         return true;
+    }
+
+    /// <summary>Whether this machine can register one at all (task e61a3e60).</summary>
+    public bool CanAddPasskey => _ceremony.IsAvailable;
+
+    /// <summary>A ceremony is running. One at a time, and the button says so.</summary>
+    public bool IsAddingPasskey
+    {
+        get => _isAddingPasskey;
+        private set
+        {
+            if (Set(ref _isAddingPasskey, value))
+            {
+                Raise(nameof(CanPressAddPasskey));
+            }
+        }
+    }
+
+    /// <summary>The button is live: this machine can, and nothing is in the middle of happening.</summary>
+    public bool CanPressAddPasskey => CanAddPasskey && !IsAddingPasskey;
+
+    /// <summary>
+    /// Register a passkey: the core's challenge, Windows Hello, the core's verification, the list
+    /// (task e61a3e60).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Two commands around one ceremony, and the three steps cannot be split apart. The challenge
+    /// is stored against the session that asked for it and verified against the same user, so the
+    /// <c>sessionId</c> has to come back out with the attestation and cannot survive a re-auth.
+    /// </para>
+    /// <para>
+    /// <b>One at a time.</b> The server names the new key by finding the account's newest
+    /// authenticator, so two overlapping registrations would name the wrong one — the second press
+    /// is refused rather than queued.
+    /// </para>
+    /// <para>
+    /// An abandoned ceremony is ordinary and says nothing: the list simply does not gain a row.
+    /// </para>
+    /// </remarks>
+    public async Task<bool> AddPasskeyAsync(
+        string? name = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (IsAddingPasskey)
+        {
+            return false;
+        }
+        if (!_ceremony.IsAvailable)
+        {
+            _session.ErrorMessage =
+                "This machine cannot add a passkey. Windows Hello has to be set up first.";
+            return false;
+        }
+        IsAddingPasskey = true;
+        try
+        {
+            var begun = await _session.Core.CallAsync(
+                Commands.PasskeyRegistrationOptions(), cancellationToken);
+            if (!begun.Ok)
+            {
+                _session.ErrorMessage = begun.IsStillPending
+                    ? "Adding a passkey needs a connection."
+                    : begun.Error?.Message ?? "A passkey could not be started.";
+                return false;
+            }
+            if (begun.Value.ValueKind != JsonValueKind.Object
+                || !begun.Value.TryGetProperty("options", out var options)
+                || !begun.Value.TryGetProperty("sessionId", out var session)
+                || session.GetString() is not { Length: > 0 } sessionId)
+            {
+                _session.ErrorMessage = "This server did not offer a passkey challenge.";
+                return false;
+            }
+
+            var signed = await _ceremony.SignAsync(options, cancellationToken);
+            if (signed.Attestation is null)
+            {
+                // Abandoned carries no message, and nothing is reported: closing the prompt is a
+                // choice, not a fault.
+                _session.ErrorMessage = signed.Message;
+                return false;
+            }
+
+            var registered = await _session.Core.CallAsync(
+                Commands.RegisterPasskey(signed.Attestation, sessionId, name), cancellationToken);
+            if (!registered.Ok)
+            {
+                _session.ErrorMessage = registered.IsStillPending
+                    ? "Adding a passkey needs a connection."
+                    : registered.Error?.Message;
+                return false;
+            }
+            _session.ErrorMessage = null;
+            return await LoadPasskeysAsync(cancellationToken);
+        }
+        finally
+        {
+            IsAddingPasskey = false;
+        }
     }
 
     /// <summary>Rename one, then show the list as the server now has it.</summary>
