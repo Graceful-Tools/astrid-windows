@@ -67,7 +67,11 @@ public sealed partial class ShellPage : UserControl
             : new UnavailableCore(App.StartupError);
         // The third argument is what this screen remembers about its own furniture (task ab4cb9ee)
         // — which of the two side panes were left open. Nothing else in the window reads it.
-        Shell = new ShellViewModel(core, Post, DevicePreferences.ForThisDevice());
+        // The fourth is Windows Hello, which only the Account page asks for (task e61a3e60): the
+        // prompt is parented to this window, so the ceremony has to be told which window it is.
+        Shell = new ShellViewModel(
+            core, Post, DevicePreferences.ForThisDevice(),
+            WindowsHelloPasskeys.ForThisWindow(() => App.MainWindowHandle));
         _reminders = new Reminders(Shell, Post);
         _shortcuts = new ShortcutDispatcher(core, Shell);
         Shell.PaletteCommandRequested += OnPaletteCommand;

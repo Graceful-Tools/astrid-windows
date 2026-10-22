@@ -71,7 +71,15 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// default: a window that opens with both panes beside the work is the right answer when there
     /// is nowhere to read an answer from, and a test gets a predictable window without a file.
     /// </param>
-    public ShellViewModel(IAstridCore core, Action<Func<Task>> post, IDevicePreferences? device = null)
+    /// <param name="passkeys">
+    /// Windows Hello, passed through to the Account page (task e61a3e60). Optional, and nothing
+    /// else in the window reads it.
+    /// </param>
+    public ShellViewModel(
+        IAstridCore core,
+        Action<Func<Task>> post,
+        IDevicePreferences? device = null,
+        IPasskeyCeremony? passkeys = null)
     {
         _core = core;
         _post = post;
@@ -87,7 +95,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Board = new BoardViewModel(core);
         ListSettings = new ListSettingsViewModel(core);
         Chat = new ChatViewModel(core);
-        Settings = new SettingsViewModel(core);
+        Settings = new SettingsViewModel(core, passkeys);
         Notifications = new NotificationsViewModel(core);
         PublicLists = new PublicListsViewModel(core);
         _core.Changed += OnChanged;

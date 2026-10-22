@@ -126,6 +126,15 @@
   <data name="account_passkeys" xml:space="preserve">
     <value>Passkeys</value>
   </data>
+  <data name="account_new_email" xml:space="preserve">
+    <value>Neue E-Mail-Adresse</value>
+  </data>
+  <data name="account_change_email" xml:space="preserve">
+    <value>E-Mail-Adresse ändern</value>
+  </data>
+  <data name="account_email_change_sent" xml:space="preserve">
+    <value>Prüfen Sie die neue Adresse auf den Bestätigungslink. Die Adresse oben ändert sich, sobald Sie ihm folgen.</value>
+  </data>
   <data name="account_delete_title" xml:space="preserve">
     <value>Konto löschen</value>
   </data>
@@ -253,13 +262,22 @@
     <value>Nutzungsbedingungen</value>
   </data>
   <data name="passkeys_note" xml:space="preserve">
-    <value>Passkeys melden Sie ohne Passwort an. Hinzufügen geschieht im Browser; Umbenennen und Widerrufen hier.</value>
+    <value>Passkeys melden Sie ohne Passwort an. Windows Hello kann hier einen hinzufügen – mit Gesicht, Fingerabdruck oder PIN.</value>
+  </data>
+  <data name="passkeys_manage_on_the_web" xml:space="preserve">
+    <value>Im Web verwalten</value>
+  </data>
+  <data name="passkeys_hello_failed" xml:space="preserve">
+    <value>Windows Hello konnte keinen Passkey hinzufügen: {0}</value>
+  </data>
+  <data name="passkeys_hello_options" xml:space="preserve">
+    <value>Die Passkey-Anfrage dieses Servers konnte nicht gelesen werden: {0}</value>
   </data>
   <data name="passkeys_none" xml:space="preserve">
     <value>Noch keine Passkeys registriert.</value>
   </data>
   <data name="passkeys_add" xml:space="preserve">
-    <value>Passkey im Browser hinzufügen</value>
+    <value>Passkey hinzufügen</value>
   </data>
   <data name="passkeys_added" xml:space="preserve">
     <value>Hinzugefügt am </value>
@@ -875,6 +893,9 @@
   </data>
   <data name="display_name_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Anzeigename</value>
+  </data>
+  <data name="change_email_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Neue E-Mail-Adresse</value>
   </data>
   <data name="due_date.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Fälligkeitsdatum</value>

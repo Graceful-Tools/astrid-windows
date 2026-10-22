@@ -114,6 +114,11 @@ internal static class Strings
         ["account.resend"] = "Resend verification email",
         ["account.verification_sent"] = "Verification email sent. Check your inbox and click the link.",
         ["account.waiting_for"] = "Waiting for verification: ",
+        // Changing the address (task e61a3e60). The sentence is careful on purpose: the address
+        // above does not move until the link in the mail is followed.
+        ["account.new_email"] = "New email address",
+        ["account.change_email"] = "Change email",
+        ["account.email_change_sent"] = "Check the new address for the confirmation link. The address above changes once you follow it.",
         ["account.information"] = "Account information",
         ["account.created"] = "Account created",
         ["account.last_updated"] = "Last updated",
@@ -162,9 +167,14 @@ internal static class Strings
         ["help.title"] = "Help & Support",
         ["privacy.title"] = "Privacy Policy",
         ["terms.title"] = "Terms of Service",
-        ["passkeys.note"] = "Passkeys sign you in without a password. Adding one happens in the browser; renaming and revoking happen here.",
+        ["passkeys.note"] = "Passkeys sign you in without a password. Windows Hello can add one here, with your face, fingerprint or PIN.",
         ["passkeys.none"] = "No passkeys registered yet.",
-        ["passkeys.add"] = "Add a passkey in the browser",
+        ["passkeys.add"] = "Add a passkey",
+        ["passkeys.manage_on_the_web"] = "Manage on the web",
+        // What Windows Hello said when the ceremony did not finish (task e61a3e60). Closing the
+        // prompt is not one of these: that is a choice, and nothing is shown for it.
+        ["passkeys.hello_failed"] = "Windows Hello could not add a passkey: {0}",
+        ["passkeys.hello_options"] = "This server's passkey challenge could not be read: {0}",
         ["passkeys.added"] = "Added ",
         ["passkeys.synced"] = "Synced",
         ["passkeys.rename"] = "Rename",

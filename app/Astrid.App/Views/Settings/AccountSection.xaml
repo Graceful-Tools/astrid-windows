@@ -54,6 +54,29 @@
         <TextBlock Text="{x:Bind Shell.Settings.Account.Email, Mode=OneWay}"
                    Foreground="{ThemeResource AstridTextSecondary}" />
 
+        <!--
+            Changing the address (task e61a3e60). The line
+            above keeps showing the address the account
+            has: the server mails the new one and swaps on
+            the link, so nothing here changes until it is
+            answered.
+        -->
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBox x:Uid="change_email_box" x:Name="ChangeEmailBox" Width="260"
+                     AutomationProperties.Name="New email address"
+                     Text="{x:Bind Shell.Settings.Account.EmailDraft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <Button x:Name="ChangeEmailButton" Click="OnChangeEmail"
+                    VerticalAlignment="Bottom"
+                    IsEnabled="{x:Bind Shell.Settings.Account.CanChangeEmail, Mode=OneWay}" />
+        </StackPanel>
+        <TextBlock x:Name="EmailChangeSentLine" TextWrapping="Wrap"
+                   Foreground="{ThemeResource AstridTextSecondary}"
+                   Visibility="{x:Bind Shell.Settings.Account.EmailChangeAsked, Mode=OneWay, Converter={StaticResource Visible}}" />
+        <TextBlock TextWrapping="Wrap"
+                   Foreground="{ThemeResource AstridTextMuted}"
+                   Text="{x:Bind Shell.Settings.Account.EmailChangeMessage, Mode=OneWay}"
+                   Visibility="{x:Bind Shell.Settings.Account.HasEmailChangeMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
+
         <TextBlock x:Name="VerificationTitle" Margin="0,10,0,0"
                    FontWeight="SemiBold"
                    Foreground="{ThemeResource AstridTextPrimary}" />
@@ -108,8 +131,9 @@
         <!--
             The list the web's PasskeyManagementSection draws,
             over the v1 route the web added for it (task
-            19fd9289, web c4ad9e68). Adding one is a
-            WebAuthn ceremony and stays in the browser.
+            19fd9289, web c4ad9e68). Adding one is a WebAuthn
+            ceremony, which Windows Hello now runs here
+            (task e61a3e60).
         -->
         <TextBlock TextWrapping="Wrap"
                    Foreground="{ThemeResource AstridTextMuted}"
@@ -145,7 +169,13 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <Button x:Name="ManagePasskeysButton" Click="OnManagePasskeys" />
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button x:Name="AddPasskeyButton" Click="OnAddPasskey"
+                    IsEnabled="{x:Bind Shell.Settings.Account.CanPressAddPasskey, Mode=OneWay}"
+                    Visibility="{x:Bind Shell.Settings.Account.CanAddPasskey, Converter={StaticResource Visible}}" />
+            <Button x:Name="ManagePasskeysButton" Click="OnManagePasskeys"
+                    Style="{StaticResource BubbleAction}" />
+        </StackPanel>
 
         <TextBlock x:Name="DeleteTitle" Margin="0,10,0,0"
                    FontWeight="SemiBold"
