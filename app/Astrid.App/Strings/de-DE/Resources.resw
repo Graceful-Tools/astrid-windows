@@ -147,6 +147,27 @@
   <data name="account_delete_button" xml:space="preserve">
     <value>Konto dauerhaft löschen</value>
   </data>
+  <data name="integrations_google" xml:space="preserve">
+    <value>Google Tasks</value>
+  </data>
+  <data name="integrations_github" xml:space="preserve">
+    <value>GitHub</value>
+  </data>
+  <data name="integrations_connected_as" xml:space="preserve">
+    <value>Verbunden als </value>
+  </data>
+  <data name="integrations_google_not_connected" xml:space="preserve">
+    <value>Kein Google-Konto verbunden.</value>
+  </data>
+  <data name="integrations_github_not_connected" xml:space="preserve">
+    <value>Kein GitHub-Konto verbunden.</value>
+  </data>
+  <data name="integrations_no_links" xml:space="preserve">
+    <value>Noch keine Listen verknüpft.</value>
+  </data>
+  <data name="integrations_new_list" xml:space="preserve">
+    <value>Neue Liste</value>
+  </data>
   <data name="smart_title" xml:space="preserve">
     <value>Aufgaben</value>
   </data>
@@ -960,8 +981,17 @@
   <data name="filter_button_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Filter</value>
   </data>
+  <data name="external_link_arrow.Text" xml:space="preserve">
+    <value>→</value>
+  </data>
   <data name="google_sync_mode_box.Header" xml:space="preserve">
     <value>Google-Listen</value>
+  </data>
+  <data name="new_google_list_box.Header" xml:space="preserve">
+    <value>Google-Liste erstellen für</value>
+  </data>
+  <data name="new_google_list_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Liste, für die eine Google-Liste erstellt wird</value>
   </data>
   <data name="google_sync_mode_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Verknüpfung mit Google-Listen</value>

@@ -1004,6 +1004,55 @@ public sealed record PasskeySummary
     public string Label => string.IsNullOrWhiteSpace(Name) ? "Passkey" : Name;
 }
 
+/// <summary>
+/// One list mirrored to one container on the other side, as the Integrations page lists it
+/// (task e32f1322).
+/// </summary>
+/// <remarks>
+/// Both ends are named by the core, so nothing here has to resolve an opaque Google tasklist id.
+/// </remarks>
+public sealed record ExternalAccountLink
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("listId")] public string ListId { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The Astrid list's name, absent when the link names a list this device has not cached yet.
+    /// </summary>
+    [JsonPropertyName("listName")] public string? ListName { get; init; }
+
+    [JsonPropertyName("containerId")] public string ContainerId { get; init; } = string.Empty;
+
+    [JsonPropertyName("containerName")] public string? ContainerName { get; init; }
+
+    /// <summary>
+    /// The Astrid side's name for the row. The id when the name has not arrived — a link shown by
+    /// id is a link you can still see, which is the point of the core answering it either way.
+    /// </summary>
+    public string ListLabel => string.IsNullOrWhiteSpace(ListName) ? ListId : ListName;
+
+    /// <summary>The other side's name for the row, by the same rule.</summary>
+    public string ContainerLabel =>
+        string.IsNullOrWhiteSpace(ContainerName) ? ContainerId : ContainerName;
+}
+
+/// <summary>
+/// One provider's side of the account, as the Integrations page draws it (task e32f1322).
+/// </summary>
+public sealed record ExternalAccountProvider
+{
+    /// <summary><c>google_tasks</c> or <c>git_hub</c> — the core's own name for it.</summary>
+    [JsonPropertyName("provider")] public string Provider { get; init; } = string.Empty;
+
+    [JsonPropertyName("connected")] public bool Connected { get; init; }
+
+    /// <summary>The Google email or GitHub login, when the server knows one.</summary>
+    [JsonPropertyName("connectedAs")] public string? ConnectedAs { get; init; }
+
+    [JsonPropertyName("links")] public IReadOnlyList<ExternalAccountLink> Links { get; init; } = [];
+}
+
 /// <summary>One imported contact, as the Contacts page lists it (task 438494c7).</summary>
 public sealed record ContactSummary
 {
