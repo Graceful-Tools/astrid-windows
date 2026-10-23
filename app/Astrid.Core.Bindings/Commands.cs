@@ -765,6 +765,18 @@ public static class Commands
     /// <summary>The agents and repositories a list's coding-agent settings can be set to (task f44b4a0c).</summary>
     public static object ListAgentOptions(string listId) => new WithListId("listAgentOptions", listId);
 
+    /// <summary>
+    /// What a list has been doing over the last <paramref name="days"/> (task 48c624ad).
+    /// </summary>
+    /// <remarks>
+    /// <paramref name="timeZone"/> is an IANA zone and should be this machine's, so that the
+    /// days bucket like the reader's own calendar rather than UTC's — an evening west of
+    /// Greenwich otherwise lands on the following day. The core normalises an unoffered window,
+    /// so a stale picker cannot send one the server refuses.
+    /// </remarks>
+    public static object ListInsights(string listId, int days, string timeZone) =>
+        new InsightsRequest("listInsights", listId, days, timeZone);
+
     public static object SetTaskStatusRole(string taskId, string? statusRole) =>
         new StatusRoleRequest("setTaskStatusRole", taskId, statusRole);
 
@@ -1218,6 +1230,12 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("listId")] string ListId,
         [property: JsonPropertyName("path")] string Path);
+
+    private sealed record InsightsRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("listId")] string ListId,
+        [property: JsonPropertyName("days")] int Days,
+        [property: JsonPropertyName("timeZone")] string TimeZone);
 
     private sealed record ProfileRequest(
         [property: JsonPropertyName("kind")] string Kind,

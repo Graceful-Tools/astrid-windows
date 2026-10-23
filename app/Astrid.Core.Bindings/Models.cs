@@ -926,6 +926,119 @@ public sealed record ProfileStats
     [JsonPropertyName("supported")] public int Supported { get; init; }
 }
 
+// ── What a list has been doing (task 48c624ad; web AWTD-1329, AWTD-1333) ─────────────────────
+//
+// Every number here is the server's. The history they are computed from — task events,
+// completions, lane moves — lives only there, so these records decode an answer and nothing
+// more. A null median means there was nothing to take a median of, which is why `MedianMs` is
+// nullable rather than 0: an instantaneous completion and no completion at all are not the
+// same reading.
+
+/// <summary>Which window the answer covers, as the server resolved it.</summary>
+public sealed record InsightWindow
+{
+    [JsonPropertyName("days")] public int Days { get; init; }
+
+    [JsonPropertyName("timeZone")] public string TimeZone { get; init; } = "UTC";
+
+    /// <summary>The first day counted, <c>YYYY-MM-DD</c> in <see cref="TimeZone"/>.</summary>
+    [JsonPropertyName("start")] public string Start { get; init; } = string.Empty;
+
+    [JsonPropertyName("end")] public string End { get; init; } = string.Empty;
+}
+
+/// <summary>One day of the activity chart.</summary>
+public sealed record InsightDay
+{
+    [JsonPropertyName("date")] public string Date { get; init; } = string.Empty;
+
+    [JsonPropertyName("created")] public int Created { get; init; }
+
+    [JsonPropertyName("completed")] public int Completed { get; init; }
+}
+
+/// <summary>How many tasks the window saw, in total.</summary>
+public sealed record InsightTotals
+{
+    [JsonPropertyName("created")] public int Created { get; init; }
+
+    [JsonPropertyName("completed")] public int Completed { get; init; }
+}
+
+/// <summary>A median stay, and how many measurements it is a median of.</summary>
+public sealed record InsightDuration
+{
+    /// <summary>Null when there was nothing to measure — shown as an em dash, never as zero.</summary>
+    [JsonPropertyName("medianMs")] public long? MedianMs { get; init; }
+
+    [JsonPropertyName("sampleSize")] public int SampleSize { get; init; }
+}
+
+/// <summary>How long cards stay in one board column.</summary>
+public sealed record InsightLane
+{
+    [JsonPropertyName("role")] public string Role { get; init; } = string.Empty;
+
+    /// <summary>The column's own name, already in the list's language — not a resource key.</summary>
+    [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
+
+    [JsonPropertyName("medianMs")] public long? MedianMs { get; init; }
+
+    [JsonPropertyName("sampleSize")] public int SampleSize { get; init; }
+}
+
+/// <summary>
+/// One person's work on this list in this window: the three profile metrics the ranking uses
+/// (AWTD-1333), then the activity that breaks their ties.
+/// </summary>
+public sealed record InsightContributor
+{
+    [JsonPropertyName("userId")] public string UserId { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")] public string? Name { get; init; }
+
+    [JsonPropertyName("image")] public string? Image { get; init; }
+
+    [JsonPropertyName("isAIAgent")] public bool IsAIAgent { get; init; }
+
+    /// <summary>Completions credited to the task's assignee.</summary>
+    [JsonPropertyName("completed")] public int Completed { get; init; }
+
+    /// <summary>Completions of tasks they created, where somebody else was the assignee.</summary>
+    [JsonPropertyName("inspired")] public int Inspired { get; init; }
+
+    /// <summary>Comments on tasks somebody else created.</summary>
+    [JsonPropertyName("supported")] public int Supported { get; init; }
+
+    [JsonPropertyName("created")] public int Created { get; init; }
+
+    [JsonPropertyName("edited")] public int Edited { get; init; }
+
+    [JsonPropertyName("commented")] public int Commented { get; init; }
+
+    /// <summary>Completed + inspired + supported: what the ranking is on.</summary>
+    [JsonPropertyName("total")] public int Total { get; init; }
+}
+
+/// <summary>What one list has been doing, as <c>GET /api/v1/lists/:id/insights</c> answered.</summary>
+public sealed record ListInsights
+{
+    [JsonPropertyName("window")] public InsightWindow Window { get; init; } = new();
+
+    /// <summary>One entry per day of the window, oldest first.</summary>
+    [JsonPropertyName("series")] public IReadOnlyList<InsightDay> Series { get; init; } = [];
+
+    [JsonPropertyName("totals")] public InsightTotals Totals { get; init; } = new();
+
+    [JsonPropertyName("createToComplete")] public InsightDuration CreateToComplete { get; init; } = new();
+
+    /// <summary>Null for a list that is not a board — which is not the same as a board with no columns.</summary>
+    [JsonPropertyName("lanes")] public IReadOnlyList<InsightLane>? Lanes { get; init; }
+
+    /// <summary>The top ten, already ranked by the server.</summary>
+    [JsonPropertyName("contributors")] public IReadOnlyList<InsightContributor> Contributors { get; init; } = [];
+}
+
 /// <summary>One choice for the default reminder offset.</summary>
 public sealed record ReminderOffset
 {
