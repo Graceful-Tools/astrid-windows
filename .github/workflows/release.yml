@@ -50,7 +50,7 @@ jobs:
       matrix:
         arch: [x64, arm64]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # The gate, before anything is built for anyone: format, lint, the core tests, the contract
       # check. A tag is a deliberate act, but a tag on a commit that never went through the gate
@@ -98,7 +98,7 @@ jobs:
     steps:
       # This repo at the tag, for the astrid-core pin and the pointer script. Checked out into a
       # path of its own so it cannot disturb the artifacts downloaded below.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: windows
 
