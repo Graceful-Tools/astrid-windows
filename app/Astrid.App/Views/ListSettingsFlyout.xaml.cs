@@ -226,6 +226,27 @@ public sealed partial class ListSettingsFlyout : UserControl
         }
     }
 
+    // ── What the list has been doing (task 48c624ad) ─────────────────────────────────────────
+
+    /// <summary>
+    /// Ask for the insights when the section is opened, not when the flyout is.
+    /// </summary>
+    /// <remarks>
+    /// It is a round trip over history this device does not hold, and the gear is usually opened
+    /// for something else. Asked every time it opens, because the numbers move.
+    /// </remarks>
+    private async void OnInsightsExpanding(object sender, ExpanderExpandingEventArgs args) =>
+        await Shell.LoadListInsightsAsync();
+
+    /// <summary>A window was chosen. The view model ignores the one already showing.</summary>
+    private async void OnInsightWindowChosen(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is int days)
+        {
+            await Shell.Insights.SetDaysAsync(days);
+        }
+    }
+
     private async void OnListPrivacyChosen(object sender, RoutedEventArgs args)
     {
         if ((sender as FrameworkElement)?.Tag is string privacy)

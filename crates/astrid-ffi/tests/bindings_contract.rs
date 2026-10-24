@@ -118,6 +118,10 @@ const NOT_BOUND: &[(&str, &str)] = &[
     ),
     // ── Surfaces this shell does not have yet ─────────────────────────────────────────────────
     (
+        "uploadContacts",
+        "Sends the device's address book up in batches so people can be found by a number the          account never knew (iOS AATD-68). Windows has no address book to read: the Contacts          settings here list who the server already knows (`contacts`, `clearContacts`), and          there is no equivalent of iOS's permission prompt to ask before sending any.",
+    ),
+    (
         "dropBoardCard",
         "A drop at a SLOT in a column, writing the move and the list's manual order (AITD-461).          The board here drops onto a column, not between cards — `BoardView` hands `MoveAsync` a          column id and nothing else — so it sends `moveTaskToColumn`, which is that same move          without the reordering. Binding this needs a drop target that knows which two cards it          fell between, which the board does not draw.",
     ),
