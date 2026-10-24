@@ -959,3 +959,146 @@ public sealed partial class BoardColumnWidthConverter : IValueConverter
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("a width is not a value to read back");
 }
+
+// ── What a list has been doing (task 48c624ad) ────────────────────────────────────────────────
+//
+// The view model carries numbers and resource keys and never a sentence, so these are where the
+// Insights panel's words come from. The spellings are web's own, under `listInsights` in
+// lib/i18n/locales/*.json, because the two clients should read the same.
+
+/// <summary>Nothing, said once: an em dash where a missing value would otherwise be a blank.</summary>
+/// <remarks>
+/// A dash is not a word in a language, which is why it is here rather than in the resources — and
+/// why a value the server does not have must not be drawn as an empty label, which reads as a
+/// panel that failed to load rather than as a fact nobody has recorded.
+/// </remarks>
+public sealed partial class DashedTextConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is string text && text.Length > 0 ? text : "—";
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a placeholder is not a value to read back");
+}
+
+/// <summary>One of the window picker's three buttons: "7 days", "30 days", "90 days".</summary>
+/// <remarks>
+/// Inside a DataTemplate, so it cannot be worded by an <c>x:Uid</c> — and the three are a list in
+/// the view model rather than three buttons in the XAML, because the route answers 400 to a fourth
+/// and the core is what decides which three those are.
+/// </remarks>
+public sealed partial class InsightWindowConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is int days ? Strings.Get($"listInsights.days{days}") : string.Empty;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a window is not a value to read back");
+}
+
+/// <summary>A median, at the unit the view model chose — or an em dash when there is no median.</summary>
+public sealed partial class InsightDurationConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is Astrid.App.ViewModels.InsightDurationLabel { Key: { } key } median
+            ? Strings.Get(key, median.Amount)
+            // Not "0": nothing was measured, and a zero would read as instantaneous.
+            : "—";
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a median is not a value to read back");
+}
+
+/// <summary>How many went into a median — and nothing at all when there is no median to qualify.</summary>
+public sealed partial class InsightSampleConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is Astrid.App.ViewModels.InsightDurationLabel { HasMedian: true } median
+            ? Strings.Get("listInsights.sampleSize", median.SampleSize)
+            : string.Empty;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a sample size is not a value to read back");
+}
+
+/// <summary>One of the chart's two totals, with its word: "60 new", "45 completed".</summary>
+/// <remarks>
+/// Not <see cref="CountedWordsConverter"/>, which disappears at zero: a window in which nothing
+/// was completed is worth saying out loud beside one in which sixty tasks were created.
+/// </remarks>
+public sealed partial class InsightCountConverter : IValueConverter
+{
+    /// <summary>Which total this instance says: <c>listInsights.createdTotal</c> or its sibling.</summary>
+    public string Key { get; set; } = "listInsights.createdTotal";
+
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is int count ? Strings.Get(Key, count) : string.Empty;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a total is not a value to read back");
+}
+
+/// <summary>
+/// A contributor's line: the three profile metrics the ranking uses, or the activity that breaks
+/// their ties (AWTD-1333).
+/// </summary>
+/// <remarks>
+/// One converter with a key rather than two classes, as <see cref="StatConverter"/> is: the three
+/// numbers differ, the shape of the sentence does not.
+/// </remarks>
+public sealed partial class InsightCountsConverter : IValueConverter
+{
+    /// <summary><c>listInsights.profileCounts</c> or <c>listInsights.activityCounts</c>.</summary>
+    public string Key { get; set; } = "listInsights.profileCounts";
+
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        if (value is not InsightContributor person)
+        {
+            return string.Empty;
+        }
+        return Key == "listInsights.activityCounts"
+            ? Strings.Get(Key, person.Created, person.Edited, person.Commented)
+            : Strings.Get(Key, person.Completed, person.Inspired, person.Supported);
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a contributor's counts are read-only in the UI");
+}
+
+/// <summary>One series as a polyline over the plot.</summary>
+/// <remarks>
+/// The view model hands over fractions — 0 to 1 across the window, 0 to 1 up from the busiest day
+/// in either series — because it must not know how wide the panel is. This is where they become
+/// pixels, and the only place the plot's size is stated, so the two lines cannot end up on
+/// different scales. Y is flipped: a chart's zero is at the bottom and a canvas's is at the top.
+/// </remarks>
+public sealed partial class InsightLineConverter : IValueConverter
+{
+    public double PlotWidth { get; set; } = 288;
+
+    public double PlotHeight { get; set; } = 120;
+
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        var points = new PointCollection();
+        if (value is IEnumerable<Astrid.App.ViewModels.InsightSeriesPoint> series)
+        {
+            foreach (var point in series)
+            {
+                points.Add(new Windows.Foundation.Point(
+                    point.X * PlotWidth, PlotHeight - (point.Y * PlotHeight)));
+            }
+        }
+        // A Polyline of one point draws nothing, and a one-day window is a legitimate answer from
+        // a list created yesterday. Carry it across as a flat line rather than as a blank chart.
+        if (points.Count == 1)
+        {
+            points.Add(new Windows.Foundation.Point(PlotWidth, points[0].Y));
+        }
+        return points;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a chart is not a value to read back");
+}

@@ -175,6 +175,11 @@ public sealed class ListInsightsViewModel : ObservableObject
             .Select(person => new InsightContributorRow(person))
             .ToList() ?? []);
         Raise(nameof(HasInsights));
+        // The two series are refilled in place, so a chart bound through a converter — which is
+        // the only way a Polyline can take fractions — hears nothing unless the property is
+        // raised. The ItemsControls below redraw from the collection's own notifications.
+        Raise(nameof(CreatedSeries));
+        Raise(nameof(CompletedSeries));
         Raise(nameof(CreatedTotal));
         Raise(nameof(CompletedTotal));
         Raise(nameof(TimeToComplete));

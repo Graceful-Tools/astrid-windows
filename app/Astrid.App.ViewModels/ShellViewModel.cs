@@ -94,6 +94,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Detail = new TaskDetailViewModel(core);
         Board = new BoardViewModel(core);
         ListSettings = new ListSettingsViewModel(core);
+        Insights = new ListInsightsViewModel(core);
         Chat = new ChatViewModel(core);
         Settings = new SettingsViewModel(core, passkeys);
         Notifications = new NotificationsViewModel(core);
@@ -198,6 +199,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     /// <summary>The open list's settings and members, loaded when they are asked for.</summary>
     public ListSettingsViewModel ListSettings { get; }
+
+    /// <summary>What the open list has been doing lately (task 48c624ad).</summary>
+    public ListInsightsViewModel Insights { get; }
 
     /// <summary>The open list's conversation.</summary>
     public ChatViewModel Chat { get; }
@@ -486,6 +490,23 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         // first to notice an expired session. That belongs on the sign-in screen, not in a red line
         // beside an empty member list.
         NeedsSignIn |= ListSettings.NeedsSignIn;
+    }
+
+    /// <summary>
+    /// Ask for the open list's insights (task 48c624ad).
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="LoadListSettingsAsync"/> because it is a server-computed read over
+    /// history this device does not hold: the rest of the flyout draws from the cache first and
+    /// catches up, and this has nothing to draw until the round trip answers. Asked here rather
+    /// than in the flyout's code-behind so that which list is open stays the shell's fact.
+    /// </remarks>
+    public async Task LoadListInsightsAsync(CancellationToken cancellationToken = default)
+    {
+        if (!string.IsNullOrEmpty(Tasks.ListId))
+        {
+            await Insights.LoadAsync(Tasks.ListId, cancellationToken);
+        }
     }
 
     /// <summary>

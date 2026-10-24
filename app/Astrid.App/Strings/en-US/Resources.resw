@@ -2029,4 +2029,76 @@
   <data name="list_transfer_yes" xml:space="preserve">
     <value>Transfer and leave</value>
   </data>
+  <data name="list_insights.Header" xml:space="preserve">
+    <value>Insights</value>
+  </data>
+  <data name="insights_loading.Text" xml:space="preserve">
+    <value>Loading insights…</value>
+  </data>
+  <data name="insights_failed.Text" xml:space="preserve">
+    <value>Couldn't load insights</value>
+  </data>
+  <data name="insights_activity.Text" xml:space="preserve">
+    <value>Activity</value>
+  </data>
+  <data name="insights_new.Text" xml:space="preserve">
+    <value>New</value>
+  </data>
+  <data name="insights_completed.Text" xml:space="preserve">
+    <value>Completed</value>
+  </data>
+  <data name="insights_time_to_complete.Text" xml:space="preserve">
+    <value>Median time to complete</value>
+  </data>
+  <data name="insights_time_in_lane.Text" xml:space="preserve">
+    <value>Median time in each column</value>
+  </data>
+  <data name="insights_not_enough_history.Text" xml:space="preserve">
+    <value>Not enough history yet</value>
+  </data>
+  <data name="insights_lane_history_note.Text" xml:space="preserve">
+    <value>Column moves are recorded from now on, so this fills in as cards move.</value>
+  </data>
+  <data name="insights_contributors.Text" xml:space="preserve">
+    <value>Top contributors</value>
+  </data>
+  <data name="insights_no_activity.Text" xml:space="preserve">
+    <value>No activity in this period</value>
+  </data>
+  <data name="insights_agent_badge.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>AI agent</value>
+  </data>
+  <data name="listInsights_days7" xml:space="preserve">
+    <value>7 days</value>
+  </data>
+  <data name="listInsights_days30" xml:space="preserve">
+    <value>30 days</value>
+  </data>
+  <data name="listInsights_days90" xml:space="preserve">
+    <value>90 days</value>
+  </data>
+  <data name="listInsights_createdTotal" xml:space="preserve">
+    <value>{0} new</value>
+  </data>
+  <data name="listInsights_completedTotal" xml:space="preserve">
+    <value>{0} completed</value>
+  </data>
+  <data name="listInsights_sampleSize" xml:space="preserve">
+    <value>from {0}</value>
+  </data>
+  <data name="listInsights_profileCounts" xml:space="preserve">
+    <value>{0} completed · {1} inspired · {2} supported</value>
+  </data>
+  <data name="listInsights_activityCounts" xml:space="preserve">
+    <value>{0} created · {1} edits · {2} comments</value>
+  </data>
+  <data name="listInsights_duration_minutes" xml:space="preserve">
+    <value>{0} min</value>
+  </data>
+  <data name="listInsights_duration_hours" xml:space="preserve">
+    <value>{0} h</value>
+  </data>
+  <data name="listInsights_duration_days" xml:space="preserve">
+    <value>{0} d</value>
+  </data>
 </root>

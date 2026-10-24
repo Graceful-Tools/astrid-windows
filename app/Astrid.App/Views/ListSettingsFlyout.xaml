@@ -384,6 +384,209 @@
                      KeyDown="OnInviteKeyDown" />
             <Button x:Uid="invite" Content="Invite" Click="OnInvite" />
         </StackPanel>
+        <!--
+            What this list has been doing lately (task 48c624ad; web AWTD-1329, AWTD-1333). The
+            web's Insights tab, as an expander: every number is the server's, computed once in
+            lib/list-insights.ts from history this device does not hold, so the panel only draws
+            them. Collapsed by default — it is a round trip, and the flyout's other sections are
+            what somebody opened the gear for.
+        -->
+        <Expander x:Uid="list_insights" Header="Insights"
+                  Margin="0,8,0,0"
+                  HorizontalAlignment="Stretch"
+                  HorizontalContentAlignment="Left"
+                  Expanding="OnInsightsExpanding">
+            <StackPanel x:Name="InsightsPanel" Spacing="8" Width="288">
+                <!--
+                    7 / 30 / 90, from the view model rather than three buttons here: the route
+                    answers 400 to a fourth window, so which three exist is the core's answer.
+                -->
+                <ItemsControl ItemsSource="{x:Bind Shell.Insights.WindowChoices, Mode=OneWay}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="4" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="viewmodels:InsightWindowChoice">
+                            <Button Padding="8,2" MinWidth="0"
+                                    Tag="{x:Bind Days}"
+                                    Content="{x:Bind Days, Converter={StaticResource InsightWindow}}"
+                                    AutomationProperties.Name="{x:Bind Days, Converter={StaticResource InsightWindow}}"
+                                    Foreground="{x:Bind IsSelected, Converter={StaticResource FilterTint}}"
+                                    Click="OnInsightWindowChosen" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock x:Uid="insights_loading" Text="Loading insights…"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource AstridTextMuted}"
+                           Visibility="{x:Bind Shell.Insights.IsLoading, Mode=OneWay, Converter={StaticResource Visible}}" />
+                <TextBlock x:Uid="insights_failed" Text="Couldn't load insights"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource AstridTextMuted}"
+                           Visibility="{x:Bind Shell.Insights.Failed, Mode=OneWay, Converter={StaticResource Visible}}" />
+                <StackPanel Spacing="6"
+                            Visibility="{x:Bind Shell.Insights.HasInsights, Mode=OneWay, Converter={StaticResource Visible}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Uid="insights_activity" Grid.Column="0" Text="Activity"
+                                   Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4"
+                                    VerticalAlignment="Bottom">
+                            <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource AstridTextMuted}"
+                                       Text="{x:Bind Shell.Insights.CreatedTotal, Mode=OneWay, Converter={StaticResource InsightNewTotal}}" />
+                            <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource AstridTextMuted}"
+                                       Text="·" />
+                            <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource AstridTextMuted}"
+                                       Text="{x:Bind Shell.Insights.CompletedTotal, Mode=OneWay, Converter={StaticResource InsightDoneTotal}}" />
+                        </StackPanel>
+                    </Grid>
+                    <!--
+                        Two lines on one scale, stacked in a Grid so they share the plot. The view
+                        model hands over fractions and InsightLineConverter states the size once,
+                        which is what stops the pair becoming two charts drawn on top of each other.
+                    -->
+                    <Border Width="288" Height="120" CornerRadius="4"
+                            Background="{ThemeResource AstridSurfaceHover}">
+                        <Grid>
+                            <Polyline StrokeThickness="2"
+                                      Stroke="{StaticResource InsightNewBrush}"
+                                      Points="{x:Bind Shell.Insights.CreatedSeries, Mode=OneWay, Converter={StaticResource InsightLine}}" />
+                            <Polyline StrokeThickness="2"
+                                      Stroke="{StaticResource InsightDoneBrush}"
+                                      Points="{x:Bind Shell.Insights.CompletedSeries, Mode=OneWay, Converter={StaticResource InsightLine}}" />
+                        </Grid>
+                    </Border>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Rectangle Width="10" Height="2" VerticalAlignment="Center"
+                                       Fill="{StaticResource InsightNewBrush}" />
+                            <TextBlock x:Uid="insights_new" Text="New"
+                                       Style="{ThemeResource CaptionTextBlockStyle}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Rectangle Width="10" Height="2" VerticalAlignment="Center"
+                                       Fill="{StaticResource InsightDoneBrush}" />
+                            <TextBlock x:Uid="insights_completed" Text="Completed"
+                                       Style="{ThemeResource CaptionTextBlockStyle}" />
+                        </StackPanel>
+                    </StackPanel>
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Uid="insights_time_to_complete" Grid.Column="0"
+                                   Text="Median time to complete"
+                                   TextWrapping="Wrap"
+                                   Style="{ThemeResource CaptionTextBlockStyle}" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                            <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Text="{x:Bind Shell.Insights.TimeToComplete, Mode=OneWay, Converter={StaticResource InsightMedian}}" />
+                            <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource AstridTextMuted}"
+                                       Text="{x:Bind Shell.Insights.TimeToComplete, Mode=OneWay, Converter={StaticResource InsightSample}}" />
+                        </StackPanel>
+                    </Grid>
+                    <!--
+                        Only a board has columns, and a board whose every column has nothing to
+                        measure gets a sentence rather than a row of dashes: lane moves are
+                        recorded from the AWTD-1329 deploy onward, so it fills in as cards move.
+                    -->
+                    <StackPanel Spacing="2"
+                                Visibility="{x:Bind Shell.Insights.HasLanes, Mode=OneWay, Converter={StaticResource Visible}}">
+                        <TextBlock x:Uid="insights_time_in_lane" Text="Median time in each column"
+                                   TextWrapping="Wrap"
+                                   Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                        <TextBlock x:Uid="insights_not_enough_history" Text="Not enough history yet"
+                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Visibility="{x:Bind Shell.Insights.LanesNeedHistory, Mode=OneWay, Converter={StaticResource Visible}}" />
+                        <TextBlock x:Uid="insights_lane_history_note"
+                                   Text="Column moves are recorded from now on, so this fills in as cards move."
+                                   TextWrapping="Wrap"
+                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource AstridTextMuted}"
+                                   Visibility="{x:Bind Shell.Insights.LanesNeedHistory, Mode=OneWay, Converter={StaticResource Visible}}" />
+                        <ItemsControl ItemsSource="{x:Bind Shell.Insights.Lanes, Mode=OneWay}"
+                                      Visibility="{x:Bind Shell.Insights.LanesNeedHistory, Mode=OneWay, Converter={StaticResource NotVisible}}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="viewmodels:InsightLaneRow">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{x:Bind Name}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   Style="{ThemeResource CaptionTextBlockStyle}" />
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                            <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                                                       Text="{x:Bind Median, Converter={StaticResource InsightMedian}}" />
+                                            <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                                                       Foreground="{ThemeResource AstridTextMuted}"
+                                                       Text="{x:Bind Median, Converter={StaticResource InsightSample}}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                    <TextBlock x:Uid="insights_contributors" Text="Top contributors"
+                               Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                    <TextBlock x:Uid="insights_no_activity" Text="No activity in this period"
+                               Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource AstridTextMuted}"
+                               Visibility="{x:Bind Shell.Insights.NoActivity, Mode=OneWay, Converter={StaticResource Visible}}" />
+                    <ItemsControl ItemsSource="{x:Bind Shell.Insights.Contributors, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="viewmodels:InsightContributorRow">
+                                <Grid ColumnSpacing="8" Padding="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Width="20" Height="20" CornerRadius="10"
+                                            VerticalAlignment="Top"
+                                            Background="{ThemeResource AstridSurfaceHover}">
+                                        <Image Stretch="UniformToFill"
+                                               Source="{x:Bind Image, Converter={StaticResource RemoteImage}}" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <TextBlock TextTrimming="CharacterEllipsis"
+                                                       Text="{x:Bind Name, Converter={StaticResource Dashed}}" />
+                                            <!--
+                                                The agent badge web draws beside a bot's name: who
+                                                did the work is worth knowing when some of it was
+                                                not done by a person.
+                                            -->
+                                            <FontIcon x:Uid="insights_agent_badge" Glyph="&#xE99A;"
+                                                      FontSize="10"
+                                                      VerticalAlignment="Center"
+                                                      Foreground="{ThemeResource AstridTextMuted}"
+                                                      ToolTipService.ToolTip="AI agent"
+                                                      Visibility="{x:Bind IsAIAgent, Converter={StaticResource Visible}}" />
+                                        </StackPanel>
+                                        <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                                                   Text="{x:Bind Person, Converter={StaticResource InsightProfileCounts}}" />
+                                        <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                                                   Foreground="{ThemeResource AstridTextMuted}"
+                                                   Text="{x:Bind Person, Converter={StaticResource InsightActivityCounts}}" />
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </StackPanel>
+        </Expander>
         <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
             <Button x:Uid="leave_list" Content="Leave list"
                     Click="OnLeaveList"
