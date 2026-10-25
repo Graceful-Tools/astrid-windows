@@ -45,24 +45,76 @@
                     DragStarting="OnCardDragStarting"
                     Click="OnCardOpened"
                     RightTapped="OnCardRightTapped">
-                <StackPanel Spacing="3">
+                <!--
+                    The same two columns a list row draws: the mark, then the words (task
+                    6979e694). A card without one put the title hard against the card edge and
+                    moved it the moment the card was opened — the Mac avoids that by building its
+                    card out of its row view, and the web shares `TaskRowContent` for the same
+                    reason. This is that shape, 32px mark and a 12px gap, without pulling the
+                    row's second line onto a card.
+                -->
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
                     <!--
-                        The key, muted, above the title (task 99da12e0). This is the one surface
-                        where it earns its place: on a board the key is shared context, and a card
-                        is where somebody reads an id out to quote it. `ShowsIdentifier` is the
-                        core's answer, so a card and a list row cannot disagree about one task.
+                        One mark carries three things, as on a row: priority as its colour, whether
+                        it repeats, and whether it is done. The core decided which of the three a
+                        task gets, so a card and a row cannot disagree about one task.
                     -->
-                    <TextBlock Text="{x:Bind Identifier}"
-                               FontSize="11"
-                               Foreground="{ThemeResource AstridTextMuted}"
-                               Visibility="{x:Bind ShowsIdentifier, Converter={StaticResource Visible}}" />
-                    <TextBlock Text="{x:Bind Title}"
-                               TextWrapping="Wrap"
-                               Foreground="{ThemeResource AstridTextPrimary}" />
-                    <TextBlock Text="{x:Bind Due, Converter={StaticResource DueText}}"
-                               FontSize="11"
-                               Foreground="{ThemeResource AstridTextMuted}" />
-                </StackPanel>
+                    <Button Grid.Column="0"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            Width="32" Height="32"
+                            VerticalAlignment="Top"
+                            AutomationProperties.Name="{x:Bind LeadingActionName}"
+                            Tag="{x:Bind Id}"
+                            Click="OnCardMarkClicked">
+                        <Grid Width="32" Height="32">
+                            <Image Source="{x:Bind CheckboxAsset}" Width="32" Height="32"
+                                   Visibility="{x:Bind LeadingIsCheckbox, Converter={StaticResource Visible}}" />
+                            <!-- A task in a public list the reader cannot edit: the tap copies. -->
+                            <Border Width="24" Height="24" CornerRadius="6"
+                                    BorderThickness="2"
+                                    BorderBrush="{ThemeResource AstridTextMuted}"
+                                    Visibility="{x:Bind LeadingIsCopy, Converter={StaticResource Visible}}">
+                                <FontIcon Glyph="&#xE8C8;" FontSize="11"
+                                          Foreground="{ThemeResource AstridTextSecondary}"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <Border Width="24" Height="24" CornerRadius="6"
+                                    Background="{x:Bind Priority, Converter={StaticResource PriorityBrush}}"
+                                    Visibility="{x:Bind LeadingIsSquare, Converter={StaticResource Visible}}">
+                                <TextBlock Text="{x:Bind (bindings:TaskRow), Converter={StaticResource LeadingMark}}"
+                                           FontSize="12" FontWeight="SemiBold"
+                                           Foreground="White"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                        </Grid>
+                    </Button>
+                    <StackPanel Grid.Column="1" Spacing="3">
+                        <!--
+                            The key, muted, above the title (task 99da12e0). This is the one
+                            surface where it earns its place: on a board the key is shared
+                            context, and a card is where somebody reads an id out to quote it.
+                            `ShowsIdentifier` is the core's answer, so a card and a list row
+                            cannot disagree about one task.
+                        -->
+                        <TextBlock Text="{x:Bind Identifier}"
+                                   FontSize="11"
+                                   Foreground="{ThemeResource AstridTextMuted}"
+                                   Visibility="{x:Bind ShowsIdentifier, Converter={StaticResource Visible}}" />
+                        <TextBlock Text="{x:Bind Title}"
+                                   TextWrapping="Wrap"
+                                   Foreground="{ThemeResource AstridTextPrimary}"
+                                   TextDecorations="{x:Bind Completed, Converter={StaticResource CompletedStrike}}" />
+                        <TextBlock Text="{x:Bind Due, Converter={StaticResource DueText}}"
+                                   FontSize="11"
+                                   Foreground="{ThemeResource AstridTextMuted}" />
+                    </StackPanel>
+                </Grid>
             </views:BoardCard>
         </DataTemplate>
         <DataTemplate x:Key="BoardDetailSlotTemplate" x:DataType="viewmodels:InlineDetailSlot">
