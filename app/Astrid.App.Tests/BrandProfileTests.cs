@@ -339,7 +339,10 @@ public sealed class BrandProfileTests
         Assert.Contains("-p:AstridDefaultServerUrl=", packager, StringComparison.Ordinal);
         Assert.Contains("-p:AstridUrlScheme=", packager, StringComparison.Ordinal);
         Assert.Contains("-p:AstridBrandShortName=", packager, StringComparison.Ordinal);
-        Assert.Contains("$brand.AssetsDirectory", packager, StringComparison.Ordinal);
+        // $brandProfile, not $brand: the local cannot share the name of the [string]$Brand
+        // parameter, or PowerShell's type constraint silently converts the profile to a string
+        // and every read off it throws (task af2ca695).
+        Assert.Contains("$brandProfile.AssetsDirectory", packager, StringComparison.Ordinal);
         // The literal path is what it falls back to, inside the loader — not what the packager
         // copies, or a brand's own tiles would never reach the package.
         Assert.DoesNotContain("'packaging/Assets/*'", packager, StringComparison.Ordinal);
