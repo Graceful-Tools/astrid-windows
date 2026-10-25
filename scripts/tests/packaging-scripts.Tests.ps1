@@ -252,6 +252,62 @@ foreach ($relative in $Targets.Keys) {
     }
 }
 
+
+# ---------------------------------------------------------------------------------------------
+# A typed parameter's name is not available as a local. Task af2ca695.
+# ---------------------------------------------------------------------------------------------
+#
+# THE BUG. `package.ps1` declares `[string]$Brand` and then wrote the resolved profile back into
+# the same name, differing only in case:
+#
+#     $brand = Get-AstridBrandProfile -Brand $Brand -RepoRoot $repoRoot
+#
+# PowerShell variable names are case-INSENSITIVE, so `$brand` and `$Brand` are one variable - and
+# a `param([string]...)` declaration puts a TYPE CONSTRAINT on it that survives every later
+# assignment. So the pscustomobject was silently converted to its string form,
+# "@{Name=astrid; DisplayName=Astrid Tasks; ...}", and the next line threw under StrictMode:
+#
+#     The property 'Name' cannot be found on this object. Verify that the property exists.
+#
+# Two things made it worse than a typo. The assignment also made `if ($Brand)` true for Astrid's
+# own build - the parameter now held an object instead of '' - so the guard meant to print one
+# line for a partner build instead ran the failing line for EVERY build. And `npm run predeploy`
+# never calls package.ps1, so the gate stayed green while packaging was broken for six days: no
+# MSIX could be produced at all, which is also a Store release nobody could cut.
+#
+# Asserted as a RULE rather than against that one name, because the trap is the language's and
+# the next typed parameter is as vulnerable as this one was.
+Write-Host ''
+Write-Host 'a typed parameter is not reused as a local'
+
+foreach ($relative in $Targets.Keys) {
+    Invoke-Case "$relative does not assign to any of its typed parameters" {
+        $path = Join-Path $RepoRoot $relative
+        $ast = Get-ScriptAst $path
+
+        # The script's own param() block, not a nested function's.
+        $paramBlock = $ast.ParamBlock
+        $typed = @()
+        if ($paramBlock) {
+            $typed = @($paramBlock.Parameters |
+                Where-Object { $_.StaticType -and $_.StaticType -ne [object] } |
+                ForEach-Object { $_.Name.VariablePath.UserPath })
+        }
+        Assert-True "$relative declares typed parameters to check" ($typed.Count -gt 0)
+
+        $assigned = @($ast.FindAll({
+                    param($n) $n -is [System.Management.Automation.Language.AssignmentStatementAst]
+                }, $true) |
+                Where-Object { $_.Left -is [System.Management.Automation.Language.VariableExpressionAst] } |
+                ForEach-Object { $_.Left.VariablePath.UserPath })
+
+        foreach ($name in $typed) {
+            $clash = @($assigned | Where-Object { $_ -eq $name -or $_ -ieq $name })
+            Assert-Equal "nothing assigns to `$$name, whose type constraint would coerce it" 0 $clash.Count
+        }
+    }
+}
+
 Write-Host ''
 if ($script:Checks -lt 25) {
     Write-Host "FAIL: only $($script:Checks) assertion(s) ran - this file is meant to make more" -ForegroundColor Red
