@@ -671,6 +671,14 @@ public sealed class TaskDetailViewModel : ObservableObject
                 await CommitAllAsync(cancellationToken);
             }
             IsEditingDescription = false;
+            // The last task's files are not this one's. The section is drawn on a non-zero count,
+            // so anything left here is on screen under the new task — and for a task created
+            // straight after an attachment, that was the first thing a reader saw (task 4f429ae8).
+            //
+            // Cleared rather than refetched on purpose: opening a task is one cache read, two
+            // reads and a thread fetch in all, and `Opening_a_task_fills_the_pane_from_one_command`
+            // pins that. Attachments stay lazy — they arrive when one is attached or downloaded.
+            Attachments.Clear();
         }
         TaskId = taskId;
         IsOpen = true;

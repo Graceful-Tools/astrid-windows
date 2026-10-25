@@ -1125,6 +1125,49 @@ public sealed class TaskDetailViewModelTests
     }
 
     /// <summary>
+    /// Opening a different task does not leave the last one's files on screen (task 4f429ae8).
+    /// </summary>
+    /// <remarks>
+    /// Reported from the running app: attach a file to one task, create another, and the new one
+    /// shows the first one's attachment. <c>Attachments</c> was filled only after an attach or a
+    /// download and nothing emptied it, so the collection outlived the task it belonged to — and
+    /// the section is drawn whenever its count is non-zero, so the file appeared under a task that
+    /// does not have it. Nothing was wrong on the server; it was the pane lying about what it had
+    /// just created.
+    /// </remarks>
+    [Fact]
+    public async Task Opening_another_task_drops_the_last_ones_attachments_task_4f429ae8()
+    {
+        var core = OpenedTask().AnswerOk("attachments", new
+        {
+            files = new[]
+            {
+                new
+                {
+                    id = "f1",
+                    name = "itinerary.pdf",
+                    size = 2048,
+                    mimeType = "application/pdf",
+                    isCached = false,
+                    path = "C:/cache/f1.pdf",
+                },
+            },
+        });
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+        await view.LoadAttachmentsAsync();
+        Assert.Single(view.Attachments);
+
+        await view.OpenAsync("t2");
+
+        Assert.Empty(view.Attachments);
+        // Cleared, not refetched: opening a task stays the three commands
+        // `Opening_a_task_fills_the_pane_from_one_command` pins, so attachments remain lazy. The
+        // only `attachments` on the wire is the explicit load above.
+        Assert.Equal(1, core.SentKinds().Count(kind => kind == "attachments"));
+    }
+
+    /// <summary>
     /// A download answers with a path, not with bytes: what somebody does with an attachment is
     /// open it in the program that reads that kind of file.
     /// </summary>
