@@ -30,7 +30,12 @@
             tinted ground inside it, and a square accent button carrying a plus. The word
             "Add" beside a text box is the one thing on the screen that never needed saying.
         -->
-        <Border Grid.Row="0" Margin="20,0,20,8"
+        <!--
+            Margin matches the ListView's below (12) rather than insetting this card further: with
+            the item container's own 12 of padding, the checkbox here starts where a row's does,
+            and the card's edges line up with the row cards' (task 90d0306e).
+        -->
+        <Border Grid.Row="0" Margin="12,0,12,8"
                 VerticalAlignment="Top"
                 Visibility="{x:Bind Shell.IsBoardView, Mode=OneWay, Converter={StaticResource NotVisible}}"
                 Padding="12,10"
@@ -38,7 +43,8 @@
                 Background="{ThemeResource AstridSurface}"
                 BorderThickness="1"
                 BorderBrush="{ThemeResource AstridBorder}">
-            <Grid ColumnSpacing="10">
+            <!-- 12, the gap a row uses between its checkbox and its title (task 90d0306e). -->
+            <Grid ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
