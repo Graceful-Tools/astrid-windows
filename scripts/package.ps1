@@ -76,10 +76,10 @@ if (-not $makeappx) {
     throw "makeappx.exe was not found. Restore the app project first: it comes with Microsoft.Windows.SDK.BuildTools."
 }
 
-$brand = Get-AstridBrandProfile -Brand $Brand -RepoRoot $repoRoot
+$brandProfile = Get-AstridBrandProfile -Brand $Brand -RepoRoot $repoRoot
 if ($Brand) {
     Write-Host ''
-    Write-Host "[*] brand: $($brand.Name) - $($brand.DisplayName), $($brand.Scheme)://, $($brand.ServerUrl)" -ForegroundColor Cyan
+    Write-Host "[*] brand: $($brandProfile.Name) - $($brandProfile.DisplayName), $($brandProfile.Scheme)://, $($brandProfile.ServerUrl)" -ForegroundColor Cyan
 }
 
 # The identity Partner Center assigned. Substituted rather than written into the manifest, because
@@ -89,8 +89,8 @@ if ($Brand) {
 # Center account: store-identity.json is this repo's, and a partner cannot edit it.
 $identityFile = Join-Path $repoRoot 'packaging/store-identity.json'
 $identity = Get-Content $identityFile -Raw | ConvertFrom-Json
-$identityName = if ($brand.IdentityName) { $brand.IdentityName } else { $identity.identityName }
-$identityPublisher = if ($brand.IdentityPublisher) { $brand.IdentityPublisher } else { $identity.identityPublisher }
+$identityName = if ($brandProfile.IdentityName) { $brandProfile.IdentityName } else { $identity.identityName }
+$identityPublisher = if ($brandProfile.IdentityPublisher) { $brandProfile.IdentityPublisher } else { $identity.identityPublisher }
 
 if ($identityName -like 'REPLACE*' -or $identityPublisher -like 'REPLACE*') {
     # Obviously fake, so a package built before the reservation exists cannot be mistaken for one
@@ -124,12 +124,12 @@ foreach ($architecture in $Architectures) {
     Invoke-BuildTool "publish failed for $rid" {
         dotnet publish (Join-Path $repoRoot 'app/Astrid.App/Astrid.App.csproj') `
             -c $Configuration -r $rid --self-contained true -p:AstridPackaged=true `
-            "-p:AstridDefaultServerUrl=$($brand.ServerUrl)" `
-            "-p:AstridUrlScheme=$($brand.Scheme)" `
-            "-p:AstridBrandShortName=$($brand.ShortName)" `
-            "-p:AstridBrandInboundTaskEmail=$($brand.InboundTaskEmail)" `
-            "-p:AstridBrandAgentName=$($brand.AgentName)" `
-            "-p:AstridBrandWordmark=$($brand.Wordmark)" `
+            "-p:AstridDefaultServerUrl=$($brandProfile.ServerUrl)" `
+            "-p:AstridUrlScheme=$($brandProfile.Scheme)" `
+            "-p:AstridBrandShortName=$($brandProfile.ShortName)" `
+            "-p:AstridBrandInboundTaskEmail=$($brandProfile.InboundTaskEmail)" `
+            "-p:AstridBrandAgentName=$($brandProfile.AgentName)" `
+            "-p:AstridBrandWordmark=$($brandProfile.Wordmark)" `
             -o $publish
     }
 
@@ -146,12 +146,12 @@ foreach ($architecture in $Architectures) {
     $manifest = $manifest.Replace('{VERSION}', $Version).Replace('{ARCHITECTURE}', $architecture)
     $manifest = $manifest.Replace('{IDENTITY_NAME}', $identityName)
     $manifest = $manifest.Replace('{IDENTITY_PUBLISHER}', $identityPublisher)
-    $manifest = $manifest.Replace('{DISPLAY_NAME}', [System.Security.SecurityElement]::Escape($brand.DisplayName))
-    $manifest = $manifest.Replace('{PUBLISHER_DISPLAY_NAME}', [System.Security.SecurityElement]::Escape($brand.PublisherDisplayName))
-    $manifest = $manifest.Replace('{DESCRIPTION}', [System.Security.SecurityElement]::Escape($brand.Description))
-    $manifest = $manifest.Replace('{SHORT_NAME}', [System.Security.SecurityElement]::Escape($brand.ShortName))
-    $manifest = $manifest.Replace('{SCHEME}', $brand.Scheme)
-    $manifest = $manifest.Replace('{SCHEME_DISPLAY_NAME}', [System.Security.SecurityElement]::Escape($brand.SchemeDisplayName))
+    $manifest = $manifest.Replace('{DISPLAY_NAME}', [System.Security.SecurityElement]::Escape($brandProfile.DisplayName))
+    $manifest = $manifest.Replace('{PUBLISHER_DISPLAY_NAME}', [System.Security.SecurityElement]::Escape($brandProfile.PublisherDisplayName))
+    $manifest = $manifest.Replace('{DESCRIPTION}', [System.Security.SecurityElement]::Escape($brandProfile.Description))
+    $manifest = $manifest.Replace('{SHORT_NAME}', [System.Security.SecurityElement]::Escape($brandProfile.ShortName))
+    $manifest = $manifest.Replace('{SCHEME}', $brandProfile.Scheme)
+    $manifest = $manifest.Replace('{SCHEME_DISPLAY_NAME}', [System.Security.SecurityElement]::Escape($brandProfile.SchemeDisplayName))
     Set-Content -Path (Join-Path $publish 'AppxManifest.xml') -Value $manifest -Encoding utf8
 
     # The Store tiles go INTO the published Assets folder, alongside the app's own.
@@ -167,7 +167,7 @@ foreach ($architecture in $Architectures) {
     # partner's icons are the one thing substitution cannot do: they are files, not strings.
     $assetsDest = Join-Path $publish 'Assets'
     New-Item -ItemType Directory -Force -Path $assetsDest | Out-Null
-    Copy-Item -Recurse -Force (Join-Path $brand.AssetsDirectory '*') $assetsDest
+    Copy-Item -Recurse -Force (Join-Path $brandProfile.AssetsDirectory '*') $assetsDest
 
     # Every asset the manifest names has to be where it says it is. Windows only checks at install
     # time, names one missing file, and stops - so a layout mistake costs a full build, a signature
