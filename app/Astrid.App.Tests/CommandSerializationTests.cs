@@ -19,6 +19,33 @@ public sealed class CommandSerializationTests
         JsonSerializer.Serialize(command, CommandJson.Options);
 
     /// <summary>
+    /// Minting an access token sends the permissions and leaves out what the caller did not ask
+    /// for (task 1c8bb8f4).
+    /// </summary>
+    /// <remarks>
+    /// The route reads an absent optional as "no opinion" and a null as a bad body, so
+    /// <c>WhenWritingNull</c> doing its job is the contract here, not an incidental detail. An
+    /// unasked-for expiry must mean "a token that does not expire", which is absence.
+    /// </remarks>
+    [Fact]
+    public void Minting_an_access_token_omits_what_was_not_asked_for_task_1c8bb8f4()
+    {
+        var bare = Json(Commands.MintAccessToken(["read", "write"]));
+
+        Assert.Contains("\"kind\":\"mintAccessToken\"", bare, StringComparison.Ordinal);
+        Assert.Contains("\"permissions\":[\"read\",\"write\"]", bare, StringComparison.Ordinal);
+        Assert.DoesNotContain("expiresInDays", bare, StringComparison.Ordinal);
+        Assert.DoesNotContain("description", bare, StringComparison.Ordinal);
+        Assert.DoesNotContain("agent", bare, StringComparison.Ordinal);
+
+        var full = Json(Commands.MintAccessToken(["read"], 30, "Copilot cloud agent", "copilot"));
+
+        Assert.Contains("\"expiresInDays\":30", full, StringComparison.Ordinal);
+        Assert.Contains("\"description\":\"Copilot cloud agent\"", full, StringComparison.Ordinal);
+        Assert.Contains("\"agent\":\"copilot\"", full, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// The one that would be silent and expensive: <c>WhenWritingNull</c> is set on the serializer,
     /// and if it applied to dictionary entries then "clear the due date" would serialise to an
     /// empty change set and do nothing at all.

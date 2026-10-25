@@ -247,6 +247,19 @@ public static class Commands
     public static object MintTransportCredentials(string preset, string agent) =>
         new PresetRequest("mintTransportCredentials", preset, agent);
 
+    /// <summary>
+    /// A user-level access token, for a cloud agent that has to act as this account.
+    /// </summary>
+    /// <remarks>
+    /// Answers with the token in the one form it will ever be readable, so the caller shows it at
+    /// once and stores nothing. It is listed and revoked afterwards as an access token, through
+    /// <see cref="Connections"/> and <see cref="RevokeConnection"/>.
+    /// <paramref name="expiresInDays"/> is 1-365; null asks for a token that does not expire.
+    /// </remarks>
+    public static object MintAccessToken(IReadOnlyList<string> permissions,
+        int? expiresInDays = null, string? description = null, string? agent = null) =>
+        new AccessTokenRequest("mintAccessToken", permissions, expiresInDays, description, agent);
+
     /// <summary>Start connecting Copilot. Answers with the URL a browser should open.</summary>
     public static object ConnectCopilot() => new KindOnly("connectCopilot");
 
@@ -1177,6 +1190,13 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("preset")] string Preset,
         [property: JsonPropertyName("agent")] string Agent);
+
+    private sealed record AccessTokenRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("permissions")] IReadOnlyList<string> Permissions,
+        [property: JsonPropertyName("expiresInDays")] int? ExpiresInDays,
+        [property: JsonPropertyName("description")] string? Description,
+        [property: JsonPropertyName("agent")] string? Agent);
 
     private sealed record AgentModeRequest(
         [property: JsonPropertyName("kind")] string Kind,

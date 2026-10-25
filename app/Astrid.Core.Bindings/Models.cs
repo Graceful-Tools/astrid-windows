@@ -779,6 +779,26 @@ public sealed record MintedClient
     [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
 }
 
+/// <summary>
+/// A user-level access token the server has just made, in the one form it will ever be readable.
+/// </summary>
+/// <remarks>
+/// Never written to disk, for the same reason as <see cref="MintedClient"/>: the account cannot
+/// rotate a token it does not know is there. Shown once, then listed and revoked as an access
+/// token through the connections panel.
+/// </remarks>
+public sealed record MintedAccessToken
+{
+    [JsonPropertyName("token")] public string Token { get; init; } = string.Empty;
+
+    [JsonPropertyName("permissions")] public IReadOnlyList<string> Permissions { get; init; } = [];
+
+    /// <summary>Null for a token that does not expire.</summary>
+    [JsonPropertyName("expiresAt")] public string? ExpiresAt { get; init; }
+
+    [JsonPropertyName("description")] public string? Description { get; init; }
+}
+
 /// <summary>Where an account's own agent is told about work.</summary>
 public sealed record WebhookSettings
 {
