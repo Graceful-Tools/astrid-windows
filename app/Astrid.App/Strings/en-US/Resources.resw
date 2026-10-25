@@ -2101,4 +2101,22 @@
   <data name="listInsights_duration_days" xml:space="preserve">
     <value>{0} d</value>
   </data>
+  <data name="copilot_cloud_token_line.Text" xml:space="preserve">
+    <value>Copilot's cloud agent needs a token to act as your account. Mint one here; it is shown once.</value>
+  </data>
+  <data name="mint_copilot_token.Content" xml:space="preserve">
+    <value>Mint cloud-agent token</value>
+  </data>
+  <data name="copy_the_token_now_it_is.Text" xml:space="preserve">
+    <value>Copy the token now - it is not shown again.</value>
+  </data>
+  <data name="cloud_agent_token.Header" xml:space="preserve">
+    <value>Cloud-agent token</value>
+  </data>
+  <data name="cloud_agent_token.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Cloud-agent token</value>
+  </data>
+  <data name="copy_the_token.Content" xml:space="preserve">
+    <value>Copy the token</value>
+  </data>
 </root>

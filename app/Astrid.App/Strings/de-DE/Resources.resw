@@ -2100,4 +2100,22 @@
   <data name="listInsights_duration_days" xml:space="preserve">
     <value>{0} T.</value>
   </data>
+  <data name="copilot_cloud_token_line.Text" xml:space="preserve">
+    <value>Der Cloud-Agent von Copilot benötigt ein Token, um als Ihr Konto zu handeln. Erstellen Sie hier eines; es wird nur einmal angezeigt.</value>
+  </data>
+  <data name="mint_copilot_token.Content" xml:space="preserve">
+    <value>Cloud-Agent-Token erstellen</value>
+  </data>
+  <data name="copy_the_token_now_it_is.Text" xml:space="preserve">
+    <value>Kopieren Sie das Token jetzt — es wird nicht noch einmal angezeigt.</value>
+  </data>
+  <data name="cloud_agent_token.Header" xml:space="preserve">
+    <value>Cloud-Agent-Token</value>
+  </data>
+  <data name="cloud_agent_token.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Cloud-Agent-Token</value>
+  </data>
+  <data name="copy_the_token.Content" xml:space="preserve">
+    <value>Token kopieren</value>
+  </data>
 </root>

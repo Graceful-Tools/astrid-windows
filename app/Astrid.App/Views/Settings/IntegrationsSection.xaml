@@ -39,6 +39,45 @@
         </StackPanel>
 
         <!--
+            Copilot's cloud agent acts as this account through
+            a user-level access token (AWTD-1312). The server
+            shows it once and nothing here writes it down, so
+            it is on screen until this panel closes and the
+            only remedy afterwards is to mint another and
+            revoke this one. Same shape as the webhook pair in
+            the agents section, for the same reason.
+        -->
+        <StackPanel Spacing="6"
+                    Visibility="{x:Bind Shell.Settings.Agents.CopilotConnected, Mode=OneWay, Converter={StaticResource Visible}}">
+            <TextBlock x:Uid="copilot_cloud_token_line" TextWrapping="Wrap"
+                       FontSize="12"
+                       Foreground="{ThemeResource AstridTextMuted}"
+                       Text="Copilot's cloud agent needs a token to act as your account. Mint one here; it is shown once." />
+            <Button x:Uid="mint_copilot_token" Content="Mint cloud-agent token"
+                    Click="OnMintCopilotToken" />
+            <Border CornerRadius="8"
+                    Padding="10,8"
+                    Background="{ThemeResource AstridSurfaceHover}"
+                    Visibility="{x:Bind Shell.Settings.Agents.HasCopilotToken, Mode=OneWay, Converter={StaticResource Visible}}">
+                <StackPanel Spacing="6">
+                    <TextBlock x:Uid="copy_the_token_now_it_is" Text="Copy the token now - it is not shown again."
+                               FontSize="11"
+                               Foreground="{ThemeResource AstridTextMuted}" />
+                    <TextBox x:Uid="cloud_agent_token" Text="{x:Bind Shell.Settings.Agents.CopilotToken.Token, Mode=OneWay}"
+                             AutomationProperties.Name="Cloud-agent token"
+                             Header="Cloud-agent token"
+                             IsReadOnly="True"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Padding="0"
+                             FontFamily="Consolas"
+                             TextWrapping="Wrap" />
+                    <Button x:Uid="copy_the_token" Content="Copy the token" Click="OnCopyCopilotToken" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!--
             The account's side of external sync (task
             e32f1322): a section per provider, headed by
             which account it is connected as, over the lists

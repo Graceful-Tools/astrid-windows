@@ -148,6 +148,7 @@ public sealed partial class SettingsView : UserControl
     {
         Shell.Settings.Connections.ForgetMintedCredentials();
         Shell.Settings.Agents.ForgetWebhookCredentials();
+        Shell.Settings.Agents.ForgetCopilotToken();
     }
 
     /// <summary>The bar's arrow: back to the list, exactly as it was.</summary>

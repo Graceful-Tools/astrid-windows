@@ -432,4 +432,45 @@ public sealed class ConnectionsViewModelTests
         agents.ForgetWebhookCredentials();
         Assert.False(agents.HasWebhookCredentials);
     }
+
+    // ── Integrations mints the Copilot cloud agent's token ───────────────────────────────────
+
+    /// <summary>
+    /// The Copilot cloud agent acts as the account through a user-level access token, which the
+    /// server shows exactly once (task e61ce1e6).
+    /// </summary>
+    /// <remarks>
+    /// Read and write, because a cloud agent that cannot write cannot finish a task, and no
+    /// expiry, because nothing here renews one — an expiring token would stop the agent one day
+    /// with no way back except minting another. It is revocable from the connections panel, which
+    /// is where it appears afterwards as an access token. The absence of <c>expiresInDays</c> in
+    /// the request is therefore part of the behaviour, not an omission.
+    /// </remarks>
+    [Fact]
+    public async Task Integrations_mints_the_copilot_cloud_agent_token_task_e61ce1e6()
+    {
+        var core = new FakeCore()
+            .AnswerOk("mintAccessToken", new
+            {
+                token = "astrid_mcp_minted",
+                permissions = new[] { "read", "write" },
+                expiresAt = (string?)null,
+                description = "Copilot cloud agent",
+            });
+        var agents = new SettingsViewModel(core).Agents;
+
+        Assert.True(await agents.MintCopilotTokenAsync());
+
+        Assert.Equal("astrid_mcp_minted", agents.CopilotToken?.Token);
+        Assert.Null(agents.CopilotToken?.ExpiresAt);
+        Assert.True(agents.HasCopilotToken);
+        Assert.Contains(core.Sent, json =>
+            json.Contains("\"kind\":\"mintAccessToken\"")
+            && json.Contains("\"permissions\":[\"read\",\"write\"]")
+            && json.Contains("\"agent\":\"copilot\"")
+            && !json.Contains("expiresInDays"));
+
+        agents.ForgetCopilotToken();
+        Assert.False(agents.HasCopilotToken);
+    }
 }
