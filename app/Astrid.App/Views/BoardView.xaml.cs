@@ -111,6 +111,27 @@ public sealed partial class BoardView : UserControl
     }
 
     /// <summary>
+    /// A card's mark, which does what a row's does (task 6979e694): copies a task the reader
+    /// cannot edit, and otherwise completes or un-completes it.
+    /// </summary>
+    private async void OnCardMarkClicked(object sender, RoutedEventArgs args)
+    {
+        if (sender is not FrameworkElement { Tag: string taskId })
+        {
+            return;
+        }
+        var card = Shell.Board.Columns
+            .SelectMany(column => column.Cards)
+            .FirstOrDefault(candidate => candidate.Id == taskId);
+        if (card is { IsCopyOnly: true })
+        {
+            await Shell.Board.CopyAsync(taskId);
+            return;
+        }
+        await Shell.Board.SetCompletedAsync(taskId, completed: card is null || !card.Completed);
+    }
+
+    /// <summary>
     /// Enter in a column's add field adds the card (task 95c7a68f).
     /// </summary>
     /// <remarks>

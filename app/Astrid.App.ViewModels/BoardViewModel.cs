@@ -156,6 +156,50 @@ public sealed class BoardViewModel : ObservableObject
         return response.Ok;
     }
 
+    /// <summary>
+    /// Complete a card's task, or bring it back (task 6979e694).
+    /// </summary>
+    /// <remarks>
+    /// Always the complete command, never an update carrying <c>completed</c>: a repeating task
+    /// rolls forward rather than finishing, and only that path does it — see
+    /// <c>astrid_core::services::task</c>. The board is re-read afterwards for the same reason a
+    /// move re-reads it: a rolled-forward task is a different card now, with a new date and
+    /// possibly a different column, and only the core knows what it looks like.
+    /// </remarks>
+    public async Task<bool> SetCompletedAsync(string taskId, bool completed,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(
+            Commands.CompleteTask(taskId, completed), cancellationToken);
+        if (!response.Ok)
+        {
+            // Offline is not a failure, as with a move: the write is in the Outbox.
+            ErrorMessage = response.IsStillPending ? null : response.Error?.Message;
+        }
+        await RefreshAsync(cancellationToken);
+        return response.Ok;
+    }
+
+    /// <summary>
+    /// Copy a card's task into this account's own tasks (task 6979e694).
+    /// </summary>
+    /// <remarks>
+    /// The fourth thing a card's mark can be: a task in a public list the reader cannot edit draws
+    /// the web's copy control, and the tap copies rather than completes. The board is re-read so
+    /// the copy appears if it belongs in one of these columns.
+    /// </remarks>
+    public async Task<bool> CopyAsync(string taskId, CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(
+            Commands.CopyTask(taskId, targetListId: null, includeComments: false), cancellationToken);
+        if (!response.Ok)
+        {
+            ErrorMessage = response.IsStillPending ? null : response.Error?.Message;
+        }
+        await RefreshAsync(cancellationToken);
+        return response.Ok;
+    }
+
     /// <summary>What is half-typed in a column's add field.</summary>
     internal string DraftFor(string columnId) =>
         _drafts.TryGetValue(columnId, out var draft) ? draft : string.Empty;

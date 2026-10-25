@@ -125,6 +125,33 @@ public sealed class BoardViewModelTests
     }
 
     /// <summary>
+    /// A card's mark completes the task, the way a row's does (task 6979e694).
+    /// </summary>
+    /// <remarks>
+    /// Always the complete command, never an update carrying <c>completed</c>: a repeating task
+    /// rolls forward rather than finishing, and only that path does it. The board reloads
+    /// afterwards for the same reason a move does — a rolled-forward task is a different card now,
+    /// and only the core knows what it looks like.
+    /// </remarks>
+    [Fact]
+    public async Task A_cards_mark_completes_the_task_task_6979e694()
+    {
+        var core = new FakeCore()
+            .AnswerOk("board", Board(Column("ready", "Ready", "status", "Write it down")))
+            .AnswerOk("completeTask")
+            .AnswerOk("board", Board(Column("ready", "Ready", "status")));
+        var view = new BoardViewModel(core);
+        await view.LoadAsync("l1");
+
+        Assert.True(await view.SetCompletedAsync("ready-0", completed: true));
+
+        var sent = core.Sent.First(json => json.Contains("completeTask"));
+        Assert.Contains("\"taskId\":\"ready-0\"", sent);
+        Assert.Contains("\"completed\":true", sent);
+        Assert.Equal(["board", "completeTask", "board"], core.SentKinds());
+    }
+
+    /// <summary>
     /// Offline is not an error. The move is in the Outbox, the cache already shows it, and a red
     /// message here is how a working offline app comes to look broken.
     /// </summary>

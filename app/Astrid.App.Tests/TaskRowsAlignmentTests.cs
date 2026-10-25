@@ -78,4 +78,40 @@ public sealed class TaskRowsAlignmentTests
         Assert.Equal(rowCheckbox, quickCheckbox);
         Assert.Equal(rowText, quickText);
     }
+
+    /// <summary>
+    /// A board card leads with the same mark a row does (task 6979e694).
+    /// </summary>
+    /// <remarks>
+    /// A card drew its title with nothing to its left, so the words sat against the card edge and
+    /// moved the moment the card was opened. The Mac builds its card out of its row view and the
+    /// web shares <c>TaskRowContent</c>, both for this reason; this asserts the same shape without
+    /// sharing the template — the mark, 32px wide, then the words a row's gap away. All four
+    /// states the core can ask for are checked, because a card that drops one shows nothing where
+    /// the mark should be.
+    /// </remarks>
+    [Fact]
+    public void A_board_card_leads_with_the_same_mark_as_a_row_task_6979e694()
+    {
+        var board = XDocument
+            .Load(Path.Combine(LocalisationTests.AppDirectory(), "Views", "BoardView.xaml")).Root!;
+        var card = board.Descendants()
+            .Single(element => element.Name.LocalName == "BoardCard");
+        var grid = card.Elements(Ui + "Grid").Single();
+
+        Assert.Equal(12d, Number((string?)grid.Attribute("ColumnSpacing")));
+
+        var mark = grid.Elements(Ui + "Button").Single();
+        Assert.Equal("0", (string?)mark.Attribute("Grid.Column"));
+        Assert.Equal(32d, Number((string?)mark.Attribute("Width")));
+        Assert.Equal("OnCardMarkClicked", (string?)mark.Attribute("Click"));
+
+        // The same four answers a row gives: yours, a copy you may take, somebody else's, nobody's.
+        var states = mark.Descendants()
+            .Select(element => (string?)element.Attribute("Visibility") ?? string.Empty)
+            .ToList();
+        Assert.Contains(states, value => value.Contains("LeadingIsCheckbox"));
+        Assert.Contains(states, value => value.Contains("LeadingIsCopy"));
+        Assert.Contains(states, value => value.Contains("LeadingIsSquare"));
+    }
 }
