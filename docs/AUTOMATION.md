@@ -268,7 +268,52 @@ and `MultipleInstances = IgnoreNew` with an execution limit a little above the l
 (one wedged run must not stack copies, nor outlive its watchdog).
 
 The GitHub paths use GitHub-hosted `windows-latest`, the same as `ci.yml`. The iOS loops use
-self-hosted runners because Xcode has to be there; nothing here needs a machine of its own.
+self-hosted runners because Xcode has to be there.
+
+### The self-hosted `astrid-windows` runner
+
+**Not registered yet** (task `fa8fcd84`). Everything in `ci.yml` today runs on GitHub-hosted
+runners and is right to: fmt, clippy, the FFI tests, the ARM64 cross-build and the shell build all
+answer to a compiler, and a hosted runner has one. What a hosted runner does not have is a
+desktop session, so the UI smoke suite (`app/Astrid.App.UITests`, which drives the built app) runs
+only locally, via `npm run predeploy:full`. That is the one job the device is for.
+
+Registering it needs two things a scheduled agent run does not have — a repo-admin registration
+token and an elevated service install — so it is Jon's step, at the device:
+
+```powershell
+# 1. A registration token, valid one hour. Needs admin on Graceful-Tools/astrid-windows.
+gh api -X POST repos/Graceful-Tools/astrid-windows/actions/runners/registration-token --jq .token
+
+# 2. The ARM64 runner package. Check the current version first — the URL is not evergreen:
+#    gh api repos/actions/runner/releases/latest --jq .tag_name
+mkdir C:\actions-runner; cd C:\actions-runner
+Invoke-WebRequest -Uri https://github.com/actions/runner/releases/download/v<ver>/actions-runner-win-arm64-<ver>.zip -OutFile r.zip
+Expand-Archive r.zip -DestinationPath . ; Remove-Item r.zip
+
+# 3. Configure with THE LABEL, non-interactively.
+.\config.cmd --url https://github.com/Graceful-Tools/astrid-windows --token <token> `
+  --name jonsyoga-arm64 --labels astrid-windows --unattended --replace
+
+# 4. As a service, so a reboot brings it back. This is the elevated part.
+.\svc.ps1 install ; .\svc.ps1 start      # or: .\svc install; .\svc start
+```
+
+**ARM64, not x64** — the package is `actions-runner-win-arm64`. The runner itself would work under
+emulation, but every job it ran would then inherit an x64 shell, which is the exact trap
+[docs/context/stack.md](./context/stack.md) describes: the build would silently target the wrong
+architecture.
+
+**The runner must not get production keys.** It inherits the logged-on user's environment, which is
+the whole point of the warning in *What has to be configured* above: the device needs the agent's
+Astrid OAuth client and the harness login, and nothing else. A self-hosted runner executes whatever
+a workflow file says, so anything reachable from that user's profile is reachable from any PR that
+touches `.github/workflows`. Keep the runner's own credentials to the registration token, and keep
+the repo's fine-grained PATs in GitHub's secret store where a workflow has to ask for them by name.
+
+Only once it answers — `gh api repos/Graceful-Tools/astrid-windows/actions/runners` lists it as
+`online` — should a job be pointed at `[self-hosted, astrid-windows]`. A job written against a
+label no runner carries does not fail; it queues forever, which looks like a gate and is not one.
 
 The shell is set to `bash` once at the top of each file rather than on every step: the task tooling
 is the same bash the other two repos run, and a Windows runner defaults to PowerShell.
