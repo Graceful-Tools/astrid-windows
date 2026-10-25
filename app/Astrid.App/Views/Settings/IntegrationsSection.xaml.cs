@@ -89,6 +89,24 @@ public sealed partial class IntegrationsSection : UserControl
         await Shell.Settings.Agents.SetCopilotAsync(connect: false);
     }
 
+    private async void OnMintCopilotToken(object sender, RoutedEventArgs args)
+    {
+        await Shell.Settings.Agents.MintCopilotTokenAsync();
+    }
+
+    /// <summary>
+    /// The token alone, with no surrounding text: it is pasted into Copilot's own settings, where
+    /// anything else would have to be edited back out.
+    /// </summary>
+    private void OnCopyCopilotToken(object sender, RoutedEventArgs args)
+    {
+        if (Shell.Settings.Agents.CopilotToken is not { } minted)
+        {
+            return;
+        }
+        ClipboardText.Copy(minted.Token);
+    }
+
     /// <summary>
     /// Google's "New List" (task e32f1322): one gesture, one command — the core makes the list on
     /// Google and binds it to the chosen Astrid list, and the panel is read back as it answers.
