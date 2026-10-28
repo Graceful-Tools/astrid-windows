@@ -72,9 +72,14 @@ all:
    this is the only thing between a tick and your uncommitted work. The
    [start-of-tick sweep](#the-start-of-tick-sweep) runs just before it, since the leftovers it
    clears are exactly what this guard trips on.
-3. **Is there any work?** `ready-tasks.ts windows --json`, which sweeps the lanes first, so a
-   Waiting task whose date arrived counts this tick. A queue that cannot be read is a reason to
-   run and let the agent report, never a reason to go quiet.
+3. **Is there any work, or anything unanswered?** `agent-queue-status.ts --board windows --agent
+   claude --include-unassigned --require-polling`, which answers three things in one request: the
+   **queue** (Ready, due, this mailbox, plus unassigned Ready work — on this board that is the
+   hand-off); **attention**, the comments and list chat nobody has answered; and the **lanes**,
+   swept first, so a Waiting task whose date arrived counts this tick. A queue that cannot be read
+   is a reason to run and let the agent report, never a reason to go quiet.
+   See [waking for replies](#waking-for-replies) for the two-phase acknowledgement this guard is
+   half of.
 
 ### One task per tick, and what happens when a tick dies
 
@@ -184,13 +189,44 @@ directories too. A missing astrid-core only warns rather than failing the tick, 
 task is still workable, but the warning is loud: on 2026-09-26 all four Ready tasks turned out to
 bottom out in core rules and the run could not read one line of them.
 
-**What it does not do, unlike the Mac loop.** astrid-web's third guard calls
-`agent-queue-status.ts`, which also reports `attention` — comments and chat nobody answered — and
-keeps a seen-file so one unanswered item wakes one run rather than every tick. That script needs a
-**list id**, and this board's id is deliberately nowhere in this repo, so the guard here asks
-`ready-tasks.ts windows` instead: the queue and the lanes, both resolved by name. The inbox is
-therefore not a reason this loop wakes. Adopt the richer preflight the day it can resolve a board
-by name.
+## Waking for replies
+
+Until task `18ba8c2e` this loop could not see its inbox. Guard 3 asked `ready-tasks.ts windows
+--json`, which answers Ready plus lane work and nothing else, so a comment on a task the loop had
+moved to `Doing` — or on one it had finished — woke no tick, ever. The reason the loop's own header
+gave was true when it was written: `agent-queue-status.ts` needed a **list id**, and this board's id
+is deliberately nowhere in this repo. AWTD-1383 retired it. That script now resolves `--board
+windows` by name through `lib/board-by-name.ts`, refusing a duplicate name rather than taking the
+first match, so the richer preflight is reachable without an id.
+
+**Waking is two-phase, and both halves matter.**
+
+* **Before the run,** the preflight runs with `--no-write-seen` and writes a version-1 `--output`
+  artifact. The wake keys are taken out of that artifact **verbatim** — never recomputed when the
+  run ends, because by then the run has answered things, and the difference between the two sets is
+  exactly the items that would be muted without anyone having looked at them. An artifact of some
+  other version is refused rather than guessed at: the exit code still decides whether to run, but
+  no keys are taken from a document whose shape we do not know.
+* **After it,** `--mark-seen --seen-keys-file` records exactly those keys, with `--failed` when the
+  run died so each key takes a strike and is muted only at `MAX_FAILED_ATTEMPTS`. A file, not an
+  argument, because PowerShell 5.1 loses the quotes on a JSON array handed to a native command.
+
+Between the two is a watchdog, a budget cap and a scheduler deadline, any of which can take the tick
+down — so the keys go to a **journal** first, under `%LOCALAPPDATA%\Astrid\state\fixall-windows`
+rather than `%TEMP%`, since a journal is by definition read by a *later* tick. A tick that finds a
+journal whose owning process is gone replays it as the failed run it was; a journal whose owner is
+still alive belongs to somebody's live tick and is left strictly alone. **An acknowledgement that
+could not be delivered keeps its journal** — the next tick is the retry, and a journal dropped on a
+failed delivery is an item muted that nobody ever saw.
+
+The decisions live in `scripts/lib/fixall-wake.ps1` behind injected closures, because the loop
+itself cannot run inside the gate; `scripts/tests/fixall-wake.Tests.ps1` exercises them against
+scratch files and asserts the loop's **wiring** over the parsed AST.
+
+**Still not done here** (the rest of task `18ba8c2e`): the task and claims files are still named
+per-pid in `%TEMP%` rather than in durable checkout-scoped state, and `.claude/commands/fixall.md`
+still carries the stale prohibition on the atomic claim — a scheduled run cannot write under
+`.claude/`, so that line needs an interactive session.
 
 ## The Copilot path is switched off
 
@@ -264,8 +300,16 @@ because the Claude CLI reads the user's own credentials and settings. Three Task
 are load-bearing on a laptop, and each is a way the loop would otherwise go quiet while looking
 installed and healthy: `AllowStartIfOnBatteries` and `DontStopIfGoingOnBatteries` (a task without
 them does not run unplugged), `StartWhenAvailable` (a tick missed while asleep runs once on wake),
-and `MultipleInstances = IgnoreNew` with an execution limit a little above the loop's own watchdog
+and `MultipleInstances = IgnoreNew` with an execution limit **derived from** the loop's own watchdog
 (one wedged run must not stack copies, nor outlive its watchdog).
+
+That limit was a literal 55 minutes against a 75-minute watchdog until task `18ba8c2e`, so Task
+Scheduler killed every long tick twenty minutes *early* — and a scheduler kill runs none of the
+loop's recovery: no WIP commit, no `Doing` release, no wake acknowledgement, no comment on the task
+it had taken. Two independently-defaulted numbers is how they drifted apart, so there is now one:
+`install-fixall-task.ps1 -WatchdogMinutes` is forwarded to the loop as `-MaxMinutes` **and** is what
+the deadline is computed from, plus `-RecoveryMinutes` of headroom for the loop to clean up after
+its own watchdog fires. Both are `ValidateRange`d, because neither failure is visible from outside.
 
 The GitHub paths use GitHub-hosted `windows-latest`, the same as `ci.yml`. The iOS loops use
 self-hosted runners because Xcode has to be there.

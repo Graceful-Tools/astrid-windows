@@ -167,7 +167,11 @@ function Find-LoopCommand([string[]]$AllOf) {
 $ReleaseTool = Find-LoopCommand @('release-stuck-doing\.ts')
 $ReleaseCalls = @(Find-LoopCommands @('^Invoke-DoingRelease\b'))
 $StrandedRelease = Find-LoopCommand @('Invoke-StrandedClaimRelease')
-$QueueGuard = Find-LoopCommand @('ready-tasks\.ts')
+# Guard 3. `agent-queue-status.ts` since task 18ba8c2e, which is also what made it the INBOX guard
+# rather than the Ready-only one; the board pass still has to come before it, for the reason the
+# cases below give. Its node is the Get-WakeVerdict call that wraps the shell-out, so its extent
+# starts where the guard does.
+$QueueGuard = Find-LoopCommand @('agent-queue-status\.ts')
 $StartRun = Find-LoopCommand @('Start-Process')
 $SaveWork = Find-LoopCommand @('Save-UnfinishedWork', '\$RepoRoot')
 # The board pass, and the two guards it has to precede. Task 1cc6ac2f.

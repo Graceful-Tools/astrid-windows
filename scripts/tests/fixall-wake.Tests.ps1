@@ -248,7 +248,13 @@ Invoke-Case 'a finished run marks exactly the journal s keys, and clears the jou
             # PowerShell 5.1 loses quotes on native JSON arguments.
             $script:ackListId = $ListId
             $script:ackFailed = $Failed
-            $seen = @(Get-Content $KeysFile -Raw | ConvertFrom-Json)
+            # ASSIGN, THEN WRAP. PowerShell 5.1's ConvertFrom-Json writes an array as ONE object,
+            # so `@(… | ConvertFrom-Json)` wraps it instead of unrolling it and a two-key file
+            # reads back as a single key whose value is both of them joined by a space. The same
+            # 5.1 trap in reverse - ConvertTo-Json unwrapping a one-element array to a bare scalar
+            # - is why scripts/lib/fixall-wake.ps1 builds these files by hand.
+            $parsed = Get-Content $KeysFile -Raw | ConvertFrom-Json
+            $seen = @($parsed)
             $script:ackKeys = $seen
             return $true
         }
