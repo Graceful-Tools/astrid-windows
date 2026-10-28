@@ -20,9 +20,16 @@
         unplugged, which on this machine is most of the time.
       * StartWhenAvailable. After sleep, a tick that was missed runs once on wake instead of being
         dropped until the next half hour.
-      * MultipleInstances = IgnoreNew, plus an execution time limit a little above the loop's own
+      * MultipleInstances = IgnoreNew, plus an execution time limit DERIVED from the loop's own
         watchdog. One wedged run must not stack copies, and must not be able to outlive its own
-        watchdog either.
+        watchdog either - but neither may the scheduler kill a run BEFORE that watchdog fires.
+        Until task 18ba8c2e it did: the limit was a literal 55 minutes against a 75-minute
+        watchdog, so Task Scheduler killed every long tick twenty minutes early, and a scheduler
+        kill runs none of the loop's recovery - no WIP commit, no Doing release, no wake
+        acknowledgement, no comment on the task it had taken. Two independently-defaulted numbers
+        is how those drifted apart, so there is now ONE watchdog: -WatchdogMinutes is forwarded to
+        the loop explicitly AND is what the deadline is computed from, with -RecoveryMinutes of
+        headroom on top for the loop to finish cleaning up after its own watchdog fires.
 
     The schedule is :10 and :40, chosen to interleave with the other loops working Astrid boards
     rather than to compete with them for the same quota: :00/:30 astrid-ios (claude), :20/:50
@@ -39,6 +46,15 @@
     Start one pass immediately through the scheduler, which is how to prove the registration
     itself works rather than just the script.
 
+.PARAMETER WatchdogMinutes
+    The ONE watchdog. Passed to the loop as -MaxMinutes and used to compute the scheduler's
+    execution time limit, so the two cannot drift apart again. Must match what the loop would
+    otherwise default to (75).
+
+.PARAMETER RecoveryMinutes
+    How long the loop is given, on top of its watchdog, to save unfinished work, release its Doing
+    claims, acknowledge its wake keys and comment on the task before Task Scheduler stops it.
+
 .EXAMPLE
     powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-fixall-task.ps1
 
@@ -50,7 +66,13 @@ param(
     [switch]$Uninstall,
     [switch]$Status,
     [switch]$RunNow,
-    [string]$TaskName = 'Astrid fixall (Windows board)'
+    [string]$TaskName = 'Astrid fixall (Windows board)',
+
+    # Ranged, because both numbers are load-bearing and neither failure is visible: a watchdog of
+    # minutes kills every real run, and one of hours lets a wedged tick swallow a whole evening of
+    # them (MultipleInstances = IgnoreNew).
+    [ValidateRange(10, 240)][int]$WatchdogMinutes = 75,
+    [ValidateRange(1, 60)][int]$RecoveryMinutes = 10
 )
 
 $ErrorActionPreference = 'Stop'
@@ -97,8 +119,11 @@ if ($RunNow) {
 }
 
 # ── Install ───────────────────────────────────────────────────────────────────────────────────
+# The watchdog is FORWARDED, never left to the loop's own default: the deadline below is computed
+# from this number, and a deadline derived from one number while the loop obeys another is the
+# drift task 18ba8c2e fixed.
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' `
-    -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$LoopScript`"" `
+    -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$LoopScript`" -MaxMinutes $WatchdogMinutes" `
     -WorkingDirectory $RepoRoot
 
 # One trigger, repeating every 30 minutes forever, rather than two daily triggers: the same two
@@ -111,7 +136,7 @@ $settings = New-ScheduledTaskSettingsSet `
     -DontStopIfGoingOnBatteries `
     -StartWhenAvailable `
     -MultipleInstances IgnoreNew `
-    -ExecutionTimeLimit (New-TimeSpan -Minutes 55) `
+    -ExecutionTimeLimit (New-TimeSpan -Minutes ($WatchdogMinutes + $RecoveryMinutes)) `
     -RestartCount 0
 
 $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" `
@@ -124,8 +149,9 @@ Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger `
 
 $info = Get-ScheduledTaskInfo -TaskName $TaskName
 Write-Host "Registered '$TaskName' for $env:USERNAME."
-Write-Host "  runs:     powershell -NoProfile -ExecutionPolicy Bypass -File $LoopScript"
+Write-Host "  runs:     powershell -NoProfile -ExecutionPolicy Bypass -File $LoopScript -MaxMinutes $WatchdogMinutes"
 Write-Host "  schedule: :10 and :40, every hour"
+Write-Host "  watchdog: ${WatchdogMinutes}m, with the scheduler stopping it at $($WatchdogMinutes + $RecoveryMinutes)m (${RecoveryMinutes}m to recover)"
 Write-Host "  next run: $($info.NextRunTime)"
 Write-Host "  log:      $LogFile"
 Write-Host ''

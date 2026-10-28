@@ -21,8 +21,8 @@
         .env.local. Nothing here duplicates "which tasks are ready": a second implementation
         drifts, and the drift is silent, because a queue that is wrong looks exactly like a quiet
         day.
-      * The board is resolved BY NAME by `ready-tasks.ts windows`, never by a hardcoded id. An id
-        is account data and a stale one fails by answering "nothing to do" (docs/AUTOMATION.md).
+      * The board is resolved BY NAME, never by a hardcoded id. An id is account data and a stale
+        one fails by answering "nothing to do" (docs/AUTOMATION.md).
 
     IT RUNS ON THE CLAUDE CODE CLI SUBSCRIPTION, NEVER THE ANTHROPIC API. `claude -p` is the whole
     runtime; no API key is read anywhere in this path, and -MaxUsd is a CLI safety bound rather
@@ -40,13 +40,16 @@
     land while somebody is already working the tree. A skip is the healthy outcome, not an error,
     so it exits 0 and says so in one line.
 
-    WHAT THIS DOES NOT DO, stated because the Mac loop does it. astrid-web's guard 3 calls
-    `agent-queue-status.ts`, which also reports `attention` - comments and chat nobody has
-    answered - and keeps a seen-file so one unanswered item wakes one run rather than every tick.
-    That script requires a LIST ID, and this board's id is deliberately nowhere in this repo, so
-    the guard here uses `ready-tasks.ts windows --json` instead: the queue and the lane sweep, both
-    resolved by name. The inbox is therefore not a reason this loop wakes. Adopt the richer
-    preflight the day it can resolve a board by name.
+    IT WAKES FOR REPLIES, not only for Ready tasks. Until task 18ba8c2e guard 3 asked
+    `ready-tasks.ts windows --json`, which answers Ready plus lane work and nothing else, so a
+    comment on a task this loop had moved to `Doing` - or on one it had finished - woke no tick,
+    ever. The header's own reason for that ("agent-queue-status.ts requires a LIST ID, and this
+    board's id is deliberately nowhere in this repo") expired with AWTD-1383: the shared preflight
+    now resolves `--board windows` by name and refuses a duplicate name rather than taking the
+    first match. So guard 3 asks it instead and gets queue + attention + lanes in one request.
+    `attention` is half of the engagement contract - the queue is what to work, attention is what
+    has been said to this agent and not answered - and a loop that reads only the first is deaf by
+    construction. The decisions live in scripts/lib/fixall-wake.ps1, where they are tested.
 
 .PARAMETER Force
     Skip the dirty-tree and branch guard. Testing only.
@@ -122,6 +125,17 @@ if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Forc
 # with it - and for astrid-core, which nothing used to look at. Task 07c3b420; the library's header
 # has the incident. It dot-sources the cleanup above, so the order of these two lines is cosmetic.
 . (Join-Path $PSScriptRoot 'lib\fixall-sweep.ps1')
+# Why this tick woke, and how it acknowledges that afterwards without muting anything it never
+# looked at. Task 18ba8c2e; the library's header has the two-phase contract in full.
+. (Join-Path $PSScriptRoot 'lib\fixall-wake.ps1')
+
+# WHERE THE WAKE JOURNAL LIVES. Under %LOCALAPPDATA%, beside the log, and NOT in %TEMP%: a journal
+# is read by a LATER tick - that is the whole point of it - and %TEMP% is swept by Windows and by
+# every disk-cleanup run. Per board, because the keys are per board.
+$WakeStateDir = Join-Path $env:LOCALAPPDATA 'Astrid\state\fixall-windows'
+$WakeJournal = Join-Path $WakeStateDir "wake-$PID.json"
+$WakeArtifact = Join-Path $WakeStateDir "preflight-$PID.json"
+if (-not (Test-Path $WakeStateDir)) { New-Item -ItemType Directory -Path $WakeStateDir -Force | Out-Null }
 
 # Everything this script says goes to the console AND to the log, because Task Scheduler captures
 # neither. Native command output is appended separately, where it is produced.
@@ -166,6 +180,35 @@ if (-not $ClaudeCmd -or -not (Test-Path $ClaudeCmd)) {
 function Invoke-WebTool([string[]]$ScriptArgs) {
     Push-Location $WebRepo
     try { & $Tsx @ScriptArgs 2>&1 } finally { Pop-Location }
+}
+
+# Phase two of waking: record the keys the preflight handed back, by how the run ended. The LIST ID
+# comes from the journal, not from a second `--board windows` resolution - a resolution that fails
+# after the run would otherwise strand keys that were already read, and an id resolved twice is an
+# id that can differ twice.
+#
+# The keys travel as a FILE because PowerShell 5.1 loses the quotes on a JSON array handed to a
+# native command, which is the whole reason `--seen-keys-file` exists (AWTD-1383). The arguments are
+# built into a variable rather than written inline so that exactly ONE command in this script is the
+# board preflight - scripts/tests/fixall-wake.Tests.ps1 finds guard 3 by looking for the script's
+# name and would otherwise find this instead.
+function Invoke-WakeKeysAck([string]$KeysFile, [bool]$Failed, [string]$ListId) {
+    if (-not $ListId) {
+        Say '  WAKE: the journal carries no board id, so the keys cannot be acknowledged'
+        return $false
+    }
+    $ackArgs = @('scripts/agent-queue-status.ts', '--agent', 'claude', '--list', $ListId,
+        '--mark-seen', '--seen-keys-file', $KeysFile)
+    if ($Failed) { $ackArgs += '--failed' }
+    Invoke-WebTool $ackArgs | ForEach-Object { Say "  $_" }
+    return ($LASTEXITCODE -eq 0)
+}
+
+# Handed to both acknowledgement passes, so a replayed journal and this tick's own are recorded by
+# the same code path.
+$WakeAck = {
+    param($KeysFile, $Failed, $ListId)
+    return (Invoke-WakeKeysAck -KeysFile $KeysFile -Failed ([bool]$Failed) -ListId ([string]$ListId))
 }
 
 # The half-sentence about leftovers that both the RESULT line and the task comment end with.
@@ -437,38 +480,59 @@ try {
         if (-not $verdict.Ok) { Finish "RESULT: SKIPPED - $($verdict.Reason)" }
     }
 
-    # ── Guard 3: is there actually any work? ──────────────────────────────────────────────────
+    # ── What a killed tick could not acknowledge ──────────────────────────────────────────────
+    # BEFORE this tick's own preflight, and that order is the point: the after-run pass below cannot
+    # cover a tick that was hard-killed, because a hard kill is what stops it. A journal whose owning
+    # process is gone is exactly that tick, and a watchdog-killed tick IS a failed run - so its keys
+    # take a strike rather than being muted, and rather than waking a session every half hour forever.
+    #
+    # A journal whose owner is still alive is somebody's live tick and is left strictly alone.
+    # NOT under -not $IgnoreQueue or -not $Force: both of those are about this tick's own work, and a
+    # dead tick's unacknowledged keys are neither.
+    $wakeReplay = Invoke-AbandonedWakeAck -JournalDirectory $WakeStateDir -SelfPid $PID `
+        -IsAlive { param($OwnerPid) return ($null -ne (Get-Process -Id $OwnerPid -ErrorAction SilentlyContinue)) } `
+        -Ack $WakeAck -Log { param($Line) Say $Line }
+    if ($wakeReplay.Summary) {
+        if ($script:SweepNote) { $script:SweepNote += ' | ' }
+        $script:SweepNote += $wakeReplay.Summary
+    }
+
+    # ── Guard 3: is there actually any work, or anything unanswered? ──────────────────────────
     # THE expensive question, asked the cheap way. Without this a quiet tick still boots a whole
     # session - CLAUDE.md, fixall.md, the tool schemas - to ask the queue once and be told it is
     # empty. A few HTTP requests answer the same question.
     #
-    # `ready-tasks.ts windows` also SWEEPS the lanes first, so a Waiting task whose date has
-    # arrived is Ready by the time the answer is counted, and RECHECK/REVIEW items count as work.
-    # Both are things this loop must wake for.
+    # Three things count as "yes", and before task 18ba8c2e this guard could see only the first:
+    # the QUEUE (Ready, due, this mailbox, plus unassigned Ready work, which on this board is the
+    # hand-off); ATTENTION, the comments and list chat nobody has answered; and the LANES, swept
+    # first so a Waiting task whose date has arrived is Ready by the time the answer is counted and
+    # RECHECK/REVIEW items come out as work.
     #
-    # A non-zero exit means "could not tell" - network, auth - and must NOT read as empty: a queue
-    # nobody can see is a reason to run and let the agent report properly, not a reason to go quiet
-    # forever.
+    # --require-polling, because polling mode is what makes this loop the dispatcher: an agent in
+    # api/webhook/off mode is an ERROR here, not an idle queue, or this loop would race a hosted
+    # dispatcher. --no-write-seen, because phase one of waking must write nothing - a tick that is
+    # killed must not have muted what woke it.
+    $wake = $null
     if (-not $IgnoreQueue) {
-        $queueOut = Invoke-WebTool @('scripts/ready-tasks.ts', 'windows', '--json', '--harness', 'claude-code')
-        $queueStatus = $LASTEXITCODE
-        $queueJson = ($queueOut | Select-String -Pattern '^\s*\{.*"tasks"' | Select-Object -Last 1).ToString()
-        if ($queueStatus -ne 0) {
-            Say "  QUEUE: unknown - ready-tasks.ts exited $queueStatus; running anyway so the agent can report"
+        $wake = Get-WakeVerdict -ArtifactPath $WakeArtifact -Preflight {
+            param($ArtifactPath)
+            $out = Invoke-WebTool @('scripts/agent-queue-status.ts', '--agent', 'claude',
+                '--board', 'windows', '--include-unassigned', '--require-polling',
+                '--no-write-seen', '--output', $ArtifactPath)
+            return [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $out }
         }
-        elseif (-not $queueJson) {
-            Say '  QUEUE: unknown - no JSON verdict; running anyway so the agent can report'
+        Say "  QUEUE: $($wake.Reason)"
+        # A queue nobody can see is a reason to RUN and let the agent report, never a reason to go
+        # quiet - that confusion is how a loop spends weeks looking like a quiet board.
+        if (-not $wake.Known) { Say '  running anyway so the agent can report' }
+        if (-not $wake.Work) {
+            Finish 'RESULT: SKIPPED - nothing to do for claude (no Ready task, nothing unanswered, no lane work)'
         }
-        else {
-            $tasks = @()
-            try { $tasks = @((ConvertFrom-Json $queueJson).tasks) } catch { $tasks = @() }
-            $actions = ($tasks | ForEach-Object { $_.action }) -join ', '
-            $queueLine = '  QUEUE: ' + $tasks.Count + ' item(s)'
-            if ($actions) { $queueLine += ' - ' + $actions }
-            Say $queueLine
-            if ($tasks.Count -eq 0) {
-                Finish 'RESULT: SKIPPED - nothing to do for claude (no Ready task, no lane work)'
-            }
+        # The keys that actually woke this tick, captured VERBATIM, written down before anything
+        # that could kill the run. Never recomputed afterwards: the run will have answered things by
+        # then, and the difference is exactly the items that would be muted unseen.
+        if (Save-WakeJournal -JournalPath $WakeJournal -OwnerPid $PID -ListId $wake.ListId -WakeKeys $wake.WakeKeys) {
+            Say "  WAKE: $(@($wake.WakeKeys).Count) key(s) journalled, to be acknowledged by this run's outcome"
         }
     }
 
@@ -598,6 +662,17 @@ try {
     # for. Both failure paths below reach this line.
     $claimsReleased = Invoke-DoingRelease -ClaimsFile $claimsFile
 
+    # ── And what woke this tick is acknowledged by how it ended ──────────────────────────────
+    # Phase two. BEFORE every Finish below, because a run that died is the case this exists for: a
+    # failed run gives each key a strike instead of muting it, so an item this run could not get to
+    # wakes the next tick and the one after, and is muted only after MAX_FAILED_ATTEMPTS.
+    #
+    # Exactly the journal's keys, which are the preflight's. A delivery that fails KEEPS the journal
+    # and says so - the next tick replays it - because a journal dropped on a failed delivery is an
+    # item muted that nobody ever saw.
+    $wakeAcked = Invoke-WakeAck -JournalPath $WakeJournal -Failed ($killed -or $status -ne 0) -Ack $WakeAck
+    if ($wakeAcked.Summary) { Say "  $($wakeAcked.Summary)" }
+
     if ($killed) {
         $reason = "killed after the ${MaxMinutes}m watchdog timeout"
         Send-DiedRunNote -TaskFile $taskFile -Reason $reason -Saved $saved
@@ -639,6 +714,9 @@ try {
 }
 finally {
     if ($taskFile) { Remove-Item $taskFile -Force -ErrorAction SilentlyContinue }
+    # The preflight artifact is this tick's alone and has been read; the JOURNAL is deliberately not
+    # touched here - if its acknowledgement did not get through, it is the next tick's retry.
+    if ($WakeArtifact) { Remove-Item $WakeArtifact -Force -ErrorAction SilentlyContinue }
     # ONLY when the release got through. A task file is deleted either way — it has been reported on
     # by then — but a claims file whose release failed is the only record of which tasks are sitting
     # in Doing, and the next tick's start-of-tick pass is what retries it. Deleting it here would
