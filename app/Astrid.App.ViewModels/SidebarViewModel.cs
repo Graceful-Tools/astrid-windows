@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text.Json;
 using Astrid.Core.Bindings;
 
 namespace Astrid.App.ViewModels;
@@ -78,6 +79,11 @@ public sealed class SidebarViewModel : ObservableObject
 
             var mine = await _core.CallAsync(Commands.MyTasksList(), cancellationToken);
             var entry = mine.Ok ? mine.Read<ListSummary>() : null;
+
+            var numbers = await NumbersAsync(response.Value, entry?.Id, cancellationToken);
+            all = all.Select(list => list with { TaskCount = Number(numbers, list.Id) }).ToList();
+            entry = entry is null ? null : entry with { TaskCount = Number(numbers, entry.Id) };
+
             Replace(MyTasks, entry is null ? [] : [entry]);
 
             Replace(Favorites, all
@@ -143,6 +149,40 @@ public sealed class SidebarViewModel : ObservableObject
         await LoadAsync(cancellationToken);
         return true;
     }
+
+    /// <summary>
+    /// The core's number for each list.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>lists</c> carries a <c>taskCount</c> of its own, but it is the server's total for the
+    /// list — every task it has ever held, completed ones included — which read as "124" beside a
+    /// list of a dozen open tasks (task 8d37457b). The number a sidebar is scanned for is the open
+    /// ones, and which tasks those are is the core's answer, not a sum the shell may take.
+    /// </para>
+    /// <para>
+    /// <c>null</c> when the core could not say. Falling back to the total would be drawing the
+    /// wrong number, which is the bug; the badge is left off instead.
+    /// </para>
+    /// </remarks>
+    private async Task<IReadOnlyDictionary<string, int>?> NumbersAsync(
+        JsonElement lists, string? myTasksId, CancellationToken cancellationToken)
+    {
+        if (lists.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+        var response = await _core.CallAsync(Commands.ListBadges(lists, myTasksId), cancellationToken);
+        return response.Ok ? response.ReadCounts() : null;
+    }
+
+    /// <summary>A list's number: none at all when the core could not count.</summary>
+    /// <remarks>
+    /// Zero for a list the answer omits, which the core does not do — it answers for every list it
+    /// was handed — but "it was counted and came to nothing" is the right reading if it ever does.
+    /// </remarks>
+    private static int? Number(IReadOnlyDictionary<string, int>? numbers, string listId) =>
+        numbers is null ? null : numbers.TryGetValue(listId, out var count) ? count : 0;
 
     private static void Replace(ObservableCollection<ListSummary> target, IEnumerable<ListSummary> source)
     {

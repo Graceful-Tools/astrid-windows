@@ -846,7 +846,11 @@ public sealed class ShellViewModelTests
         // My Tasks sits above the lists in the sidebar, so the sidebar asks for it while it is
         // drawing — still before anything reaches the network.
         Assert.Equal("myTasksList", kinds[2]);
-        Assert.Equal("rowsForList", kinds[3]);
+        // And the numbers beside them, which are counted from the cache too (task 8d37457b). My
+        // Tasks is asked for first because the count for it is the one the core cannot work out
+        // without being told which list it is.
+        Assert.Equal("listBadges", kinds[3]);
+        Assert.Equal("rowsForList", kinds[4]);
         Assert.Contains("sync", kinds);
         Assert.True(kinds.IndexOf("rowsForList") < kinds.IndexOf("sync"));
     }

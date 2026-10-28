@@ -1900,6 +1900,23 @@ public static class ResponseReader
 
     public static T? Read<T>(this AstridResponse response) where T : class
         => response.Ok ? response.ValueAs<T>() : null;
+
+    /// <summary>
+    /// A value that is an object of numbers keyed by id — the core's counts per list.
+    /// </summary>
+    /// <remarks>
+    /// Empty for anything else, including a failure: a caller that wants to tell "nothing to
+    /// count" from "could not count" asks <see cref="AstridResponse.Ok"/> first.
+    /// </remarks>
+    public static IReadOnlyDictionary<string, int> ReadCounts(this AstridResponse response)
+    {
+        if (!response.Ok || response.Value.ValueKind != JsonValueKind.Object)
+        {
+            return new Dictionary<string, int>(StringComparer.Ordinal);
+        }
+        return response.Value.Deserialize<Dictionary<string, int>>(CommandJson.Options)
+            ?? new Dictionary<string, int>(StringComparer.Ordinal);
+    }
 }
 
 /// <summary>
