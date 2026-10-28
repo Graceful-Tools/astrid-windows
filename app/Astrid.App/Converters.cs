@@ -618,6 +618,11 @@ public sealed partial class RepeatSummaryConverter : IValueConverter
                 "repeat.on_nth_weekday",
                 Ordinal(count),
                 Weekday(part.Values.FirstOrDefault() ?? string.Empty)),
+            // "The last Thursday" has no ordinal, so the core sends no count with it (task
+            // e4f160cc); an ordinal of nothing would read "on the 0th Thursday".
+            "repeat.on_last_weekday" => Strings.Get(
+                "repeat.on_last_weekday",
+                Weekday(part.Values.FirstOrDefault() ?? string.Empty)),
             "repeat.on_month_and_day" => Strings.Get(
                 "repeat.on_month_and_day", Month(part.Values.FirstOrDefault()), Ordinal(count)),
             "repeat.ends_after" => Strings.Get("repeat.ends_after", count),

@@ -397,6 +397,9 @@
   <data name="repeat_on_nth_weekday" xml:space="preserve">
     <value>on the {0} {1}</value>
   </data>
+  <data name="repeat_on_last_weekday" xml:space="preserve">
+    <value>on the last {0}</value>
+  </data>
   <data name="repeat_on_month_and_day" xml:space="preserve">
     <value>on {0} {1}</value>
   </data>
