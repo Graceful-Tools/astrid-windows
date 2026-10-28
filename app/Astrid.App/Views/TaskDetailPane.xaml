@@ -506,14 +506,16 @@
                                 <NumberBox x:Uid="repeat_interval" x:Name="RepeatInterval" Value="1" Minimum="1" Maximum="365"
                                            Width="96" AutomationProperties.Name="Every" />
                                 <ComboBox x:Uid="repeat_unit" x:Name="RepeatUnit" SelectedIndex="0"
-                                          AutomationProperties.Name="Unit">
+                                          AutomationProperties.Name="Unit"
+                                          SelectionChanged="OnRepeatBranchChanged">
                                     <ComboBoxItem x:Uid="days" Content="days" Tag="days" />
                                     <ComboBoxItem x:Uid="weeks" Content="weeks" Tag="weeks" />
                                     <ComboBoxItem x:Uid="months" Content="months" Tag="months" />
                                     <ComboBoxItem x:Uid="years" Content="years" Tag="years" />
                                 </ComboBox>
                             </StackPanel>
-                            <StackPanel x:Name="RepeatWeekdays" Orientation="Horizontal" Spacing="2">
+                            <StackPanel x:Name="RepeatWeekdays" Orientation="Horizontal" Spacing="2"
+                                        Visibility="Collapsed">
                                 <ToggleButton x:Uid="m" Content="M" Tag="monday" MinWidth="32" />
                                 <ToggleButton x:Uid="t" Content="T" Tag="tuesday" MinWidth="32" />
                                 <ToggleButton x:Uid="w" Content="W" Tag="wednesday" MinWidth="32" />
@@ -521,6 +523,59 @@
                                 <ToggleButton x:Uid="f" Content="F" Tag="friday" MinWidth="32" />
                                 <ToggleButton x:Uid="s" Content="S" Tag="saturday" MinWidth="32" />
                                 <ToggleButton x:Uid="s" Content="S" Tag="sunday" MinWidth="32" />
+                            </StackPanel>
+                            <!--
+                                The monthly branch (task 914fc180). Windows could READ "on the last
+                                Thursday" long before it could write one, so the summary showed a
+                                rule the reader was offered no way to change. The shape is web's
+                                custom-repeating-editor: a date, or a weekday and which week of the
+                                month it falls in.
+
+                                The week list ends in "last" with Tag="-1" - iCalendar's BYDAY=-1MO
+                                - rather than letting a 5th stand in for it. A month with four
+                                Thursdays has no fifth, and a 5 walks into the next month. Offering
+                                only these six rows is what makes an unsaveable week unreachable
+                                from the sheet; the view model's own check is the second line.
+
+                                Which rows show is SyncRepeatBranch's, and it is rendering: a
+                                monthly rule needs a date or a weekday, a weekly one needs the
+                                toggles above, and showing both at once offers two editors for one
+                                field.
+                            -->
+                            <ComboBox x:Uid="repeat_month_type" x:Name="RepeatMonthType" SelectedIndex="0"
+                                      Visibility="Collapsed"
+                                      AutomationProperties.Name="Repeats on"
+                                      SelectionChanged="OnRepeatBranchChanged">
+                                <ComboBoxItem x:Uid="repeat_month_same_date"
+                                              Content="the same date each month" Tag="same_date" />
+                                <ComboBoxItem x:Uid="repeat_month_same_weekday"
+                                              Content="the same weekday each month" Tag="same_weekday" />
+                            </ComboBox>
+                            <NumberBox x:Uid="repeat_month_day" x:Name="RepeatMonthDay"
+                                       Value="1" Minimum="1" Maximum="31" Width="96"
+                                       Visibility="Collapsed"
+                                       AutomationProperties.Name="Day of the month" />
+                            <StackPanel x:Name="RepeatMonthWeekdayRow" Orientation="Horizontal" Spacing="8"
+                                        Visibility="Collapsed">
+                                <ComboBox x:Uid="repeat_month_week" x:Name="RepeatMonthWeek" SelectedIndex="0"
+                                          AutomationProperties.Name="Week of the month">
+                                    <ComboBoxItem x:Uid="week_first" Content="first" Tag="1" />
+                                    <ComboBoxItem x:Uid="week_second" Content="second" Tag="2" />
+                                    <ComboBoxItem x:Uid="week_third" Content="third" Tag="3" />
+                                    <ComboBoxItem x:Uid="week_fourth" Content="fourth" Tag="4" />
+                                    <ComboBoxItem x:Uid="week_fifth" Content="fifth" Tag="5" />
+                                    <ComboBoxItem x:Uid="week_last" Content="last" Tag="-1" />
+                                </ComboBox>
+                                <ComboBox x:Uid="repeat_month_weekday" x:Name="RepeatMonthWeekday" SelectedIndex="0"
+                                          AutomationProperties.Name="Weekday">
+                                    <ComboBoxItem x:Uid="weekday_monday" Content="Monday" Tag="monday" />
+                                    <ComboBoxItem x:Uid="weekday_tuesday" Content="Tuesday" Tag="tuesday" />
+                                    <ComboBoxItem x:Uid="weekday_wednesday" Content="Wednesday" Tag="wednesday" />
+                                    <ComboBoxItem x:Uid="weekday_thursday" Content="Thursday" Tag="thursday" />
+                                    <ComboBoxItem x:Uid="weekday_friday" Content="Friday" Tag="friday" />
+                                    <ComboBoxItem x:Uid="weekday_saturday" Content="Saturday" Tag="saturday" />
+                                    <ComboBoxItem x:Uid="weekday_sunday" Content="Sunday" Tag="sunday" />
+                                </ComboBox>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <ComboBox x:Uid="repeat_end" x:Name="RepeatEnd" SelectedIndex="0"

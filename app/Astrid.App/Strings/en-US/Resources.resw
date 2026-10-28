@@ -1309,6 +1309,24 @@
   <data name="repeat_interval.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Every</value>
   </data>
+  <data name="repeat_month_day.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Day of the month</value>
+  </data>
+  <data name="repeat_month_same_date.Content" xml:space="preserve">
+    <value>the same date each month</value>
+  </data>
+  <data name="repeat_month_same_weekday.Content" xml:space="preserve">
+    <value>the same weekday each month</value>
+  </data>
+  <data name="repeat_month_type.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Repeats on</value>
+  </data>
+  <data name="repeat_month_week.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Week of the month</value>
+  </data>
+  <data name="repeat_month_weekday.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Weekday</value>
+  </data>
   <data name="repeat_unit.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Unit</value>
   </data>
@@ -1470,6 +1488,45 @@
   </data>
   <data name="webhook_url_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Webhook URL</value>
+  </data>
+  <data name="week_fifth.Content" xml:space="preserve">
+    <value>fifth</value>
+  </data>
+  <data name="week_first.Content" xml:space="preserve">
+    <value>first</value>
+  </data>
+  <data name="week_fourth.Content" xml:space="preserve">
+    <value>fourth</value>
+  </data>
+  <data name="week_last.Content" xml:space="preserve">
+    <value>last</value>
+  </data>
+  <data name="week_second.Content" xml:space="preserve">
+    <value>second</value>
+  </data>
+  <data name="week_third.Content" xml:space="preserve">
+    <value>third</value>
+  </data>
+  <data name="weekday_friday.Content" xml:space="preserve">
+    <value>Friday</value>
+  </data>
+  <data name="weekday_monday.Content" xml:space="preserve">
+    <value>Monday</value>
+  </data>
+  <data name="weekday_saturday.Content" xml:space="preserve">
+    <value>Saturday</value>
+  </data>
+  <data name="weekday_sunday.Content" xml:space="preserve">
+    <value>Sunday</value>
+  </data>
+  <data name="weekday_thursday.Content" xml:space="preserve">
+    <value>Thursday</value>
+  </data>
+  <data name="weekday_tuesday.Content" xml:space="preserve">
+    <value>Tuesday</value>
+  </data>
+  <data name="weekday_wednesday.Content" xml:space="preserve">
+    <value>Wednesday</value>
   </data>
   <data name="weeks.Content" xml:space="preserve">
     <value>weeks</value>
