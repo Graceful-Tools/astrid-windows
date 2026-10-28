@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Astrid.Core.Bindings;
@@ -23,6 +24,28 @@ public static class Commands
     public static object Lists() => new KindOnly("lists");
 
     public static object List(string listId) => new WithListId("list", listId);
+
+    /// <summary>
+    /// The number beside each list in the sidebar, as iOS's <c>ListTaskCount</c> draws it
+    /// (AATD-39): a list's <em>open</em> tasks, a saved filter what its filters keep, a public
+    /// list the server's count, and My Tasks the open tasks assigned to the reader.
+    /// </summary>
+    /// <param name="lists">
+    /// The lists exactly as <see cref="Lists"/> answered them, passed through rather than rebuilt
+    /// from <see cref="ListSummary"/>. What a list counts depends on fields the sidebar never
+    /// draws — its privacy, and its saved filters — so a shell that reassembled the payload would
+    /// be deciding what counts.
+    /// </param>
+    /// <param name="myTasksId">
+    /// My Tasks' id. It has no row on the server, so nothing in the lists identifies it, and
+    /// without it My Tasks is the one entry the core cannot count.
+    /// </param>
+    /// <remarks>
+    /// Answers an object of list id to count. <c>listCounts</c> is the older, narrower command
+    /// this supersedes: it answers only what a saved filter keeps.
+    /// </remarks>
+    public static object ListBadges(JsonElement lists, string? myTasksId) =>
+        new ListBadgesRequest("listBadges", lists, myTasksId);
 
     /// <summary>
     /// The rows to draw for a list — filtered, sorted, subtask-spliced and projected by the core.
@@ -951,6 +974,11 @@ public static class Commands
     private sealed record WithListId(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("listId")] string ListId);
+
+    private sealed record ListBadgesRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("lists")] JsonElement Lists,
+        [property: JsonPropertyName("myTasksId")] string? MyTasksId);
 
     private sealed record QuickAddDefaultsRequest(
         [property: JsonPropertyName("kind")] string Kind,

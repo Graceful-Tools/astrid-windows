@@ -127,7 +127,7 @@ const NOT_BOUND: &[(&str, &str)] = &[
     ),
     (
         "listCounts",
-        "How many tasks each list's saved filters keep, for a sidebar that draws the number beside          a saved filter (AITD-460). The sidebar here draws list names only, so there is no number          to put anywhere.",
+        "How many tasks each list's saved filters keep, for a sidebar that draws the number beside          a saved filter (AITD-460). Superseded by `listBadges`, which answers this for a saved          filter and the open tasks for every other kind of list, and which is what the sidebar          here asks (`SidebarViewModel.NumbersAsync`, task 8d37457b). Nothing is left for the          narrower command to answer.",
     ),
     (
         "myTasksFilters",
@@ -206,13 +206,6 @@ const NOT_BOUND: &[(&str, &str)] = &[
          The sidebar here lists public lists and copies one into the account (`publicLists`, \
          `copyList`, `PublicListsViewModel`); it never opens one to browse, so there is no screen \
          for these rows to fill.",
-    ),
-    (
-        "listBadges",
-        "The sidebar's number beside each list, as iOS's ListTaskCount draws it (AATD-39) — a \
-         list's open tasks, a saved filter what its filters keep, My Tasks what is assigned to the \
-         reader. The sidebar here draws list names only, so this has the same nowhere to go as \
-         `listCounts`, which it supersedes.",
     ),
     (
         "nestTask",
