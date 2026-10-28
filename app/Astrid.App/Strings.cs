@@ -219,6 +219,7 @@ internal static class Strings
         ["repeat.on_weekdays"] = "on {0}",
         ["repeat.on_day_of_month"] = "on the {0}",
         ["repeat.on_nth_weekday"] = "on the {0} {1}",
+        ["repeat.on_last_weekday"] = "on the last {0}",
         ["repeat.on_month_and_day"] = "on {0} {1}",
         ["repeat.ends_after"] = "({0}x)",
         ["repeat.ends_on"] = "until {0}",

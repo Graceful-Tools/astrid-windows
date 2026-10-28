@@ -127,8 +127,8 @@ public sealed class CorePinFollowsIosTests
             "repeating.daily", "repeating.weekly", "repeating.monthly", "repeating.yearly",
             "repeat.from_due_date", "repeat.every_n_days", "repeat.every_n_weeks",
             "repeat.every_n_months", "repeat.every_n_years", "repeat.on_weekdays",
-            "repeat.on_day_of_month", "repeat.on_nth_weekday", "repeat.on_month_and_day",
-            "repeat.ends_after", "repeat.ends_on",
+            "repeat.on_day_of_month", "repeat.on_nth_weekday", "repeat.on_last_weekday",
+            "repeat.on_month_and_day", "repeat.ends_after", "repeat.ends_on",
         ];
 
         var unhandled = summaryKeys
@@ -138,6 +138,35 @@ public sealed class CorePinFollowsIosTests
         Assert.True(unhandled.Count == 0,
             "RepeatSummaryConverter has no arm for these, so each reads as nothing:\n  "
             + string.Join("\n  ", unhandled));
+    }
+
+    /// <summary>
+    /// "The last Thursday of the month" reads as words, not as a silence (task e4f160cc).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A monthly repeat on <c>weekOfMonth: -1</c> — iCalendar's <c>BYDAY=-1MO</c>, which web settled
+    /// on in AWTD-1295 — does not come back as <c>repeat.on_nth_weekday</c> with a count of −1,
+    /// because "the −1th Thursday" is not a sentence. The core gives it its own key with no count,
+    /// so the shell owes it a separate word and a separate arm.
+    /// </para>
+    /// <para>
+    /// Asserted on its own rather than only by adding a string to the lists above, because the three
+    /// failures differ: no resource is the key on screen in a packaged build, no fallback is the key
+    /// on screen in an unpackaged one, and no arm in <c>RepeatSummaryConverter.Say</c> is worse than
+    /// either — the switch ends in <c>_ => string.Empty</c>, so the part vanishes and a task that
+    /// repeats monthly reads "Does not repeat".
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void The_last_weekday_of_the_month_has_a_word_and_an_arm_task_e4f160cc()
+    {
+        var app = LocalisationTests.AppDirectory();
+        const string key = "repeat.on_last_weekday";
+
+        Assert.Contains(Flatten(key), ResourceNames(app));
+        Assert.Contains(key, FallbackKeys(app));
+        Assert.Contains($"\"{key}\"", RepeatSummarySwitch(app), StringComparison.Ordinal);
     }
 
     /// <summary>
