@@ -1252,15 +1252,43 @@ public sealed class TaskDetailViewModel : ObservableObject
             ["repeatFrom"] = fromDueDate ? "DUE_DATE" : "COMPLETION_DATE",
         }, cancellationToken);
 
+    /// <summary>
+    /// The <c>weekOfMonth</c> that means "the last such weekday of the month", after iCalendar's
+    /// <c>BYDAY=-1MO</c> — web's <c>LAST_WEEK_OF_MONTH</c>.
+    /// </summary>
+    /// <remarks>
+    /// <c>5</c> is NOT the same thing: a month with four Mondays has no fifth, and a 5 walks into
+    /// the next one. Which is why the sheet offers "last" as its own row rather than a 5th.
+    /// </remarks>
+    public const int LastWeekOfMonth = -1;
+
+    /// <summary>A <c>weekOfMonth</c> a pattern may be saved with: 1–5, or the last.</summary>
+    /// <remarks>
+    /// web's <c>isValidWeekOfMonth</c> in <c>types/repeating.ts</c>. Any other value ends the
+    /// series on every client, so nothing here writes one.
+    /// </remarks>
+    private static bool IsValidWeekOfMonth(int? week) =>
+        week == LastWeekOfMonth || week is >= 1 and <= 5;
+
     /// <summary>Store a custom pattern.</summary>
     /// <remarks>
+    /// <para>
     /// The fields the pattern does not need are left out rather than sent as nulls — the server's
     /// column is free-form JSON, and a weekly pattern carrying a stale <c>monthDay</c> is a rule
     /// that means something different to whichever client reads it next.
+    /// </para>
+    /// <para>
+    /// A monthly pattern (task 914fc180) says which day of the month it means: a date, or a
+    /// weekday and which week of the month it falls in. The two are alternatives, so an incoherent
+    /// pair writes NEITHER field and the pattern stays the plain "every N months" it would
+    /// otherwise be — better than half a rule the next client reads as a third thing.
+    /// </para>
     /// </remarks>
     public Task<bool> SetCustomRepeatAsync(string unit, int interval,
         IReadOnlyList<string>? weekdays = null, string? endCondition = null,
         int? endAfterOccurrences = null, string? endUntilDate = null,
+        string? monthRepeatType = null, int? monthDay = null,
+        string? monthWeekday = null, int? weekOfMonth = null,
         CancellationToken cancellationToken = default)
     {
         var pattern = new Dictionary<string, object?>
@@ -1272,6 +1300,25 @@ public sealed class TaskDetailViewModel : ObservableObject
         if (unit == "weeks" && weekdays is { Count: > 0 })
         {
             pattern["weekdays"] = weekdays;
+        }
+        if (unit == "months")
+        {
+            if (monthRepeatType == "same_date" && monthDay is >= 1 and <= 31)
+            {
+                pattern["monthRepeatType"] = monthRepeatType;
+                pattern["monthDay"] = monthDay;
+            }
+            else if (monthRepeatType == "same_weekday"
+                     && !string.IsNullOrEmpty(monthWeekday)
+                     && IsValidWeekOfMonth(weekOfMonth))
+            {
+                pattern["monthRepeatType"] = monthRepeatType;
+                pattern["monthWeekday"] = new Dictionary<string, object?>
+                {
+                    ["weekday"] = monthWeekday,
+                    ["weekOfMonth"] = weekOfMonth,
+                };
+            }
         }
         if (endCondition is not null)
         {

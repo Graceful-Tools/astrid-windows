@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using Astrid.App.ViewModels;
 using Astrid.Core.Bindings;
 using Microsoft.UI.Xaml;
@@ -534,6 +535,9 @@ public sealed partial class TaskDetailPane : UserControl
 
     private async void OnRepeatFlyoutOpening(object sender, object args)
     {
+        // The sheet keeps whatever unit it was last left on, so the branch is matched to it on
+        // the way in rather than only when the combo next changes.
+        SyncRepeatBranch();
         await Shell.Detail.LoadRepeatAsync();
     }
 
@@ -555,6 +559,40 @@ public sealed partial class TaskDetailPane : UserControl
         }
     }
 
+    /// <summary>
+    /// Which rows of the custom-repeat sheet are showing (task 914fc180).
+    /// </summary>
+    /// <remarks>
+    /// Rendering, not a decision: nothing here reads or writes a task, and what a pattern MEANS is
+    /// <see cref="TaskDetailViewModel.SetCustomRepeatAsync"/>'s. A monthly rule needs a date or a
+    /// weekday-and-week, a weekly one needs the toggles, and the rest need neither — so each unit
+    /// is drawn its own editor rather than all of them at once.
+    /// The null guards are for the flyout's own construction: <c>SelectedIndex="0"</c> raises
+    /// <c>SelectionChanged</c> while the rest of the tree's named fields are still being assigned.
+    /// </remarks>
+    private void SyncRepeatBranch()
+    {
+        if (RepeatUnit is null || RepeatWeekdays is null || RepeatMonthType is null
+            || RepeatMonthDay is null || RepeatMonthWeekdayRow is null)
+        {
+            return;
+        }
+        var unit = (RepeatUnit.SelectedItem as FrameworkElement)?.Tag as string;
+        var monthly = unit == "months";
+        var byWeekday = monthly
+            && (RepeatMonthType.SelectedItem as FrameworkElement)?.Tag as string == "same_weekday";
+
+        RepeatWeekdays.Visibility = Shown(unit == "weeks");
+        RepeatMonthType.Visibility = Shown(monthly);
+        RepeatMonthDay.Visibility = Shown(monthly && !byWeekday);
+        RepeatMonthWeekdayRow.Visibility = Shown(byWeekday);
+
+        static Visibility Shown(bool shown) => shown ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnRepeatBranchChanged(object sender, SelectionChangedEventArgs args) =>
+        SyncRepeatBranch();
+
     private async void OnCustomRepeatSaved(object sender, RoutedEventArgs args)
     {
         var unit = (RepeatUnit.SelectedItem as FrameworkElement)?.Tag as string ?? "days";
@@ -564,13 +602,25 @@ public sealed partial class TaskDetailPane : UserControl
             .Select(button => (string)button.Tag)
             .ToList();
         var ends = (RepeatEnd.SelectedItem as FrameworkElement)?.Tag as string;
+        // The monthly branch is read whatever the unit is; the view model drops the month fields
+        // unless the pattern is monthly, the same way it drops the weekday list above. A cleared
+        // NumberBox reads NaN, so the day falls back to the 1st the box opens on rather than
+        // casting to a number no month has.
+        var monthDay = double.IsNaN(RepeatMonthDay.Value) ? 1 : (int)RepeatMonthDay.Value;
+        var week = int.TryParse(
+            (RepeatMonthWeek.SelectedItem as FrameworkElement)?.Tag as string,
+            NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) ? parsed : (int?)null;
         await Shell.Detail.SetCustomRepeatAsync(
             unit,
             (int)RepeatInterval.Value,
             days,
             ends,
             (int)RepeatEndCount.Value,
-            RepeatEndDate.Date?.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"));
+            RepeatEndDate.Date?.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+            (RepeatMonthType.SelectedItem as FrameworkElement)?.Tag as string,
+            monthDay,
+            (RepeatMonthWeekday.SelectedItem as FrameworkElement)?.Tag as string,
+            week);
     }
 
     /// <summary>

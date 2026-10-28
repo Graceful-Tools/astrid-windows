@@ -26,7 +26,7 @@ milestones; this tracks the *product*.
 | Completion, including repeat rollover | ✅ | ✅ | One path, `TaskService::complete` |
 | Due dates and quick picks | ✅ | ✅ | Instants computed in the core, not in XAML |
 | Reminders | ✅ | ✅ | Windows adds a banner with Complete and Snooze |
-| Repeat editor, presets and custom | ✅ | ✅ | The summary is one function on both |
+| Repeat editor, presets and custom | ✅ | ✅ | The summary is one function on both. The custom sheet also **authors** a monthly rule — a date, or a weekday and which week of the month, "last" included (`weekOfMonth: -1`, web's `LAST_WEEK_OF_MONTH`) — so a rule this client renders is one it can also change (task 914fc180) |
 | Assignee picker | ✅ | ✅ | Windows offers agents; the Mac's picker predates them (CONTRACTS D8) |
 | Comments | ✅ | ✅ | Replies nest under their parent; your own can be edited and deleted; all of it offline through the Outbox. `@person`, `#list` and `!task` autocomplete in the box, inserting the form the server resolves; comment text renders through the same markdown as a description, so a mention is a pill |
 | Search | ✅ | ✅ | Over the cache on both — there is no server search |

@@ -1365,6 +1365,105 @@ public sealed class TaskDetailViewModelTests
         Assert.Contains("\"interval\":1", core.Sent.First(sent => sent.Contains("updateTask")));
     }
 
+    // ── Authoring a monthly repeat (task 914fc180) ──────────────────────────────────────────
+    //
+    // Windows could READ a monthly weekday rule since task e4f160cc — the summary says "on the
+    // last Thursday" — and could not write one, so the sheet showed a pattern it offered no way
+    // to change. What a pattern posted from here must look like is astrid-web's
+    // `MonthlyRepeatingPattern`, because that is what every other client reads back.
+
+    /// <summary>
+    /// "Day 15 of every month": the day goes with the type, and the weekday pair stays out —
+    /// a `monthWeekday` left over from a previous edit is a different rule to the next reader.
+    /// </summary>
+    [Fact]
+    public async Task A_monthly_pattern_on_a_date_posts_the_day_task_914fc180()
+    {
+        var core = OpenedTask().AnswerOk("updateTask").AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.SetCustomRepeatAsync("months", 1, monthRepeatType: "same_date", monthDay: 15);
+
+        var update = core.Sent.First(sent => sent.Contains("updateTask"));
+        Assert.Contains("\"monthRepeatType\":\"same_date\"", update);
+        Assert.Contains("\"monthDay\":15", update);
+        Assert.DoesNotContain("monthWeekday", update);
+    }
+
+    /// <summary>
+    /// "The last Thursday of every month". <c>weekOfMonth</c> is -1 for the last, after
+    /// iCalendar's <c>BYDAY=-1TH</c> — 5 is not a synonym, and a month with four Thursdays has
+    /// no fifth.
+    /// </summary>
+    [Fact]
+    public async Task A_monthly_pattern_on_the_last_weekday_posts_minus_one_task_914fc180()
+    {
+        var core = OpenedTask().AnswerOk("updateTask").AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.SetCustomRepeatAsync("months", 1,
+            monthRepeatType: "same_weekday",
+            monthWeekday: "thursday",
+            weekOfMonth: TaskDetailViewModel.LastWeekOfMonth);
+
+        var update = core.Sent.First(sent => sent.Contains("updateTask"));
+        Assert.Contains("\"monthRepeatType\":\"same_weekday\"", update);
+        Assert.Contains("\"weekday\":\"thursday\"", update);
+        Assert.Contains("\"weekOfMonth\":-1", update);
+        Assert.DoesNotContain("monthDay", update);
+    }
+
+    /// <summary>
+    /// A week nobody can count to ends the series on every client. Rather than post a rule that
+    /// means something different to each of them, an incoherent pair writes neither month field
+    /// and the pattern stays the plain "every N months" it has always been.
+    /// </summary>
+    [Theory]
+    [InlineData("same_weekday", "thursday", 6)]   // past the 5th week
+    [InlineData("same_weekday", "thursday", 0)]   // no 0th weekday
+    [InlineData("same_weekday", "thursday", -2)]  // -1 is the only negative that means anything
+    [InlineData("same_weekday", null, 2)]         // a week with no weekday to count
+    [InlineData("same_date", null, null)]         // a date pattern with no date
+    public async Task An_unsaveable_month_pattern_posts_neither_field_task_914fc180(
+        string monthRepeatType, string? monthWeekday, int? weekOfMonth)
+    {
+        var core = OpenedTask().AnswerOk("updateTask").AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.SetCustomRepeatAsync("months", 3,
+            monthRepeatType: monthRepeatType,
+            monthWeekday: monthWeekday,
+            weekOfMonth: weekOfMonth);
+
+        var update = core.Sent.First(sent => sent.Contains("updateTask"));
+        Assert.Contains("\"interval\":3", update);
+        Assert.DoesNotContain("monthRepeatType", update);
+        Assert.DoesNotContain("monthWeekday", update);
+        Assert.DoesNotContain("monthDay", update);
+    }
+
+    /// <summary>
+    /// The month fields belong to a monthly pattern and to no other. A weekly rule carrying a
+    /// <c>monthDay</c> is the same free-form-JSON hazard the weekday list already guards against.
+    /// </summary>
+    [Fact]
+    public async Task Only_a_monthly_pattern_carries_the_month_fields_task_914fc180()
+    {
+        var core = OpenedTask().AnswerOk("updateTask").AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.SetCustomRepeatAsync("weeks", 1, ["monday"],
+            monthRepeatType: "same_date", monthDay: 15);
+
+        var update = core.Sent.First(sent => sent.Contains("updateTask"));
+        Assert.DoesNotContain("monthRepeatType", update);
+        Assert.DoesNotContain("monthDay", update);
+    }
+
     /// <summary>
     /// The picker is asked for as it opens rather than carried with the task: the answer depends on
     /// the account's agents and on every list the task is on.
