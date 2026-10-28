@@ -52,6 +52,167 @@
 # means a sweep cannot be loaded half-working; re-defining the same functions is harmless.
 . (Join-Path $PSScriptRoot 'fixall-cleanup.ps1')
 
+<#
+.SYNOPSIS
+    Where a tick leaves the two records a LATER tick reads. Task 18ba8c2e, scope item 2.
+
+.DESCRIPTION
+    `ASTRID_FIXALL_TASK_FILE` and `ASTRID_FIXALL_CLAIMS_FILE` are read by a later tick BY
+    DEFINITION — a surviving task file is how the next tick knows a run died without reporting, and
+    a surviving claims file is the only record of which tasks that run left in `Doing`. They were in
+    `%TEMP%`, which Storage Sense and every disk-cleanup run sweep: the one record of an abandoned
+    claim could be deleted by Windows housekeeping between two ticks, and the cost of that is
+    invisible and permanent (`f8dfc84e` sat in `Doing` from 01:25 on 2026-10-18 until a human
+    released it by hand). So they live beside the log and the wake journal instead.
+
+    ONE function for the directory, used by all three, so a change to where state lives cannot move
+    two of them and leave the third behind.
+#>
+function Get-FixallStateDir {
+    [CmdletBinding()]
+    param([AllowEmptyString()][string]$Root = $env:LOCALAPPDATA)
+
+    # Per board, because the wake keys and the claims are per board. A root this cannot resolve is
+    # not worth guessing at: the caller gets the relative path and the failure is visible.
+    $dir = Join-Path $Root 'Astrid\state\fixall-windows'
+    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    return $dir
+}
+
+<#
+.SYNOPSIS
+    Which CHECKOUT wrote a record. Task 18ba8c2e, scope item 2.
+
+.DESCRIPTION
+    `%LOCALAPPDATA%` is one directory per USER for every checkout on the machine, where `%TEMP%` at
+    least turned over, and a pid is not unique across checkouts — Windows reuses them freely. It
+    matters because a release names the branch carrying the task's id and runs with `--repo` pointed
+    at the sweeping checkout: a record drained from another worktree would be released against the
+    wrong repository. So each record's name carries a short digest of the checkout's own path, and a
+    scan takes only its own worker's. Another worker sweeps its own.
+
+    The digest is of the NORMALISED path — full, trailing separators trimmed, lower-cased — because
+    the loop is handed its root by Task Scheduler, by an interactive shell and by the test suite,
+    and a scope that changed with the spelling would make a tick blind to its own predecessor.
+#>
+function Get-FixallWorkerScope {
+    [CmdletBinding()]
+    param([AllowEmptyString()][string]$Path)
+
+    $normalised = [string]$Path
+    try { $normalised = [System.IO.Path]::GetFullPath($normalised) } catch { }
+    $normalised = $normalised.Replace('/', '\').TrimEnd('\').ToLowerInvariant()
+
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($normalised))
+    }
+    finally { $sha.Dispose() }
+    # Eight hex characters: it goes in a filename and is read by eye in a log line, and collisions
+    # between the two or three checkouts on one machine are not the risk being managed here.
+    return (-join ($bytes[0..3] | ForEach-Object { $_.ToString('x2') }))
+}
+
+# The name of one record. ONE place that knows the shape, so the scan below cannot be looking for
+# something nothing writes - which is a bug that looks exactly like a quiet board.
+function Get-FixallStateFile {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Directory,
+        [Parameter(Mandatory)][ValidateSet('task', 'claims')][string]$Kind,
+        [Parameter(Mandatory)][string]$Scope,
+        [int]$OwnerPid = $PID
+    )
+    return (Join-Path $Directory "$Kind-$Scope-$OwnerPid.txt")
+}
+
+<#
+.SYNOPSIS
+    The records of runs that are gone, from the durable directory AND the legacy one.
+
+.DESCRIPTION
+    THE DRAIN IS NOT OPTIONAL. The tick that upgrades is a tick whose predecessors' records are all
+    in `%TEMP%` under the old unscoped names. A scan that looked only in the new directory would
+    make every one of them invisible on the first tick after the change — the precise stranding
+    these records exist to prevent, delivered by the fix for it. So both locations are searched,
+    both namings are matched, and a legacy record is acted on identically.
+
+    A legacy record carries no scope by construction, so it is drained whatever this worker's scope
+    is; that is what the old behaviour already was. A SCOPED record belongs to the worker named in
+    it and nothing else touches it — not even to delete it.
+
+    Liveness is checked rather than assumed, because the one thing worse than missing a stranded
+    task is releasing a task out from under a run that is still working it.
+#>
+function Get-FixallStateRecord {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][ValidateSet('task', 'claims')][string]$Kind,
+        [AllowEmptyString()][string]$Directory,
+        [AllowEmptyString()][string]$LegacyDirectory,
+        [AllowEmptyString()][string]$Scope,
+        [int]$SelfPid = $PID,
+        [scriptblock]$IsAlive = $null
+    )
+
+    $found = New-Object System.Collections.ArrayList
+    $seen = New-Object System.Collections.ArrayList
+
+    # `task-<scope>-<pid>.txt` beside the log, and the pre-18ba8c2e `astrid-fixall-windows-task-<pid>.txt`
+    # wherever it was left. The legacy name is matched in BOTH directories: a %TEMP% that is also the
+    # durable directory is not a case worth failing on, and the suites that predate this change hand
+    # one scratch directory for both.
+    $patterns = @(
+        [pscustomobject]@{ Filter = "$Kind-*.txt"; Regex = "^$Kind-([0-9a-f]+)-(\d+)\.txt$"; Scoped = $true },
+        [pscustomobject]@{ Filter = "astrid-fixall-windows-$Kind-*.txt"; Regex = "^astrid-fixall-windows-$Kind-(\d+)\.txt$"; Scoped = $false }
+    )
+
+    foreach ($directory in @($Directory, $LegacyDirectory)) {
+        if (-not $directory -or -not (Test-Path $directory)) { continue }
+        foreach ($pattern in $patterns) {
+            foreach ($file in @(Get-ChildItem -Path $directory -Filter $pattern.Filter -File -ErrorAction SilentlyContinue)) {
+                if ($file.Name -notmatch $pattern.Regex) { continue }
+                if ($pattern.Scoped) {
+                    $recordScope = $Matches[1]
+                    $holder = [int]$Matches[2]
+                    # Another checkout's record. Left exactly as it is, including on disk: deleting
+                    # it would strand its task as surely as %TEMP% housekeeping did.
+                    if ($Scope -and $recordScope -ne $Scope) { continue }
+                }
+                else { $holder = [int]$Matches[1] }
+
+                # One directory can be handed twice (the suites that predate this change pass one
+                # scratch path as both), and a file acted on twice would be reported twice.
+                if ($seen -contains $file.FullName) { continue }
+                $null = $seen.Add($file.FullName)
+
+                if ($holder -eq $SelfPid) { continue }
+                $alive = $false
+                if ($IsAlive) { $alive = [bool](& $IsAlive $holder) }
+                else { $alive = [bool](Get-Process -Id $holder -ErrorAction SilentlyContinue) }
+                if ($alive) { continue }
+
+                $lines = @(@((Get-Content $file.FullName -ErrorAction SilentlyContinue)) |
+                        ForEach-Object { if ($null -ne $_) { $_.Trim() } } |
+                        Where-Object { $_ })
+                if ($lines.Count -eq 0) {
+                    # A run that was killed before it took anything, or claimed nothing. Nothing to
+                    # report, and leaving the record would make every later tick look at it again.
+                    Remove-Item $file.FullName -Force -ErrorAction SilentlyContinue
+                    continue
+                }
+                $null = $found.Add([pscustomobject]@{
+                        Path      = $file.FullName
+                        HolderPid = $holder
+                        Lines     = $lines
+                        Legacy    = (-not $pattern.Scoped)
+                    })
+            }
+        }
+    }
+    return $found.ToArray()
+}
+
 # A checkout is described by the caller as { Name; Path; RequireMain; ReturnToMain }. Read through a
 # helper so a hashtable and a pscustomobject both work and a missing field means its safe default
 # rather than $null.
@@ -222,37 +383,30 @@ function Get-CheckoutGuardVerdict {
     The pid in the name is what lets a later tick tell a dead run's file from its own or from a live
     one's. Liveness is checked rather than assumed, because the one thing worse than missing a
     stranded task is commenting "this did not finish" on a task somebody is working right now.
+
+    WHERE it looks, and the drain of the pre-18ba8c2e `%TEMP%` records, is Get-FixallStateRecord's.
 #>
 function Get-StrandedTaskFile {
     [CmdletBinding()]
     param(
         [AllowEmptyString()][string]$Directory,
+        [AllowEmptyString()][string]$LegacyDirectory,
+        [AllowEmptyString()][string]$Scope,
         [int]$SelfPid = $PID,
         [scriptblock]$IsAlive = $null
     )
 
     $found = New-Object System.Collections.ArrayList
-    if (-not $Directory -or -not (Test-Path $Directory)) { return $found.ToArray() }
-
-    $files = @(Get-ChildItem -Path $Directory -Filter 'astrid-fixall-windows-task-*.txt' -File -ErrorAction SilentlyContinue)
-    foreach ($file in $files) {
-        if ($file.Name -notmatch '^astrid-fixall-windows-task-(\d+)\.txt$') { continue }
-        $holder = [int]$Matches[1]
-        if ($holder -eq $SelfPid) { continue }
-        $alive = $false
-        if ($IsAlive) { $alive = [bool](& $IsAlive $holder) }
-        else { $alive = [bool](Get-Process -Id $holder -ErrorAction SilentlyContinue) }
-        if ($alive) { continue }
-
-        $taskId = (Get-Content $file.FullName -Raw -ErrorAction SilentlyContinue)
-        if ($taskId) { $taskId = $taskId.Trim() }
-        if (-not $taskId) {
-            # A run that was killed before it took anything. Nothing to report, and leaving the file
-            # would make every later tick look at it again.
-            Remove-Item $file.FullName -Force -ErrorAction SilentlyContinue
-            continue
-        }
-        $null = $found.Add([pscustomobject]@{ Path = $file.FullName; HolderPid = $holder; TaskId = $taskId })
+    foreach ($record in @(Get-FixallStateRecord -Kind 'task' -Directory $Directory `
+                -LegacyDirectory $LegacyDirectory -Scope $Scope -SelfPid $SelfPid -IsAlive $IsAlive)) {
+        # One task per run, so one line - the run overwrites the file as it takes a task, and the
+        # first line is the task it was on when it died.
+        $null = $found.Add([pscustomobject]@{
+                Path      = $record.Path
+                HolderPid = $record.HolderPid
+                TaskId    = @($record.Lines)[0]
+                Legacy    = $record.Legacy
+            })
     }
     return $found.ToArray()
 }
@@ -290,33 +444,23 @@ function Get-StrandedClaimsFile {
     [CmdletBinding()]
     param(
         [AllowEmptyString()][string]$Directory,
+        [AllowEmptyString()][string]$LegacyDirectory,
+        [AllowEmptyString()][string]$Scope,
         [int]$SelfPid = $PID,
         [scriptblock]$IsAlive = $null
     )
 
     $found = New-Object System.Collections.ArrayList
-    if (-not $Directory -or -not (Test-Path $Directory)) { return $found.ToArray() }
-
-    $files = @(Get-ChildItem -Path $Directory -Filter 'astrid-fixall-windows-claims-*.txt' -File -ErrorAction SilentlyContinue)
-    foreach ($file in $files) {
-        if ($file.Name -notmatch '^astrid-fixall-windows-claims-(\d+)\.txt$') { continue }
-        $holder = [int]$Matches[1]
-        if ($holder -eq $SelfPid) { continue }
-        $alive = $false
-        if ($IsAlive) { $alive = [bool](& $IsAlive $holder) }
-        else { $alive = [bool](Get-Process -Id $holder -ErrorAction SilentlyContinue) }
-        if ($alive) { continue }
-
-        $ids = @(@((Get-Content $file.FullName -ErrorAction SilentlyContinue)) |
-                ForEach-Object { if ($null -ne $_) { $_.Trim() } } |
-                Where-Object { $_ })
-        if ($ids.Count -eq 0) {
-            # A run that claimed nothing. Leaving the file would make every later tick look at it
-            # again, and there is nothing to release.
-            Remove-Item $file.FullName -Force -ErrorAction SilentlyContinue
-            continue
-        }
-        $null = $found.Add([pscustomobject]@{ Path = $file.FullName; HolderPid = $holder; TaskIds = $ids })
+    foreach ($record in @(Get-FixallStateRecord -Kind 'claims' -Directory $Directory `
+                -LegacyDirectory $LegacyDirectory -Scope $Scope -SelfPid $SelfPid -IsAlive $IsAlive)) {
+        # Every line is a claim: `claim-fixall-task.ts` APPENDS, and a run under a cap of one still
+        # records a resume claim beside a Ready one.
+        $null = $found.Add([pscustomobject]@{
+                Path      = $record.Path
+                HolderPid = $record.HolderPid
+                TaskIds   = @($record.Lines)
+                Legacy    = $record.Legacy
+            })
     }
     return $found.ToArray()
 }
@@ -348,6 +492,12 @@ function Invoke-StrandedClaimRelease {
     [CmdletBinding()]
     param(
         [AllowEmptyString()][string]$ClaimsFileDirectory = $env:TEMP,
+        # The pre-18ba8c2e location, drained on every tick so a record written before the move is
+        # not made invisible by the move itself.
+        [AllowEmptyString()][string]$LegacyDirectory,
+        # This checkout's own records. Empty takes any, which is what the behaviour was before
+        # worker scoping existed.
+        [AllowEmptyString()][string]$Scope,
         [int]$SelfPid = $PID,
         [scriptblock]$IsAlive = $null,
         [Parameter(Mandatory)][scriptblock]$Release,
@@ -367,7 +517,8 @@ function Invoke-StrandedClaimRelease {
     $ids = New-Object System.Collections.ArrayList
     $failed = New-Object System.Collections.ArrayList
 
-    foreach ($item in @(Get-StrandedClaimsFile -Directory $ClaimsFileDirectory -SelfPid $SelfPid -IsAlive $IsAlive)) {
+    foreach ($item in @(Get-StrandedClaimsFile -Directory $ClaimsFileDirectory -LegacyDirectory $LegacyDirectory `
+                -Scope $Scope -SelfPid $SelfPid -IsAlive $IsAlive)) {
         & $say "  RELEASE: the run that claimed $(@($item.TaskIds) -join ', ') (pid $($item.HolderPid)) is gone - releasing its Doing claim(s)"
         $ok = $false
         # NEVER FATAL TO THE TICK. A release that fails leaves the task in Doing, which is the state
@@ -439,6 +590,9 @@ function Invoke-StartOfTickSweep {
         [Parameter(Mandatory)][AllowEmptyCollection()][array]$Checkouts,
         [int]$QuietMinutes = 30,
         [AllowEmptyString()][string]$TaskFileDirectory = $env:TEMP,
+        # As Invoke-StrandedClaimRelease above, and for the same two reasons.
+        [AllowEmptyString()][string]$LegacyDirectory,
+        [AllowEmptyString()][string]$Scope,
         [int]$SelfPid = $PID,
         [scriptblock]$SessionProbe = $null,
         [scriptblock]$IsAlive = $null,
@@ -510,7 +664,8 @@ function Invoke-StartOfTickSweep {
     # The board half. A checkout is swept whether or not a task file names an owner, and a task file
     # is reported whether or not anything was stranded: a task sitting in Doing with nobody on it is
     # the thing worth saying either way.
-    $stranded = @(Get-StrandedTaskFile -Directory $TaskFileDirectory -SelfPid $SelfPid -IsAlive $IsAlive)
+    $stranded = @(Get-StrandedTaskFile -Directory $TaskFileDirectory -LegacyDirectory $LegacyDirectory `
+            -Scope $Scope -SelfPid $SelfPid -IsAlive $IsAlive)
     if ($stranded.Count -gt 0) {
         $leftovers = 'No unfinished work was stranded in either checkout, so the run ended before it wrote anything.'
         if ($swept.Count -gt 0) {

@@ -193,8 +193,13 @@ $ClaimsExport = @($Assignments | Where-Object { $_.Left.Extent.Text -match 'env:
 # The path the export names, which is where the pid actually is. Asserted separately from the export
 # so a claims file shared by every tick on the machine - the bug that would make a live run's claims
 # look stranded - fails here rather than passing because the export line happened to mention $PID.
+#
+# Found by the LIBRARY CALL that builds it rather than by the old literal filename: since task
+# 18ba8c2e the record is durable and worker-scoped, and its name is Get-FixallStateFile's
+# (scripts/tests/fixall-state.Tests.ps1 is where that shape is specified).
 $ClaimsPath = @($Assignments | Where-Object {
-        $_.Right.Extent.Text -match 'astrid-fixall-windows-claims-' }) | Select-Object -First 1
+        $_.Right.Extent.Text -match "Get-FixallStateFile" -and $_.Right.Extent.Text -match "'claims'" }) |
+    Select-Object -First 1
 
 Write-Host ''
 Write-Host 'the loop releases its own abandoned Doing claims (task 1b9fed0a)' -ForegroundColor Cyan

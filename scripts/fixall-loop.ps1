@@ -129,13 +129,19 @@ if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Forc
 # looked at. Task 18ba8c2e; the library's header has the two-phase contract in full.
 . (Join-Path $PSScriptRoot 'lib\fixall-wake.ps1')
 
-# WHERE THE WAKE JOURNAL LIVES. Under %LOCALAPPDATA%, beside the log, and NOT in %TEMP%: a journal
-# is read by a LATER tick - that is the whole point of it - and %TEMP% is swept by Windows and by
-# every disk-cleanup run. Per board, because the keys are per board.
-$WakeStateDir = Join-Path $env:LOCALAPPDATA 'Astrid\state\fixall-windows'
-$WakeJournal = Join-Path $WakeStateDir "wake-$PID.json"
-$WakeArtifact = Join-Path $WakeStateDir "preflight-$PID.json"
-if (-not (Test-Path $WakeStateDir)) { New-Item -ItemType Directory -Path $WakeStateDir -Force | Out-Null }
+# WHERE THE STATE A LATER TICK READS LIVES. Under %LOCALAPPDATA%, beside the log, and NOT in %TEMP%:
+# the wake journal, the task record and the claims record are each read by a LATER tick - that is
+# the whole point of all three - and %TEMP% is swept by Windows and by every disk-cleanup run. Per
+# board, because the keys and the claims are per board. One function answers for all of them
+# (scripts/lib/fixall-sweep.ps1), so a change of location cannot move two and leave the third.
+$StateDir = Get-FixallStateDir
+# WHICH CHECKOUT this tick is. %LOCALAPPDATA% is one directory per USER for every worktree on the
+# machine, and a pid is not unique across them, so each record carries a digest of this checkout's
+# own path and a scan takes only its own worker's. A release runs with --repo pointed HERE: another
+# worktree's record released from this one would name branches from the wrong repository.
+$WorkerScope = Get-FixallWorkerScope $RepoRoot
+$WakeJournal = Join-Path $StateDir "wake-$PID.json"
+$WakeArtifact = Join-Path $StateDir "preflight-$PID.json"
 
 # Everything this script says goes to the console AND to the log, because Task Scheduler captures
 # neither. Native command output is appended separately, where it is produced.
@@ -359,7 +365,11 @@ try {
     # NOT list chat, which is what astrid-web's loop posts to. That needs a board id, and this
     # board's id is deliberately nowhere in this repo (docs/AUTOMATION.md) - it is resolved by name,
     # and `ready-tasks.ts --json` does not carry it.
-    $taskFile = Join-Path $env:TEMP "astrid-fixall-windows-task-$PID.txt"
+    #
+    # DURABLE, and named for this worker as well as this pid: see $StateDir above. %TEMP% is swept by
+    # Windows housekeeping, and a task record deleted between two ticks is a run nobody ever hears
+    # died (task 18ba8c2e, scope item 2).
+    $taskFile = Get-FixallStateFile -Directory $StateDir -Kind 'task' -Scope $WorkerScope -OwnerPid $PID
     Remove-Item $taskFile -Force -ErrorAction SilentlyContinue
     $env:ASTRID_FIXALL_TASK_FILE = $taskFile
 
@@ -369,7 +379,11 @@ try {
     # loop never recorded a claim, never released one, and a task whose run died left the queue for
     # good. Named for this loop's pid, like the task file above, which is what lets a LATER tick tell
     # a dead run's claims from a live one's.
-    $claimsFile = Join-Path $env:TEMP "astrid-fixall-windows-claims-$PID.txt"
+    # Named for this loop's pid, like the task record above, which is what lets a LATER tick tell a
+    # dead run's claims from a live one's - and durable for a stronger reason than the task record:
+    # a claims record is the ONLY evidence of which tasks are sitting in Doing, so %TEMP% deleting
+    # one strands them permanently, which is what `f8dfc84e` cost (task 18ba8c2e, scope item 2).
+    $claimsFile = Get-FixallStateFile -Directory $StateDir -Kind 'claims' -Scope $WorkerScope -OwnerPid $PID
     Remove-Item $claimsFile -Force -ErrorAction SilentlyContinue
     $env:ASTRID_FIXALL_CLAIMS_FILE = $claimsFile
     # Whether the after-run release below got through. The `finally` deletes the claims file only
@@ -417,8 +431,11 @@ try {
     # run ended - but a CTRL_C_EVENT takes this process down before it, and on 2026-09-29 that is
     # what left a core task's work stranded for four days (task 07c3b420).
     if (-not $Force) {
+        # BOTH locations: the durable one this tick writes, and %TEMP%, where every tick before the
+        # move left its records. A scan that looked only at the new place would make all of those
+        # invisible on the first tick after the change, which is the stranding they exist to prevent.
         $sweep = Invoke-StartOfTickSweep -Checkouts $Checkouts -QuietMinutes $QuietMinutes `
-            -TaskFileDirectory $env:TEMP -SelfPid $PID `
+            -TaskFileDirectory $StateDir -LegacyDirectory $env:TEMP -Scope $WorkerScope -SelfPid $PID `
             -SessionProbe { param($Path) Get-SessionHolder $Path } `
             -OnTaskNote {
             param($TaskId, $Note)
@@ -440,7 +457,8 @@ try {
     # not a tree one, and a dirty checkout is no reason to leave a task stranded in Doing.
     #
     # NOT under -not $Force either, for the same reason — -Force is about the tree guards.
-    $claimRelease = Invoke-StrandedClaimRelease -ClaimsFileDirectory $env:TEMP -SelfPid $PID `
+    $claimRelease = Invoke-StrandedClaimRelease -ClaimsFileDirectory $StateDir `
+        -LegacyDirectory $env:TEMP -Scope $WorkerScope -SelfPid $PID `
         -Release { param($Path) Invoke-DoingRelease -ClaimsFile $Path } `
         -Log { param($Line) Say $Line }
     if ($claimRelease.Summary) {
@@ -489,7 +507,7 @@ try {
     # A journal whose owner is still alive is somebody's live tick and is left strictly alone.
     # NOT under -not $IgnoreQueue or -not $Force: both of those are about this tick's own work, and a
     # dead tick's unacknowledged keys are neither.
-    $wakeReplay = Invoke-AbandonedWakeAck -JournalDirectory $WakeStateDir -SelfPid $PID `
+    $wakeReplay = Invoke-AbandonedWakeAck -JournalDirectory $StateDir -SelfPid $PID `
         -IsAlive { param($OwnerPid) return ($null -ne (Get-Process -Id $OwnerPid -ErrorAction SilentlyContinue)) } `
         -Ack $WakeAck -Log { param($Line) Say $Line }
     if ($wakeReplay.Summary) {

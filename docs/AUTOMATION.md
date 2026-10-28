@@ -164,11 +164,37 @@ the working tree of a shared clone; `git checkout main` moves both, for every ru
 reason to skip: it is the state the sweep itself leaves behind.
 
 **A surviving task file is how a tick knows to look.** `ASTRID_FIXALL_TASK_FILE` is
-`astrid-fixall-windows-task-<pid>.txt` and the loop deletes it in its `finally`, so a file that
-outlives its pid means a run ended without writing a `RESULT:` line. The sweep reads the id, reports
-the stranded run on that task — whether or not any code was left behind, because a task in `Doing`
-with nobody on it is worth saying either way — and clears the file so no later tick re-reports it.
-Its own file and any whose pid is still running are left alone.
+`task-<worker>-<pid>.txt` and the loop deletes it in its `finally`, so a file that outlives its pid
+means a run ended without writing a `RESULT:` line. The sweep reads the id, reports the stranded run
+on that task — whether or not any code was left behind, because a task in `Doing` with nobody on it
+is worth saying either way — and clears the file so no later tick re-reports it. Its own file and
+any whose pid is still running are left alone.
+
+### Where that state lives, and why it is not in `%TEMP%`
+
+Three records are read by a **later** tick rather than by the tick that writes them: the wake
+journal, `ASTRID_FIXALL_TASK_FILE`, and `ASTRID_FIXALL_CLAIMS_FILE` — the claims record being the
+only evidence anywhere of which tasks a killed run left in `Doing`, since the queue never takes
+`Doing` on purpose. All three sit in `%LOCALAPPDATA%\Astrid\state\fixall-windows`, beside the log,
+and `Get-FixallStateDir` is the one function that says so.
+
+They were in `%TEMP%`, which is **swept by Windows** housekeeping and by every disk-cleanup run. A
+claims record deleted between two ticks strands its tasks permanently and invisibly: that is what
+`f8dfc84e` cost, sitting in `Doing` from 01:25 on 2026-10-18 until a human released it by hand.
+
+A durable directory is shared, though — one per user, for every checkout on the machine, where
+`%TEMP%` at least turned over — and a pid is not unique across checkouts. So each record's name
+carries a **worker scope**, a short digest of the checkout's own path (`Get-FixallWorkerScope`), and
+a scan takes only its own worker's records: a release runs with `--repo` pointed at the sweeping
+checkout, so another worktree's record released from this one would name branches from the wrong
+repository. Another worker sweeps its own, and nothing deletes a record it does not own.
+
+**The pre-move `%TEMP%` records are drained, not abandoned.** Both start-of-tick passes search the
+durable directory *and* `%TEMP%`, match the old `astrid-fixall-windows-{task,claims}-<pid>.txt`
+naming as well, and act on it identically. A legacy record carries no scope, so it is drained
+whatever this worker's is — which is what the behaviour was before scoping existed. Without the
+drain, the tick that moved the location would make every record written before it invisible, which
+is the stranding these records exist to prevent.
 
 Whatever the sweep did is appended to this tick's `RESULT:` line. A recovery nobody can see is as
 good as the four days of `SKIPPED - nothing to do` it exists to end.
@@ -223,10 +249,10 @@ The decisions live in `scripts/lib/fixall-wake.ps1` behind injected closures, be
 itself cannot run inside the gate; `scripts/tests/fixall-wake.Tests.ps1` exercises them against
 scratch files and asserts the loop's **wiring** over the parsed AST.
 
-**Still not done here** (the rest of task `18ba8c2e`): the task and claims files are still named
-per-pid in `%TEMP%` rather than in durable checkout-scoped state, and `.claude/commands/fixall.md`
-still carries the stale prohibition on the atomic claim — a scheduled run cannot write under
-`.claude/`, so that line needs an interactive session.
+**Still not done here** (the rest of task `18ba8c2e`): `.claude/commands/fixall.md` still carries
+the stale prohibition on the atomic claim — a scheduled run cannot write under `.claude/`, so that
+line needs an interactive session. The task and claims records are durable and checkout-scoped as
+of the same task; see *Where that state lives* above.
 
 ## The Copilot path is switched off
 
