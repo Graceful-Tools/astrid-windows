@@ -249,10 +249,13 @@ The decisions live in `scripts/lib/fixall-wake.ps1` behind injected closures, be
 itself cannot run inside the gate; `scripts/tests/fixall-wake.Tests.ps1` exercises them against
 scratch files and asserts the loop's **wiring** over the parsed AST.
 
-**Still not done here** (the rest of task `18ba8c2e`): `.claude/commands/fixall.md` still carries
-the stale prohibition on the atomic claim — a scheduled run cannot write under `.claude/`, so that
-line needs an interactive session. The task and claims records are durable and checkout-scoped as
-of the same task; see *Where that state lives* above.
+The task and claims records are durable and checkout-scoped as of task `18ba8c2e`; see *Where that
+state lives* above. `.claude/commands/fixall.md` now carries the ordinary instruction to claim
+atomically, corrected under task `40e9f77f` and held there by
+`scripts/tests/fixall-loop-cleanup.Tests.ps1`, which reads the command file as text and fails the
+gate if either half of the old prohibition comes back. That correction needed an interactive
+session — nothing under `.claude/` is writable from a scheduled run, which is why the paragraph
+outlived by ten days the server fix it described.
 
 ## The Copilot path is switched off
 

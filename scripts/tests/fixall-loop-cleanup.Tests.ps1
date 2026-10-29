@@ -263,6 +263,24 @@ Assert-Match 'and reports on that task when the run dies' 'Send-DiedRunNote' $Lo
 Assert-Match 'and AUTOMATION.md says so' 'ASTRID_FIXALL_TASK_FILE' $Automation
 Assert-Match 'and the run is told to write its task id there' 'ASTRID_FIXALL_TASK_FILE' $Command
 
+# Task 40e9f77f. The claim is the fourth end of the same contract, and the one that went stale.
+# fixall.md told the run that the server's allowlist named only the web and iOS boards, so every
+# Windows claim answered CLAIM_CONFLICT "permanently", and to move the task to Doing by hand
+# instead. `db965bb1` fixed the allowlist on 2026-10-18 and the paragraph outlived it. Following it
+# is not merely untidy: setting the status does NOT assign anyone, and an unassigned task in Doing
+# is invisible to both rescues - the queue never takes Doing, and release-stuck-doing.ts looks for
+# THIS AGENT's claims. Task 8d37457b sat there for a tick with its whole fix on a pushed branch,
+# and the board read as a quiet day.
+$script:Ran++
+Write-Host '  - tells the run to claim atomically, because a hand-moved task strands unassigned in Doing'
+Assert-Match 'the run is told to claim atomically' 'claim-fixall-task' $Command
+Assert-Match 'and what a CLAIM_CONFLICT means' 'CLAIM_CONFLICT' $Command
+Assert-Match 'and why moving it by hand is worse than untidy' 'without assigning' $Command
+Assert-Match 'naming the rescue that misses an unassigned claim' 'release-stuck-doing' $Command
+Assert-NotMatch 'and no longer calls the claim permanently broken here' 'atomic claim does not work for this board' $Command
+Assert-NotMatch 'nor the allowlist web-and-iOS-only' 'names only the web and iOS boards' $Command
+Assert-NotMatch 'and AUTOMATION.md no longer sends a reader to go and fix it' 'still carries\s+the stale prohibition' ($Automation -replace '\r?\n', ' ')
+
 
 # ── The RESULT line says what the child said, not what usually goes wrong (task 73aa3492) ──────
 #
