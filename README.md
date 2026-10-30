@@ -5,7 +5,9 @@ direct download, on x64 and ARM64.
 
 **Repository:** https://github.com/Graceful-Tools/astrid-windows
 **Web app and API:** https://github.com/Graceful-Tools/astrid-web
+**Shared core (pinned by revision):** https://github.com/Graceful-Tools/astrid-core
 **iOS and Mac apps:** https://github.com/Graceful-Tools/astrid-ios
+**Android app:** https://github.com/Graceful-Tools/astrid-android
 
 > **Status: in development, and the app runs.** The WinUI shell (M2) is done — windows, the task
 > list and detail, board view, search, chat, the notification inbox — with MSIX packaging, a
@@ -32,14 +34,16 @@ app/Astrid.Core.Bindings              hand-written C# over the core's C ABI, che
 crates/astrid-ffi       Rust          the C ABI over the core, and the Windows platform services
 ```
 
-And where it sits among the four repositories — this app is one of two clients of a core it does
-not contain:
+And where it sits among the five repositories. This app is one of three native clients of a core
+it does not contain. The fourth user of the core is astrid-web's server, which runs only the core's
+pure rules, as WebAssembly:
 
 ```
-astrid-windows   app/Astrid.App (WinUI, C#)  ──  crates/astrid-ffi (C ABI)  ──┐
-astrid-ios       Astrid App / Astrid Mac (Swift)  ──  UniFFI (astrid-ios/core) ──┤──  astrid-core
-                                                                                 │
-                                                        HTTPS /api/v1/*  ◄───────┘
+astrid-windows   app/Astrid.App (WinUI, C#)  ──  crates/astrid-ffi (C ABI)  ──────┐
+astrid-ios       Astrid App / Astrid Mac (Swift)  ──  UniFFI (astrid-ios/core) ────┤
+astrid-android   app/ (Kotlin, Compose)  ──  UniFFI (astrid-android/core)  ────────┤──  astrid-core
+                                                                                   │
+                                                        HTTPS /api/v1/*  ◄─────────┘
                                                         astrid-web (astrid.cc)
 ```
 
@@ -47,7 +51,7 @@ astrid-ios       Astrid App / Astrid Mac (Swift)  ──  UniFFI (astrid-ios/cor
 Outbox, sync and the contract fixtures — is **its own repository**, pinned here by revision in
 `crates/astrid-ffi/Cargo.toml`. A core change reaches this app only when somebody bumps that pin.
 
-Rules that must read identically across web, Apple and Windows — the keyboard scheme, repeating-task
+Rules that must read identically across web, Apple, Windows and Android — the keyboard scheme, repeating-task
 rollover, permissions, date handling — are locked by fixtures generated from the astrid-web sources.
 Those fixtures and the check over them live in astrid-core, not here; see its
 [`contracts/README.md`](https://github.com/Graceful-Tools/astrid-core/blob/main/contracts/README.md)
