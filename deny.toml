@@ -13,7 +13,14 @@
 #
 # It is a CI gate, not part of `npm run predeploy`: cargo-deny is not installed on the dev machines
 # and the check needs the advisory database, which means the network. Run it by hand with
-# `cargo deny check` after `cargo install cargo-deny --locked`.
+# `cargo deny check` after `cargo install cargo-deny --locked` — which does not work on the Windows
+# dev machine either, where it dies in `ring`'s build script for want of clang.
+#
+# So the half of this file that does NOT need the network — the licences, the wildcard ban and the
+# sources — is asserted locally by `crates/astrid-ffi/tests/supply_chain_contract.rs`, which reads
+# the lists BELOW rather than restating them. Task `e750d9c1`: the wildcard ban had been red in CI
+# since this file landed, because nothing here could ask the question without pushing. `advisories`
+# is still CI's alone; it is the one check that needs the world.
 
 # One graph for every target. This repo ships x64 and ARM64 Windows, and a platform-gated dependency
 # with an advisory against it is still an advisory. `all-features` for the same reason — a feature
