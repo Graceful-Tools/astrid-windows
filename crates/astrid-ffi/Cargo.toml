@@ -13,7 +13,13 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 # The shared core, by revision. `cargo update -p astrid-core` after changing the rev.
-astrid-core = { git = "https://github.com/Graceful-Tools/astrid-core.git", rev = "cd47d052553fd49c3fcdd75174c6a1379aac3275" }
+#
+# `version` as well as `rev`, and it is not decoration: a git dependency with only a `rev` has NO
+# version requirement, cargo reports it as `*`, and `deny.toml` sets `[bans] wildcards = "deny"` —
+# so this one line is why CI's `licenses bans sources` job was red. Cargo checks it against the
+# pinned checkout's own version at build time, so a pin bump that crosses a major version fails
+# here, loudly, instead of changing what shipped with nothing recording it.
+astrid-core = { git = "https://github.com/Graceful-Tools/astrid-core.git", version = "0.1", rev = "cd47d052553fd49c3fcdd75174c6a1379aac3275" }
 serde_json = { workspace = true }
 tokio = { workspace = true }
 async-trait = { workspace = true }
