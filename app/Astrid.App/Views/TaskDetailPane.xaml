@@ -49,18 +49,26 @@
         </Grid.RowDefinitions>
 
         <!--
-            The header, as astrid-web's `TaskHeader` draws it: the mark the row already wears,
-            the title beside it, the action menu at the far right, and a rule under the lot.
+            The header is chrome, not the task (task 77d17dc8): `✕` at the left, a centred
+            "Task Details", and the full-screen pair and the action menu at the right. That is
+            the Mac's header, and Windows follows the Mac on this pane's layout and chrome by
+            Jon's decision of 2026-11-01, even though it moves away from astrid-web's `TaskHeader`
+            — which puts the mark and the editable title here instead.
 
-            It is pinned and the body scrolls under it, which is what astrid-web does: the
-            title of the thing you are reading should not scroll away from the thread you are
-            reading about it.
+            Moving the title out is what makes the rest of it read as the Mac: a header holding
+            the open task's own title cannot centre a fixed string in it. The mark, the title and
+            the Won't-do chip are at the top of the first card below, where the Mac draws them.
 
-            The 16px padding here and the mark's own width are the alignment invariant that file
-            states in its own words — content starts at 16 + 32 + 8 = 56px on the header row and
-            on every field row under it, so the icons land under the mark and the values under
-            the title. Changing one without the other is what made the web's own panel drift
-            before somebody wrote the sum down, so the two shared terms are named once, as
+            `✕` is also where Close now lives. It was a Windows-only item at the bottom of the
+            `⋯` menu — the detail is a pane and web's routed page has nothing to shut — and the
+            menu is a poor home for the one control every reader looks for first. The item's
+            order is pinned by WebUxParityTests, which records the move.
+
+            It stays pinned with the body scrolling under it, which astrid-web does too.
+
+            The 16px padding here is still the alignment invariant's first term — content starts
+            at 16 + 32 + 8 = 56px on every field row below, so the icons land under the mark and
+            the values under the title. The two shared terms are named once, as
             `DetailFieldIconColumn` and `DetailFieldGap` in ShellResources.xaml, and all three
             are pinned by TaskDetailAlignmentTests (task 439e94a4).
         -->
@@ -74,77 +82,33 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <Button x:Uid="complete_this_task" Grid.Column="0"
+                    <Button x:Uid="detail_close_button" x:Name="DetailCloseButton" Grid.Column="0"
                             Background="Transparent" BorderThickness="0" Padding="0"
                             Width="{StaticResource DetailFieldIconColumn}"
                             Height="{StaticResource DetailFieldIconColumn}"
-                            VerticalAlignment="Top"
-                            AutomationProperties.Name="Complete this task"
-                            Visibility="{x:Bind Shell.Detail.IsCopyOnly, Mode=OneWay, Converter={StaticResource NotVisible}}"
-                            Click="OnDetailMarkClicked">
-                        <Image Source="{x:Bind Shell.Detail.CheckboxAsset, Mode=OneWay}"
-                               Width="{StaticResource DetailFieldIconColumn}"
-                               Height="{StaticResource DetailFieldIconColumn}" />
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="Close"
+                            ToolTipService.ToolTip="Close"
+                            Click="OnCloseDetail">
+                        <TextBlock Text="&#xE711;"
+                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                   FontSize="16"
+                                   Foreground="{ThemeResource AstridTextSecondary}" />
                     </Button>
-                    <!--
-                        A task in a public list the reader cannot edit (task f6bc59e8): the web's
-                        header draws its copy control where the checkbox would be.
-                    -->
-                    <Button x:Uid="copy_this_task" Grid.Column="0"
-                            Background="Transparent" BorderThickness="0" Padding="0"
-                            Width="{StaticResource DetailFieldIconColumn}"
-                            Height="{StaticResource DetailFieldIconColumn}"
-                            VerticalAlignment="Top"
-                            AutomationProperties.Name="Copy this task"
-                            ToolTipService.ToolTip="Copy to my tasks"
-                            Visibility="{x:Bind Shell.Detail.IsCopyOnly, Mode=OneWay, Converter={StaticResource Visible}}"
-                            Click="OnDetailCopyClicked">
-                        <Border Width="24" Height="24" CornerRadius="{StaticResource AstridRadiusSmall}"
-                                BorderThickness="2"
-                                BorderBrush="{ThemeResource AstridTextMuted}">
-                            <FontIcon Glyph="&#xE8C8;" FontSize="11"
-                                      Foreground="{ThemeResource AstridTextSecondary}"
-                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                    </Button>
-                    <StackPanel Grid.Column="1" Spacing="2">
-                        <TextBox x:Uid="detail_title_box" x:Name="DetailTitleBox"
-                                 AutomationProperties.Name="Title"
-                                 Text="{x:Bind Shell.Detail.Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 FontSize="16"
-                                 FontWeight="SemiBold"
-                                 Background="Transparent"
-                                 BorderThickness="0"
-                                 Padding="0,4"
-                                 TextWrapping="Wrap"
-                                 AcceptsReturn="False"
-                                 IsReadOnly="{x:Bind Shell.Detail.IsCopyOnly, Mode=OneWay}"
-                                 Foreground="{ThemeResource AstridTextPrimary}"
-                                 GotFocus="OnDetailTitleFocused"
-                                 LostFocus="OnDetailTitleCommitted"
-                                 KeyDown="OnDetailTitleKeyDown" />
-                        <!--
-                            Closed as won't-do, not done: the web's chip beside the title, so a
-                            task that was abandoned does not read as finished (task 016ce981).
-                        -->
-                        <!-- Its radius was a hand-typed 4, off every scale; it takes the
-                             scale's small step now (task 77d17dc8). -->
-                        <Border x:Uid="won_t_do" HorizontalAlignment="Left" Padding="6,1"
-                                CornerRadius="{StaticResource AstridRadiusSmall}"
-                                BorderThickness="1" BorderBrush="{ThemeResource AstridBorder}"
-                                AutomationProperties.Name="Won't do"
-                                Visibility="{x:Bind Shell.Detail.IsCanceled, Mode=OneWay, Converter={StaticResource Visible}}">
-                            <TextBlock x:Name="WontDoChip" FontSize="11"
-                                       Foreground="{ThemeResource AstridTextSecondary}" />
-                        </Border>
-                    </StackPanel>
+                    <TextBlock x:Uid="detail_chrome_title" x:Name="DetailChromeTitle" Grid.Column="1"
+                               Text="Task Details"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Foreground="{ThemeResource AstridTextPrimary}" />
                     <!--
                         Full screen (task 1927c2e7, PRODUCT_CONTRACT §3): astrid-web's
                         Maximize2 / Minimize2 pair before the action menu. Whether either is
                         offered is the shell's decision — from the side pane only; on a board
                         card, which is deliberately a peek, both stay collapsed.
                     -->
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top">
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button x:Uid="detail_full_screen"
                                 Background="Transparent" BorderThickness="0"
                                 AutomationProperties.Name="Full screen"
@@ -165,7 +129,7 @@
                         </Button>
                     <Button x:Uid="task_actions_button" x:Name="TaskActionsButton"
                             Background="Transparent" BorderThickness="0"
-                            VerticalAlignment="Top"
+                            VerticalAlignment="Center"
                             AutomationProperties.Name="Task actions">
                         <TextBlock Text="&#xE712;"
                                    FontFamily="{ThemeResource SymbolThemeFontFamily}"
@@ -234,8 +198,12 @@
                                         <FontIcon Glyph="&#xE74D;" />
                                     </MenuFlyoutItem.Icon>
                                 </MenuFlyoutItem>
-                                <MenuFlyoutSeparator />
-                                <MenuFlyoutItem x:Uid="close" Text="Close" Click="OnCloseDetail" />
+                                <!--
+                                    Close used to be a last item here, a Windows-only addition
+                                    because the detail is a pane and web's routed page has nothing
+                                    to shut. It is the header's `✕` now (task 77d17dc8) — the Mac's
+                                    placement, and the first place a reader looks.
+                                -->
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
@@ -249,8 +217,106 @@
             above it, a short window left the conversation a couple of lines to live in.
         -->
         <ScrollViewer Grid.Row="1" Padding="16,12,16,0">
-            <StackPanel>
+            <StackPanel Spacing="12">
+
+            <!--
+                The body is grouped into rounded cards, as the Mac groups it (task 77d17dc8):
+                the task and its fields in one, subtasks in the next. The thread stays outside
+                them — on the Mac it sits on the pane's own surface, under its toolbar.
+
+                The card adds NO horizontal padding, deliberately. The alignment invariant is
+                measured from the pane's edge — 16 + 32 + 8 = 56 — so an inset here would push
+                every field row off the sum TaskDetailAlignmentTests pins (task 439e94a4). The
+                16px the card is inset by is the ScrollViewer's, which is the same 16, so the
+                card's edge and the header's padding line up and the icon column still begins
+                where it always did.
+            -->
+            <Border x:Name="DetailFieldsCard"
+                    Padding="0,10"
+                    CornerRadius="{StaticResource AstridRadiusLarge}"
+                    Background="{ThemeResource AstridSurfaceHover}"
+                    BorderThickness="1"
+                    BorderBrush="{ThemeResource AstridBorder}">
             <StackPanel Spacing="2">
+
+            <!--
+                The task itself, at the top of its own card — the mark, the title and the
+                Won't-do chip. All three were in the header until task 77d17dc8 moved them here,
+                where the Mac draws them; the header is chrome now and says only "Task Details".
+
+                The mark takes the icon column, so the title starts at the same 56px as every
+                value under it.
+            -->
+            <Grid ColumnSpacing="{StaticResource DetailFieldGap}" Margin="0,0,0,2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" MinWidth="{StaticResource DetailFieldIconColumn}" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button x:Uid="complete_this_task" x:Name="DetailTitleMark" Grid.Column="0"
+                        Background="Transparent" BorderThickness="0" Padding="0"
+                        Width="{StaticResource DetailFieldIconColumn}"
+                        Height="{StaticResource DetailFieldIconColumn}"
+                        VerticalAlignment="Top"
+                        AutomationProperties.Name="Complete this task"
+                        Visibility="{x:Bind Shell.Detail.IsCopyOnly, Mode=OneWay, Converter={StaticResource NotVisible}}"
+                        Click="OnDetailMarkClicked">
+                    <Image Source="{x:Bind Shell.Detail.CheckboxAsset, Mode=OneWay}"
+                           Width="{StaticResource DetailFieldIconColumn}"
+                           Height="{StaticResource DetailFieldIconColumn}" />
+                </Button>
+                <!--
+                    A task in a public list the reader cannot edit (task f6bc59e8): the web's
+                    header draws its copy control where the checkbox would be.
+                -->
+                <Button x:Uid="copy_this_task" Grid.Column="0"
+                        Background="Transparent" BorderThickness="0" Padding="0"
+                        Width="{StaticResource DetailFieldIconColumn}"
+                        Height="{StaticResource DetailFieldIconColumn}"
+                        VerticalAlignment="Top"
+                        AutomationProperties.Name="Copy this task"
+                        ToolTipService.ToolTip="Copy to my tasks"
+                        Visibility="{x:Bind Shell.Detail.IsCopyOnly, Mode=OneWay, Converter={StaticResource Visible}}"
+                        Click="OnDetailCopyClicked">
+                    <Border Width="24" Height="24" CornerRadius="{StaticResource AstridRadiusSmall}"
+                            BorderThickness="2"
+                            BorderBrush="{ThemeResource AstridTextMuted}">
+                        <FontIcon Glyph="&#xE8C8;" FontSize="11"
+                                  Foreground="{ThemeResource AstridTextSecondary}"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                </Button>
+                <StackPanel Grid.Column="1" Spacing="2">
+                    <TextBox x:Uid="detail_title_box" x:Name="DetailTitleBox"
+                             AutomationProperties.Name="Title"
+                             Text="{x:Bind Shell.Detail.Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             FontSize="16"
+                             FontWeight="SemiBold"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Padding="0,4"
+                             TextWrapping="Wrap"
+                             AcceptsReturn="False"
+                             IsReadOnly="{x:Bind Shell.Detail.IsCopyOnly, Mode=OneWay}"
+                             Foreground="{ThemeResource AstridTextPrimary}"
+                             GotFocus="OnDetailTitleFocused"
+                             LostFocus="OnDetailTitleCommitted"
+                             KeyDown="OnDetailTitleKeyDown" />
+                    <!--
+                        Closed as won't-do, not done: the web's chip beside the title, so a
+                        task that was abandoned does not read as finished (task 016ce981).
+                    -->
+                    <!-- Its radius was a hand-typed 4, off every scale; it takes the
+                         scale's small step now (task 77d17dc8). -->
+                    <Border x:Uid="won_t_do" HorizontalAlignment="Left" Padding="6,1"
+                            CornerRadius="{StaticResource AstridRadiusSmall}"
+                            BorderThickness="1" BorderBrush="{ThemeResource AstridBorder}"
+                            AutomationProperties.Name="Won't do"
+                            Visibility="{x:Bind Shell.Detail.IsCanceled, Mode=OneWay, Converter={StaticResource Visible}}">
+                        <TextBlock x:Name="WontDoChip" FontSize="11"
+                                   Foreground="{ThemeResource AstridTextSecondary}" />
+                    </Border>
+                </StackPanel>
+            </Grid>
 
             <!--
                 Who holds the task. First, because the field order — Who, Date, Priority,
@@ -269,9 +335,35 @@
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"
                                Foreground="{ThemeResource AstridTextMuted}" />
-                    <ContentPresenter Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="{x:Bind Shell.Detail.Assignee, Mode=OneWay, Converter={StaticResource AssigneeText}}" />
-                    </ContentPresenter>
+                    <!--
+                        The assignee is a chip, not a line of text (task 77d17dc8): a bordered
+                        pill with a mark and a chevron, as the Mac draws it. The chevron is the
+                        part that earns it — the row has always opened a picker, and nothing
+                        said so.
+                    -->
+                    <Border x:Name="AssigneeChip" Grid.Column="1"
+                            HorizontalAlignment="Left"
+                            Padding="6,2"
+                            CornerRadius="{StaticResource AstridRadiusLarge}"
+                            BorderThickness="1"
+                            BorderBrush="{ThemeResource AstridBorder}"
+                            Background="{ThemeResource AstridSurface}"
+                            VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="&#xE77B;"
+                                       FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                       FontSize="13"
+                                       VerticalAlignment="Center"
+                                       Foreground="{ThemeResource AstridTextSecondary}" />
+                            <TextBlock Text="{x:Bind Shell.Detail.Assignee, Mode=OneWay, Converter={StaticResource AssigneeText}}"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Text="&#xE70D;"
+                                       FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                       FontSize="10"
+                                       VerticalAlignment="Center"
+                                       Foreground="{ThemeResource AstridTextMuted}" />
+                        </StackPanel>
+                    </Border>
                 </Grid>
                 <Button.Flyout>
                     <!--
@@ -1042,7 +1134,7 @@
                          PlaceholderText="Add a description..."
                          AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72"
                          IsReadOnly="{x:Bind Shell.Detail.IsCopyOnly, Mode=OneWay}"
-                         Background="{ThemeResource AstridSurfaceHover}"
+                         Background="{ThemeResource AstridSurface}"
                          BorderThickness="0"
                          CornerRadius="{StaticResource AstridRadiusMedium}"
                          Padding="10,8"
@@ -1053,6 +1145,20 @@
                          KeyDown="OnDetailDescriptionKeyDown" />
             </Grid>
             </StackPanel>
+            </Border>
+
+            <!--
+                The second card: subtasks. It takes a horizontal inset where the first card
+                could not, because nothing in it is a field row — there is no icon column here,
+                so there is no 56px sum to hold.
+            -->
+            <Border x:Name="DetailSubtasksCard"
+                    Padding="12,10"
+                    CornerRadius="{StaticResource AstridRadiusLarge}"
+                    Background="{ThemeResource AstridSurfaceHover}"
+                    BorderThickness="1"
+                    BorderBrush="{ThemeResource AstridBorder}">
+            <StackPanel>
                 <!--
                     The heading, and how many of the children are done — "1/3", the count the
                     Mac and iOS have shown beside "Sub tasks" for a long time and web gained as
@@ -1084,11 +1190,13 @@
                 </ItemsControl>
                 <TextBox x:Uid="subtask_box" x:Name="SubtaskBox" PlaceholderText="Add a subtask"
                          Margin="0,4,0,0"
-                         Background="{ThemeResource AstridSurfaceHover}"
+                         Background="{ThemeResource AstridSurface}"
                          BorderThickness="0"
                          CornerRadius="{StaticResource AstridRadiusMedium}"
                          Padding="10,7"
                          KeyDown="OnSubtaskKeyDown" />
+            </StackPanel>
+            </Border>
 
                 <!--
                     Attachments. The section appears only when the task has files: the web
@@ -1140,9 +1248,54 @@
                     deeper, and anything the server authored as a centred note. A thread drawn
                     as a flat list of lines says nobody replied to anybody.
                 -->
-                <TextBlock x:Uid="comments" Text="Comments" Style="{StaticResource DetailSection}"
-                           Visibility="{x:Bind Shell.Detail.Comments.Count, Mode=OneWay, Converter={StaticResource CountVisible}}" />
-                <ItemsControl ItemsSource="{x:Bind Shell.Detail.Comments, Mode=OneWay}">
+                <!--
+                    The toolbar, as the Mac draws it (task 77d17dc8): the count, the system
+                    filter, and Refresh at the far end. It replaces a bare "Comments" label that
+                    was hidden when the thread was empty — so an empty thread said nothing at all
+                    about itself, where the Mac says "Comments (0)".
+
+                    The count is of what is drawn below, not of what the server sent, so it
+                    agrees with the filter: see TaskDetailViewModel.VisibleComments.
+                -->
+                <Grid x:Name="CommentsToolbar" Margin="0,4,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="CommentsCount" Grid.Column="0"
+                               Style="{StaticResource DetailSection}"
+                               VerticalAlignment="Center"
+                               Text="{x:Bind Shell.Detail.VisibleCommentCount, Mode=OneWay, Converter={StaticResource CommentsHeading}}" />
+                    <Button x:Uid="show_system_comments" x:Name="ShowSystemCommentsButton" Grid.Column="1"
+                            HorizontalAlignment="Left"
+                            Margin="8,0,0,0"
+                            Background="Transparent" BorderThickness="0"
+                            Padding="4,2"
+                            FontSize="11"
+                            Foreground="{ThemeResource AstridTextMuted}"
+                            Content="Show system"
+                            AutomationProperties.Name="Show system comments"
+                            Click="OnToggleSystemComments" />
+                    <Button x:Uid="refresh_comments" x:Name="RefreshCommentsButton" Grid.Column="2"
+                            Background="Transparent" BorderThickness="0"
+                            Padding="4,2"
+                            FontSize="11"
+                            Foreground="{ThemeResource AstridTextMuted}"
+                            AutomationProperties.Name="Refresh comments"
+                            ToolTipService.ToolTip="Refresh comments"
+                            Click="OnRefreshComments">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="&#xE72C;"
+                                       FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                       FontSize="11"
+                                       VerticalAlignment="Center" />
+                            <TextBlock x:Uid="refresh_comments_label" Text="Refresh"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+                <ItemsControl x:Name="CommentsThread" ItemsSource="{x:Bind Shell.Detail.VisibleComments, Mode=OneWay}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="viewmodels:CommentSummary">
                             <!--

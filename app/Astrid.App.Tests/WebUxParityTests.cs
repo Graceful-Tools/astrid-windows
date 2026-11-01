@@ -46,8 +46,9 @@ public sealed class WebUxParityTests
     /// Delete behind separators. Windows had the same set but in another order — its copy-ish
     /// items ran Copy link, Copy task id, Share, Copy to a list — and web's "Copy" is this pane's
     /// "Copy to a list…", since web's <c>onCopy</c> is <c>handleCopyTask(taskId, targetListId)</c>.
-    /// Two items are Windows' own and sit at the end of the group they belong to: there is no
-    /// address bar to copy a URL out of, and no route to leave for Close.
+    /// One item is Windows' own and sits at the end of the group it belongs to: there is no
+    /// address bar to copy a URL out of. Close was a second until task 77d17dc8 moved it to the
+    /// header's <c>✕</c>, where the Mac keeps it.
     /// </remarks>
     [Fact]
     public void The_task_detail_overflow_menu_is_in_webs_order_task_ffcc6abf()
@@ -70,8 +71,8 @@ public sealed class WebUxParityTests
                 "WontDoItem",
                 "MenuFlyoutSeparator",
                 "delete",
-                "MenuFlyoutSeparator",
-                "close",          // Windows' own: a pane closes, a web route does not
+                // Close was a last item here, Windows' own because a pane closes and a web route
+                // does not. It is the header's `✕` since task 77d17dc8, which follows the Mac.
             ],
             flyout.Elements().Select(Key).ToArray());
     }

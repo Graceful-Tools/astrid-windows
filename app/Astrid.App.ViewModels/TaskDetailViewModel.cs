@@ -57,6 +57,7 @@ public sealed class TaskDetailViewModel : ObservableObject
     private bool _showsCommentComposer = true;
     private bool _supportsPrivateTasks = true;
     private bool _supportsMultipleAssignees;
+    private bool _showsSystemComments;
     private string _deleteTaskMode = ClassicDeleteTaskMode;
 
     /// <summary>
@@ -67,6 +68,9 @@ public sealed class TaskDetailViewModel : ObservableObject
     public TaskDetailViewModel(IAstridCore core)
     {
         _core = core;
+        // Every path that fills the thread goes through Replace on Comments, so following that
+        // collection is how the filtered view stays true without each caller remembering it.
+        Comments.CollectionChanged += (_, _) => ApplyCommentFilter();
     }
 
     /// <summary>The quick date choices, with the instant each one means.</summary>
@@ -152,6 +156,44 @@ public sealed class TaskDetailViewModel : ObservableObject
     public ObservableCollection<AssigneeOption> Assignees { get; } = [];
 
     public ObservableCollection<CommentSummary> Comments { get; } = [];
+
+    /// <summary>
+    /// The thread as the pane draws it: <see cref="Comments"/> with the server's own notes left
+    /// out unless they were asked for (task <c>77d17dc8</c>).
+    /// </summary>
+    /// <remarks>
+    /// The Mac's comments toolbar offers "Show system", and Windows follows the Mac on this
+    /// pane's chrome. The filter lives here rather than in the shell because a count has to agree
+    /// with what is under it — <see cref="VisibleCommentCount"/> is of this list, not of the one
+    /// the core sent — and because a binding cannot filter. <see cref="Comments"/> stays the whole
+    /// thread: it is what a reply, an edit or a delete is resolved against.
+    /// </remarks>
+    public ObservableCollection<CommentSummary> VisibleComments { get; } = [];
+
+    /// <summary>
+    /// Whether the server's own notes are in the thread. Off by default, as on the Mac: "moved to
+    /// Doing" is bookkeeping, and a thread of it buries the conversation.
+    /// </summary>
+    public bool ShowsSystemComments
+    {
+        get => _showsSystemComments;
+        set
+        {
+            if (Set(ref _showsSystemComments, value))
+            {
+                ApplyCommentFilter();
+            }
+        }
+    }
+
+    /// <summary>How many comments the toolbar's count stands for — of the filtered thread.</summary>
+    public int VisibleCommentCount => VisibleComments.Count;
+
+    private void ApplyCommentFilter()
+    {
+        Replace(VisibleComments, Comments.Where(comment => ShowsSystemComments || !comment.IsSystem).ToList());
+        Raise(nameof(VisibleCommentCount));
+    }
 
     public ObservableCollection<SubtaskSummary> Subtasks { get; } = [];
 

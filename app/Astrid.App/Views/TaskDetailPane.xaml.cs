@@ -154,6 +154,19 @@ public sealed partial class TaskDetailPane : UserControl
 
     private async void OnCloseDetail(object sender, RoutedEventArgs args) => await Shell.Detail.CloseAsync();
 
+    /// <summary>
+    /// The comments toolbar's two controls (task 77d17dc8): the system filter, and Refresh.
+    /// </summary>
+    /// <remarks>
+    /// Both only dispatch — what "system" means and what a refresh fetches are the view model's
+    /// and the core's. The Mac's toolbar is where this pane got them.
+    /// </remarks>
+    private void OnToggleSystemComments(object sender, RoutedEventArgs args) =>
+        Shell.Detail.ShowsSystemComments = !Shell.Detail.ShowsSystemComments;
+
+    private async void OnRefreshComments(object sender, RoutedEventArgs args) =>
+        await Shell.Detail.RefreshCommentsAsync();
+
     /// <summary>Full screen and back (task 1927c2e7). Whether the control is offered is the shell's decision.</summary>
     private void OnToggleFullScreen(object sender, RoutedEventArgs args) => Shell.Detail.ToggleFullScreen();
 

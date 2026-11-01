@@ -40,6 +40,14 @@
     <local:StatConverter x:Key="StatSupported" Key="stats.supported" />
     <local:LoggedTimeConverter x:Key="LoggedTime" />
     <!-- The Outbox's refused writes, and what a retry did with them (task 84e077ca). -->
+    <!--
+        "Comments (3)", and "Comments (0)" rather than nothing at zero — the Mac's toolbar says
+        its count even on an empty thread (task 77d17dc8). The zero key is a separate string
+        because a language that writes the count differently when there are none should be able
+        to; it is not "{0}" with a 0 in it by accident.
+    -->
+    <local:CountedWordsConverter x:Key="CommentsHeading" Key="comments.heading"
+                                 ZeroKey="comments.heading_none" />
     <local:CountedWordsConverter x:Key="RefusedWrites" Key="outbox.refused" />
     <local:CountedWordsConverter x:Key="RetryOutcome" Key="outbox.retry_sent"
                                  ZeroKey="outbox.retry_none" />
