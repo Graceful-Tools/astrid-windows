@@ -137,8 +137,11 @@ public sealed class TaskDetailAlignmentTests
                               && ((string?)element.Attribute("MinWidth"))?.Contains(IconColumnKey, StringComparison.Ordinal) == true)
             .ToList();
 
-        // The header, then the ten rows under it.
-        Assert.Equal(11, iconSlots.Count);
+        // The header's close button, the title row, then the ten rows under it. The title row
+        // joined the count when task 77d17dc8 moved the task's mark and title out of the header
+        // and into the first card — it is a field row like any other now, and its mark sits in
+        // the same icon column, which is the whole reason the title still starts at 56px.
+        Assert.Equal(12, iconSlots.Count);
 
         foreach (var slot in iconSlots)
         {

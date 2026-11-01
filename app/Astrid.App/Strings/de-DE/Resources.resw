@@ -798,9 +798,6 @@
   <data name="client_secret.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Client-Secret</value>
   </data>
-  <data name="close.Text" xml:space="preserve">
-    <value>Schließen</value>
-  </data>
   <data name="coding_agent.Text" xml:space="preserve">
     <value>Code-Agent</value>
   </data>
@@ -809,9 +806,6 @@
   </data>
   <data name="comment_box.PlaceholderText" xml:space="preserve">
     <value>Kommentar hinzufügen...</value>
-  </data>
-  <data name="comments.Text" xml:space="preserve">
-    <value>Kommentare</value>
   </data>
   <data name="complete_this_task.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Diese Aufgabe erledigen</value>
@@ -2189,5 +2183,35 @@
   </data>
   <data name="copy_the_token.Content" xml:space="preserve">
     <value>Token kopieren</value>
+  </data>
+  <data name="detail_chrome_title.Text" xml:space="preserve">
+    <value>Aufgabendetails</value>
+  </data>
+  <data name="detail_close_button.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Schließen</value>
+  </data>
+  <data name="detail_close_button.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Schließen</value>
+  </data>
+  <data name="show_system_comments.Content" xml:space="preserve">
+    <value>System anzeigen</value>
+  </data>
+  <data name="show_system_comments.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Systemkommentare anzeigen</value>
+  </data>
+  <data name="refresh_comments.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Kommentare aktualisieren</value>
+  </data>
+  <data name="refresh_comments.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Kommentare aktualisieren</value>
+  </data>
+  <data name="refresh_comments_label.Text" xml:space="preserve">
+    <value>Aktualisieren</value>
+  </data>
+  <data name="comments_heading" xml:space="preserve">
+    <value>Kommentare ({0})</value>
+  </data>
+  <data name="comments_heading_none" xml:space="preserve">
+    <value>Kommentare (0)</value>
   </data>
 </root>
