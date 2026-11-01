@@ -180,6 +180,28 @@
     <x:Double x:Key="DetailFieldIconColumn">32</x:Double>
     <x:Double x:Key="DetailFieldGap">8</x:Double>
 
+    <!--
+        The corner-radius scale (task 77d17dc8), in the Mac's values:
+        `radiusSmall/Medium/Large/XLarge` = 6/8/12/16.
+
+        Taken from the Mac deliberately, and it is the ONE axis where that is the right
+        reference. The `Astrid*` brushes above are web's, named after
+        `astrid-web/styles/themes/*.css` so a value can be checked against that file — and on
+        colour it is the Mac that drifted, so moving those toward it would be a regression.
+        Radius is different: Windows had no scale at all, so there was nothing to diverge from,
+        and web's own base radius token is 8px, the middle step here either way.
+
+        Stated here for the same reason as the two numbers above: the detail pane alone had
+        hard-coded 4, 6, 8, 10 and 12 across fourteen elements, which is how the alignment sum
+        came to be retyped eleven times before anyone wrote it down. `DesignRadiusScaleTests`
+        is this one's pin, and it asserts both halves — that the scale exists, and that the
+        pane references it rather than restating a number.
+    -->
+    <CornerRadius x:Key="AstridRadiusSmall">6</CornerRadius>
+    <CornerRadius x:Key="AstridRadiusMedium">8</CornerRadius>
+    <CornerRadius x:Key="AstridRadiusLarge">12</CornerRadius>
+    <CornerRadius x:Key="AstridRadiusXLarge">16</CornerRadius>
+
     <Style x:Key="SidebarRowStyle" TargetType="ListViewItem">
         <!--
             Keyboard focus stays visible — it has to — but as a hairline in the accent rather

@@ -99,7 +99,7 @@
                             ToolTipService.ToolTip="Copy to my tasks"
                             Visibility="{x:Bind Shell.Detail.IsCopyOnly, Mode=OneWay, Converter={StaticResource Visible}}"
                             Click="OnDetailCopyClicked">
-                        <Border Width="24" Height="24" CornerRadius="6"
+                        <Border Width="24" Height="24" CornerRadius="{StaticResource AstridRadiusSmall}"
                                 BorderThickness="2"
                                 BorderBrush="{ThemeResource AstridTextMuted}">
                             <FontIcon Glyph="&#xE8C8;" FontSize="11"
@@ -127,7 +127,10 @@
                             Closed as won't-do, not done: the web's chip beside the title, so a
                             task that was abandoned does not read as finished (task 016ce981).
                         -->
-                        <Border x:Uid="won_t_do" HorizontalAlignment="Left" Padding="6,1" CornerRadius="4"
+                        <!-- Its radius was a hand-typed 4, off every scale; it takes the
+                             scale's small step now (task 77d17dc8). -->
+                        <Border x:Uid="won_t_do" HorizontalAlignment="Left" Padding="6,1"
+                                CornerRadius="{StaticResource AstridRadiusSmall}"
                                 BorderThickness="1" BorderBrush="{ThemeResource AstridBorder}"
                                 AutomationProperties.Name="Won't do"
                                 Visibility="{x:Bind Shell.Detail.IsCanceled, Mode=OneWay, Converter={StaticResource Visible}}">
@@ -684,7 +687,7 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="bindings:ListChip">
-                                    <Border CornerRadius="6" Padding="8,3" Margin="0,0,6,0"
+                                    <Border CornerRadius="{StaticResource AstridRadiusSmall}" Padding="8,3" Margin="0,0,6,0"
                                             Background="{x:Bind Color, Converter={StaticResource ChipColour}}">
                                         <TextBlock Text="{x:Bind Name}"
                                                    FontSize="12"
@@ -711,7 +714,7 @@
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="bindings:ListPick">
-                                            <Border CornerRadius="6" Padding="8,2,4,2"
+                                            <Border CornerRadius="{StaticResource AstridRadiusSmall}" Padding="8,2,4,2"
                                                     Background="{x:Bind Color, Converter={StaticResource ChipColour}}">
                                                 <StackPanel Orientation="Horizontal" Spacing="4">
                                                     <TextBlock Text="{x:Bind Name}"
@@ -837,7 +840,7 @@
                                           Padding="10,3"
                                           Margin="0,0,6,0"
                                           FontSize="12"
-                                          CornerRadius="8"
+                                          CornerRadius="{StaticResource AstridRadiusMedium}"
                                           AutomationProperties.Name="{x:Bind Name}"
                                           Click="OnBoardStateChosen" />
                         </DataTemplate>
@@ -889,7 +892,7 @@
                             <DataTemplate x:DataType="bindings:Blocker">
                                 <Border Background="{ThemeResource AstridBgSelected}"
                                         BorderBrush="{ThemeResource AstridBorder}" BorderThickness="1"
-                                        CornerRadius="6" Padding="8,2,4,2">
+                                        CornerRadius="{StaticResource AstridRadiusSmall}" Padding="8,2,4,2">
                                     <StackPanel Orientation="Horizontal" Spacing="4">
                                         <!--
                                             A blocker the reader may not see shows neither title
@@ -1021,7 +1024,7 @@
                         Background="Transparent"
                         BorderThickness="1"
                         BorderBrush="Transparent"
-                        CornerRadius="8"
+                        CornerRadius="{StaticResource AstridRadiusMedium}"
                         Padding="10,8"
                         MinHeight="40"
                         Tapped="OnDescriptionTapped"
@@ -1041,7 +1044,7 @@
                          IsReadOnly="{x:Bind Shell.Detail.IsCopyOnly, Mode=OneWay}"
                          Background="{ThemeResource AstridSurfaceHover}"
                          BorderThickness="0"
-                         CornerRadius="8"
+                         CornerRadius="{StaticResource AstridRadiusMedium}"
                          Padding="10,8"
                          Text="{x:Bind Shell.Detail.Description, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          Visibility="{x:Bind Shell.Detail.ShowsDescriptionEditor, Mode=OneWay, Converter={StaticResource Visible}}"
@@ -1083,7 +1086,7 @@
                          Margin="0,4,0,0"
                          Background="{ThemeResource AstridSurfaceHover}"
                          BorderThickness="0"
-                         CornerRadius="8"
+                         CornerRadius="{StaticResource AstridRadiusMedium}"
                          Padding="10,7"
                          KeyDown="OnSubtaskKeyDown" />
 
@@ -1179,7 +1182,12 @@
                                     </StackPanel>
                                 </StackPanel>
 
-                                <Border CornerRadius="10"
+                                <!--
+                                    The bubble's radius was a hand-typed 10, the one value in
+                                    the pane that belonged to no scale; it takes the scale's
+                                    large step now (task 77d17dc8).
+                                -->
+                                <Border CornerRadius="{StaticResource AstridRadiusLarge}"
                                         Padding="12"
                                         MaxWidth="260"
                                         Background="{x:Bind IsMine, Converter={StaticResource BubbleBrush}}"
@@ -1229,14 +1237,14 @@
                                                         -->
                                                         <Button Padding="0" Margin="0,2"
                                                                 HorizontalAlignment="Left"
-                                                                CornerRadius="8"
+                                                                CornerRadius="{StaticResource AstridRadiusMedium}"
                                                                 BorderThickness="0"
                                                                 Background="Transparent"
                                                                 Tag="{x:Bind Id}"
                                                                 AutomationProperties.Name="{x:Bind Name}"
                                                                 Click="OnOpenCommentFile"
                                                                 Visibility="{x:Bind ShowsThumbnail, Converter={StaticResource Visible}}">
-                                                            <Border CornerRadius="8">
+                                                            <Border CornerRadius="{StaticResource AstridRadiusMedium}">
                                                                 <Image Source="{x:Bind LocalPath, Converter={StaticResource FileThumbnail}}"
                                                                        MaxWidth="220"
                                                                        MaxHeight="180"
@@ -1251,7 +1259,7 @@
                                                         -->
                                                         <Button Padding="8,4" Margin="0,2"
                                                                 HorizontalAlignment="Left"
-                                                                CornerRadius="6"
+                                                                CornerRadius="{StaticResource AstridRadiusSmall}"
                                                                 Tag="{x:Bind Id}"
                                                                 Click="OnOpenCommentFile"
                                                                 Visibility="{x:Bind ShowsChip, Converter={StaticResource Visible}}">
@@ -1374,7 +1382,7 @@
                              PlaceholderText="Add a comment..."
                              Background="{ThemeResource AstridSurfaceHover}"
                              BorderThickness="0"
-                             CornerRadius="12"
+                             CornerRadius="{StaticResource AstridRadiusLarge}"
                              Padding="12,7"
                              Text="{x:Bind Shell.Detail.CommentDraft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                              TextChanged="OnCommentTextChanged"
