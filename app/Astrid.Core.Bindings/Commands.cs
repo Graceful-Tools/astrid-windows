@@ -907,6 +907,19 @@ public static class Commands
 
     public static object RefreshCapabilities() => new KindOnly("refreshCapabilities");
 
+    /// <summary>
+    /// The public list this deployment's Report an Issue opens, or null when it names none —
+    /// then the shell opens the web instead (task a4352b30).
+    /// </summary>
+    /// <remarks>
+    /// Brand config, from the cached capabilities, because a feedback list id is a row in the
+    /// deployment's own database: a value built into the client is right only for whichever server
+    /// it was built against. iOS had Astrid's own production id compiled in, which sent a
+    /// white-label build's users to Astrid's feedback list. So the shell carries no id of its own
+    /// and asks for this one.
+    /// </remarks>
+    public static object FeedbackListId() => new KindOnly("feedbackListId");
+
     /// <summary>This user's feature flags, from the cache. Null for a flag the server has not been asked about.</summary>
     public static object Features() => new KindOnly("features");
 

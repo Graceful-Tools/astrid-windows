@@ -39,6 +39,7 @@ public sealed partial class SettingsView : UserControl
             ["Integrations"] = ("settings.integrations", "settings.integrations_line", "", "#10B981"),
             ["Data"] = ("settings.data", "settings.data_line", "", "#059669"),
             ["Help"] = ("help.title", "settings.help_line", "", "#06B6D4"),
+            ["Feedback"] = ("feedback.title", "settings.feedback_line", "", "#F43F5E"),
             ["Privacy"] = ("privacy.title", "settings.privacy_line", "", "#6B7280"),
             ["Terms"] = ("terms.title", "settings.terms_line", "", "#6B7280"),
         };
@@ -50,6 +51,7 @@ public sealed partial class SettingsView : UserControl
         TasksNavLabel.Text = Strings.Get("smart.title");
         ContactsNavLabel.Text = Strings.Get("contacts.title");
         HelpNavLabel.Text = Strings.Get("help.title");
+        FeedbackNavLabel.Text = Strings.Get("feedback.title");
         PrivacyNavLabel.Text = Strings.Get("privacy.title");
         TermsNavLabel.Text = Strings.Get("terms.title");
         AccountCardLine.Text = Strings.Get(Pages["Account"].LineKey);
@@ -62,6 +64,7 @@ public sealed partial class SettingsView : UserControl
         IntegrationsCardLine.Text = Strings.Get(Pages["Integrations"].LineKey);
         DataCardLine.Text = Strings.Get(Pages["Data"].LineKey);
         HelpCardLine.Text = Strings.Get(Pages["Help"].LineKey);
+        FeedbackCardLine.Text = Strings.Get(Pages["Feedback"].LineKey);
         PrivacyCardLine.Text = Strings.Get(Pages["Privacy"].LineKey);
         TermsCardLine.Text = Strings.Get(Pages["Terms"].LineKey);
     }
@@ -160,8 +163,19 @@ public sealed partial class SettingsView : UserControl
         {
             return;
         }
-        // Three entries are doors, not pages: the web's own Help, Privacy and Terms open in the
+        // Four entries are doors, not pages: the web's own Help, Privacy and Terms open in the
         // browser, so there is one copy of each (task 438494c7). The page on the right stays.
+        //
+        // Report an Issue is the fourth, and the only one this file does not know the address of
+        // (task 68771137): which list a deployment files feedback into is the core's answer, so
+        // the view model is asked. That is a round trip, which is why it is awaited separately
+        // rather than inlined into the table above.
+        if (section == "Feedback")
+        {
+            await Windows.System.Launcher.LaunchUriAsync(
+                new Uri(await Shell.Settings.FeedbackDestinationAsync(App.ServerOrigin)));
+            return;
+        }
         var door = section switch
         {
             "Help" => $"{App.ServerOrigin}/help",

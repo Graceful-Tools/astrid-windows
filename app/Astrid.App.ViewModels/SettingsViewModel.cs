@@ -117,4 +117,41 @@ public sealed class SettingsViewModel : ObservableObject
             IsLoading = false;
         }
     }
+
+    /// <summary>
+    /// Where <b>Report an Issue</b> goes: this deployment's own feedback list, or the web when it
+    /// names none (task 68771137).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The decision is the core's and arrives as an <c>Option&lt;String&gt;</c> —
+    /// <c>brand.feedbackListId</c> from the cached capabilities, which the core already trims and
+    /// answers as nothing when it is blank. Nothing here repeats that test, and nothing here holds
+    /// a list id: iOS's bug (task <c>a4352b30</c>) was Astrid's own production id compiled into
+    /// the client, and a "sensible fallback" in this shell would be the same bug in C#.
+    /// </para>
+    /// <para>
+    /// Both answers are a door to the browser today, because neither this shell nor the core has a
+    /// way to open one list by id for somebody who is not a member of it — <c>publicLists</c> is a
+    /// catalogue and <c>copyList</c> makes a copy, so iOS's <c>showPublicList</c> has no
+    /// counterpart to call. Opening the named list in-app is filed separately rather than
+    /// half-built here.
+    /// </para>
+    /// <para>
+    /// A core that cannot answer — a pin that predates the command, a cache never filled — is the
+    /// same as a deployment naming none. The row is a door, and the web is always a door; a row
+    /// that does nothing when clicked is the worse answer.
+    /// </para>
+    /// </remarks>
+    /// <param name="serverOrigin">The deployment this window is signed in to.</param>
+    public async Task<string> FeedbackDestinationAsync(
+        string serverOrigin, CancellationToken cancellationToken = default)
+    {
+        var response = await _session.Core.CallAsync(Commands.FeedbackListId(), cancellationToken);
+        var listId = response.Ok ? response.ValueAs<string>() : null;
+        var origin = serverOrigin.TrimEnd('/');
+        return listId is null
+            ? $"{origin}/help"
+            : $"{origin}/lists/{Uri.EscapeDataString(listId)}";
+    }
 }
