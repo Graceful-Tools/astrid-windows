@@ -174,6 +174,7 @@ internal static class Strings
         ["contacts.clear_confirm"] = "Remove every imported contact? This cannot be undone.",
         ["contacts.clear_yes"] = "Clear contacts",
         ["help.title"] = "Help & Support",
+        ["feedback.title"] = "Report an Issue",
         ["privacy.title"] = "Privacy Policy",
         ["terms.title"] = "Terms of Service",
         ["passkeys.note"] = "Passkeys sign you in without a password. Windows Hello can add one here, with your face, fingerprint or PIN.",
@@ -240,6 +241,7 @@ internal static class Strings
         ["settings.integrations_line"] = "Google lists, the webhook, and Copilot",
         ["settings.data_line"] = "Download all your tasks, lists, and account data",
         ["settings.help_line"] = "Troubleshooting guides and contact support",
+        ["settings.feedback_line"] = "Tell us what went wrong, or what is missing",
         ["settings.privacy_line"] = "How your data is handled",
         ["settings.terms_line"] = "The terms you agreed to",
         // The calendar feed (task 28c5c6a9): the web's three choices and its line under each.

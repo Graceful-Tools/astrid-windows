@@ -276,6 +276,9 @@
   <data name="help_title" xml:space="preserve">
     <value>Hilfe &amp; Support</value>
   </data>
+  <data name="feedback_title" xml:space="preserve">
+    <value>Problem melden</value>
+  </data>
   <data name="privacy_title" xml:space="preserve">
     <value>Datenschutzerklärung</value>
   </data>
@@ -1010,6 +1013,12 @@
   </data>
   <data name="help_nav_label.Text" xml:space="preserve">
     <value>Hilfe &amp; Support</value>
+  </data>
+  <data name="report_an_issue.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Problem melden</value>
+  </data>
+  <data name="feedback_nav_label.Text" xml:space="preserve">
+    <value>Problem melden</value>
   </data>
   <data name="header_search.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Suchen</value>
@@ -1823,6 +1832,9 @@
   </data>
   <data name="settings_help_line" xml:space="preserve">
     <value>Hilfe-Anleitungen und Kontakt zum Support</value>
+  </data>
+  <data name="settings_feedback_line" xml:space="preserve">
+    <value>Sagen Sie uns, was nicht funktioniert hat oder fehlt</value>
   </data>
   <data name="settings_privacy_line" xml:space="preserve">
     <value>Wie Ihre Daten behandelt werden</value>
