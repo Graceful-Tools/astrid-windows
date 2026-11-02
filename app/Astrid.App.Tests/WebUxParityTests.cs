@@ -110,6 +110,90 @@ public sealed class WebUxParityTests
             uid => uid == "account_and_settings");
     }
 
+    /// <summary>
+    /// The bell is in the sidebar's header row, before the hide button, as web's is (task
+    /// 96759883).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Web's <c>LeftSidebar</c> carries <c>&lt;NotificationBell align="start" /&gt;</c> in its own
+    /// header row, immediately left of search and the sidebar toggle (AWTD-1357 — whose comment
+    /// records that the list header "renders nothing on desktop, so there was no bell there at
+    /// all"). Windows had it at the far right of the list header, the opposite end of the window,
+    /// and it was the last thing left in that cluster: the account button beside it had already
+    /// gone to the sidebar's foot for the same reason in task <c>ffcc6abf</c>, the test above.
+    /// </para>
+    /// <para>
+    /// So it goes into the sidebar's header row, immediately left of the hide button — web's
+    /// order, bell before toggle. Not the title bar's brand header, which is where web's sidebar
+    /// *header* lives on Windows (task <c>20dcc235</c>): the ask says the left side panel, that
+    /// control is deliberately view-model-free and speaks to the shell through an event, and this
+    /// one already carries <c>Shell</c> and already hosts a flyout of this shape.
+    /// </para>
+    /// <para>
+    /// The bell going with the sidebar into the 48px rail is web's behaviour too, not a loss:
+    /// <c>LeftSidebar.tsx</c>'s collapsed rail renders only the toggle.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void The_bell_is_the_sidebars_header_row_before_the_hide_button_task_96759883()
+    {
+        var bell = View("SidebarView.xaml")
+            .Descendants()
+            .Single(element => (string?)element.Attribute(Xaml + "Uid") == "notifications_button");
+
+        Assert.Equal("Button", bell.Name.LocalName);
+
+        // The sidebar's header row — the top one — shared with the way to hide the sidebar.
+        var row = bell.Parent!;
+        Assert.Equal("0", (string?)row.Attribute("Grid.Row"));
+        Assert.Contains(
+            row.Elements().Select(element => (string?)element.Attribute(Xaml + "Uid")),
+            uid => uid == "hide_sidebar");
+        // Web's order: the bell comes first, the toggle last.
+        Assert.Equal("notifications_button", (string?)row.Elements().First().Attribute(Xaml + "Uid"));
+
+        // The badge travelled with it: how many are unread, and whether to draw the count at all.
+        var bindings = bell.Descendants()
+            .SelectMany(element => element.Attributes())
+            .Select(attribute => attribute.Value)
+            .ToArray();
+        Assert.Contains(bindings, value => value.Contains("Notifications.HasUnread", StringComparison.Ordinal));
+        Assert.Contains(bindings, value => value.Contains("Notifications.UnreadText", StringComparison.Ordinal));
+
+        // Anchored at the window's left edge now, so the flyout has to open rightwards —
+        // web says the same thing with align="start".
+        var flyout = bell.Descendants().Single(element => element.Name.LocalName == "Flyout");
+        Assert.Equal("BottomEdgeAlignedLeft", (string?)flyout.Attribute("Placement"));
+
+        // And what the flyout does is the sidebar's to handle, all three of them.
+        var sidebar = SidebarCodeBehind();
+        Assert.Contains("Shell.Notifications.RefreshAsync()", sidebar, StringComparison.Ordinal);
+        Assert.Contains("Shell.Notifications.MarkAllReadAsync()", sidebar, StringComparison.Ordinal);
+        Assert.Contains("Shell.Notifications.MarkReadAsync(", sidebar, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Nothing of the bell is left in the list header, where web has none.
+    /// </summary>
+    /// <remarks>
+    /// Separate from the test above because the two can fail for different reasons: a bell drawn
+    /// in both places looks right in the sidebar and is a second badge nobody maintains.
+    /// </remarks>
+    [Fact]
+    public void The_list_header_keeps_no_bell_of_its_own_task_96759883()
+    {
+        Assert.DoesNotContain(
+            View("ListHeaderView.xaml").Descendants()
+                .Select(element => (string?)element.Attribute(Xaml + "Uid")),
+            uid => uid?.StartsWith("notifications", StringComparison.Ordinal) == true);
+
+        Assert.DoesNotContain(
+            "Notifications",
+            File.ReadAllText(Path.Combine(
+                LocalisationTests.AppDirectory(), "Views", "ListHeaderView.xaml.cs")));
+    }
+
     private static string SidebarCodeBehind() =>
         File.ReadAllText(Path.Combine(LocalisationTests.AppDirectory(), "Views", "SidebarView.xaml.cs"));
 }
