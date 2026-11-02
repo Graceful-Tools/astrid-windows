@@ -774,16 +774,27 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// How many writes the server refused for good and the Outbox is holding (task 84e077ca).
+    /// How many refused writes the Outbox is holding that a retry could still send
+    /// (task 84e077ca).
     /// </summary>
     /// <remarks>
+    /// <para>
     /// A separate fact from <see cref="HasUnsentWork"/>, not a worse version of it. The core's
     /// "still to send" answer counts what is pending or running, so a refused write leaves that
     /// set at the moment it stops being able to send itself — and before this the window drew
     /// only that answer, so the one Outbox state needing a person was the one it never mentioned.
     /// <see cref="RetryRefusedWritesAsync"/> is the way out.
+    /// </para>
+    /// <para>
+    /// <b>The core's <c>retryable</c>, not its <c>failed</c> (task 22e9bc7b).</b> A refused delete
+    /// is never replayed, and nor is anything refused more than a week ago, so <c>failed</c>
+    /// counts writes no retry can reach. Drawn beside the retry link that was a row reading
+    /// "1 refused" over a link that answered "nothing to retry" and never cleared. The number next
+    /// to a button has to be a number the button can act on, so a refused write this window cannot
+    /// offer a way out of is not announced as though it could.
+    /// </para>
     /// </remarks>
-    public int RefusedWrites
+    public int RetryableRefusedWrites
     {
         get => _refusedWrites;
         private set => Set(ref _refusedWrites, value);
@@ -814,7 +825,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// What the "Try again" link beside the refused count calls. The core revives the dead-lettered
     /// entries, drains, and answers with how many were <em>given another go</em> — not how many got
     /// through. So this does not treat the answer as success: it re-reads the Outbox straight
-    /// afterwards, and a write refused a second time leaves <see cref="RefusedWrites"/> where it
+    /// afterwards, and a write refused a second time leaves <see cref="RetryableRefusedWrites"/> where it
     /// was, with the row still saying so rather than reporting a send that did not happen.
     /// </para>
     /// <para>
@@ -1254,7 +1265,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         var response = await _core.CallAsync(Commands.OutboxStats(), cancellationToken);
         var stats = response.Read<OutboxStats>();
         HasUnsentWork = stats?.HasUnsentWork ?? false;
-        RefusedWrites = stats?.Failed ?? 0;
+        RetryableRefusedWrites = stats?.Retryable ?? 0;
     }
 
     /// <summary>
@@ -1288,7 +1299,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         HasUnsentWork = false;
         // Whatever the previous session's Outbox was holding is not this window's business any
         // more, and a count left on screen behind a sign-in card belongs to somebody else.
-        RefusedWrites = 0;
+        RetryableRefusedWrites = 0;
         _lastRetryRevived = null;
         Raise(nameof(LastRetryRevived));
         Raise(nameof(ShowsRetryOutcome));
