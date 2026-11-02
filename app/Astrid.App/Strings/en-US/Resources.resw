@@ -1711,6 +1711,15 @@
   <data name="no_public_lists.Text" xml:space="preserve">
     <value>Nothing to browse yet.</value>
   </data>
+  <data name="public_list_close.Content" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="public_list_report_on_web.Content" xml:space="preserve">
+    <value>Report it on the web</value>
+  </data>
+  <data name="public_list_opening.Text" xml:space="preserve">
+    <value>Opening the list…</value>
+  </data>
   <data name="copy_this_task.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Copy this task</value>
   </data>

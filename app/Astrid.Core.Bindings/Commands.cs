@@ -837,6 +837,29 @@ public static class Commands
     /// <summary>Copy a public list, with its tasks, into this account. The server makes the copy.</summary>
     public static object CopyList(string listId) => new WithListId("copyList", listId);
 
+    /// <summary>
+    /// Open <em>one</em> public list by its id, for somebody who is not a member of it (core task
+    /// c5f7d870, bound for task 6fc92134). Answers the list and what this reader may do in it.
+    /// </summary>
+    /// <remarks>
+    /// Online-only, and deliberately <em>not cached</em> — opening somebody else's list is not
+    /// joining it, so the list does not appear in <see cref="Lists"/> or in the sidebar and the
+    /// caller must hold what it was handed. That is why this is not <see cref="CopyList"/>: filing
+    /// a bug must not leave the Bugs &amp; Feedback list in somebody's sidebar.
+    /// </remarks>
+    public static object PublicList(string listId) => new WithListId("publicList", listId);
+
+    /// <summary>
+    /// A public list's rows, fetched from the server rather than the cache, with this account's own
+    /// unsent ones for it (AATD-46; bound for task 6fc92134).
+    /// </summary>
+    /// <param name="list">
+    /// The list as <see cref="PublicList"/> answered it. Required in practice: the core does not
+    /// cache a public list, so without it the rows are projected against a synthesised empty one.
+    /// </param>
+    public static object FeaturedRows(string listId, JsonElement list) =>
+        new FeaturedRowsRequest("featuredRows", listId, list);
+
     public static object SetListFavorite(string listId, bool favorite) =>
         new FavoriteRequest("setListFavorite", listId, favorite);
 
@@ -1286,6 +1309,11 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("format")] string Format,
         [property: JsonPropertyName("path")] string Path);
+
+    private sealed record FeaturedRowsRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("listId")] string ListId,
+        [property: JsonPropertyName("list")] JsonElement List);
 
     private sealed record ListImageRequest(
         [property: JsonPropertyName("kind")] string Kind,

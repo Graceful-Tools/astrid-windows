@@ -99,6 +99,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Settings = new SettingsViewModel(core, passkeys);
         Notifications = new NotificationsViewModel(core);
         PublicLists = new PublicListsViewModel(core);
+        PublicList = new PublicListViewModel(core);
         _core.Changed += OnChanged;
 
         // The task-detail layout decides what the leading control does on every row and in the
@@ -983,6 +984,39 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     /// <summary>The public lists anybody may browse and copy (task f6bc59e8).</summary>
     public PublicListsViewModel PublicLists { get; }
+
+    /// <summary>One public list, opened by its id and read (task 6fc92134).</summary>
+    public PublicListViewModel PublicList { get; }
+
+    /// <summary>
+    /// Whether an opened public list covers the window — Report an Issue's in-app destination.
+    /// </summary>
+    /// <remarks>
+    /// Over the window rather than in the list column, the way the settings are: it is not one of
+    /// this account's lists and the core has deliberately not cached it, so there is nothing in
+    /// the sidebar for it to be selected as. Leaving the screen is the only way out of it.
+    /// </remarks>
+    public bool IsPublicListOpen => PublicList.IsOpen;
+
+    /// <summary>
+    /// Open a public list over the window. False when it could not be read, which leaves the
+    /// screen as it was so the caller can fall back to the browser.
+    /// </summary>
+    public async Task<bool> ShowPublicListAsync(
+        string listId, CancellationToken cancellationToken = default)
+    {
+        IsPaletteOpen = false;
+        var opened = await PublicList.OpenAsync(listId, cancellationToken);
+        Raise(nameof(IsPublicListOpen));
+        return opened;
+    }
+
+    /// <summary>Put the opened public list away.</summary>
+    public void ClosePublicList()
+    {
+        PublicList.Close();
+        Raise(nameof(IsPublicListOpen));
+    }
 
     /// <summary>
     /// Copy a public list into this account and open the copy (task f6bc59e8). The sidebar

@@ -170,10 +170,23 @@ public sealed partial class SettingsView : UserControl
         // (task 68771137): which list a deployment files feedback into is the core's answer, so
         // the view model is asked. That is a round trip, which is why it is awaited separately
         // rather than inlined into the table above.
+        //
+        // Since task 6fc92134 the answer is a decision rather than an address, because there are
+        // two kinds of door: the feedback list on a screen of its own when the core says this
+        // reader may file in it, and the browser otherwise. Which of the two is not decided here
+        // — the branch below carries out an answer, it does not work one out.
         if (section == "Feedback")
         {
+            var destination = await Shell.Settings.FeedbackDestinationAsync(App.ServerOrigin);
+            if (destination.ListId is { Length: > 0 } listId
+                && await Shell.ShowPublicListAsync(listId))
+            {
+                return;
+            }
+            // Either the core sent us to the web, or the list would not open after all. A row is
+            // a door, and the web is always a door.
             await Windows.System.Launcher.LaunchUriAsync(
-                new Uri(await Shell.Settings.FeedbackDestinationAsync(App.ServerOrigin)));
+                new Uri(destination.WebUrl ?? $"{App.ServerOrigin.TrimEnd('/')}/help"));
             return;
         }
         var door = section switch

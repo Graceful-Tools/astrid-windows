@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Astrid.App.Views.PublicListView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:bindings="using:Astrid.Core.Bindings"
+    xmlns:local="using:Astrid.App"
+    xmlns:views="using:Astrid.App.Views">
+
+    <!--
+        One public list, opened by its id and read (task 6fc92134): where Report an Issue goes
+        when the deployment names a feedback list the reader may write in.
+
+        READ-ONLY, and on purpose. The core answers `publicList` without caching the list —
+        opening somebody else's list is not joining it — and whether the Outbox may hold a write
+        against a list this device has not cached is still an open question there. An offline bug
+        report is exactly the correlated case, so an add box here would be that question guessed
+        at. What this screen does instead is show what has already been reported and carry one
+        honest door to the web for the filing.
+
+        It covers the window the way the settings do, rather than taking a place in the sidebar:
+        the list is not one of this account's, so there is nothing there for it to be selected as.
+    -->
+    <Grid Background="{ThemeResource AstridSurface}"
+          Visibility="{x:Bind Shell.IsPublicListOpen, Mode=OneWay, Converter={StaticResource Visible}}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- The header: the way back, whose list it is, and the door that does the writing. -->
+        <Grid Grid.Row="0" Padding="20,16" ColumnSpacing="12"
+              BorderThickness="0,0,0,1"
+              BorderBrush="{ThemeResource AstridBorder}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Button x:Uid="public_list_close" Grid.Column="0"
+                    Content="Close"
+                    VerticalAlignment="Center"
+                    Click="OnClose" />
+
+            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                <TextBlock Text="{x:Bind Shell.PublicList.Name, Mode=OneWay}"
+                           Style="{ThemeResource SubtitleTextBlockStyle}"
+                           Foreground="{ThemeResource AstridTextPrimary}"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{x:Bind Shell.PublicList.OwnerName, Mode=OneWay}"
+                           Visibility="{x:Bind Shell.PublicList.HasOwner, Mode=OneWay, Converter={StaticResource Visible}}"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource AstridTextMuted}" />
+            </StackPanel>
+
+            <!--
+                The one write this screen offers, and it leaves the app to do it. Shown only when
+                the core says this reader may file here: a door to a list you may not write in is
+                the thing the decision in `FeedbackDestinationAsync` exists to avoid.
+            -->
+            <Button x:Uid="public_list_report_on_web" Grid.Column="2"
+                    Content="Report it on the web"
+                    VerticalAlignment="Center"
+                    Style="{ThemeResource AccentButtonStyle}"
+                    Visibility="{x:Bind Shell.PublicList.CanAddTask, Mode=OneWay, Converter={StaticResource Visible}}"
+                    Click="OnReportOnTheWeb" />
+        </Grid>
+
+        <Grid Grid.Row="1">
+            <StackPanel Orientation="Horizontal" Spacing="8"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Visibility="{x:Bind Shell.PublicList.IsLoading, Mode=OneWay, Converter={StaticResource Visible}}">
+                <ProgressRing IsActive="True" Width="16" Height="16" />
+                <TextBlock x:Uid="public_list_opening" Text="Opening the list…"
+                           VerticalAlignment="Center"
+                           Foreground="{ThemeResource AstridTextSecondary}" />
+            </StackPanel>
+
+            <TextBlock Margin="20,16"
+                       HorizontalAlignment="Center" VerticalAlignment="Top"
+                       TextWrapping="Wrap" TextAlignment="Center"
+                       Foreground="{ThemeResource AstridTextMuted}"
+                       Text="{x:Bind Shell.PublicList.ErrorMessage, Mode=OneWay}"
+                       Visibility="{x:Bind Shell.PublicList.HasError, Mode=OneWay, Converter={StaticResource Visible}}" />
+
+            <!--
+                The rows, with no leading control on them: nothing here can be completed, and a
+                checkbox that refuses the click is worse than no checkbox.
+            -->
+            <ListView ItemsSource="{x:Bind Shell.PublicList.Rows, Mode=OneWay}"
+                      SelectionMode="None"
+                      Padding="12,8"
+                      Visibility="{x:Bind Shell.PublicList.IsLoading, Mode=OneWay, Converter={StaticResource NotVisible}}">
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="bindings:TaskRow">
+                        <TextBlock Padding="8,10"
+                                   Text="{x:Bind Title}"
+                                   TextWrapping="Wrap"
+                                   Foreground="{ThemeResource AstridTextPrimary}" />
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </Grid>
+    </Grid>
+</UserControl>
