@@ -40,7 +40,16 @@ public sealed class AstridApp : IDisposable
     public AutomationElement Window { get; }
 
     /// <summary>Where the crash log would be, if the app wrote one.</summary>
+    /// <remarks>
+    /// Only an unhandled exception writes this, so its existence alone is the assertion. Ordinary
+    /// warnings go to <see cref="LogPath"/> — they shared this file until task 46c3fdfd, and two of
+    /// them fire on every launch on a machine with another Astrid installed, which made the whole
+    /// suite unpassable.
+    /// </remarks>
     public string CrashLogPath => Path.Combine(DataDirectory, "crash.log");
+
+    /// <summary>The app's general log: everything it noted, crashes included.</summary>
+    public string LogPath => Path.Combine(DataDirectory, "astrid.log");
 
     /// <summary>Launch the app with an empty cache, signed in or signed out.</summary>
     /// <param name="signedIn">Whether a session is written first.</param>

@@ -106,6 +106,6 @@ build, so a shell built for the wrong one is simply not found.
 |---|---|
 | `could not bring the app to the front … LockApp` | The session is locked. Unlock it; nothing is wrong with the code. |
 | `the app did not start` / `never showed a window` | Usually no `astrid_ffi.dll` for this architecture, or a stale one. `cargo build -p astrid-ffi --target aarch64-pc-windows-msvc`. |
-| `the core did not load` in the crash log | The wrong `astrid_ffi.dll` landed in `bin/`. Check which candidate `Astrid.Core.Bindings.csproj` picked — a stale `target/release` can shadow a fresh `target/<triple>/debug`. |
+| `the core did not load` in `astrid.log` (the app's general log, beside `crash.log` in its data folder) | The wrong `astrid_ffi.dll` landed in `bin/`. Check which candidate `Astrid.Core.Bindings.csproj` picked — a stale `target/release` can shadow a fresh `target/<triple>/debug`. |
 | `no element named '…' on screen. Saw: …` | The app drew a different screen, and the names say which. Not usually a test bug. |
 | `error MSB3027 … locked by: "Astrid.App"` | A copy of the app is running and holds the DLLs the build wants to overwrite. Close it. |
