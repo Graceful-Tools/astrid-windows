@@ -19,7 +19,7 @@ crate-type = ["cdylib", "rlib"]
 # so this one line is why CI's `licenses bans sources` job was red. Cargo checks it against the
 # pinned checkout's own version at build time, so a pin bump that crosses a major version fails
 # here, loudly, instead of changing what shipped with nothing recording it.
-astrid-core = { git = "https://github.com/Graceful-Tools/astrid-core.git", version = "0.1", rev = "a3db799bc93ed2e6995be02288d63393b7036c07" }
+astrid-core = { git = "https://github.com/Graceful-Tools/astrid-core.git", version = "0.1", rev = "b9d07ca3a23b4d8e0f6410b0a038a6d7f4c0d55d" }
 serde_json = { workspace = true }
 tokio = { workspace = true }
 async-trait = { workspace = true }
