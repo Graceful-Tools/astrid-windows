@@ -498,6 +498,39 @@ public sealed class ShellViewModelTests
         Assert.False(shell.ShowsDetailPane, "the side pane stays shut while the card holds the detail");
     }
 
+    /// <summary>
+    /// A card holding the detail draws no "Task Details" header; the side pane still does
+    /// (task 6df01318).
+    /// </summary>
+    /// <remarks>
+    /// The chrome bar's centred label names the pane, which is worth saying when the pane is a
+    /// slab of window beside the list and says nothing else about itself. Inside a card the reader
+    /// has just tapped, it names the obvious and pushes the task's own title a row further down —
+    /// so the card reads as the task twice over. astrid-web made the same call for its inline
+    /// panel (task cc76307c): the compact <c>TaskHeader</c> keeps the collapse control and the
+    /// <c>⋯</c> menu and drops the label. The bar itself stays, because Close and the actions
+    /// live in it.
+    /// </remarks>
+    [Fact]
+    public async Task A_card_holding_the_detail_draws_no_chrome_title_task_6df01318()
+    {
+        var core = StartedCore(("l1", "Home", false))
+            .AnswerOk("board", BoardWith("t1", "t2"))
+            .AnswerOk("taskDetail", TaskDetail("t1"))
+            .AnswerOk("taskDetail", TaskDetail("t1"));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        await shell.OpenOrCloseTaskAsync("t1");
+        Assert.True(shell.ShowsDetailChromeTitle, "the side pane keeps the label that names it");
+
+        // Showing the board moves the open task into its own card.
+        await shell.ShowBoardAsync(true);
+
+        Assert.True(shell.ShowsDetailInline);
+        Assert.False(shell.ShowsDetailChromeTitle);
+    }
+
     [Fact]
     public async Task Tapping_the_expanded_card_collapses_it()
     {

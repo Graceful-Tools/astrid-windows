@@ -286,14 +286,23 @@ public sealed class BoardColumnView
     {
         _column = column;
         _board = board;
-        var items = new List<object>(column.Cards.Count + 1);
+        var items = new List<object>(column.Cards.Count);
         foreach (var card in column.Cards)
         {
-            items.Add(card);
+            // The expanded card is REPLACED by its detail, not followed by it (task 6df01318).
+            // Drawing both put the collapsed card — mark, identifier, title, due — immediately
+            // above a pane carrying the same task, so one task appeared twice. astrid-web's
+            // `renderCard` has always returned the inline detail INSTEAD of the card div. The slot
+            // takes the card's own place, so the detail opens where the reader tapped and the
+            // cards either side of it do not move.
             if (card.Id == expandedTaskId)
             {
                 items.Add(new InlineDetailSlot(card.Id));
                 HoldsExpandedCard = true;
+            }
+            else
+            {
+                items.Add(card);
             }
         }
         Items = items;
@@ -316,8 +325,8 @@ public sealed class BoardColumnView
     public IReadOnlyList<TaskRow> Cards => _column.Cards;
 
     /// <summary>
-    /// What the column draws, top to bottom: every card, and the detail slot right after the
-    /// expanded one.
+    /// What the column draws, top to bottom: every card, with the expanded one's place taken by
+    /// the detail slot.
     /// </summary>
     public IReadOnlyList<object> Items { get; }
 
@@ -346,7 +355,7 @@ public sealed class BoardColumnView
 }
 
 /// <summary>
-/// Where the expanded card's detail is drawn: the item right after that card in its column.
+/// Where the expanded card's detail is drawn: that card's own place in its column.
 /// </summary>
 /// <remarks>
 /// A place, not a view. The shell puts its one task-detail pane here, so the board shows the same
