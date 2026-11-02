@@ -86,6 +86,13 @@
         <settings:SettingsView x:Name="Settings" Grid.Row="1" Grid.ColumnSpan="4" Canvas.ZIndex="8" />
 
         <!--
+            One public list, opened by its id and read (task 6fc92134) — Report an Issue's in-app
+            destination. Over the settings, since that is where it is opened from, and under the
+            palette and the sign-in screen like everything else.
+        -->
+        <views:PublicListView x:Name="OpenedPublicList" Grid.Row="1" Grid.ColumnSpan="4" Canvas.ZIndex="9" />
+
+        <!--
             The sign-in screen. It covers the app rather than replacing it, so the window does
             not have to tear down and rebuild the whole tree on the way in and out.
 

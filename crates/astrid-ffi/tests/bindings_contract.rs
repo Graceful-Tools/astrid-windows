@@ -201,13 +201,6 @@ const NOT_BOUND: &[(&str, &str)] = &[
     ),
     // ── iOS surfaces this shell does not draw (arrived with the core pin bump, task 8cbed184) ──
     (
-        "featuredRows",
-        "A featured public list's rows, fetched from the server rather than the cache (AATD-46). \
-         The sidebar here lists public lists and copies one into the account (`publicLists`, \
-         `copyList`, `PublicListsViewModel`); it never opens one to browse, so there is no screen \
-         for these rows to fill.",
-    ),
-    (
         "nestTask",
         "A row dropped inside a list's tree — onto a row, on a line between rows, or indented and \
          outdented (AATD-42). Rows arrive already subtask-spliced from `taskRows` and the list \
@@ -221,14 +214,6 @@ const NOT_BOUND: &[(&str, &str)] = &[
          Settings — `profileStats` is bound and the three numbers are drawn there — and it is \
          your own account's settings, not a person's profile: nothing here opens somebody else's, \
          so there is no section for these rows and nobody to be reading about.",
-    ),
-    (
-        "publicList",
-        "Opens ONE public list by its id, with what the reader may do in it, for somebody who is \
-         not a member (core task c5f7d870). Added so that Report an Issue can show the feedback \
-         list in-app instead of a browser door — but the read-only list view that would present \
-         it is the other half, task 6fc92134, and until that screen exists there is nothing here \
-         to call this from. Bind it there, and `featuredRows` beside it for the tasks.",
     ),
     (
         "reminderTriageDeck",

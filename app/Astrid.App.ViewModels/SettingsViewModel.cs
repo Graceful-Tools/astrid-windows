@@ -131,27 +131,50 @@ public sealed class SettingsViewModel : ObservableObject
     /// the client, and a "sensible fallback" in this shell would be the same bug in C#.
     /// </para>
     /// <para>
-    /// Both answers are a door to the browser today, because neither this shell nor the core has a
-    /// way to open one list by id for somebody who is not a member of it — <c>publicLists</c> is a
-    /// catalogue and <c>copyList</c> makes a copy, so iOS's <c>showPublicList</c> has no
-    /// counterpart to call. Opening the named list in-app is filed separately rather than
-    /// half-built here.
+    /// Since task <c>6fc92134</c> there are two kinds of door, so this answers a decision rather
+    /// than a URL. In-app needs two things to be true, and only the core can say either: the
+    /// deployment names a list, and <c>publicList</c> opens it for this reader with
+    /// <c>canAddTask</c>. A <c>copy_only</c> feedback list means a stranger may not write in it,
+    /// and landing somebody on a screen where the report cannot be filed is worse than the
+    /// browser — so that falls back, as does a list the core cannot open at all.
     /// </para>
     /// <para>
-    /// A core that cannot answer — a pin that predates the command, a cache never filled — is the
-    /// same as a deployment naming none. The row is a door, and the web is always a door; a row
-    /// that does nothing when clicked is the worse answer.
+    /// A core that cannot answer — a pin that predates the command, a cache never filled, no
+    /// network — is the same as a deployment naming none. The row is a door, and the web is always
+    /// a door; a row that does nothing when clicked is the worse answer.
     /// </para>
     /// </remarks>
     /// <param name="serverOrigin">The deployment this window is signed in to.</param>
-    public async Task<string> FeedbackDestinationAsync(
+    public async Task<FeedbackDestination> FeedbackDestinationAsync(
         string serverOrigin, CancellationToken cancellationToken = default)
     {
-        var response = await _session.Core.CallAsync(Commands.FeedbackListId(), cancellationToken);
-        var listId = response.Ok ? response.ValueAs<string>() : null;
+        var named = await _session.Core.CallAsync(Commands.FeedbackListId(), cancellationToken);
+        var listId = named.Ok ? named.ValueAs<string>() : null;
         var origin = serverOrigin.TrimEnd('/');
-        return listId is null
-            ? $"{origin}/help"
-            : $"{origin}/lists/{Uri.EscapeDataString(listId)}";
+        if (listId is null)
+        {
+            return FeedbackDestination.OnTheWeb($"{origin}/help");
+        }
+
+        var opened = await _session.Core.CallAsync(Commands.PublicList(listId), cancellationToken);
+        var canAddTask = opened.Ok && opened.Read<OpenedPublicList>()?.CanAddTask == true;
+        return canAddTask
+            ? FeedbackDestination.InApp(listId)
+            : FeedbackDestination.OnTheWeb($"{origin}/lists/{Uri.EscapeDataString(listId)}");
     }
+}
+
+/// <summary>
+/// Where <b>Report an Issue</b> goes (task 6fc92134): the feedback list on this screen, or an
+/// address in the browser. Exactly one of the two is set.
+/// </summary>
+/// <param name="ListId">The list to open in-app, or null.</param>
+/// <param name="WebUrl">The address to hand to the browser, or null.</param>
+public sealed record FeedbackDestination(string? ListId, string? WebUrl)
+{
+    public static FeedbackDestination InApp(string listId) => new(listId, null);
+
+    public static FeedbackDestination OnTheWeb(string url) => new(null, url);
+
+    public bool IsInApp => ListId is not null;
 }

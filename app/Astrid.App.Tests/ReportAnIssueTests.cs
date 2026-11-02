@@ -6,7 +6,8 @@ namespace Astrid.App.Tests;
 
 /// <summary>
 /// Report an Issue goes to the deployment's own feedback list, or to the web — never to Astrid's
-/// list (task 68771137).
+/// list (task 68771137), and in-app rather than through a browser when the reader may actually
+/// write there (task 6fc92134).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -23,6 +24,13 @@ namespace Astrid.App.Tests;
 /// is that absent means this deployment has no in-app feedback list, and the shell's whole job is
 /// to render that answer as a destination.
 /// </para>
+/// <para>
+/// Since task <c>6fc92134</c> the answer is a <see cref="FeedbackDestination"/> rather than a URL,
+/// because there are now two kinds of door and only the core can say which one this deployment
+/// has. Every guarantee below is the one <c>68771137</c> wrote; what changed is that the in-app
+/// branch exists, and that reaching it costs a second question — <c>publicList</c>, for whether
+/// the reader may write in the list at all.
+/// </para>
 /// </remarks>
 public sealed class ReportAnIssueTests
 {
@@ -31,19 +39,33 @@ public sealed class ReportAnIssueTests
     /// <summary>Astrid's own list id, which must appear nowhere in this shell.</summary>
     private const string AstridsOwnList = "6afe098f-e163-46f7-ac4b-4f879a9314eb";
 
+    /// <summary>What <c>publicList</c> answers for a feedback list of each public type.</summary>
+    private static object Opened(string id, string publicListType) => new
+    {
+        list = new { id, name = "Bugs and Feedback", ownerId = "them", privacy = "PUBLIC", publicListType },
+        role = "viewer",
+        canAddTask = publicListType == "collaborative",
+        canComment = publicListType == "collaborative",
+    };
+
     /// <summary>
-    /// A deployment that names a feedback list opens that list — its own, not Astrid's.
+    /// A deployment that names a feedback list opens that list — its own, not Astrid's — and opens
+    /// it in-app, because the reader may file in it (task 6fc92134).
     /// </summary>
     [Fact]
     public async Task A_deployment_that_names_a_feedback_list_opens_its_own_task_68771137()
     {
-        var core = new FakeCore().AnswerOk("feedbackListId", "list-acme-feedback");
+        var core = new FakeCore()
+            .AnswerOk("feedbackListId", "list-acme-feedback")
+            .AnswerOk("publicList", Opened("list-acme-feedback", "collaborative"));
         var settings = new SettingsViewModel(core);
 
         var destination = await settings.FeedbackDestinationAsync(Origin);
 
-        Assert.Equal($"{Origin}/lists/list-acme-feedback", destination);
-        Assert.Equal(["feedbackListId"], core.SentKinds());
+        Assert.Equal("list-acme-feedback", destination.ListId);
+        Assert.Null(destination.WebUrl);
+        Assert.True(destination.IsInApp);
+        Assert.Equal(["feedbackListId", "publicList"], core.SentKinds());
     }
 
     /// <summary>
@@ -63,8 +85,10 @@ public sealed class ReportAnIssueTests
 
         var destination = await settings.FeedbackDestinationAsync(Origin);
 
-        Assert.Equal($"{Origin}/help", destination);
-        Assert.DoesNotContain(AstridsOwnList, destination, StringComparison.Ordinal);
+        Assert.Equal($"{Origin}/help", destination.WebUrl);
+        Assert.Null(destination.ListId);
+        Assert.False(destination.IsInApp);
+        Assert.DoesNotContain(AstridsOwnList, destination.WebUrl!, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -81,19 +105,86 @@ public sealed class ReportAnIssueTests
         var core = new FakeCore().AnswerFailure("feedbackListId", AstridFailureKind.BadRequest);
         var settings = new SettingsViewModel(core);
 
-        Assert.Equal($"{Origin}/help", await settings.FeedbackDestinationAsync(Origin));
+        Assert.Equal($"{Origin}/help", (await settings.FeedbackDestinationAsync(Origin)).WebUrl);
     }
 
     /// <summary>A trailing slash on the origin does not become a double slash in the door.</summary>
+    /// <remarks>
+    /// Asked of a <c>copy_only</c> list, since that is the branch that still builds a URL now that
+    /// a writable list is opened in-app.
+    /// </remarks>
     [Fact]
     public async Task The_origin_is_joined_once_task_68771137()
     {
-        var core = new FakeCore().AnswerOk("feedbackListId", "list-acme-feedback");
+        var core = new FakeCore()
+            .AnswerOk("feedbackListId", "list-acme-feedback")
+            .AnswerOk("publicList", Opened("list-acme-feedback", "copy_only"));
         var settings = new SettingsViewModel(core);
 
         Assert.Equal(
             $"{Origin}/lists/list-acme-feedback",
-            await settings.FeedbackDestinationAsync($"{Origin}/"));
+            (await settings.FeedbackDestinationAsync($"{Origin}/")).WebUrl);
+    }
+
+    /// <summary>
+    /// A feedback list nobody but its members may write in sends the reader to the web, rather
+    /// than in-app to a screen where the report cannot be filed.
+    /// </summary>
+    /// <remarks>
+    /// The rule is <c>canAddTask</c>, and it comes <em>from the core</em> with the list — it
+    /// follows <c>publicListType</c>, it is pinned by <c>contracts/fixtures/permissions.json</c>,
+    /// and re-deriving it here would be business logic in <c>app/</c>. A door that lands somewhere
+    /// the person may not write is worse than the browser, which is why this branch exists at all.
+    /// </remarks>
+    [Fact]
+    public async Task A_feedback_list_the_reader_may_not_write_in_opens_the_web_task_6fc92134()
+    {
+        var core = new FakeCore()
+            .AnswerOk("feedbackListId", "list-acme-feedback")
+            .AnswerOk("publicList", Opened("list-acme-feedback", "copy_only"));
+        var settings = new SettingsViewModel(core);
+
+        var destination = await settings.FeedbackDestinationAsync(Origin);
+
+        Assert.Equal($"{Origin}/lists/list-acme-feedback", destination.WebUrl);
+        Assert.Null(destination.ListId);
+    }
+
+    /// <summary>
+    /// A feedback list the core cannot open — offline, or a pin that predates
+    /// <c>publicList</c> — is still a door, and the door is the web.
+    /// </summary>
+    /// <remarks>
+    /// The same judgement as <c>68771137</c>'s third test, one layer along: the row is a door, and
+    /// a row that does nothing when it is clicked is the worse answer. It goes to the list rather
+    /// than to <c>/help</c>, because the id is known and only the reading of it failed.
+    /// </remarks>
+    [Fact]
+    public async Task A_feedback_list_that_cannot_be_opened_still_opens_the_web_task_6fc92134()
+    {
+        var core = new FakeCore()
+            .AnswerOk("feedbackListId", "list-acme-feedback")
+            .AnswerFailure("publicList", AstridFailureKind.Offline);
+        var settings = new SettingsViewModel(core);
+
+        var destination = await settings.FeedbackDestinationAsync(Origin);
+
+        Assert.Equal($"{Origin}/lists/list-acme-feedback", destination.WebUrl);
+        Assert.Null(destination.ListId);
+    }
+
+    /// <summary>An id with something in it that a URL would mangle is escaped, as it always was.</summary>
+    [Fact]
+    public async Task A_list_id_is_escaped_into_the_web_door_task_6fc92134()
+    {
+        var core = new FakeCore()
+            .AnswerOk("feedbackListId", "a list/id")
+            .AnswerFailure("publicList", AstridFailureKind.Offline);
+        var settings = new SettingsViewModel(core);
+
+        Assert.Equal(
+            $"{Origin}/lists/a%20list%2Fid",
+            (await settings.FeedbackDestinationAsync(Origin)).WebUrl);
     }
 
     /// <summary>
@@ -140,5 +231,45 @@ public sealed class ReportAnIssueTests
 
         Assert.Contains("Tag=\"Feedback\"", hub, StringComparison.Ordinal);
         Assert.Contains("FeedbackDestinationAsync", code, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The hub honours both halves of the decision: in-app through the shell, the web through the
+    /// launcher (task 6fc92134).
+    /// </summary>
+    /// <remarks>
+    /// A code-behind that read only <c>WebUrl</c> would pass every view-model test above and still
+    /// never open the in-app screen — the branch has to be in the file that does the opening.
+    /// </remarks>
+    [Fact]
+    public void The_hub_opens_the_feedback_list_in_app_when_the_decision_says_so_task_6fc92134()
+    {
+        var code = File.ReadAllText(Path.Combine(
+            LocalisationTests.AppDirectory(), "Views", "Settings", "SettingsView.xaml.cs"));
+
+        Assert.Contains("ShowPublicListAsync", code, StringComparison.Ordinal);
+        Assert.Contains("LaunchUriAsync", code, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The in-app feedback list is read-only: it offers no add box.
+    /// </summary>
+    /// <remarks>
+    /// Not a style choice. Whether the Outbox may hold a write against a list this device has not
+    /// cached is still an open question in the core — <c>publicList</c> deliberately does not cache
+    /// the list it answers — and an offline bug report is exactly the correlated case, since
+    /// something being broken is why the person is filing. So the screen reads, and carries one
+    /// honest door to the web for the writing. An add box here would be that question guessed at.
+    /// </remarks>
+    [Fact]
+    public void The_in_app_feedback_list_offers_no_add_box_task_6fc92134()
+    {
+        var view = File.ReadAllText(Path.Combine(
+            LocalisationTests.AppDirectory(), "Views", "PublicListView.xaml"));
+
+        Assert.DoesNotContain("QuickAdd", view, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("CreateTask", view, StringComparison.OrdinalIgnoreCase);
+        // The door that does the writing, instead.
+        Assert.Contains("x:Uid=\"public_list_report_on_web\"", view, StringComparison.Ordinal);
     }
 }

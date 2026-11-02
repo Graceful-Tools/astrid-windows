@@ -90,6 +90,7 @@ public sealed partial class ShellPage : UserControl
         Chat.Shell = Shell;
         Detail.Shell = Shell;
         Settings.Shell = Shell;
+        OpenedPublicList.Shell = Shell;
 
         // What one part has to tell another.
         TitleBar.SearchRequested += async () => await OpenSearchAsync();

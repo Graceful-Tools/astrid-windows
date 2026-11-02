@@ -363,6 +363,12 @@ public sealed record ListSummary
 
     [JsonPropertyName("coverImageUrl")] public string? CoverImageUrl { get; init; }
 
+    /// <summary>
+    /// Whose it is, on the responses that carry it — a public list opened by its id does (task
+    /// 6fc92134). Null on the sidebar's own lists, which are this account's.
+    /// </summary>
+    [JsonPropertyName("owner")] public UserSummary? Owner { get; init; }
+
     /// <summary>Whether there is a picture to ask the core for; the web resolves <c>imageUrl || coverImageUrl</c>.</summary>
     public bool HasImage => !string.IsNullOrEmpty(ImageUrl) || !string.IsNullOrEmpty(CoverImageUrl);
 
@@ -1964,6 +1970,42 @@ public sealed record PublicListSummary
     public string OwnerName => Owner?.Name is { Length: > 0 } name ? name : Owner?.Email ?? string.Empty;
 
     public string CopyActionName => $"Copy {Name}";
+}
+
+/// <summary>
+/// One public list opened by its id, and what the reader may do in it (core task c5f7d870, read
+/// here for task 6fc92134).
+/// </summary>
+/// <remarks>
+/// <para>
+/// <see cref="CanAddTask"/> and <see cref="CanComment"/> are <em>read</em>, never worked out from
+/// <c>publicListType</c>: that rule lives in the core and is pinned by
+/// <c>contracts/fixtures/permissions.json</c>, and answering it in <c>app/</c> would be the one
+/// kind of logic the shell does not hold.
+/// </para>
+/// <para>
+/// <see cref="List"/> stays as JSON as well as being read into a <see cref="ListSummary"/>,
+/// because it has to go back to the core unchanged for <c>featuredRows</c> — the core has not
+/// cached this list, so the shell is the only thing holding it, and a round trip through a model
+/// that knows a dozen of its thirty fields would quietly drop the rest.
+/// </para>
+/// </remarks>
+public sealed record OpenedPublicList
+{
+    [JsonPropertyName("list")] public JsonElement List { get; init; }
+
+    /// <summary>What this reader is to the list — <c>viewer</c> for a stranger.</summary>
+    [JsonPropertyName("role")] public string? Role { get; init; }
+
+    /// <summary>Whether this reader may file a task in it. False for a <c>copy_only</c> list.</summary>
+    [JsonPropertyName("canAddTask")] public bool CanAddTask { get; init; }
+
+    [JsonPropertyName("canComment")] public bool CanComment { get; init; }
+
+    /// <summary>The list as the shell draws it. Empty if the core answered without one.</summary>
+    public ListSummary Summary => List.ValueKind == JsonValueKind.Object
+        ? List.Deserialize<ListSummary>(CommandJson.Options) ?? new ListSummary()
+        : new ListSummary();
 }
 
 /// <summary>Who a public list belongs to.</summary>
