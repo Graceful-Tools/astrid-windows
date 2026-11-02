@@ -223,6 +223,14 @@ const NOT_BOUND: &[(&str, &str)] = &[
          so there is no section for these rows and nobody to be reading about.",
     ),
     (
+        "publicList",
+        "Opens ONE public list by its id, with what the reader may do in it, for somebody who is \
+         not a member (core task c5f7d870). Added so that Report an Issue can show the feedback \
+         list in-app instead of a browser door — but the read-only list view that would present \
+         it is the other half, task 6fc92134, and until that screen exists there is nothing here \
+         to call this from. Bind it there, and `featuredRows` beside it for the tasks.",
+    ),
+    (
         "reminderTriageDeck",
         "iOS's swipeable deck: the reminded task first, then what else is due today (AATD-54). A \
          reminder here is one Windows toast with buttons on it (`Reminders.cs`, raised from \
