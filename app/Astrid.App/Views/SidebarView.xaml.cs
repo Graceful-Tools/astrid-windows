@@ -40,6 +40,35 @@ public sealed partial class SidebarView : UserControl
     /// </summary>
     private void OnOpenSettings(object sender, RoutedEventArgs args) => Shell.ShowSettings(true);
 
+    // ── The bell (task 96759883) ─────────────────────────────────────────────────────────────
+    //
+    // It was the list header's until web put its own bell in the sidebar header (AWTD-1357).
+
+    /// <summary>Opening the bell asks the server; the badge was already right from the cache.</summary>
+    private async void OnNotificationsOpening(object sender, object args) =>
+        await Shell.Notifications.RefreshAsync();
+
+    private async void OnMarkAllNotificationsRead(object sender, RoutedEventArgs args) =>
+        await Shell.Notifications.MarkAllReadAsync();
+
+    /// <summary>A row is the task it is about: mark it read, open the task.</summary>
+    private async void OnNotificationOpened(object sender, ItemClickEventArgs args)
+    {
+        if (args.ClickedItem is not NotificationItem item)
+        {
+            return;
+        }
+        NotificationsFlyout.Hide();
+        if (!item.IsRead)
+        {
+            await Shell.Notifications.MarkReadAsync(item.Id);
+        }
+        if (item.TaskId is { } taskId)
+        {
+            await Shell.OpenTaskAsync(taskId);
+        }
+    }
+
     /// <summary>Make every live row resolve its style's theme brushes again; see <c>ShellPage.ApplyTheme</c>.</summary>
     internal void Restyle()
     {

@@ -80,18 +80,110 @@
             are the title bar now (TitleBarView), which sits directly above this column and wears
             the same layer, so the top left reads as one surface with the brand at its corner.
 
-            What is here instead is the hide button, at this column's INNER corner — its right —
-            which is what makes it and the messages pane's one pair of controls rather than two.
+            What is here instead is the bell and the hide button, at this column's INNER corner —
+            its right — the latter being what makes it and the messages pane's one pair of
+            controls rather than two.
+
+            This row is web's sidebar header right-hand cluster: bell, search, toggle
+            (LeftSidebar.tsx). Search is the title bar's, because the brand header is
+            (TitleBarView — task 20dcc235), so what lands here is the bell and the toggle, in
+            web's order.
         -->
-        <Button x:Uid="hide_sidebar" Grid.Row="0"
-                HorizontalAlignment="Right"
-                Margin="0,8,12,0"
-                AutomationProperties.Name="Hide sidebar"
-                ToolTipService.ToolTip="Hide sidebar"
-                Style="{StaticResource PaneToggleButton}"
-                Click="OnHideSidebar">
-            <FontIcon FontSize="14" Glyph="&#xE8A0;" />
-        </Button>
+        <StackPanel Grid.Row="0"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="4"
+                    Margin="0,8,12,0">
+            <!--
+                The bell: what happened to work you are involved in - assigned, mentioned,
+                replied to, commented on, status changed, completed - as the web's
+                notification-bell.tsx. The badge is from the cache the moment the window
+                opens; opening the flyout asks the server.
+
+                It was at the far right of the list header until task 96759883, the opposite
+                end of the window from where web and the Mac keep it, and the last thing left
+                in that cluster once the account row had gone (task ffcc6abf). It wears the
+                hide button's style so the two read as one row, and the badge's overhang is
+                small enough to stay inside the button rather than reach across the gap.
+
+                It goes into the rail with the sidebar, and that is web's behaviour too:
+                LeftSidebar's collapsed rail renders only the toggle.
+            -->
+            <Button x:Uid="notifications_button" x:Name="NotificationsButton"
+                    Style="{StaticResource PaneToggleButton}"
+                    AutomationProperties.Name="Notifications"
+                    ToolTipService.ToolTip="Notifications">
+                <Grid>
+                    <TextBlock Text="&#xEA8F;" FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                               FontSize="14" />
+                    <Border Background="{ThemeResource AccentFillColorDefaultBrush}"
+                            CornerRadius="8" MinWidth="16" Height="16" Padding="4,0"
+                            HorizontalAlignment="Right" VerticalAlignment="Top"
+                            Margin="0,-6,-6,0"
+                            Visibility="{x:Bind Shell.Notifications.HasUnread, Mode=OneWay, Converter={StaticResource Visible}}">
+                        <TextBlock Text="{x:Bind Shell.Notifications.UnreadText, Mode=OneWay}"
+                                   FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                </Grid>
+                <Button.Flyout>
+                    <!--
+                        Opens rightwards from the window's left edge now, which is what web's
+                        align="start" says about the same bell.
+                    -->
+                    <Flyout x:Name="NotificationsFlyout" Opening="OnNotificationsOpening" Placement="BottomEdgeAlignedLeft">
+                        <StackPanel Spacing="8" Width="360">
+                            <Grid>
+                                <TextBlock x:Uid="notifications_heading" Text="Notifications"
+                                           Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                           VerticalAlignment="Center" />
+                                <Button x:Uid="mark_all_read" Content="Mark all read"
+                                        AutomationProperties.Name="Mark all read"
+                                        HorizontalAlignment="Right"
+                                        Click="OnMarkAllNotificationsRead"
+                                        IsEnabled="{x:Bind Shell.Notifications.HasUnread, Mode=OneWay}" />
+                            </Grid>
+                            <TextBlock x:Uid="nothing_new" Text="Nothing new."
+                                       Foreground="{ThemeResource AstridTextMuted}"
+                                       Visibility="{x:Bind Shell.Notifications.IsEmpty, Mode=OneWay, Converter={StaticResource Visible}}" />
+                            <ListView ItemsSource="{x:Bind Shell.Notifications.Items, Mode=OneWay}"
+                                      IsItemClickEnabled="True"
+                                      SelectionMode="None"
+                                      ItemClick="OnNotificationOpened"
+                                      MaxHeight="420">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate x:DataType="bindings:NotificationItem">
+                                        <StackPanel Spacing="2" Margin="0,6"
+                                                    Opacity="{x:Bind IsRead, Converter={StaticResource CompletedOpacity}}">
+                                            <TextBlock Text="{x:Bind LabelKey, Converter={StaticResource PickTitle}}"
+                                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                                       Foreground="{ThemeResource AstridTextSecondary}" />
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{x:Bind TaskIdentifier}"
+                                                           Style="{ThemeResource CaptionTextBlockStyle}"
+                                                           Foreground="{ThemeResource AstridTextMuted}"
+                                                           VerticalAlignment="Center" />
+                                                <TextBlock Text="{x:Bind TaskText}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Foreground="{ThemeResource AstridTextPrimary}" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </StackPanel>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+            <Button x:Uid="hide_sidebar"
+                    AutomationProperties.Name="Hide sidebar"
+                    ToolTipService.ToolTip="Hide sidebar"
+                    Style="{StaticResource PaneToggleButton}"
+                    Click="OnHideSidebar">
+                <FontIcon FontSize="14" Glyph="&#xE8A0;" />
+            </Button>
+        </StackPanel>
 
         <ScrollViewer Grid.Row="1">
             <StackPanel Margin="12,8,12,8" Spacing="4">
