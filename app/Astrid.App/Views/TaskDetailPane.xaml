@@ -50,7 +50,8 @@
 
         <!--
             The header is chrome, not the task (task 77d17dc8): `✕` at the left, a centred
-            "Task Details", and the full-screen pair and the action menu at the right. That is
+            "Task Details" — the side pane's only, see `ShowsDetailChromeTitle` and task
+            6df01318 — and the full-screen pair and the action menu at the right. That is
             the Mac's header, and Windows follows the Mac on this pane's layout and chrome by
             Jon's decision of 2026-11-01, even though it moves away from astrid-web's `TaskHeader`
             — which puts the mark and the editable title here instead.
@@ -101,7 +102,8 @@
                                FontWeight="SemiBold"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"
-                               Foreground="{ThemeResource AstridTextPrimary}" />
+                               Foreground="{ThemeResource AstridTextPrimary}"
+                               Visibility="{x:Bind Shell.ShowsDetailChromeTitle, Mode=OneWay, Converter={StaticResource Visible}}" />
                     <!--
                         Full screen (task 1927c2e7, PRODUCT_CONTRACT §3): astrid-web's
                         Maximize2 / Minimize2 pair before the action menu. Whether either is

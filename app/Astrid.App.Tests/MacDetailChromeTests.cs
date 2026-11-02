@@ -80,6 +80,23 @@ public sealed class MacDetailChromeTests
     }
 
     /// <summary>
+    /// The centred label is the side pane's, so it is bound away on a board card (task 6df01318).
+    /// </summary>
+    /// <remarks>
+    /// Read off the XAML for the same reason as everything else here: the view model deciding
+    /// <c>ShowsDetailChromeTitle</c> correctly proves nothing if the label is not wired to it.
+    /// </remarks>
+    [Fact]
+    public void The_centred_title_is_bound_to_the_shells_chrome_title_rule_task_6df01318()
+    {
+        var heading = Named(Header(), "DetailChromeTitle");
+        Assert.NotNull(heading);
+        Assert.Contains(
+            "Shell.ShowsDetailChromeTitle",
+            (string?)heading!.Attribute("Visibility") ?? string.Empty);
+    }
+
+    /// <summary>
     /// The title, its mark and the Won't-do chip moved into the body, where the Mac draws them.
     /// </summary>
     [Fact]

@@ -668,6 +668,19 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public bool ShowsDetailPane => Detail.IsOpen && !ShowsDetailInline;
 
     /// <summary>
+    /// Whether the detail's header draws its centred "Task Details" label (task 6df01318).
+    /// </summary>
+    /// <remarks>
+    /// The side pane's, not the card's. A label naming the pane earns its row when the pane is a
+    /// slab of window that says nothing else about itself; inside a card the reader has just
+    /// tapped it names the obvious, and it pushes the task's own title down a row so the card
+    /// reads as the same task twice. astrid-web's inline panel drops it for that reason
+    /// (task cc76307c, the compact <c>TaskHeader</c>), keeping the collapse control and the
+    /// <c>⋯</c> menu. The bar stays either way — Close and the actions live in it.
+    /// </remarks>
+    public bool ShowsDetailChromeTitle => !ShowsDetailInline;
+
+    /// <summary>
     /// Whether the conversation has its column, or the side pane has taken its place
     /// (task 1ffc12af).
     /// </summary>
@@ -726,6 +739,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         }
         Raise(nameof(ShowsDetailInline));
         Raise(nameof(ShowsDetailPane));
+        Raise(nameof(ShowsDetailChromeTitle));
         Raise(nameof(ShowsConversation));
         Raise(nameof(ShowsDetailFullScreen));
         Raise(nameof(CanEnterFullScreen));
