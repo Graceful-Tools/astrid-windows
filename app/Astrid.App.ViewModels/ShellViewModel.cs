@@ -590,18 +590,37 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// A different list is open: the toggle follows it, and a board it does not have is left
-    /// (task a66f0a16).
+    /// A different list is open: the toggle follows it, a board it does not have is left
+    /// (task a66f0a16), and a board it does have is loaded (task 7e802a6e).
     /// </summary>
     /// <remarks>
-    /// astrid-web does the same in <c>TaskManagerView</c>. Without it the board would stay on
-    /// screen showing its no-board notice, and the toggle that would have dismissed it is now
-    /// hidden — no way back to the list but to open the board's own list again.
+    /// <para>
+    /// astrid-web does the same in <c>TaskManagerView</c>. Without the first half the board would
+    /// stay on screen showing its no-board notice, and the toggle that would have dismissed it is
+    /// now hidden — no way back to the list but to open the board's own list again.
+    /// </para>
+    /// <para>
+    /// Without the second half the board was only ever loaded by the toggle, so moving between two
+    /// board lists left the first one's cards on screen. Worse than stale: the board writes through
+    /// the list id it was loaded with, so a card added or moved there would have been filed into a
+    /// list nobody had open.
+    /// </para>
     /// </remarks>
     private void OnOpenListChanged()
     {
         RaiseBoardAvailability();
-        if (IsBoardView && !OpenListHasBoard)
+        if (!IsBoardView)
+        {
+            return;
+        }
+        if (OpenListHasBoard)
+        {
+            // Posted, because loading the new board is a round trip; the same path the toggle takes,
+            // so the open task is reconciled against the new board rather than left on a card that
+            // belongs to the list just closed.
+            _post(() => ShowBoardAsync(true));
+        }
+        else
         {
             // Synchronous in this direction: leaving the board loads nothing.
             _ = ShowBoardAsync(false);

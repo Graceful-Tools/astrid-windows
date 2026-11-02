@@ -429,6 +429,36 @@ public sealed class ShellViewModelTests
     }
 
     /// <summary>
+    /// Opening another list that HAS a board draws that list's cards (task 7e802a6e).
+    /// </summary>
+    /// <remarks>
+    /// The other half of the rule above. Leaving a board the new list does not have was handled;
+    /// loading the board it does have was not, so the previous list's cards stayed on screen — and
+    /// the list id the board writes through stayed the old one, which would have filed a card added
+    /// from the board into a list nobody had open.
+    /// </remarks>
+    [Fact]
+    public async Task Opening_another_board_list_reloads_the_board_task_7e802a6e()
+    {
+        var core = StartedCoreWith(Lists(("p1", "Launch", "proj-1"), ("p2", "Ship", "proj-2")))
+            .AnswerOk("board", BoardWith("t1"))
+            .AnswerOk("board", BoardWith("t2"))
+            .AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("rowsForList", EmptyWindow());
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        // The sidebar is in name order, so the app opened Launch.
+        await shell.ShowBoardAsync(true);
+        Assert.True(shell.Board.Has("t1"), "the board it started on");
+
+        await shell.OpenListAsync("p2", "Ship");
+
+        Assert.True(shell.IsBoardView, "the list it moved to has a board of its own");
+        Assert.True(shell.Board.Has("t2"), "which is the one now on screen");
+        Assert.False(shell.Board.Has("t1"), "not the one it came from");
+    }
+
+    /// <summary>
     /// The feature flag still outranks the list: <c>project_mode</c> off hides the toggle on a
     /// list that does have a board (task a66f0a16).
     /// </summary>
