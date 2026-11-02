@@ -165,6 +165,40 @@ public sealed class ShellSmokeTests
         };
     }
 
+    /// <summary>A startup warning is not a crash: it goes to the log, not to <c>crash.log</c>.</summary>
+    /// <remarks>
+    /// Task 46c3fdfd. <c>App.Log</c> and the unhandled-exception handler shared one file called
+    /// <c>crash.log</c>, so the nine <c>Assert.False(File.Exists(CrashLogPath))</c> checks in this
+    /// file were really asking "did the app log anything at all". On a machine where another Astrid
+    /// is installed two ordinary warnings fire on every launch — the global hotkey is already held,
+    /// and a stale <c>astrid://</c> registration is tidied away — so every one of them failed,
+    /// quoting two lines that say nothing fell over. <c>predeploy:full</c> could not pass here for
+    /// any change at all.
+    /// <para>
+    /// This asserts the distinction directly rather than relying on the other nine to notice: the
+    /// app starts, writes its general log, and leaves no crash log. It is deliberately the
+    /// signed-out launch, which is the cheapest start this suite has.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void A_startup_warning_is_not_a_crash_46c3fdfd()
+    {
+        using var app = AstridApp.Launch(signedIn: false);
+
+        Assert.False(
+            File.Exists(app.CrashLogPath),
+            $"nothing crashed, so there should be no crash log. It says:\n{Tail(app.CrashLogPath)}");
+
+        // Whether a warning fires at all depends on what else is installed on this machine — a
+        // clean one logs nothing, which is correct. So the claim is the other way round: anything
+        // that WAS logged went to the general log, and a general log with content in it is
+        // therefore the proof that the two files are no longer one.
+        if (File.Exists(app.LogPath))
+        {
+            Assert.NotEmpty(File.ReadAllText(app.LogPath));
+        }
+    }
+
     /// <summary>With no session, the first thing on screen is the way to get one.</summary>
     [Fact]
     public void Signed_out_it_offers_the_browser_sign_in()
@@ -502,10 +536,16 @@ public sealed class ShellSmokeTests
         Thread.Sleep(500);
     }
 
+    /// <summary>
+    /// What to say when the crash log exists: the crash, and the general log for the run-up to it.
+    /// </summary>
     private static string Crash(AstridApp app) =>
         File.Exists(app.CrashLogPath)
-            ? $"the app logged a crash:\n{File.ReadAllText(app.CrashLogPath)}"
+            ? $"the app crashed:\n{Tail(app.CrashLogPath)}\n\nthe log before it:\n{Tail(app.LogPath)}"
             : string.Empty;
+
+    private static string Tail(string path) =>
+        File.Exists(path) ? File.ReadAllText(path) : "(no such file)";
 }
 
 /// <summary>
