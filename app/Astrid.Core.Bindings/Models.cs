@@ -1775,6 +1775,19 @@ public sealed record OutboxStats
     /// <summary>Writes the server refused for good. Retried with <c>retryDeadLetters</c>.</summary>
     [JsonPropertyName("failed")] public int Failed { get; init; }
 
+    /// <summary>
+    /// How many of <see cref="Failed"/> a <c>retryDeadLetters</c> would actually give another go
+    /// (task 22e9bc7b).
+    /// </summary>
+    /// <remarks>
+    /// Fewer than <see cref="Failed"/>, and sometimes zero while it is not: the core never replays
+    /// a refused <c>deleteTask</c>, <c>deleteList</c> or <c>deleteComment</c> — a replayed delete
+    /// removes what the person has since gone back to — nor anything refused more than a week ago,
+    /// because a replayed full-field edit overwrites what changed elsewhere since. This is the
+    /// number to put a retry beside; <see cref="Failed"/> is the number that were refused at all.
+    /// </remarks>
+    [JsonPropertyName("retryable")] public int Retryable { get; init; }
+
     [JsonPropertyName("hasUnsentWork")] public bool HasUnsentWork { get; init; }
 
     /// <summary>The five most recently refused, newest first.</summary>

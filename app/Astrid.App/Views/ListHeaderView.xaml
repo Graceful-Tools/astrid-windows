@@ -225,22 +225,28 @@
                 "not synced yet": that one is about waiting, and waiting ends on its own. This one
                 does not, which is why it is the only thing in this row with something to press.
 
+                The count is the core's `retryable`, not its `failed` (task 22e9bc7b): a refused
+                delete is never replayed, so `failed` includes writes this link cannot reach, and
+                drawn here that was "1 refused" over a link answering "nothing to retry" with no
+                way for either to ever go away. The number beside a button is a number the button
+                can act on.
+
                 The count's sentence comes from a converter, not from the view model — the number
                 is the fact, the words are the translator's. It is read again straight after the
                 retry, so a write refused a second time leaves this saying so rather than the
                 outcome line claiming it was sent.
             -->
-            <TextBlock Text="{x:Bind Shell.RefusedWrites, Mode=OneWay, Converter={StaticResource RefusedWrites}}"
+            <TextBlock Text="{x:Bind Shell.RetryableRefusedWrites, Mode=OneWay, Converter={StaticResource RefusedWrites}}"
                        VerticalAlignment="Center"
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                        Style="{ThemeResource CaptionTextBlockStyle}"
-                       Visibility="{x:Bind Shell.RefusedWrites, Mode=OneWay, Converter={StaticResource Visible}}" />
+                       Visibility="{x:Bind Shell.RetryableRefusedWrites, Mode=OneWay, Converter={StaticResource Visible}}" />
             <HyperlinkButton x:Uid="retry_refused_writes"
                              Content="Try again"
                              ToolTipService.ToolTip="Send the refused writes again"
                              VerticalAlignment="Center"
                              Click="OnRetryRefusedWrites"
-                             Visibility="{x:Bind Shell.RefusedWrites, Mode=OneWay, Converter={StaticResource Visible}}" />
+                             Visibility="{x:Bind Shell.RetryableRefusedWrites, Mode=OneWay, Converter={StaticResource Visible}}" />
             <TextBlock Text="{x:Bind Shell.LastRetryRevived, Mode=OneWay, Converter={StaticResource RetryOutcome}}"
                        VerticalAlignment="Center"
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"

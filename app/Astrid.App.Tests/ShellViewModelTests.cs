@@ -81,10 +81,12 @@ public sealed class ShellViewModelTests
     /// pass — so this is the second of those reads, and the state the window is left in. Note
     /// <c>hasUnsentWork</c> is false: the core counts a dead-lettered write in <c>failed</c> and
     /// deliberately not in the "still to send" answer, which is the whole reason it was invisible.
+    /// Both are <c>retryable</c> too — an ordinary edit and create, refused just now, which a retry
+    /// does reach (task 22e9bc7b).
     /// </remarks>
     private static FakeCore Refusing(FakeCore core) =>
         core.Answer("outboxStats",
-            "{\"ok\":true,\"value\":{\"pending\":0,\"running\":0,\"failed\":2,"
+            "{\"ok\":true,\"value\":{\"pending\":0,\"running\":0,\"failed\":2,\"retryable\":2,"
             + "\"hasUnsentWork\":false,\"deadLetters\":["
             + "{\"kind\":\"updateTask\",\"error\":\"403 forbidden\"},"
             + "{\"kind\":\"createTask\",\"error\":\"403 forbidden\"}]}}");
@@ -1262,9 +1264,33 @@ public sealed class ShellViewModelTests
 
         await shell.StartAsync();
 
-        Assert.Equal(2, shell.RefusedWrites);
+        Assert.Equal(2, shell.RetryableRefusedWrites);
         // Not the same fact: nothing is queued, so there is nothing to wait for — only to retry.
         Assert.False(shell.HasUnsentWork);
+    }
+
+    /// <summary>
+    /// A refused write a retry cannot reach draws no row at all (task 22e9bc7b).
+    /// </summary>
+    /// <remarks>
+    /// The core never replays a refused delete, nor anything refused more than a week ago, so its
+    /// <c>failed</c> count outlives every chance of clearing it. Drawn beside "Try again" that was
+    /// a row reading "1 refused" over a link that answered "nothing to retry", for ever. The window
+    /// draws <c>retryable</c> instead: the count the link can actually act on.
+    /// </remarks>
+    [Fact]
+    public async Task A_refused_write_no_retry_can_reach_is_not_offered_one_task_22e9bc7b()
+    {
+        var core = OnlineCore(("l1", "Home", false))
+            .Answer("outboxStats",
+                "{\"ok\":true,\"value\":{\"pending\":0,\"running\":0,\"failed\":1,\"retryable\":0,"
+                + "\"hasUnsentWork\":false,\"deadLetters\":["
+                + "{\"kind\":\"deleteTask\",\"error\":\"403 forbidden\"}]}}");
+        using var shell = new ShellViewModel(core, RunInline);
+
+        await shell.StartAsync();
+
+        Assert.Equal(0, shell.RetryableRefusedWrites);
     }
 
     /// <summary>
@@ -1280,14 +1306,14 @@ public sealed class ShellViewModelTests
 
         core.AnswerOk("retryDeadLetters", new { revived = 2 })
             // Both went through this time.
-            .AnswerOk("outboxStats", new { pending = 0, failed = 0, hasUnsentWork = false });
+            .AnswerOk("outboxStats", new { pending = 0, failed = 0, retryable = 0, hasUnsentWork = false });
         await shell.RetryRefusedWritesAsync();
 
         Assert.Contains("retryDeadLetters", core.SentKinds());
         Assert.Equal(readsBefore + 1, core.SentKinds().Count(kind => kind == "outboxStats"));
         Assert.Equal(2, shell.LastRetryRevived);
         Assert.True(shell.ShowsRetryOutcome);
-        Assert.Equal(0, shell.RefusedWrites);
+        Assert.Equal(0, shell.RetryableRefusedWrites);
     }
 
     /// <summary>
@@ -1307,10 +1333,10 @@ public sealed class ShellViewModelTests
 
         core.AnswerOk("retryDeadLetters", new { revived = 2 })
             // Revived, drained, and refused a second time: back where they started.
-            .AnswerOk("outboxStats", new { pending = 0, failed = 2, hasUnsentWork = false });
+            .AnswerOk("outboxStats", new { pending = 0, failed = 2, retryable = 2, hasUnsentWork = false });
         await shell.RetryRefusedWritesAsync();
 
-        Assert.Equal(2, shell.RefusedWrites);
+        Assert.Equal(2, shell.RetryableRefusedWrites);
         Assert.Equal(2, shell.LastRetryRevived);
     }
 
