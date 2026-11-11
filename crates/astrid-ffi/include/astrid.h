@@ -43,7 +43,8 @@ typedef struct AstridApp AstridApp;
 typedef void (*AstridCallback)(void *user_data, const char *json);
 
 /*
- * The version of the core this library was built from.
+ * The version of this library: astrid-ffi's own crate version (CARGO_PKG_VERSION), not the core's
+ * revision. AWTD2-168 makes it the core revision.
  *
  * The returned pointer is static: do not free it.
  */
