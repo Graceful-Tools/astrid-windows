@@ -27,22 +27,28 @@
             -->
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Default">
-                    <Color x:Key="SystemAccentColor">#3B82F6</Color>
-                    <Color x:Key="SystemAccentColorLight1">#60A5FA</Color>
-                    <Color x:Key="SystemAccentColorLight2">#93C5FD</Color>
-                    <Color x:Key="SystemAccentColorLight3">#BFDBFE</Color>
-                    <Color x:Key="SystemAccentColorDark1">#2563EB</Color>
-                    <Color x:Key="SystemAccentColorDark2">#1D4ED8</Color>
-                    <Color x:Key="SystemAccentColorDark3">#1E40AF</Color>
+                    <Color x:Key="SystemAccentColor">#2563EB</Color>
+                    <Color x:Key="SystemAccentColorLight1">#3B82F6</Color>
+                    <Color x:Key="SystemAccentColorLight2">#60A5FA</Color>
+                    <Color x:Key="SystemAccentColorLight3">#93C5FD</Color>
+                    <Color x:Key="SystemAccentColorDark1">#1D4ED8</Color>
+                    <Color x:Key="SystemAccentColorDark2">#1E40AF</Color>
+                    <Color x:Key="SystemAccentColorDark3">#1E3A8A</Color>
 
                     <!--
-                        astrid-web's own tokens, from styles/themes/light-theme.css. Named the same
-                        so a value can be checked against that file rather than guessed at, and
-                        stated as brushes so a control can use one without restating the hex.
+                        The shared design tokens, vendored at design/tokens.resolved.json and named
+                        after the token each one takes - `DesignTokenTests` compares every brush
+                        here to that file, so this is a check and not a claim. They were web's CSS
+                        transcribed by hand until task b4807cb5, with nothing comparing them, which
+                        is how the accent stayed a day behind every other client.
 
-                        Ocean is deliberately absent: in the web's CSS it differs from light only in
-                        the app background (cyan) and a selection border, and this shell paints that
-                        as a surface behind the chrome. One set of tokens, two appearances.
+                        Four still follow web rather than the tokens, and the test carries them as
+                        named exceptions with the reason: `AstridBorder`, `AstridBorderHover` and
+                        light's two selection tints.
+
+                        Ocean is deliberately absent: in the tokens it differs from light only in
+                        the page background (cyan) and its border, and this shell paints that as a
+                        surface behind the chrome. One set of brushes, two appearances.
                     -->
                     <SolidColorBrush x:Key="AstridSurface" Color="#FFFFFF" />
                     <SolidColorBrush x:Key="AstridSurfaceHover" Color="#F3F4F6" />
@@ -54,24 +60,64 @@
                     <SolidColorBrush x:Key="AstridTextPrimary" Color="#111827" />
                     <SolidColorBrush x:Key="AstridTextSecondary" Color="#4B5563" />
                     <SolidColorBrush x:Key="AstridTextMuted" Color="#6B7280" />
+
+                    <!--
+                        A meaning as a fill, and the same meaning as text (astrid-core DS25).
+
+                        `accent` and `error` are one colour each, in every theme, and that is the
+                        colour of a FILL. As TEXT or an icon on the theme own surface the mid-tone
+                        is too light to read - a link at #2563EB is 3.68:1 - so each has an ink,
+                        darker on a light theme and lighter on a dark one. A control that paints
+                        with one of these is saying which of the two it is.
+                    -->
+                    <SolidColorBrush x:Key="AstridAccentHover" Color="#1D4ED8" />
+                    <SolidColorBrush x:Key="AstridAccentInk" Color="#1D4ED8" />
+                    <SolidColorBrush x:Key="AstridError" Color="#DC2626" />
+                    <SolidColorBrush x:Key="AstridErrorInk" Color="#B91C1C" />
+
+                    <!--
+                        A line that carries meaning by itself follows the theme rather than the
+                        fill: on a light theme the focus line is the accent, on a dark one it is the
+                        accent ink, because the fill is only 2.84:1 against a dark card.
+                    -->
+                    <SolidColorBrush x:Key="AstridBorderFocus" Color="#2563EB" />
+
+                    <!--
+                        WinUI own accent button, overridden rather than derived.
+
+                        `AccentButtonStyle` is the primary action on a dozen screens here, and WinUI
+                        fills it from a brush it derives from the ramp above - on a dark theme a pale
+                        blue with a near-black label. DS26 is the opposite rule: the fill is dark
+                        enough that the white label on it reads, 5.17:1, and it is the same fill in
+                        every theme. So the three brushes that decide it are stated from the tokens.
+                    -->
+                    <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="#2563EB" />
+                    <SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="#1D4ED8" />
+                    <SolidColorBrush x:Key="TextOnAccentFillColorPrimaryBrush" Color="#FFFFFF" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
-                    <Color x:Key="SystemAccentColor">#3B82F6</Color>
-                    <Color x:Key="SystemAccentColorLight1">#60A5FA</Color>
-                    <Color x:Key="SystemAccentColorLight2">#93C5FD</Color>
-                    <Color x:Key="SystemAccentColorLight3">#BFDBFE</Color>
-                    <Color x:Key="SystemAccentColorDark1">#2563EB</Color>
-                    <Color x:Key="SystemAccentColorDark2">#1D4ED8</Color>
-                    <Color x:Key="SystemAccentColorDark3">#1E40AF</Color>
+                    <Color x:Key="SystemAccentColor">#2563EB</Color>
+                    <Color x:Key="SystemAccentColorLight1">#3B82F6</Color>
+                    <Color x:Key="SystemAccentColorLight2">#60A5FA</Color>
+                    <Color x:Key="SystemAccentColorLight3">#93C5FD</Color>
+                    <Color x:Key="SystemAccentColorDark1">#1D4ED8</Color>
+                    <Color x:Key="SystemAccentColorDark2">#1E40AF</Color>
+                    <Color x:Key="SystemAccentColorDark3">#1E3A8A</Color>
 
                     <!--
-                        astrid-web's own tokens, from styles/themes/light-theme.css. Named the same
-                        so a value can be checked against that file rather than guessed at, and
-                        stated as brushes so a control can use one without restating the hex.
+                        The shared design tokens, vendored at design/tokens.resolved.json and named
+                        after the token each one takes - `DesignTokenTests` compares every brush
+                        here to that file, so this is a check and not a claim. They were web's CSS
+                        transcribed by hand until task b4807cb5, with nothing comparing them, which
+                        is how the accent stayed a day behind every other client.
 
-                        Ocean is deliberately absent: in the web's CSS it differs from light only in
-                        the app background (cyan) and a selection border, and this shell paints that
-                        as a surface behind the chrome. One set of tokens, two appearances.
+                        Four still follow web rather than the tokens, and the test carries them as
+                        named exceptions with the reason: `AstridBorder`, `AstridBorderHover` and
+                        light's two selection tints.
+
+                        Ocean is deliberately absent: in the tokens it differs from light only in
+                        the page background (cyan) and its border, and this shell paints that as a
+                        surface behind the chrome. One set of brushes, two appearances.
                     -->
                     <SolidColorBrush x:Key="AstridSurface" Color="#FFFFFF" />
                     <SolidColorBrush x:Key="AstridSurfaceHover" Color="#F3F4F6" />
@@ -83,36 +129,103 @@
                     <SolidColorBrush x:Key="AstridTextPrimary" Color="#111827" />
                     <SolidColorBrush x:Key="AstridTextSecondary" Color="#4B5563" />
                     <SolidColorBrush x:Key="AstridTextMuted" Color="#6B7280" />
+
+                    <!--
+                        A meaning as a fill, and the same meaning as text (astrid-core DS25).
+
+                        `accent` and `error` are one colour each, in every theme, and that is the
+                        colour of a FILL. As TEXT or an icon on the theme own surface the mid-tone
+                        is too light to read - a link at #2563EB is 3.68:1 - so each has an ink,
+                        darker on a light theme and lighter on a dark one. A control that paints
+                        with one of these is saying which of the two it is.
+                    -->
+                    <SolidColorBrush x:Key="AstridAccentHover" Color="#1D4ED8" />
+                    <SolidColorBrush x:Key="AstridAccentInk" Color="#1D4ED8" />
+                    <SolidColorBrush x:Key="AstridError" Color="#DC2626" />
+                    <SolidColorBrush x:Key="AstridErrorInk" Color="#B91C1C" />
+
+                    <!--
+                        A line that carries meaning by itself follows the theme rather than the
+                        fill: on a light theme the focus line is the accent, on a dark one it is the
+                        accent ink, because the fill is only 2.84:1 against a dark card.
+                    -->
+                    <SolidColorBrush x:Key="AstridBorderFocus" Color="#2563EB" />
+
+                    <!--
+                        WinUI own accent button, overridden rather than derived.
+
+                        `AccentButtonStyle` is the primary action on a dozen screens here, and WinUI
+                        fills it from a brush it derives from the ramp above - on a dark theme a pale
+                        blue with a near-black label. DS26 is the opposite rule: the fill is dark
+                        enough that the white label on it reads, 5.17:1, and it is the same fill in
+                        every theme. So the three brushes that decide it are stated from the tokens.
+                    -->
+                    <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="#2563EB" />
+                    <SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="#1D4ED8" />
+                    <SolidColorBrush x:Key="TextOnAccentFillColorPrimaryBrush" Color="#FFFFFF" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
-                    <!-- styles/themes/dark-theme.css, the same names. -->
+                    <!-- The same tokens, read on a dark surface. -->
                     <SolidColorBrush x:Key="AstridSurface" Color="#1F2937" />
                     <SolidColorBrush x:Key="AstridSurfaceHover" Color="#374151" />
                     <SolidColorBrush x:Key="AstridBorder" Color="#37414E" />
                     <SolidColorBrush x:Key="AstridBorderHover" Color="#5A6472" />
                     <SolidColorBrush x:Key="AstridBgSelected" Color="#1E3A8A" />
-                    <SolidColorBrush x:Key="AstridBgSelectedBorder" Color="#3B82F6" />
+                    <!--
+                        The selection outline is a line, so on a dark theme it is the accent ink
+                        and not the accent (DS26): the new fill is 2.00:1 against a selected row.
+                    -->
+                    <SolidColorBrush x:Key="AstridBgSelectedBorder" Color="#60A5FA" />
                     <SolidColorBrush x:Key="AstridBgHover" Color="#374151" />
                     <SolidColorBrush x:Key="AstridTextPrimary" Color="#FFFFFF" />
                     <SolidColorBrush x:Key="AstridTextSecondary" Color="#D1D5DB" />
                     <SolidColorBrush x:Key="AstridTextMuted" Color="#9CA3AF" />
-                    <Color x:Key="SystemAccentColor">#3B82F6</Color>
-                    <Color x:Key="SystemAccentColorLight1">#60A5FA</Color>
-                    <Color x:Key="SystemAccentColorLight2">#93C5FD</Color>
-                    <Color x:Key="SystemAccentColorLight3">#BFDBFE</Color>
-                    <Color x:Key="SystemAccentColorDark1">#2563EB</Color>
-                    <Color x:Key="SystemAccentColorDark2">#1D4ED8</Color>
-                    <Color x:Key="SystemAccentColorDark3">#1E40AF</Color>
+
+                    <!-- The same meanings, read on a dark surface: every ink goes lighter. -->
+                    <SolidColorBrush x:Key="AstridAccentHover" Color="#1D4ED8" />
+                    <SolidColorBrush x:Key="AstridAccentInk" Color="#60A5FA" />
+                    <SolidColorBrush x:Key="AstridError" Color="#DC2626" />
+                    <SolidColorBrush x:Key="AstridErrorInk" Color="#F87171" />
+                    <SolidColorBrush x:Key="AstridBorderFocus" Color="#60A5FA" />
+
+                    <!-- The fill a label sits on is the same in every theme, and so is the label. -->
+                    <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="#2563EB" />
+                    <SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="#1D4ED8" />
+                    <SolidColorBrush x:Key="TextOnAccentFillColorPrimaryBrush" Color="#FFFFFF" />
+                    <Color x:Key="SystemAccentColor">#2563EB</Color>
+                    <Color x:Key="SystemAccentColorLight1">#3B82F6</Color>
+                    <Color x:Key="SystemAccentColorLight2">#60A5FA</Color>
+                    <Color x:Key="SystemAccentColorLight3">#93C5FD</Color>
+                    <Color x:Key="SystemAccentColorDark1">#1D4ED8</Color>
+                    <Color x:Key="SystemAccentColorDark2">#1E40AF</Color>
+                    <Color x:Key="SystemAccentColorDark3">#1E3A8A</Color>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="HighContrast" />
             </ResourceDictionary.ThemeDictionaries>
 
             <!--
-                Astrid's blue, matching the default list colour the core hands back
-                (`TaskList::display_color`). Stated once so a control that needs the brand colour
-                does not spell the hex again and drift from it.
+                Astrid's blue: the brand accent from the shared tokens, `design/tokens.resolved.json`
+                at `design/REVISION`. Stated once so a control that needs the brand colour does not
+                spell the hex again and drift from it - and `DesignTokenTests` compares it to the
+                vendored copy, because a comment pointing at a source is not a check against it.
+
+                Darkened from #3B82F6 on 2026-11-11 (DS26, Jon: "Darken accent and error in the
+                shared tokens, every platform follows"), so that a white label on it reads: 5.17:1,
+                where the old blue was 3.68:1. This is the FILL. Text and icons take
+                `AstridAccentInk`, which follows the theme.
+
+                No longer the default list colour, which is a person's choice from a palette and
+                stays the blue it was - astrid-core's register names the list palette among the
+                values DS26 leaves alone.
             -->
-            <SolidColorBrush x:Key="AstridAccentBrush" Color="#3B82F6" />
+            <SolidColorBrush x:Key="AstridAccentBrush" Color="#2563EB" />
+
+            <!--
+                The same accent as a Color, which a tint needs: a SolidColorBrush takes an opacity
+                off a colour, not off another brush, and the sidebar's selected row is the accent at
+                15%.
+            -->
+            <Color x:Key="AstridAccentColor">#2563EB</Color>
 
             <!-- The Ocean surface, so the wash is stated once rather than per screen. -->
             <LinearGradientBrush x:Key="AstridOceanBrush" StartPoint="0,0" EndPoint="0.35,1">

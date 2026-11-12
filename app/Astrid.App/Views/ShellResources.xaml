@@ -215,7 +215,7 @@
             Keyboard focus stays visible — it has to — but as a hairline in the accent rather
             than the two-tone black rectangle WinUI draws over the row it indicates.
         -->
-        <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource AstridAccentBrush}" />
+        <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource AstridBorderFocus}" />
         <Setter Property="FocusVisualSecondaryBrush" Value="Transparent" />
         <Setter Property="FocusVisualPrimaryThickness" Value="1" />
         <Setter Property="FocusVisualMargin" Value="-1" />

@@ -271,7 +271,7 @@
             </ListView.Resources>
             <ListView.ItemContainerStyle>
                 <Style TargetType="ListViewItem">
-                    <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource AstridAccentBrush}" />
+                    <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource AstridBorderFocus}" />
                     <Setter Property="FocusVisualSecondaryBrush" Value="Transparent" />
                     <Setter Property="FocusVisualPrimaryThickness" Value="1" />
                     <Setter Property="FocusVisualMargin" Value="-1" />

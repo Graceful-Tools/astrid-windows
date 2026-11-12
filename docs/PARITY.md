@@ -120,3 +120,17 @@ astrid-web's `3aa45e73` (task fa63a5dd), which made the repeat arrows the border
 web the arrows frame a photo, here they frame a letter. Deliberately left as it is, because fetching
 and caching a remote avatar per row is a wider change than the one that found it; the frame itself
 needs nothing from the photo and is drawn the same either way.
+
+**Four theme brushes follow astrid-web rather than the shared tokens.** Since task `b4807cb5` the
+brushes in `App.xaml` are compared to a vendored copy of astrid-core's design tokens
+(`design/tokens.resolved.json` at `design/REVISION`) by `DesignTokenTests`. `AstridBorder`,
+`AstridBorderHover` and Light's `AstridBgSelected` / `AstridBgSelectedBorder` are listed there as
+named exceptions: they match web's `styles/themes/*.css` to the byte and the tokens differ, so the
+drift is web-to-token and web's to resolve when it vendors. astrid-core's register names Light's two
+selection tints among the values DS26 leaves alone.
+
+**The priority colours follow the checkbox art, not the tokens** (astrid-core's register, DS21,
+accepted by Jon on 2026-11-10). `PriorityPalette` is sampled from `Assets/Checkboxes/check_box_*.png`
+and pinned to those files, because a swatch that disagrees with the mark beside it on the same row
+is the bug task `204c9d98` fixed. So low priority stays `#328ACC` here while the token is the darker
+accent `#2563EB`. Changing it means re-drawing the art, which is a design job and not a code one.

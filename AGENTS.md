@@ -123,6 +123,7 @@ manually triggered act, the same discipline astrid-web follows for production de
 | [docs/TESTING.md](./docs/TESTING.md) | What each test layer covers, and when the UI smoke suite runs |
 | [docs/PROGRESS.md](./docs/PROGRESS.md) | Where the milestones stand |
 | [docs/context/stack.md](./docs/context/stack.md) | Pinned tool versions, machine setup |
+| [design/README.md](./design/README.md) | The vendored design tokens: how a colour gets here, and what does not follow them |
 | astrid-core's `contracts/README.md` | How the fixtures are generated |
 | [docs/AUTOMATION.md](./docs/AUTOMATION.md) | The `fixall` / `fixstuff` loops and the secrets they need |
 | [README.md](./README.md) | Project overview |

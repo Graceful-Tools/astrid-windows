@@ -129,7 +129,7 @@ internal sealed class MarkdownRenderer
         if (inline.Link is { } link)
         {
             // The web's link blue, not the theme's accent: a link should read as a link.
-            var hyperlink = new Hyperlink { Inlines = { run }, Foreground = _brush("AstridAccentBrush") };
+            var hyperlink = new Hyperlink { Inlines = { run }, Foreground = _brush("AstridAccentInk") };
             hyperlink.Click += (_, _) => _onLink(link);
             return hyperlink;
         }
