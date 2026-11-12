@@ -24,9 +24,12 @@ namespace Astrid.App.Tests;
 /// because the point is that the next re-vendor is a diff to read rather than a hunt.
 /// </para>
 /// <para>
-/// <see cref="Exceptions"/> is the honest part. Four brushes still follow web's CSS rather than the
-/// tokens, and the priority palette follows the checkbox art; each is there with a reason, and a
-/// fifth cannot appear without somebody writing one.
+/// There is no exception list. There was one, holding four brushes at astrid-web's older CSS with
+/// the reason "DS26 names Light's two selection tints among the values that stay" — and DS26 is the
+/// accent and error darkening, not the surfaces. Their row is DS3, which reads "open on Windows", so
+/// task 1481f33a took the tokens and the list went with them. The priority palette is the one thing
+/// that still does not follow a token, and it is not in this file: it is sampled from the checkbox
+/// art and pinned to those images by <c>PriorityPaletteTests</c> (astrid-core DS21).
 /// </para>
 /// </remarks>
 public sealed class DesignTokenTests
@@ -66,25 +69,6 @@ public sealed class DesignTokenTests
         ("AccentFillColorSecondaryBrush", "accent-hover"),
         ("TextOnAccentFillColorPrimaryBrush", "accent-text"),
     ];
-
-    /// <summary>
-    /// The brushes that do not follow the token, and the reason each one does not.
-    /// </summary>
-    /// <remarks>
-    /// All of them are astrid-web's values, transcribed before this file existed and still
-    /// agreeing with web to the byte. That is web-to-token drift, not Windows-to-web drift, and it
-    /// is web's to resolve when it vendors; DS26 names Light's two selection tints among the values
-    /// that stay. Keeping them listed means the brushes that DO follow are checked.
-    /// </remarks>
-    private static readonly Dictionary<(string Theme, string Brush), string> Exceptions = new()
-    {
-        [("light", "AstridBorder")] = "web's --theme-border: 235, 237, 240",
-        [("dark", "AstridBorder")] = "web's --theme-border: 55, 65, 78",
-        [("light", "AstridBorderHover")] = "web's --theme-border-hover: 215, 218, 224",
-        [("dark", "AstridBorderHover")] = "web's --theme-border-hover: 90, 100, 114",
-        [("light", "AstridBgSelected")] = "web's --theme-bg-selected: 243, 248, 255; a tint, DS26 leaves it",
-        [("light", "AstridBgSelectedBorder")] = "web's --theme-bg-selected-border: 200, 224, 255; a tint",
-    };
 
     private static string RepoRoot() =>
         Path.GetFullPath(Path.Combine(LocalisationTests.AppDirectory(), "..", ".."));
@@ -139,15 +123,62 @@ public sealed class DesignTokenTests
             var name = theme == "dark" ? darkToken : lightToken;
             Assert.True(brushes.ContainsKey(brush), $"{dictionary} has no {brush}, which should be {name}");
 
-            if (Exceptions.ContainsKey((theme, brush)))
-            {
-                continue;
-            }
-
             var expected = Token(tokens, theme, name);
             if (brushes[brush] != expected)
             {
                 wrong.Add($"{dictionary}/{brush}: {brushes[brush]}, but {theme}.{name} is {expected}");
+            }
+        }
+
+        Assert.Empty(wrong);
+    }
+
+    /// <summary>
+    /// A surface or a border is the token's value (astrid-core DS3), not astrid-web's older CSS.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// These four sat in an exception list until task 1481f33a, excused by the reason "DS26 names
+    /// Light's two selection tints among the values that stay". DS26 is the accent and error
+    /// darkening; the register row that governs a surface or a border is DS3, and it reads "open on
+    /// Windows". So the exception was a misread row rather than a decision, and the brushes take the
+    /// tokens.
+    /// </para>
+    /// <para>
+    /// Named separately from <see cref="Every_themed_brush_is_the_token_it_claims_task_b4807cb5"/>,
+    /// which reads <see cref="Brushes"/>: this one writes the four brushes and their tokens out, so
+    /// it still fails if a future edit drops a row from that table. The way these values escaped
+    /// before was the covering mechanism, not the values.
+    /// </para>
+    /// </remarks>
+    [Theory]
+    [InlineData("Default", "light")]
+    [InlineData("Light", "light")]
+    [InlineData("Dark", "dark")]
+    public void Surfaces_and_borders_are_the_tokens_not_webs_old_css_task_1481f33a(
+        string dictionary,
+        string theme)
+    {
+        (string Brush, string Token)[] surfaces =
+        [
+            ("AstridBorder", "border"),
+            ("AstridBorderHover", "border-hover"),
+            ("AstridBgSelected", "bg-selected"),
+            ("AstridBgSelectedBorder", "bg-selected-border"),
+        ];
+
+        var tokens = Tokens();
+        var brushes = ThemeBrushes(dictionary);
+        var wrong = new List<string>();
+
+        foreach (var (brush, token) in surfaces)
+        {
+            Assert.True(brushes.ContainsKey(brush), $"{dictionary} has no {brush}, which is {token}");
+
+            var expected = Token(tokens, theme, token);
+            if (brushes[brush] != expected)
+            {
+                wrong.Add($"{dictionary}/{brush}: {brushes[brush]}, but {theme}.{token} is {expected}");
             }
         }
 

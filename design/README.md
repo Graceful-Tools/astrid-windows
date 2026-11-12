@@ -27,18 +27,18 @@ at `#3B82F6` for a day after every other client had taken `#2563EB`.
 
 ## What does not follow the tokens, and why
 
-The test carries these as named exceptions, so the list cannot grow without somebody writing a
-reason next to it:
+Two things, and neither is a themed brush in `App.xaml` — `DesignTokenTests` has no exception list,
+because a brush that is listed is a brush nobody is checking. Adding one back means deleting an
+assertion, which is a reviewable act; the reason then belongs in astrid-core's register, not here.
 
 - **The priority palette** (`PriorityPalette`, `Priority*Brush`) is sampled from
   `app/Astrid.App/Assets/Checkboxes/check_box_{0..3}.png` and pinned to those files by
-  `PriorityPaletteTests`. The images win: they are pixels this app cannot restyle, and a swatch
-  that disagrees with the mark beside it is the bug task `204c9d98` fixed. astrid-core's register
-  covers it as DS21 and records it accepted (Jon, 2026-11-10).
-- **`border`, `border-hover`, and Light's `bg-selected` / `bg-selected-border`** match astrid-web's
-  CSS rather than the tokens — `#37414E` is web's `55, 65, 78`. That drift predates this file and
-  is web's to resolve when it vendors; DS26 names Light's two selection tints among the values that
-  stay.
+  `PriorityPaletteTests`. The images win *for now*: they are pixels this shell cannot restyle, and a
+  swatch that disagrees with the mark beside it is the bug task `204c9d98` fixed. astrid-core carries
+  it as DS2 and DS21, and both rows read **open on Windows** — the shared art became `currentColor`
+  in AWTD-1605 and there is a `generated/windows/AstridCheckbox.xaml` to vendor, so the fix is to
+  draw that art in the priority tokens and drop the sampled values. Under a partner accent, low
+  priority stays Astrid blue until then.
 - **Ocean** has no theme dictionary here. In the tokens it differs from Light in the page
   background and its border, and this shell paints that as a surface behind the chrome. One set of
   brushes, two appearances.

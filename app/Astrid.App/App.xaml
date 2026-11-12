@@ -42,9 +42,10 @@
                         transcribed by hand until task b4807cb5, with nothing comparing them, which
                         is how the accent stayed a day behind every other client.
 
-                        Four still follow web rather than the tokens, and the test carries them as
-                        named exceptions with the reason: `AstridBorder`, `AstridBorderHover` and
-                        light's two selection tints.
+                        Every one of them follows the tokens. `AstridBorder`, `AstridBorderHover`
+                        and the two selection tints were web's older CSS until task 1481f33a, held
+                        there by a test exception whose reason named DS26 - which is the accent and
+                        error darkening, not these. DS3 is their row, and it reads open on Windows.
 
                         Ocean is deliberately absent: in the tokens it differs from light only in
                         the page background (cyan) and its border, and this shell paints that as a
@@ -52,10 +53,10 @@
                     -->
                     <SolidColorBrush x:Key="AstridSurface" Color="#FFFFFF" />
                     <SolidColorBrush x:Key="AstridSurfaceHover" Color="#F3F4F6" />
-                    <SolidColorBrush x:Key="AstridBorder" Color="#EBEDF0" />
-                    <SolidColorBrush x:Key="AstridBorderHover" Color="#D7DAE0" />
-                    <SolidColorBrush x:Key="AstridBgSelected" Color="#F3F8FF" />
-                    <SolidColorBrush x:Key="AstridBgSelectedBorder" Color="#C8E0FF" />
+                    <SolidColorBrush x:Key="AstridBorder" Color="#E5E7EB" />
+                    <SolidColorBrush x:Key="AstridBorderHover" Color="#D1D5DB" />
+                    <SolidColorBrush x:Key="AstridBgSelected" Color="#EFF6FF" />
+                    <SolidColorBrush x:Key="AstridBgSelectedBorder" Color="#BFDBFE" />
                     <SolidColorBrush x:Key="AstridBgHover" Color="#FFFFFF" />
                     <SolidColorBrush x:Key="AstridTextPrimary" Color="#111827" />
                     <SolidColorBrush x:Key="AstridTextSecondary" Color="#4B5563" />
@@ -111,9 +112,10 @@
                         transcribed by hand until task b4807cb5, with nothing comparing them, which
                         is how the accent stayed a day behind every other client.
 
-                        Four still follow web rather than the tokens, and the test carries them as
-                        named exceptions with the reason: `AstridBorder`, `AstridBorderHover` and
-                        light's two selection tints.
+                        Every one of them follows the tokens. `AstridBorder`, `AstridBorderHover`
+                        and the two selection tints were web's older CSS until task 1481f33a, held
+                        there by a test exception whose reason named DS26 - which is the accent and
+                        error darkening, not these. DS3 is their row, and it reads open on Windows.
 
                         Ocean is deliberately absent: in the tokens it differs from light only in
                         the page background (cyan) and its border, and this shell paints that as a
@@ -121,10 +123,10 @@
                     -->
                     <SolidColorBrush x:Key="AstridSurface" Color="#FFFFFF" />
                     <SolidColorBrush x:Key="AstridSurfaceHover" Color="#F3F4F6" />
-                    <SolidColorBrush x:Key="AstridBorder" Color="#EBEDF0" />
-                    <SolidColorBrush x:Key="AstridBorderHover" Color="#D7DAE0" />
-                    <SolidColorBrush x:Key="AstridBgSelected" Color="#F3F8FF" />
-                    <SolidColorBrush x:Key="AstridBgSelectedBorder" Color="#C8E0FF" />
+                    <SolidColorBrush x:Key="AstridBorder" Color="#E5E7EB" />
+                    <SolidColorBrush x:Key="AstridBorderHover" Color="#D1D5DB" />
+                    <SolidColorBrush x:Key="AstridBgSelected" Color="#EFF6FF" />
+                    <SolidColorBrush x:Key="AstridBgSelectedBorder" Color="#BFDBFE" />
                     <SolidColorBrush x:Key="AstridBgHover" Color="#FFFFFF" />
                     <SolidColorBrush x:Key="AstridTextPrimary" Color="#111827" />
                     <SolidColorBrush x:Key="AstridTextSecondary" Color="#4B5563" />
@@ -168,8 +170,8 @@
                     <!-- The same tokens, read on a dark surface. -->
                     <SolidColorBrush x:Key="AstridSurface" Color="#1F2937" />
                     <SolidColorBrush x:Key="AstridSurfaceHover" Color="#374151" />
-                    <SolidColorBrush x:Key="AstridBorder" Color="#37414E" />
-                    <SolidColorBrush x:Key="AstridBorderHover" Color="#5A6472" />
+                    <SolidColorBrush x:Key="AstridBorder" Color="#4B5563" />
+                    <SolidColorBrush x:Key="AstridBorderHover" Color="#6B7280" />
                     <SolidColorBrush x:Key="AstridBgSelected" Color="#1E3A8A" />
                     <!--
                         The selection outline is a line, so on a dark theme it is the accent ink
