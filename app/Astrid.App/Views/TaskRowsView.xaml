@@ -353,11 +353,18 @@
                                 <Grid Width="32" Height="32"
                                       Visibility="{x:Bind LeadingIsRepeatSquare, Converter={StaticResource Visible}}">
                                     <Image Source="{x:Bind RepeatFrameAsset}" Width="32" Height="32" />
-                                    <Border Width="20" Height="20" CornerRadius="10"
+                                    <!--
+                                        14, not 0.6 of the frame as the web draws it: the art is a
+                                        56px canvas with inset ink, so a 32 frame leaves a hollow
+                                        of about 17 between the arrows. A mark any wider covers
+                                        the stroke and the whole thing reads as a circle sitting
+                                        on a bracket. Pinned to the shipped image by a test.
+                                    -->
+                                    <Border Width="14" Height="14" CornerRadius="7"
                                             Background="{ThemeResource AstridBorderHover}"
                                             HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <TextBlock Text="{x:Bind (bindings:TaskRow), Converter={StaticResource LeadingMark}}"
-                                                   FontSize="10" FontWeight="SemiBold"
+                                                   FontSize="9" FontWeight="SemiBold"
                                                    Foreground="{ThemeResource AstridTextSecondary}"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Border>

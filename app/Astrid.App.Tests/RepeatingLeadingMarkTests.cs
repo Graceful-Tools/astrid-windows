@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.Versioning;
 using System.Xml.Linq;
 using Astrid.Core.Bindings;
 using Xunit;
@@ -137,6 +138,85 @@ public sealed class RepeatingLeadingMarkTests
         Assert.Contains(states, value => value.Contains("LeadingIsRepeatSquare"));
         Assert.Contains(states, value => value.Contains("LeadingIsPlainSquare"));
         Assert.DoesNotContain(states, value => value.Contains("LeadingIsSquare,"));
+    }
+
+    /// <summary>
+    /// The mark sits INSIDE the loop, not on top of it (task fa63a5dd).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// "Larger, with the photo inside the loop" is the whole design, and the first port got the
+    /// proportion from astrid-web — a mark 0.6 of the frame — without anybody looking at it
+    /// rendered. Web's own task says as much: "I have not looked at it rendered, so check how the
+    /// photo sits inside the arrows." Looked at here, on a built 0.1.7.0: the disc covered the
+    /// arrows' stroke and the mark read as a circle sitting on a red bracket.
+    /// </para>
+    /// <para>
+    /// The reason is in the art, not in the ratio. <c>check_box_repeat_N.png</c> is a 56px canvas
+    /// whose ink is inset, so a 32px render draws a frame about 22 wide with a hollow of about 17
+    /// — and 0.6 of 32 is 20, three more than will fit. So the test measures the hollow in the
+    /// shipped image rather than restating a number, and a redrawn asset moves the limit with it.
+    /// </para>
+    /// </remarks>
+    [Theory]
+    [InlineData("TaskRowsView.xaml", "OnRowMarkClicked")]
+    [InlineData("BoardView.xaml", "OnCardMarkClicked")]
+    [SupportedOSPlatform("windows")]
+    public void The_mark_fits_the_hollow_of_the_arrows_task_fa63a5dd(string view, string click)
+    {
+        var root = XDocument.Load(Path.Combine(LocalisationTests.AppDirectory(), "Views", view)).Root!;
+        var mark = root.Descendants(Ui + "Button")
+            .Single(button => (string?)button.Attribute("Click") == click);
+        var frameArt = mark.Descendants(Ui + "Image")
+            .Single(image => ((string?)image.Attribute("Source") ?? string.Empty).Contains("RepeatFrameAsset"));
+
+        var frameSize = Number((string?)frameArt.Attribute("Width"));
+        var inner = frameArt.Parent!.Elements(Ui + "Border").Single();
+        var innerSize = Number((string?)inner.Attribute("Width"));
+
+        // Every priority's art, because one redrawn asset is exactly how this would drift.
+        foreach (var priority in new[] { 0, 1, 2, 3 })
+        {
+            var hollow = HollowWidth(priority, frameSize);
+            Assert.True(
+                innerSize <= hollow,
+                $"{view}: the mark is {innerSize} wide but check_box_repeat_{priority}.png "
+                    + $"leaves only {hollow:0.0} inside its arrows at a {frameSize} frame");
+        }
+    }
+
+    /// <summary>
+    /// How wide the gap between the arrows is, at the size the frame is drawn.
+    /// </summary>
+    /// <remarks>
+    /// Measured across the middle of the shipped image: the widest run of transparent pixels
+    /// between the left and right strokes, scaled from the asset's canvas to the frame's size.
+    /// </remarks>
+    [SupportedOSPlatform("windows")]
+    private static double HollowWidth(int priority, double frameSize)
+    {
+        var path = Path.Combine(
+            LocalisationTests.AppDirectory(), "Assets", "Checkboxes", $"check_box_repeat_{priority}.png");
+        using var image = System.Drawing.Image.FromFile(path);
+        using var bitmap = new System.Drawing.Bitmap(image);
+
+        var y = bitmap.Height / 2;
+        var widest = 0;
+        var run = 0;
+        for (var x = 0; x < bitmap.Width; x++)
+        {
+            run = bitmap.GetPixel(x, y).A <= 24 ? run + 1 : 0;
+
+            // The runs outside the frame are transparent too, so only a gap that has ink on both
+            // sides counts — which is what resetting at every opaque pixel and taking the widest
+            // run that ENDS on ink gives.
+            if (run > widest && x + 1 < bitmap.Width && bitmap.GetPixel(x + 1, y).A > 24)
+            {
+                widest = run;
+            }
+        }
+
+        return widest * (frameSize / bitmap.Width);
     }
 
     private static double Number(string? value)
