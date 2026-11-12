@@ -271,7 +271,7 @@ public sealed partial class FilterTintConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language) =>
         value is true
-            ? Application.Current.Resources["AstridAccentInk"]
+            ? Application.Current.Resources["AstridAccentBrush"]
             : Application.Current.Resources["AstridTextPrimary"];
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
