@@ -375,6 +375,12 @@ public sealed partial class ShellPage : UserControl
             return;
         }
 
+        // This element is where the appearance lives, so it is the element anything resolving a
+        // themed brush from code has to ask — a converter has no element of its own (task
+        // 770625f8). Registered before the theme is set, so the first lookup after this already
+        // sees the new one.
+        ThemeBrushes.Follow(root);
+
         root.RequestedTheme = settings.ThemeIsDark switch
         {
             true => ElementTheme.Dark,
@@ -388,10 +394,10 @@ public sealed partial class ShellPage : UserControl
 
         // The sign-in screen covers everything, including the surface, so it wears the wash itself
         // rather than showing a plain panel on the one screen a first-time user actually sees.
-        SignIn.WearSurface(ocean
-            ? (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AstridOceanBrush"]
-            : (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources[
-                "SolidBackgroundFillColorBaseBrush"]);
+        // It is told WHETHER, not which brush: its own ground already follows the appearance, and
+        // the base brush this used to read here is themed too — so in dark the first screen anybody
+        // saw was the light theme's (task 770625f8).
+        SignIn.WearSurface(ocean);
 
         // Rows already on screen keep the colours of the theme they were born in unless their
         // style is re-attached; see Restyling.

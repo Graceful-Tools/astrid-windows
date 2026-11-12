@@ -34,13 +34,34 @@ public sealed partial class SignInOverlay : UserControl
     }
 
     /// <summary>
-    /// The ground behind the card, set by the page's theme.
+    /// The ground behind the card: the Ocean wash, or the appearance's own base.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// This screen covers everything, including the Ocean surface, so it wears the wash itself
     /// rather than showing a plain panel on the one screen a first-time user actually sees.
+    /// </para>
+    /// <para>
+    /// It takes whether rather than which (task 770625f8). The page used to hand over both
+    /// brushes, and read the non-Ocean one — <c>SolidBackgroundFillColorBaseBrush</c> — off the
+    /// application, which resolves a themed key against <c>Application.RequestedTheme</c>: so a
+    /// dark app showed the light base here. The base now sits in a <c>Style</c> setter in this
+    /// control's own XAML as a <c>ThemeResource</c>, which follows the appearance by itself and
+    /// goes on following a change, and Ocean is a local value over the top of it. Clearing that
+    /// local value is what hands the ground back.
+    /// </para>
     /// </remarks>
-    internal void WearSurface(Brush ground) => SignInLayer.Background = ground;
+    internal void WearSurface(bool ocean)
+    {
+        if (ocean)
+        {
+            SignInLayer.Background = (Brush)Application.Current.Resources["AstridOceanBrush"];
+        }
+        else
+        {
+            SignInLayer.ClearValue(Panel.BackgroundProperty);
+        }
+    }
 
     /// <summary>
     /// Open the browser to sign in.

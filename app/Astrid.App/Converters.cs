@@ -264,15 +264,20 @@ public sealed partial class ChipTintConverter : IValueConverter
 
 /// <summary>The funnel goes accent-coloured when something is narrowing the list.</summary>
 /// <remarks>
+/// <para>
 /// The word "Filtered" used to say it. With an icon-only toolbar the colour has to, or a list
 /// quietly hiding half its tasks looks like a list that lost them.
+/// </para>
+/// <para>
+/// The unfiltered colour is <c>AstridTextPrimary</c>, which is themed — white on dark, near-black
+/// on light — so it goes through <see cref="ThemeBrushes"/> rather than the application, which
+/// would answer for the light theme whatever the app is wearing (task 770625f8).
+/// </para>
 /// </remarks>
 public sealed partial class FilterTintConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language) =>
-        value is true
-            ? Application.Current.Resources["AstridAccentBrush"]
-            : Application.Current.Resources["AstridTextPrimary"];
+        ThemeBrushes.For(value is true ? "AstridAccentBrush" : "AstridTextPrimary");
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("a tint is not a value to read back");
@@ -713,13 +718,21 @@ public sealed partial class BubbleAlignConverter : IValueConverter
 
 /// <summary>The bubble's own ground: mine on the surface tint, theirs a shade deeper.</summary>
 /// <remarks>
+/// <para>
 /// astrid-web's <c>.chat-bubble-mine</c> / <c>.chat-bubble-other</c>. Two shades rather than a
 /// colour, because a coloured bubble competes with the list colours the panel is full of.
+/// </para>
+/// <para>
+/// Both shades are themed, and reading them off the application answered with the light theme's in
+/// every appearance: in dark, every bubble came back a near-white rectangle with the thread's white
+/// text on it, unreadable (task 770625f8). <see cref="ThemeBrushes"/> asks the theme the app is
+/// actually wearing.
+/// </para>
 /// </remarks>
 public sealed partial class BubbleBrushConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language) =>
-        Application.Current.Resources[value is true ? "AstridBgSelected" : "AstridSurfaceHover"];
+        ThemeBrushes.For(value is true ? "AstridBgSelected" : "AstridSurfaceHover");
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("a bubble's ground is not a value to read back");
