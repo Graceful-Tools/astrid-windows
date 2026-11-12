@@ -86,12 +86,34 @@
                             </Border>
                             <Border Width="24" Height="24" CornerRadius="6"
                                     Background="{x:Bind Priority, Converter={StaticResource PriorityBrush}}"
-                                    Visibility="{x:Bind LeadingIsSquare, Converter={StaticResource Visible}}">
+                                    Visibility="{x:Bind LeadingIsPlainSquare, Converter={StaticResource Visible}}">
                                 <TextBlock Text="{x:Bind (bindings:TaskRow), Converter={StaticResource LeadingMark}}"
                                            FontSize="12" FontWeight="SemiBold"
                                            Foreground="White"
                                            HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
+                            <!--
+                                ...and when that task repeats, the arrows are its border
+                                (task fa63a5dd). Only your own mark could say "repeats",
+                                because it is one PNG that draws priority, repeating and done
+                                together; the other two are built out of controls and had
+                                nowhere to say it. The arrows are drawn at the full 32 the
+                                own-task mark uses, from the same art, with the mark inside
+                                the loop — and they carry the priority here, which is why the
+                                mark itself goes neutral.
+                            -->
+                            <Grid Width="32" Height="32"
+                                  Visibility="{x:Bind LeadingIsRepeatSquare, Converter={StaticResource Visible}}">
+                                <Image Source="{x:Bind RepeatFrameAsset}" Width="32" Height="32" />
+                                <Border Width="20" Height="20" CornerRadius="10"
+                                        Background="{ThemeResource AstridBorderHover}"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="{x:Bind (bindings:TaskRow), Converter={StaticResource LeadingMark}}"
+                                               FontSize="10" FontWeight="SemiBold"
+                                               Foreground="{ThemeResource AstridTextSecondary}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                            </Grid>
                         </Grid>
                     </Button>
                     <StackPanel Grid.Column="1" Spacing="3">

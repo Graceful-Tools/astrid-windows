@@ -112,3 +112,11 @@ address bar and the menu is the only place a URL can come from; and **Close**, b
 a pane with something to shut, where web's routed page has nothing. Everything web's
 `TaskActionMenu` offers is there, in web's order, each of the two extras after the group it belongs
 to — pinned by `WebUxParityTests`.
+
+**A row's leading mark never draws the assignee's photo.** Where web puts a teammate's picture at
+the start of their task, this shell puts the first letter of their name in a priority-coloured
+square — `UserSummary.Image` arrives on every row and no view asks for it. Found while porting
+astrid-web's `3aa45e73` (task fa63a5dd), which made the repeat arrows the border of that mark: on
+web the arrows frame a photo, here they frame a letter. Deliberately left as it is, because fetching
+and caching a remote avatar per row is a wider change than the one that found it; the frame itself
+needs nothing from the photo and is drawn the same either way.
