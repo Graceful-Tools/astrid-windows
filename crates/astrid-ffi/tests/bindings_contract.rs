@@ -242,6 +242,79 @@ const NOT_BOUND: &[(&str, &str)] = &[
          from `assigneeOptions` — so picking somebody replaces the assignee rather than toggling \
          one of several.",
     ),
+    // ── The reads iOS needs one at a time, which this shell asks as one hub (task c7a669c2) ───
+    //
+    // These arrived with the pin move past the SQLite advisory, from the core's AWTD-1610 — the
+    // commands iOS needs to finish moving off its own API client. The first three are the Agent
+    // Hub's answer, split into its parts; `Command::Agents` says in as many words why it is one
+    // command, and this shell binds that one.
+    (
+        "agentCredentials",
+        "Which services have a key stored, on its own. The Agent Hub here asks `agents`, whose \
+         doc says why it is one command: a screen that drew the agents before it knew which had \
+         a credential would show \"needs setup\" on all of them and then correct itself. The \
+         writes beside it are bound (`setAgentCredential`, `testAgentCredential`), so the only \
+         thing this narrower read would add is a second, partial answer to a question the hub \
+         has already answered.",
+    ),
+    (
+        "agentModes",
+        "The agents' mailbox rows and their modes, on its own — the same part of the same hub. \
+         `agents` carries the mode each agent is set to and `setAgentMode` changes it, both \
+         bound; nothing here redraws the modes alone.",
+    ),
+    (
+        "copilotStatus",
+        "Whether Copilot is connected, on its own — again part of the hub's answer, and the \
+         connect and disconnect halves are bound (`connectCopilot`, `disconnectCopilot`). This \
+         shell learns the connection state when it draws the hub, not from a poll of its own.",
+    ),
+    (
+        "availableAgents",
+        "The agents this account can assign, mention or chat with. Assigning and inviting here \
+         go through `searchUsers`, which takes `includeAgents` and is the same question asked \
+         where the surface actually asks it; `agents` covers the hub. The flag that narrows this \
+         to what the server runs itself picks iOS's DEFAULT ASSISTANT (AITD-297), and this shell \
+         has no such setting for the answer to land in.",
+    ),
+    (
+        "featureFlags",
+        "The server's whole flag answer, fetched fresh, with the version a `featureFlagsUpdated` \
+         frame is compared against. This shell reads `features`, the cached projection, which is \
+         the question a view has — and deliberately: that read answers offline, where this one \
+         fails, and keeping the cache current is the core's sync layer's job rather than a \
+         command the shell sends.",
+    ),
+    (
+        "sendVerification",
+        "Sends the verification email for the account's address — which this shell already does, \
+         through the older `resendVerification` that the core still has and the account screen's \
+         Resend button sends. Binding both would give one button two commands. Which of the two \
+         pair the core keeps is its own call, not this shell's: noted in docs/CONTRACTS.md.",
+    ),
+    (
+        "cancelVerification",
+        "Withdraws a pending email change. The account screen shows the pending address — \
+         `HasPendingEmail` and `PendingEmail` draw it as a sentence under the verification state \
+         — but as text only: there is no control beside it to take the change back, so there is \
+         nothing here to send this from. `changeEmail` is bound, which is how a pending change \
+         is made in the first place.",
+    ),
+    (
+        "searchContacts",
+        "Autocomplete over the imported contacts while adding a member. The Contacts page here \
+         is a count, a flat list and a Clear button (`ContactsSection.xaml`) with no field to \
+         type in, and adding a member searches the people the server already knows through \
+         `searchUsers`. Nothing draws a suggestion list this could fill.",
+    ),
+    (
+        "recommendedCollaborators",
+        "The Astrid users among the imported contacts, mutual ones first, to suggest as \
+         collaborators. The same missing surface as `searchContacts`: `contacts` and \
+         `clearContacts` are bound and the page lists what was imported, but it has no \
+         suggestions section, and `inviteToList` is reached by searching rather than from a \
+         suggestion.",
+    ),
 ];
 
 /// Every core command is either bound or registered — and a new one fails the gate.
