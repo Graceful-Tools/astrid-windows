@@ -194,10 +194,10 @@
                     task rows set their own, so the two do not borrow each other's.
                 -->
                 <StackPanel.Resources>
-                    <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#3B82F6" Opacity="0.15" />
-                    <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#3B82F6" Opacity="0.22" />
-                    <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="#3B82F6" Opacity="0.22" />
-                    <SolidColorBrush x:Key="ListViewItemForegroundSelected" Color="#1D4ED8" />
+                    <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="{StaticResource AstridAccentColor}" Opacity="0.15" />
+                    <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="{StaticResource AstridAccentColor}" Opacity="0.22" />
+                    <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="{StaticResource AstridAccentColor}" Opacity="0.22" />
+                    <StaticResource x:Key="ListViewItemForegroundSelected" ResourceKey="AstridAccentInk" />
                     <SolidColorBrush x:Key="ListViewItemSelectionIndicatorBrush" Color="Transparent" />
                     <StaticResource x:Key="ListViewItemBackgroundPointerOver" ResourceKey="AstridSurfaceHover" />
                 </StackPanel.Resources>

@@ -1,0 +1,52 @@
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI;
+
+namespace Astrid.App;
+
+/// <summary>
+/// A themed brush by key, resolved for the theme an element is actually wearing (task b4807cb5).
+/// </summary>
+/// <remarks>
+/// <para>
+/// <c>Application.Current.Resources[key]</c> looks like the way to read a brush from code, and for
+/// a key in the root dictionary it is. For a key in <c>ThemeDictionaries</c> it is not: it resolves
+/// against <c>Application.RequestedTheme</c>, which this app never sets. The appearance is applied
+/// by setting <c>RequestedTheme</c> on ShellPage's root — the only way to change it after startup —
+/// so every XAML <c>ThemeResource</c> follows the element while every lookup from code goes on
+/// answering with the <c>Default</c> dictionary, which is the light one.
+/// </para>
+/// <para>
+/// It is a quiet failure: in a light theme the two agree and nothing looks wrong. In a dark theme
+/// the caller gets a light brush, and what it paints is a light shape on a dark surface. Found by
+/// looking at the running app rather than by a test — the chat bubbles draw white text on the light
+/// theme's near-white <c>AstridBgSelected</c> and cannot be read at all.
+/// </para>
+/// <para>
+/// So the lookup takes the element and asks its <c>ActualTheme</c>, which is the question the
+/// caller meant. A key outside the theme dictionaries — <c>AstridAccentBrush</c>, a priority — is
+/// found in the root dictionary as before.
+/// </para>
+/// </remarks>
+internal static class ThemeBrushes
+{
+    /// <summary>The brush <paramref name="key"/> names in the theme <paramref name="element"/> wears.</summary>
+    public static Brush For(FrameworkElement element, string key)
+    {
+        var dictionaries = Application.Current.Resources.ThemeDictionaries;
+        var theme = element.ActualTheme == ElementTheme.Dark ? "Dark" : "Default";
+
+        if (dictionaries.TryGetValue(theme, out var entry)
+            && entry is ResourceDictionary themed
+            && themed.TryGetValue(key, out var found)
+            && found is Brush brush)
+        {
+            return brush;
+        }
+
+        // Not a themed key, or a theme that carries no entry for it: the root dictionary answers.
+        return Application.Current.Resources.TryGetValue(key, out var fallback) && fallback is Brush root
+            ? root
+            : new SolidColorBrush(Colors.Gray);
+    }
+}

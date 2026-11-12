@@ -811,11 +811,9 @@ public sealed partial class TaskDetailPane : UserControl
         }
     }
 
-    /// <summary>A themed brush by key, from the dictionary the current theme resolves.</summary>
-    private static Brush ThemedBrush(string key) =>
-        Application.Current.Resources.TryGetValue(key, out var brush) && brush is Brush themed
-            ? themed
-            : new SolidColorBrush(Colors.Gray);
+    /// <summary>A themed brush by key, from the dictionary THIS PANE's theme resolves.</summary>
+    /// <remarks>See <see cref="ThemeBrushes"/>: the app-level lookup answers for the wrong theme.</remarks>
+    private Brush ThemedBrush(string key) => ThemeBrushes.For(this, key);
 
     /// <summary>The rendered description was clicked: open the editor where it was.</summary>
     private async void OnDescriptionTapped(object sender, TappedRoutedEventArgs args)
