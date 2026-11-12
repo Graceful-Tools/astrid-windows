@@ -106,12 +106,14 @@ public sealed class TaskRowsAlignmentTests
         Assert.Equal(32d, Number((string?)mark.Attribute("Width")));
         Assert.Equal("OnCardMarkClicked", (string?)mark.Attribute("Click"));
 
-        // The same four answers a row gives: yours, a copy you may take, somebody else's, nobody's.
+        // The same four answers a row gives: yours, a copy you may take, somebody else's, nobody's
+        // — the last two drawn twice over, plain and framed by the repeat arrows (task fa63a5dd).
         var states = mark.Descendants()
             .Select(element => (string?)element.Attribute("Visibility") ?? string.Empty)
             .ToList();
         Assert.Contains(states, value => value.Contains("LeadingIsCheckbox"));
         Assert.Contains(states, value => value.Contains("LeadingIsCopy"));
-        Assert.Contains(states, value => value.Contains("LeadingIsSquare"));
+        Assert.Contains(states, value => value.Contains("LeadingIsPlainSquare"));
+        Assert.Contains(states, value => value.Contains("LeadingIsRepeatSquare"));
     }
 }

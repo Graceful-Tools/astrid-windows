@@ -98,6 +98,29 @@ public sealed record TaskRow
 
     public bool LeadingIsSquare => Leading.Kind is not "checkbox" and not "copy";
 
+    /// <summary>
+    /// A square that says nothing about repeating, because the task does not repeat.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="LeadingIsSquare"/> answers "whose task is this?" and keeps answering only that.
+    /// This and <see cref="LeadingIsRepeatSquare"/> split that one answer into the two ways it is
+    /// drawn, so a view binds to a single flag per element instead of combining two itself.
+    /// </remarks>
+    public bool LeadingIsPlainSquare => LeadingIsSquare && !IsRepeating;
+
+    /// <summary>
+    /// Somebody else's repeating task, or nobody's: the repeat arrows frame the mark
+    /// (task fa63a5dd).
+    /// </summary>
+    /// <remarks>
+    /// Your own task's mark is a single PNG that draws priority, repeating and done at once. The
+    /// other two marks are built out of controls and so had nowhere to say "repeats" — a weekly
+    /// task assigned to a teammate looked like a one-off. astrid-web closed the same gap in
+    /// <c>3aa45e73</c> by making the arrows the border of those marks; this is that decision,
+    /// made once here rather than in each view that draws a row.
+    /// </remarks>
+    public bool LeadingIsRepeatSquare => LeadingIsSquare && IsRepeating;
+
     /// <summary>What goes in the square for somebody else's task: the first letter of their name.</summary>
     public string AssigneeInitial
     {
@@ -121,15 +144,35 @@ public sealed record TaskRow
     /// build has not seen would otherwise ask for an image that does not exist and draw nothing at
     /// all, losing the control a person taps to finish the task.
     /// </remarks>
-    public string CheckboxAsset
+    public string CheckboxAsset =>
+        CheckboxArt(Priority, repeating: IsRepeating, done: Completed);
+
+    /// <summary>
+    /// The repeat arrows drawn as the border of somebody else's mark, or nobody's
+    /// (task fa63a5dd).
+    /// </summary>
+    /// <remarks>
+    /// The same art <see cref="CheckboxAsset"/> uses, so the arrows a teammate's task wears and
+    /// the arrows your own wears are one shape and not two. Always the open arrows, never the
+    /// ticked ones, as the web draws them: this square never said "done" either — the row's
+    /// opacity and its struck-through title do.
+    /// </remarks>
+    public string RepeatFrameAsset => CheckboxArt(Priority, repeating: true, done: false);
+
+    /// <summary>
+    /// One mark's image path, with the priority clamped rather than trusted.
+    /// </summary>
+    /// <remarks>
+    /// The priority arrives from the server, and a value this build has not seen would otherwise
+    /// ask for an image that does not exist and draw nothing at all, losing the control a person
+    /// taps to finish the task.
+    /// </remarks>
+    private static string CheckboxArt(int priority, bool repeating, bool done)
     {
-        get
-        {
-            var priority = Priority is >= 0 and <= 3 ? Priority : 0;
-            var repeat = IsRepeating ? "_repeat" : string.Empty;
-            var done = Completed ? "_checked" : string.Empty;
-            return $"ms-appx:///Assets/Checkboxes/check_box{repeat}{done}_{priority}.png";
-        }
+        var safe = priority is >= 0 and <= 3 ? priority : 0;
+        var repeat = repeating ? "_repeat" : string.Empty;
+        var checked_ = done ? "_checked" : string.Empty;
+        return $"ms-appx:///Assets/Checkboxes/check_box{repeat}{checked_}_{safe}.png";
     }
 
     /// <summary>
