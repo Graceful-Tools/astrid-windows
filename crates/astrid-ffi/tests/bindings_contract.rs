@@ -14,7 +14,8 @@
 //!   which it is.
 //!
 //! **Do not try to answer either question by grepping.** `astrid_core::app::command_kinds()`
-//! scans its own `pub enum Command` and lowercases the first letter, so a wire spelling such as
+//! takes the variant names from `strum::VariantNames` on the core's `Command` enum (astrid-core
+//! `command.rs`, since AWTD2-139) and lowercases the first letter, so a wire spelling such as
 //! `reconnectStream` appears nowhere in the core's source; and the C# kinds are string literals
 //! inside factory bodies. The two sets, compared here, are the only reliable comparison — a grep
 //! for one of these names will confidently tell you it does not exist.

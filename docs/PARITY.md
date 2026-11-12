@@ -38,7 +38,7 @@ milestones; this tracks the *product*.
 | Keyboard scheme | ✅ | ✅ | The same table, from one fixture |
 | Offline-first with an Outbox | ✅ | ✅ | |
 | Sign-in through the browser | ✅ | ✅ | |
-| Localisation | ✅ (12 languages) | ✅ (English) | Windows has the mechanism and one language |
+| Localisation | ✅ (12 languages) | ✅ (English, German) | Windows ships en-US and de-DE (since a8eb5ad, 2026-09-12); a language is a folder. The other ten are AWTD2-173 |
 | Themes | ✅ | ✅ | Ocean, light, dark and auto — the same four the Apple clients store, chosen per machine. Appearance also carries the account's task-detail layout (list / project), which rows and the detail draw with at once; smart task creation on/off; and where subtasks appear — indented in lists, or inside the parent only |
 | Task settings | ✅ | ✅ | The web's Tasks page: Email-to-Task on/off and address, default due date and time for emailed tasks — stored on the server through `/api/v1/users/me/smart-tasks`, shaped and validated in the core |
 | Attachments | ✅ | ✅ | Open, attach from disk, paste from the clipboard; drawn in the comment they arrived on. A picture draws as a thumbnail from bytes already on this machine — the Outbox's own copy for one just posted — rather than being fetched back (AITD-308). Queued offline, with the bytes copied so the original can move away |

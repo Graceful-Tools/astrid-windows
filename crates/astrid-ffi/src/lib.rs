@@ -69,7 +69,8 @@ struct Subscriber {
 unsafe impl Send for Subscriber {}
 unsafe impl Sync for Subscriber {}
 
-/// The version of the core this library was built from. For an about box and a crash report.
+/// The version of this library — astrid-ffi's own `CARGO_PKG_VERSION`, not the core's revision
+/// (AWTD2-168 makes it the core revision). For an about box and a crash report.
 ///
 /// # Safety
 /// The returned pointer is static and must not be freed.
