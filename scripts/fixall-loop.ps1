@@ -128,6 +128,9 @@ if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Forc
 # Why this tick woke, and how it acknowledges that afterwards without muting anything it never
 # looked at. Task 18ba8c2e; the library's header has the two-phase contract in full.
 . (Join-Path $PSScriptRoot 'lib\fixall-wake.ps1')
+# Whether there is room to build at all. Task 4d9d42e6: the 2026-11-13 05:10 tick spent itself
+# reaching an `os error 112` with 31 MB free. The library's header has the incident and the marks.
+. (Join-Path $PSScriptRoot 'lib\fixall-disk.ps1')
 
 # WHERE THE STATE A LATER TICK READS LIVES. Under %LOCALAPPDATA%, beside the log, and NOT in %TEMP%:
 # the wake journal, the task record and the claims record are each read by a LATER tick - that is
@@ -422,6 +425,30 @@ try {
     }
     if ($yieldStatus -ne 0) {
         Say "  WARNING: could not read the pause state, running anyway: $yieldReason"
+    }
+
+    # ── Guard 1c: is there room to build? ──────────────────────────────────────────────────────
+    # The tick of 2026-11-13 05:10 found out by failing, three quarters of the way into its first
+    # build, with `os error 112` and 31 MB free - a message that reads exactly like a broken change
+    # and costs a whole tick to produce. `astrid-windows/target` was 103 GB, `astrid-core/target`
+    # 51 GB, and nothing had ever pruned either: `npm run predeploy` builds host debug, host
+    # release, both cross targets and the shell in Release, and every pin bump leaves another
+    # `astrid-core-<hash>` tree behind it. Task 4d9d42e6.
+    #
+    # HERE, and not later, for the same reason guard 1b is here: the sweep below makes git commits
+    # in two checkouts and posts board comments, and a commit onto a full disk is how a checkout
+    # ends up with a corrupt object. And inside the try, so the `finally` still releases the
+    # working-tree lock - a stop from outside it would leak the lock and the next tick would refuse
+    # this checkout as held by a process that is gone.
+    #
+    # FAILED rather than SKIPPED: a skipped tick is indistinguishable from an empty board, and this
+    # machine would go quiet for a week with nobody knowing why.
+    $diskVerdict = Get-DiskSpaceVerdict -FreeBytes (Get-FreeSpaceBytes -Path $RepoRoot)
+    if (-not $diskVerdict.Ok) {
+        Finish "RESULT: FAILED - $($diskVerdict.Reason)"
+    }
+    if ($diskVerdict.Reason) {
+        Say "  WARNING: $($diskVerdict.Reason)"
     }
 
     # ── The sweep: clear up after a run this script never watched exit ────────────────────────

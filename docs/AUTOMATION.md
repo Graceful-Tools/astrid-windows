@@ -66,6 +66,20 @@ all:
      state file is a worse outage than one run too many. It runs *before* the start-of-tick sweep,
      which commits and comments; standing down after those would be standing down too late. Added
      by task `38a93fca` — before it, nothing could pause this loop.
+   - **Guard 1c — is there room to build?** `Get-DiskSpaceVerdict`
+     ([`scripts/lib/fixall-disk.ps1`](../scripts/lib/fixall-disk.ps1)). The 05:10 tick of
+     2026-11-13 spent itself reaching `os error 112` three quarters of the way into its first
+     build, with **31 MB** free: `target/` was **103 GB** here and **51 GB** in astrid-core, and
+     nothing had ever pruned either — `predeploy` builds host debug, host release, both cross
+     targets and the shell in Release, and every pin bump leaves another `astrid-core-<hash>` tree
+     behind. Under **15 GB** the tick stops; under **40 GB** it runs and warns. **`FAILED`, not
+     `SKIPPED`** — a skip is indistinguishable from an empty board, and the machine would go quiet
+     for a week. A reading that could not be taken **runs the tick**, like 1b above. It sits before
+     the sweep for the same reason 1b does, and a commit onto a full disk is also how a checkout
+     gets a corrupt object. Clear it with
+     `powershell -File scripts/prune-build-caches.ps1 -Apply` — age-based, so cargo keeps what the
+     current build touches; a bare `cargo clean` would cost the next tick a cold build of the whole
+     graph. Task `4d9d42e6`.
 2. **Never clobber work in progress.** A dirty tree, or a `HEAD` that is not `main`, skips — and it
    **names which checkout** stopped the tick, because `astrid-core is dirty` is a different
    instruction to a human than `working tree is dirty`. An interactive session takes no lock, so
