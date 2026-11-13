@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -386,5 +387,143 @@ public sealed class DesignTokenTests
         Assert.Equal(
             Token(Tokens(), theme, "checkbox-check"),
             ((string)tick.Attribute("Color")!).ToUpperInvariant());
+    }
+
+    /// <summary>A number the shell states in XAML because it cannot read the vendored JSON at runtime.</summary>
+    /// <remarks>
+    /// <c>ShellResources.xaml</c> is where the sizes live — the corner-radius scale is already there
+    /// — and it is one of the two files <see cref="DesignMetrics"/> exempts from the literal budget,
+    /// for exactly this reason: a number written down once, with something comparing it to its
+    /// source, is the opposite of the 346 literal margins that budget counts.
+    /// </remarks>
+    private static double ShellNumber(string key)
+    {
+        var dictionary = XDocument
+            .Load(Path.Combine(LocalisationTests.AppDirectory(), "Views", "ShellResources.xaml"))
+            .Root!;
+        var entry = dictionary.Elements()
+            .Single(element => (string?)element.Attribute(Xaml + "Key") == key);
+
+        return double.Parse(entry.Value.Trim(), CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// A selected row is outlined in the accent at the token's opacity, not filled at a hand-typed
+    /// one (astrid-core DS5, task 787c7aa5).
+    /// </summary>
+    /// <remarks>
+    /// The sidebar drew selection as a fill at <c>0.15</c>, and its hover and pressed states at
+    /// <c>0.22</c> — three numbers that came from astrid-web's CSS and belonged to nothing. DS5 took
+    /// the Mac's answer instead (Jon, 2026-11-10): an outline, at <c>state.selection-outline-opacity</c>.
+    /// So the brush is stated once beside <c>AstridAccentBrush</c>, outside the theme dictionaries
+    /// because the accent does not follow the theme, and this reads its opacity out of the vendored
+    /// tokens rather than repeating the number.
+    /// </remarks>
+    [Fact]
+    public void The_selection_outline_is_the_accent_at_the_tokens_opacity_task_787c7aa5()
+    {
+        var app = XDocument.Load(Path.Combine(LocalisationTests.AppDirectory(), "App.xaml")).Root!;
+        var outline = app.Descendants(Ui + "SolidColorBrush")
+            .Single(brush => (string?)brush.Attribute(Xaml + "Key") == "AstridSelectionOutline");
+
+        var expected = Tokens().GetProperty("state").GetProperty("selection-outline-opacity").GetDouble();
+        var actual = double.Parse((string)outline.Attribute("Opacity")!, CultureInfo.InvariantCulture);
+
+        Assert.Equal(expected, actual);
+
+        // The accent itself, by reference rather than by a second copy of the hex: the mistake DS26
+        // caught was one file moving to #2563EB while another kept #3B82F6.
+        Assert.Equal("{StaticResource AstridAccentColor}", (string)outline.Attribute("Color")!);
+    }
+
+    /// <summary>
+    /// The outline's width is a density lookup, and Windows is the pointer density (DS5, task 787c7aa5).
+    /// </summary>
+    /// <remarks>
+    /// astrid-core's register reads DS5 as "1.5 wide on pointer layouts and 2.5 on touch", and the
+    /// tokens carry both: <c>size.compact.selection-outline</c> and
+    /// <c>size.comfortable.selection-outline</c>. This shell has no density setting today, so it
+    /// takes the compact one — but it takes it from the density rather than from a constant, so the
+    /// day a comfortable mode arrives the other value is already there and this test says which one
+    /// the shell is using. Asserting the comfortable value is different is the part that would fail
+    /// if a re-vendor collapsed the two, which is the change that would make the lookup pointless.
+    /// </remarks>
+    [Fact]
+    public void The_selection_outline_is_the_pointer_densitys_width_task_787c7aa5()
+    {
+        var size = Tokens().GetProperty("size");
+        var compact = size.GetProperty("compact").GetProperty("selection-outline").GetDouble();
+        var comfortable = size.GetProperty("comfortable").GetProperty("selection-outline").GetDouble();
+
+        Assert.NotEqual(compact, comfortable);
+        Assert.Equal(compact, ShellNumber("AstridSelectionOutlineThickness"));
+    }
+
+    /// <summary>
+    /// The sidebar states no selection colour of its own any more (DS5, task 787c7aa5).
+    /// </summary>
+    /// <remarks>
+    /// Named apart from the two tests above because they check the value and this checks the
+    /// mechanism. The three literals were overrides of WinUI's own
+    /// <c>ListViewItemBackgroundSelected*</c> brushes, declared on the sidebar's panel; re-declaring
+    /// any one of them would quietly beat the outline the row style now draws, and every assertion
+    /// about the brush would still pass.
+    /// </remarks>
+    [Fact]
+    public void The_sidebar_states_no_selection_colour_of_its_own_task_787c7aa5()
+    {
+        var sidebar = File.ReadAllText(
+            Path.Combine(LocalisationTests.AppDirectory(), "Views", "SidebarView.xaml"));
+
+        Assert.DoesNotContain("ListViewItemBackgroundSelected", sidebar, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Completing a task pops the mark to the token's scale, on the token's spring (DS16, task 787c7aa5).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>motion.spring</c> is a named entry with its own parameters — a damping ratio and a period —
+    /// rather than a duration and an easing curve, and DS16 says to read it instead of approximating
+    /// it. WinUI can express it exactly: Composition's <c>SpringVector3NaturalMotionAnimation</c>
+    /// takes a <c>DampingRatio</c> and a <c>Period</c>, which are those two numbers. So nothing was
+    /// substituted, and there is nothing for astrid-core's register to record.
+    /// </para>
+    /// <para>
+    /// All three are asserted together: a pop at the right scale on the wrong spring, or the right
+    /// spring at the wrong scale, is the same bug.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void Completing_a_task_pops_the_mark_on_the_tokens_spring_task_787c7aa5()
+    {
+        var tokens = Tokens();
+        var spring = tokens.GetProperty("motion").GetProperty("spring");
+
+        Assert.Equal(
+            tokens.GetProperty("state").GetProperty("complete-pop-scale").GetDouble(),
+            ShellNumber("AstridCompletePopScale"));
+        Assert.Equal(spring.GetProperty("damping").GetDouble(), ShellNumber("AstridSpringDamping"));
+        Assert.Equal(spring.GetProperty("ms").GetDouble(), ShellNumber("AstridSpringMs"));
+    }
+
+    /// <summary>
+    /// The mark reads those three numbers rather than carrying its own (task 787c7aa5).
+    /// </summary>
+    /// <remarks>
+    /// A resource nobody looks up is a number that agrees with the tokens and changes nothing on
+    /// screen, and the test above would pass for ever while the pop ran at whatever was typed into
+    /// <c>PriorityMark</c>. The art is already resolved out of the application's resources there
+    /// (<c>AstridCheckboxBoxStyle</c> and the other two), so this is the same route, not a new one.
+    /// </remarks>
+    [Fact]
+    public void The_mark_takes_the_pop_from_the_resources_task_787c7aa5()
+    {
+        var mark = File.ReadAllText(Path.Combine(LocalisationTests.AppDirectory(), "PriorityMark.cs"));
+
+        foreach (var key in new[] { "AstridCompletePopScale", "AstridSpringDamping", "AstridSpringMs" })
+        {
+            Assert.Contains(key, mark, StringComparison.Ordinal);
+        }
     }
 }

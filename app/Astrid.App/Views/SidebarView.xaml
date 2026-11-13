@@ -188,19 +188,16 @@
         <ScrollViewer Grid.Row="1">
             <StackPanel Margin="12,8,12,8" Spacing="4">
                 <!--
-                    The sidebar's own selection, from astrid-web: a blue tint behind blue
-                    text, not Windows' accent bar and heavy focus box. Declared here rather
-                    than on each of the three lists — resources resolve up the tree, and the
-                    task rows set their own, so the two do not borrow each other's.
+                    Selection is no longer stated here (astrid-core DS5, task 787c7aa5).
+
+                    Six brushes used to be: a blue tint at 15% behind blue text, 22% on hover
+                    and pressed, with Windows' accent bar and heavy focus box turned off. They
+                    were overrides of the brushes WinUI's own ListViewItemPresenter reaches
+                    for, which is the only thing that presenter offers — a selected fill, never
+                    a selected outline. DS5 took the Mac's outline for every client, so
+                    `SidebarRowStyle` draws the row itself and owns all six states, and nothing
+                    is left here to override it from above.
                 -->
-                <StackPanel.Resources>
-                    <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="{StaticResource AstridAccentColor}" Opacity="0.15" />
-                    <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="{StaticResource AstridAccentColor}" Opacity="0.22" />
-                    <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="{StaticResource AstridAccentColor}" Opacity="0.22" />
-                    <StaticResource x:Key="ListViewItemForegroundSelected" ResourceKey="AstridAccentInk" />
-                    <SolidColorBrush x:Key="ListViewItemSelectionIndicatorBrush" Color="Transparent" />
-                    <StaticResource x:Key="ListViewItemBackgroundPointerOver" ResourceKey="AstridSurfaceHover" />
-                </StackPanel.Resources>
                 <!--
                     Every entry in here is the same row: a mark, a name, and the number of
                     tasks behind it. astrid-web draws them from one component and so does
