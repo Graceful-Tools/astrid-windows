@@ -257,6 +257,45 @@ public sealed partial class TaskRowsView : UserControl
         }
     }
 
+    /// <summary>
+    /// How much of this row's title to show, from the "Task titles" setting (DS19, task 3d5cca89).
+    /// </summary>
+    /// <remarks>
+    /// Per row rather than once on the list, because the ListView virtualises: a row scrolled into
+    /// view half an hour after the setting changed is realised here and nowhere else. The number
+    /// comes from the core — <c>MaxLines</c> is the shell's word for it and 0 is WinUI's "as many
+    /// as it needs", which is the same default the XAML already carries, so a row realised before
+    /// the setting has been read is right rather than briefly wrong.
+    /// </remarks>
+    private void OnRowContainerChanging(ListViewBase sender,
+        ContainerContentChangingEventArgs args)
+    {
+        if (args.InRecycleQueue
+            || args.ItemContainer?.ContentTemplateRoot is not FrameworkElement root
+            || root.FindName("RowTitle") is not TextBlock title)
+        {
+            return;
+        }
+        title.MaxLines = Shell?.Settings.Appearance.TitleMaxLines ?? 0;
+    }
+
+    /// <summary>
+    /// The setting changed, so the rows already on screen have to be re-measured — the handler
+    /// above only ever sees a row being realised, and the ones in view were realised already.
+    /// </summary>
+    internal void ApplyTitleDisplay()
+    {
+        var maxLines = Shell?.Settings.Appearance.TitleMaxLines ?? 0;
+        foreach (var item in TaskRows.Items)
+        {
+            if (TaskRows.ContainerFromItem(item) is ListViewItem { ContentTemplateRoot: FrameworkElement root }
+                && root.FindName("RowTitle") is TextBlock title)
+            {
+                title.MaxLines = maxLines;
+            }
+        }
+    }
+
     /// <summary>The ScrollViewer a ListView's template wraps its items in, if it has one yet.</summary>
     private static ScrollViewer? ScrollViewerInside(DependencyObject root)
     {

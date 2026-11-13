@@ -48,6 +48,23 @@ public sealed partial class AppearanceSection : UserControl
         SmartParsingHint.Text = Strings.Get("smart.parsing_hint");
         SubtasksBox.Header = Strings.Get("smart.subtasks");
         SubtasksHint.Text = Strings.Get("smart.subtasks_hint");
+        TitleDisplayBox.Header = Strings.Get("titles.setting");
+    }
+
+    /// <summary>
+    /// How much of a title a row shows (DS19, task 3d5cca89). The core remembers it for this
+    /// machine; the rows re-measure themselves off the change it raises.
+    /// </summary>
+    private async void OnTitleDisplayChosen(object sender, SelectionChangedEventArgs args)
+    {
+        if (SettingsLoading
+            || sender is not ComboBox box
+            || box.SelectedItem is not DefaultChoice { Value: { } display }
+            || display == Shell.Settings.Appearance.TitleDisplay)
+        {
+            return;
+        }
+        await Shell.Settings.Appearance.SetTitleDisplayAsync(display);
     }
 
     private async void OnSmartTaskChoiceChosen(object sender, SelectionChangedEventArgs args)

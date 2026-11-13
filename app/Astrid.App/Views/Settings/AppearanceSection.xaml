@@ -44,6 +44,19 @@
                     Click="OnApplyHotkey" />
         </StackPanel>
         <!--
+            How much of a title a row shows (DS19, task 3d5cca89).
+            Wrap by default - every client truncated before this,
+            and a title is the task. This machine's, like the
+            theme above it rather than like the layout below.
+        -->
+        <ComboBox x:Uid="title_display_box" x:Name="TitleDisplayBox"
+                  HorizontalAlignment="Stretch"
+                  AutomationProperties.Name="Task titles"
+                  ItemsSource="{x:Bind Shell.Settings.Appearance.TitleDisplayChoices, Mode=OneWay}"
+                  ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                  SelectedItem="{x:Bind Shell.Settings.Appearance.TitleDisplayChoice, Mode=OneWay}"
+                  SelectionChanged="OnTitleDisplayChosen" />
+        <!--
             The task-detail layout, where the web keeps it
             (task c0f3db19). An account setting, so it
             follows the person between devices; the theme

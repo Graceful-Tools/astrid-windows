@@ -365,6 +365,13 @@ public static class Commands
     /// <summary>Choose a look. Per installation, not per account.</summary>
     public static object SetTheme(string theme) => new ThemeRequest("setTheme", theme);
 
+    /// <summary>How much of a title a row shows, the ones it could, and the line count (DS19).</summary>
+    public static object TitleDisplay() => new KindOnly("titleDisplay");
+
+    /// <summary>Choose how much of a title a row shows. Per installation, like the look.</summary>
+    public static object SetTitleDisplay(string display) =>
+        new TitleDisplayRequest("setTitleDisplay", display);
+
     /// <summary>The My Tasks entry for the sidebar: the view the app opens on.</summary>
     public static object MyTasksList() => new KindOnly("myTasksList");
 
@@ -1219,6 +1226,10 @@ public static class Commands
     private sealed record ThemeRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("theme")] string Theme);
+
+    private sealed record TitleDisplayRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("display")] string Display);
 
     private sealed record PasteRequest(
         [property: JsonPropertyName("kind")] string Kind,
