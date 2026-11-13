@@ -116,6 +116,11 @@ function Get-WakeVerdict {
         WakeKeys = $keys
         ListId   = $listId
         Reason   = $reason
+        # What the preflight actually SAID, carried forward so the caller can read the run plan out
+        # of it (scripts/lib/fixall-longrun.ps1, task 0216d83c) rather than ask the board a second
+        # time. Two calls would be two answers that can disagree, and the second one costs a tick
+        # the thing this guard exists to save.
+        Output   = $output
     }
 }
 

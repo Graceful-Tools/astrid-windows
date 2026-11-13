@@ -88,6 +88,15 @@ param(
     # each of which is finished, gated and reported. Answering RECHECK/REVIEW does not count.
     [int]$MaxTasks = $(if ($env:FIXALL_MAX_TASKS) { [int]$env:FIXALL_MAX_TASKS } else { 1 }),
 
+    # A task flagged LONG-RUN in its description asks for up to eight hours, and a tick holds the
+    # working-tree lock the whole time - so an 8-hour run is sixteen ticks in which nothing else on
+    # this board moves. It therefore only STARTS overnight; outside the window the flagged ids are
+    # deferred and the rest of the queue is worked under the ordinary bounds. The decision is
+    # astrid-web's (scripts/lib/long-run.ts); these two are what this loop does with the answer.
+    # 22-6 and 50 are astrid-web's own defaults - eight hours of work costs more than one hour's.
+    [string]$LongRunWindow = $(if ($env:FIXALL_LONG_RUN_WINDOW) { $env:FIXALL_LONG_RUN_WINDOW } else { '22-6' }),
+    [string]$LongMaxUsd = $(if ($null -ne $env:FIXALL_LONG_MAX_USD) { $env:FIXALL_LONG_MAX_USD } else { '50' }),
+
     # How long a checkout must have been untouched before this tick treats its leftovers as a dead
     # run's and commits them. THIRTY, one whole tick interval: "quiet for longer than a tick" is the
     # rule, and a long model turn or a cargo build is minutes rather than thirty. The asymmetry picks
@@ -128,6 +137,9 @@ if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Forc
 # Why this tick woke, and how it acknowledges that afterwards without muting anything it never
 # looked at. Task 18ba8c2e; the library's header has the two-phase contract in full.
 . (Join-Path $PSScriptRoot 'lib\fixall-wake.ps1')
+# How long this tick may be and which task it may take, read out of the preflight above rather than
+# decided here. Task 0216d83c; the library's header says why the decision stays in astrid-web.
+. (Join-Path $PSScriptRoot 'lib\fixall-longrun.ps1')
 # Whether there is room to build at all. Task 4d9d42e6: the 2026-11-13 05:10 tick spent itself
 # reaching an `os error 112` with 31 MB free. The library's header has the incident and the marks.
 . (Join-Path $PSScriptRoot 'lib\fixall-disk.ps1')
@@ -561,9 +573,16 @@ try {
     if (-not $IgnoreQueue) {
         $wake = Get-WakeVerdict -ArtifactPath $WakeArtifact -Preflight {
             param($ArtifactPath)
+            # The same call also PLANS this tick's length (task 0216d83c). The plan is applied to
+            # the queue before the verdict is taken, so a queue holding nothing but a task deferred
+            # to its window reads as idle here - which is right: there is nothing this tick may
+            # take. Passing the bounds in force is what lets astrid-web tell "flagged" from
+            # "flagged for longer than we already allow".
             $out = Invoke-WebTool @('scripts/agent-queue-status.ts', '--agent', 'claude',
                 '--board', 'windows', '--include-unassigned', '--require-polling',
-                '--no-write-seen', '--output', $ArtifactPath)
+                '--no-write-seen', '--output', $ArtifactPath,
+                '--long-run-window', $LongRunWindow,
+                '--default-minutes', [string]$MaxMinutes, '--max-tasks', [string]$MaxTasks)
             return [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $out }
         }
         Say "  QUEUE: $($wake.Reason)"
@@ -580,6 +599,26 @@ try {
             Say "  WAKE: $(@($wake.WakeKeys).Count) key(s) journalled, to be acknowledged by this run's outcome"
         }
     }
+
+    # ── Size the run (task 0216d83c) ──────────────────────────────────────────────────────────
+    # 75 minutes and $10 fit one ordinary task. A task flagged LONG-RUN asks for up to eight hours,
+    # and the preflight above has already decided whether this tick may start it. Apply that answer:
+    # the watchdog and the cap for the task it chose, and the two ids /fixall needs - it takes
+    # NEXT_TASK first and never takes a deferred one, because a deferred long task picked up under a
+    # 75-minute watchdog is exactly the kill this exists to prevent.
+    #
+    # BEFORE the run, necessarily: a watchdog resized after Start-Process is inert, and inertness
+    # here looks precisely like a working fix. A missing or malformed plan leaves both bounds alone.
+    $plan = Get-RunPlan -PreflightOutput $(if ($wake) { $wake.Output } else { @() }) `
+        -DefaultMinutes $MaxMinutes -DefaultMaxUsd $MaxUsd -LongMaxUsd $LongMaxUsd
+    foreach ($note in $plan.Notes) { Say "  RUN: $note" }
+    if ($plan.MaxMinutes -ne $MaxMinutes) {
+        Say "  LONG-RUN: watchdog ${MaxMinutes}m -> $($plan.MaxMinutes)m, cap `$$MaxUsd -> `$$($plan.MaxUsd)"
+    }
+    $MaxMinutes = $plan.MaxMinutes
+    $MaxUsd = $plan.MaxUsd
+    $env:ASTRID_FIXALL_NEXT_TASK = $plan.NextTask
+    $env:ASTRID_FIXALL_DEFER_TASKS = $plan.DeferTasks
 
     # ── Can this machine CALL the board, and PUBLISH what it finishes? ────────────────────────
     # WARNS, never skips. A missing mcp__astrid__* grant leaves the run working - it falls back to

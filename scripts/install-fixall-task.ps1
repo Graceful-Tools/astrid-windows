@@ -55,6 +55,21 @@
     How long the loop is given, on top of its watchdog, to save unfinished work, release its Doing
     claims, acknowledge its wake keys and comment on the task before Task Scheduler stops it.
 
+.PARAMETER LongRunMinutes
+    The ceiling a tick may reach when it takes a task flagged LONG-RUN (task 0216d83c). The loop
+    sizes its OWN watchdog per tick, from the plan astrid-web's preflight returns, so by the time
+    anything knows this is an 8-hour run the scheduler's deadline is already fixed - which is why
+    the deadline has to be computed for the longest tick that is possible rather than the one that
+    is usual.
+
+    THE COST, stated plainly: the scheduler's deadline is also the backstop against the LOOP ITSELF
+    wedging, and that backstop now sits at the long-run ceiling for every tick, ordinary ones
+    included. It is the lesser harm. The loop's own watchdog still kills an ordinary wedged RUN at
+    75 minutes and recovers; what gets weaker is only the outer guard against the launcher hanging,
+    which has never happened. What this replaces is certain: an 85-minute kill of a tick that was
+    legitimately given eight hours, with no WIP commit, no Doing release and no comment. Set 0 to
+    opt out and keep the tight deadline - a long task is then simply never started here.
+
 .EXAMPLE
     powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-fixall-task.ps1
 
@@ -72,7 +87,15 @@ param(
     # minutes kills every real run, and one of hours lets a wedged tick swallow a whole evening of
     # them (MultipleInstances = IgnoreNew).
     [ValidateRange(10, 240)][int]$WatchdogMinutes = 75,
-    [ValidateRange(1, 60)][int]$RecoveryMinutes = 10
+    [ValidateRange(1, 60)][int]$RecoveryMinutes = 10,
+
+    # The CEILING a LONG-RUN tick may reach, which the deadline below must also allow for (task
+    # 0216d83c). The loop sizes its own watchdog from the preflight's plan at RUN TIME, so the
+    # scheduler cannot know on any given tick whether this is a 75-minute run or an 8-hour one -
+    # and a deadline set for the ordinary case kills the long one at 85 minutes, running NONE of
+    # the loop's recovery. 480 is astrid-web's LONG_RUN_MAX_MINUTES; 0 disables long runs entirely,
+    # which is what to set if this machine must never give a tick more than its watchdog.
+    [ValidateRange(0, 480)][int]$LongRunMinutes = 480
 )
 
 $ErrorActionPreference = 'Stop'
@@ -136,7 +159,7 @@ $settings = New-ScheduledTaskSettingsSet `
     -DontStopIfGoingOnBatteries `
     -StartWhenAvailable `
     -MultipleInstances IgnoreNew `
-    -ExecutionTimeLimit (New-TimeSpan -Minutes ($WatchdogMinutes + $RecoveryMinutes)) `
+    -ExecutionTimeLimit (New-TimeSpan -Minutes ([Math]::Max($WatchdogMinutes, $LongRunMinutes) + $RecoveryMinutes)) `
     -RestartCount 0
 
 $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" `
@@ -151,7 +174,8 @@ $info = Get-ScheduledTaskInfo -TaskName $TaskName
 Write-Host "Registered '$TaskName' for $env:USERNAME."
 Write-Host "  runs:     powershell -NoProfile -ExecutionPolicy Bypass -File $LoopScript -MaxMinutes $WatchdogMinutes"
 Write-Host "  schedule: :10 and :40, every hour"
-Write-Host "  watchdog: ${WatchdogMinutes}m, with the scheduler stopping it at $($WatchdogMinutes + $RecoveryMinutes)m (${RecoveryMinutes}m to recover)"
+Write-Host "  watchdog: ${WatchdogMinutes}m, with the scheduler stopping it at $([Math]::Max($WatchdogMinutes, $LongRunMinutes) + $RecoveryMinutes)m (${RecoveryMinutes}m to recover)"
+Write-Host "  long run: up to ${LongRunMinutes}m for a task flagged LONG-RUN, inside its window - the loop sizes each tick"
 Write-Host "  next run: $($info.NextRunTime)"
 Write-Host "  log:      $LogFile"
 Write-Host ''
