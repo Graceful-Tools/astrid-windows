@@ -93,6 +93,14 @@
     <Content Include="Assets\Astrid-*.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!--
+      And the .ico beside them. It is already compiled into the executable by <ApplicationIcon>
+      above, which is what Explorer and the taskbar read — but AppWindow.SetIcon, which is the only
+      thing that reaches the title bar and Alt-Tab, wants a file (task 28348df8).
+    -->
+    <Content Include="Assets\Astrid.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

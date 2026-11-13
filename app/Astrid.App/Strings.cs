@@ -383,6 +383,22 @@ internal static class Strings
         ["brand.agent_model_none"] = "Add an API key or register a custom agent below to power {0}.",
         ["brand.agent_model_auto"] = "Let {0} choose",
         ["brand.agent_model_hint"] = "Choose the model that powers {0} for My Tasks and your private lists.",
+        // The sign-in card's promise, composed from the brand's own methods (task 28348df8). The
+        // method names are lower case because they are read in the middle of a list; the first one
+        // in a given build is capitalised by AuthMethods.List, which is the only thing that knows
+        // which it is.
+        ["brand.sign_in_methods"] = "{0} all work there. You stay signed in here afterwards.",
+        ["auth.method_github"] = "GitHub",
+        ["auth.method_google"] = "Google",
+        ["auth.method_apple"] = "Apple",
+        ["auth.method_passkey"] = "passkeys",
+        ["auth.method_sso"] = "your organisation's single sign-on",
+        ["auth.method_magic_link"] = "magic links",
+        // How this language joins a list. Separate from the sentence so the sentence does not have
+        // to be rewritten per number of methods, and a resource rather than a literal because
+        // German joins with "und" and the next language may not use a comma at all.
+        ["list.separator"] = ", ",
+        ["list.conjunction"] = "{0} and {1}",
     };
 
     /// <summary>The fallback table, for the tests that check every key has a string.</summary>

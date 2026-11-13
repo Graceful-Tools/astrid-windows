@@ -49,6 +49,9 @@ public sealed class BrandProfileTests
         ("Wordmark", "astrid"),
         // The stem every file the build WRITES is named after, added by task 5bf1f1dc.
         ("FileStem", "Astrid"),
+        // The ways in, added by task 28348df8 — the two astrid.cc actually offers, which is what
+        // the sign-in card has always said.
+        ("AuthProviders", "passkey,google"),
     ];
 
     /// <summary>
@@ -487,6 +490,85 @@ public sealed class BrandProfileTests
         Assert.Equal("Acme", stem);
         Assert.Equal(-1, stem!.IndexOfAny(Path.GetInvalidFileNameChars()));
         Assert.DoesNotContain(" ", stem, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The window wears the icon this build carries, rather than the framework's default.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The executable's icon is branded — <c>&lt;ApplicationIcon&gt;</c> compiles it in, and
+    /// <c>make-icons.ps1 -OutDir</c> writes a partner's own to the path it is taken from — but a
+    /// WinUI window does not inherit it. Nothing called <c>AppWindow.SetIcon</c>, so the title
+    /// bar's corner and the Alt-Tab card showed the default square in every build, partner or not
+    /// (task 28348df8).
+    /// </para>
+    /// <para>
+    /// Two halves, because either alone is a window with no icon: the call, and the <c>.ico</c>
+    /// reaching the output folder, since <c>&lt;ApplicationIcon&gt;</c> embeds the file without
+    /// copying it and <c>SetIcon</c> wants a path. Read as source — a <c>Window</c> cannot be
+    /// built in a test host, and "the title bar's icon changed" is not a thing xUnit can see.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void The_window_wears_the_builds_own_icon_task_28348df8()
+    {
+        var app = File.ReadAllText(Path.Combine(RepoRoot(), "app", "Astrid.App", "App.xaml.cs"));
+        Assert.Contains("SetIcon(Brand.IconPath)", app, StringComparison.Ordinal);
+
+        var project = XDocument.Load(Path.Combine(RepoRoot(), "app", "Astrid.App", "Astrid.App.csproj"));
+        var icon = project.Descendants("ApplicationIcon").Single().Value;
+        var copied = project.Descendants("Content")
+            .Select(content => content.Attribute("Include")?.Value ?? string.Empty)
+            .Any(include => include.Equals(icon, StringComparison.OrdinalIgnoreCase));
+        Assert.True(copied,
+            $"<ApplicationIcon>{icon}</ApplicationIcon> is embedded in the executable but never "
+            + "copied beside it, so AppWindow.SetIcon has no file to load");
+
+        Assert.True(File.Exists(Path.Combine(RepoRoot(), "app", "Astrid.App", icon.Replace('\\', Path.DirectorySeparatorChar))),
+            $"the icon the window is given has moved: {icon}");
+    }
+
+    /// <summary>
+    /// The sign-in card offers the methods this brand has, in the brand's own order.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The card promised "Passkeys, Google and magic links" as a literal, so a partner whose
+    /// deployment signs people in with GitHub and single sign-on advertised two methods they do not
+    /// have and hid the two they do — and GitHub and SSO are reached only by listing them, so this
+    /// is the ordinary partner rather than an exotic one (task 28348df8).
+    /// </para>
+    /// <para>
+    /// The composition is asserted through <see cref="AuthMethods"/> rather than through the
+    /// window: the words are the translator's and arrive from <c>Resources.resw</c>, and what is
+    /// worth pinning is that today's sentence still comes out of today's methods — hosted Astrid
+    /// unchanged, which is this file's standing rule.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void The_sign_in_card_offers_the_brands_own_methods_task_28348df8()
+    {
+        Assert.Equal(["passkey", "google"], BrandDefaults.AuthProviders);
+        Assert.Equal("Passkeys, Google and magic links",
+            AuthMethods.List(["passkeys", "Google", "magic links"], ", ", "{0} and {1}"));
+
+        // A partner's list, in the partner's order, with the one they turned off left out.
+        var acme = LoadProfile(brand: "acme")["AuthProviders"];
+        Assert.Equal("sso,github,passkey", acme);
+        Assert.Equal(["sso", "github", "passkey"], AuthMethods.Parse(acme, ["passkey", "google"]));
+
+        // A typo costs the method, not the sentence; and a list of nothing but typos falls back
+        // rather than promising no way in at all.
+        Assert.Equal(["google"], AuthMethods.Parse("goolge, google, google", ["passkey"]));
+        Assert.Equal(["passkey"], AuthMethods.Parse("  ", ["passkey"]));
+
+        // Nothing in the window states the methods any more: the literal that was there is gone
+        // from the XAML and from both languages' resources.
+        var overlay = File.ReadAllText(
+            Path.Combine(RepoRoot(), "app", "Astrid.App", "Views", "SignInOverlay.xaml"));
+        Assert.Contains("BrandCopy.SignInMethods", overlay, StringComparison.Ordinal);
+        Assert.DoesNotContain("magic links", overlay, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>The profile <c>Get-AstridBrandProfile</c> returns, as a dictionary.</summary>

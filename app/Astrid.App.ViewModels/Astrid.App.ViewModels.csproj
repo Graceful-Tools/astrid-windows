@@ -49,6 +49,7 @@
     <AssemblyMetadata Include="AstridBrandInboundTaskEmail" Value="$(AstridBrandInboundTaskEmail)" />
     <AssemblyMetadata Include="AstridBrandAgentName" Value="$(AstridBrandAgentName)" />
     <AssemblyMetadata Include="AstridBrandWordmark" Value="$(AstridBrandWordmark)" />
+    <AssemblyMetadata Include="AstridBrandAuthProviders" Value="$(AstridBrandAuthProviders)" />
   </ItemGroup>
 
   <ItemGroup>

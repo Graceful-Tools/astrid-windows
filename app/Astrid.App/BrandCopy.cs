@@ -99,4 +99,37 @@ internal static class BrandCopy
     /// <summary>The line under the model list.</summary>
     public static string AgentModelHint { get; } =
         Strings.Get("brand.agent_model_hint", BrandDefaults.AgentName);
+
+    /// <summary>
+    /// What the sign-in card promises works in the browser (task 28348df8).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// "Passkeys, Google and magic links all work there" was a literal, so every partner build made
+    /// the same promise about methods its deployment may not have — and hid the ones it does, since
+    /// GitHub and single sign-on are reached only by listing them. The methods come from the brand
+    /// now, through <see cref="BrandDefaults.AuthProviders"/>.
+    /// </para>
+    /// <para>
+    /// Here rather than on the element, and for the usual reason: the list has to be composed
+    /// before it can be shown, and an <c>x:Uid</c> writes the resource straight onto the element
+    /// with nothing in between. The sentence, the separator, the conjunction and every method's
+    /// name are all resources — only the choosing and the joining happen here.
+    /// </para>
+    /// <para>
+    /// A magic link is always last and is never a provider: astrid-web offers no switch for it, and
+    /// it is the method a deployment falls back to when the rest are unavailable.
+    /// </para>
+    /// </remarks>
+    public static string SignInMethods { get; } = BuildSignInMethods();
+
+    private static string BuildSignInMethods()
+    {
+        var names = BrandDefaults.AuthProviders
+            .Select(provider => Strings.Get($"auth.method_{provider}"))
+            .Append(Strings.Get("auth.method_magic_link"))
+            .ToList();
+        var list = AuthMethods.List(names, Strings.Get("list.separator"), Strings.Get("list.conjunction"));
+        return Strings.Get("brand.sign_in_methods", list);
+    }
 }
