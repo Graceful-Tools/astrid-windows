@@ -49,7 +49,7 @@ public sealed partial class DataSection : UserControl
         }
         var picker = new Windows.Storage.Pickers.FileSavePicker
         {
-            SuggestedFileName = $"astrid-export-{DateTime.Now:yyyy-MM-dd}",
+            SuggestedFileName = $"{BrandCopy.ExportFileStem}-{DateTime.Now:yyyy-MM-dd}",
         };
         picker.FileTypeChoices.Add(
             format == "csv" ? "Comma-separated values" : "JSON",

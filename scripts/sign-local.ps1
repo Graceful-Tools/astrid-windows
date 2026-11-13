@@ -67,6 +67,9 @@ param(
     [string[]]$Architectures = @('x64', 'arm64'),
     [ValidateSet('CurrentUser', 'LocalMachine')]
     [string]$TrustScope = 'CurrentUser',
+    # The same -Brand package.ps1 took, because the packages this signs are named after it
+    # (task 5bf1f1dc). Empty means hosted Astrid, and finds the same Astrid-<version> files as before.
+    [string]$Brand = '',
     [switch]$Install,
     [switch]$Launch,
     [switch]$Uninstall,
@@ -76,6 +79,12 @@ param(
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
+
+# The stem package.ps1 wrote its outputs under. Resolved through the same loader rather than taken
+# as a string, so there is one answer to "what is this build's package called" and signing cannot
+# look for a name the packager never wrote.
+. (Join-Path $PSScriptRoot 'lib\brand-profile.ps1')
+$fileStem = (Get-AstridBrandProfile -Brand $Brand -RepoRoot $repoRoot).FileStem
 
 # Runs signtool and makeappx below so that a failure prints the tool's own diagnosis - and holds
 # the reason it is not done inline: under the Stop above, a redirected native stderr is a
@@ -232,7 +241,7 @@ $bundleInput = Join-Path $signedDir 'bundle'
 New-Item -ItemType Directory -Force -Path $bundleInput | Out-Null
 
 foreach ($architecture in $Architectures) {
-    $source = Join-Path $dist "Astrid-$Version-$architecture.msix"
+    $source = Join-Path $dist "$fileStem-$Version-$architecture.msix"
     if (-not (Test-Path $source)) { throw "Missing $source. Run scripts/package.ps1 -Version $Version first." }
     $signed = Join-Path $bundleInput (Split-Path $source -Leaf)
     Copy-Item $source $signed
@@ -242,7 +251,7 @@ foreach ($architecture in $Architectures) {
     Write-Host "[+] signed $signed" -ForegroundColor Green
 }
 
-$bundle = Join-Path $signedDir "Astrid-$Version.msixbundle"
+$bundle = Join-Path $signedDir "$fileStem-$Version.msixbundle"
 Invoke-BuildTool 'makeappx bundle failed' {
     & $makeappx bundle /d $bundleInput /p $bundle /o
 }

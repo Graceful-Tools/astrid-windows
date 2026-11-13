@@ -183,7 +183,7 @@ foreach ($architecture in $Architectures) {
             ($missing -join "`n  ")
     }
 
-    $package = Join-Path $dist "Astrid-$Version-$architecture.msix"
+    $package = Join-Path $dist "$($brandProfile.FileStem)-$Version-$architecture.msix"
     Remove-Item -Force $package -ErrorAction SilentlyContinue
     Invoke-BuildTool "makeappx pack failed for $architecture" {
         & $makeappx.FullName pack /d $publish /p $package /o
@@ -200,7 +200,7 @@ if ($packages.Count -gt 1) {
     New-Item -ItemType Directory -Force -Path $bundleInput | Out-Null
     foreach ($package in $packages) { Copy-Item $package $bundleInput }
 
-    $bundle = Join-Path $dist "Astrid-$Version.msixbundle"
+    $bundle = Join-Path $dist "$($brandProfile.FileStem)-$Version.msixbundle"
     Remove-Item -Force $bundle -ErrorAction SilentlyContinue
     Invoke-BuildTool 'makeappx bundle failed' {
         & $makeappx.FullName bundle /d $bundleInput /p $bundle /o
@@ -211,7 +211,7 @@ if ($packages.Count -gt 1) {
     # What Partner Center takes: a ZIP of the bundle, named .msixupload. A bare .msixbundle
     # uploads too, but the container is the documented shape and is where a symbol bundle goes
     # when there is one to ship.
-    $upload = Join-Path $dist "Astrid-$Version.msixupload"
+    $upload = Join-Path $dist "$($brandProfile.FileStem)-$Version.msixupload"
     # Compressed as .zip and renamed: Compress-Archive refuses any other extension, and the
     # container is a plain zip whatever it is called.
     $uploadZip = "$upload.zip"

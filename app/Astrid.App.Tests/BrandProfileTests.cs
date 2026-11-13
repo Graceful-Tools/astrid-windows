@@ -47,6 +47,8 @@ public sealed class BrandProfileTests
         ("InboundTaskEmail", "remindme@astrid.cc"),
         ("AgentName", "Astrid"),
         ("Wordmark", "astrid"),
+        // The stem every file the build WRITES is named after, added by task 5bf1f1dc.
+        ("FileStem", "Astrid"),
     ];
 
     /// <summary>
@@ -373,6 +375,118 @@ public sealed class BrandProfileTests
 
             Assert.True(errors.Trim().Length == 0, $"scripts/{script} does not parse:\n{errors}");
         }
+    }
+
+    /// <summary>
+    /// The icon generator writes its whole set under an output root it is given.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The step that blocked every other partner step: <c>make-icons.ps1</c> wrote only into this
+    /// repo's own three folders, so a partner's assets directory stayed empty — and the brand
+    /// loader throws on an assets directory that does not exist, which is <c>-Brand acme</c>
+    /// failing before it builds anything. A partner could not generate the tiles without editing
+    /// the script.
+    /// </para>
+    /// <para>
+    /// Run, not read. "It writes the files somewhere else now" is exactly the claim a source scan
+    /// cannot make, and the three output folders are reached through two different variables. Run
+    /// against a tile already in the repo rather than the 4096px master in the sibling astrid-web
+    /// checkout, which CI does not have: the generator does not care what size the master is, and
+    /// a 150px one keeps the test at a second or two.
+    /// </para>
+    /// <para>
+    /// Also asserts the repo's own assets are untouched. An <c>-OutDir</c> that generated into both
+    /// places would pass every "the partner's folder is populated" assertion while rewriting the
+    /// tiles under version control on every partner build.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void Make_icons_writes_its_whole_set_under_the_output_root_task_5bf1f1dc()
+    {
+        var master = Path.Combine(RepoRoot(), "packaging", "Assets", "Square150x150Logo.png");
+        Assert.True(File.Exists(master), $"the master this test resamples has moved: {master}");
+
+        var repoTiles = Path.Combine(RepoRoot(), "packaging", "Assets");
+        var before = new DirectoryInfo(repoTiles).GetFiles()
+            .ToDictionary(file => file.Name, file => file.LastWriteTimeUtc, StringComparer.Ordinal);
+
+        var outDir = Path.Combine(Path.GetTempPath(), $"astrid-icons-{Guid.NewGuid():N}");
+        try
+        {
+            var script = Path.Combine(RepoRoot(), "scripts", "make-icons.ps1").Replace("'", "''");
+            PowerShell($"& '{script}' -Master '{master.Replace("'", "''")}' " +
+                $"-OutDir '{outDir.Replace("'", "''")}'");
+
+            // One file from each of the three outputs, which are reached through separate paths.
+            Assert.True(File.Exists(Path.Combine(outDir, "packaging", "Assets", "Square150x150Logo.png")),
+                "the package tiles did not reach the output root");
+            Assert.True(File.Exists(Path.Combine(outDir, "packaging", "Assets", "SplashScreen.png")),
+                "the splash screen did not reach the output root");
+            Assert.True(File.Exists(Path.Combine(outDir, "app", "Astrid.App", "Assets", "Astrid.ico")),
+                "the executable's icon did not reach the output root");
+            Assert.NotEmpty(Directory.GetFiles(Path.Combine(outDir, "packaging", "listing"), "store-logo-*.png"));
+
+            var rewritten = new DirectoryInfo(repoTiles).GetFiles()
+                .Where(file => !before.TryGetValue(file.Name, out var written)
+                    || written != file.LastWriteTimeUtc)
+                .Select(file => file.Name)
+                .ToList();
+            Assert.True(rewritten.Count == 0,
+                "-OutDir still rewrote the repo's own assets:\n  " + string.Join("\n  ", rewritten));
+        }
+        finally
+        {
+            if (Directory.Exists(outDir)) Directory.Delete(outDir, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// The files the build writes are named after the brand, not after Astrid.
+    /// </summary>
+    /// <remarks>
+    /// A partner's upload arrived at Partner Center as <c>Astrid-1.2.3.msixupload</c> and their
+    /// users' exports as <c>astrid-export-2026-11-12.json</c> — the one brand value that survived
+    /// the manifest work, because it is in a file name rather than in the manifest. The stem is
+    /// resolved once in the loader so the sanitising has a single tested home, and the app reads
+    /// its own from the build properties it already gets.
+    /// </remarks>
+    [Fact]
+    public void The_files_the_build_writes_are_named_after_the_brand_task_5bf1f1dc()
+    {
+        var packager = File.ReadAllText(Path.Combine(RepoRoot(), "scripts", "package.ps1"));
+        Assert.Contains("$brandProfile.FileStem", packager, StringComparison.Ordinal);
+
+        // The three dist names. Matched on the literal stem rather than on "Astrid" anywhere, so
+        // the comments that explain what a .msixupload is are left alone.
+        var literals = Regex.Matches(packager, @"""Astrid-\$Version[^""]*""")
+            .Select(match => match.Value)
+            .ToList();
+        Assert.True(literals.Count == 0,
+            "package.ps1 still names its output after Astrid:\n  " + string.Join("\n  ", literals));
+
+        var dataSection = File.ReadAllText(
+            Path.Combine(RepoRoot(), "app", "Astrid.App", "Views", "Settings", "DataSection.xaml.cs"));
+        Assert.DoesNotContain("astrid-export-", dataSection, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// A partner's stem is theirs, and is usable as a file name.
+    /// </summary>
+    /// <remarks>
+    /// The default is asserted with the rest of <see cref="AstridDefaults"/> — hosted Astrid still
+    /// writes <c>Astrid-&lt;version&gt;-arm64.msix</c>. What is asserted here is the half that
+    /// cannot be: that a brand name with a space in it, which <c>DisplayName</c> is free to have,
+    /// does not reach a path as one.
+    /// </remarks>
+    [Fact]
+    public void A_partner_file_stem_is_theirs_and_is_a_usable_file_name_task_5bf1f1dc()
+    {
+        var stem = LoadProfile(brand: "acme")["FileStem"];
+
+        Assert.Equal("Acme", stem);
+        Assert.Equal(-1, stem!.IndexOfAny(Path.GetInvalidFileNameChars()));
+        Assert.DoesNotContain(" ", stem, StringComparison.Ordinal);
     }
 
     /// <summary>The profile <c>Get-AstridBrandProfile</c> returns, as a dictionary.</summary>
