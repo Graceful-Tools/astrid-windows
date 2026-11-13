@@ -1615,4 +1615,103 @@ public sealed class ShellViewModelTests
 
         Assert.Equal(before, core.Sent.Count);
     }
+
+    /// <summary>
+    /// A burst of notifications costs one refresh, not one each (task 303f20c2).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The stream can deliver dozens of notifications in a moment — a bulk edit, or a colleague
+    /// working down a list — and every one of them used to run a full <c>rowsForList</c>, plus the
+    /// board and the Outbox badge. Fifty changes meant fifty reloads of the same rows, so the
+    /// window got slower the more there was to hear about.
+    /// </para>
+    /// <para>
+    /// This one cannot use <see cref="RunInline"/>. Running posted work the instant it is posted
+    /// means each notification has finished redrawing before the next arrives, so nothing could
+    /// ever coalesce and the test would be asserting the stand-in rather than the shell. A real
+    /// <c>DispatcherQueue.TryEnqueue</c> returns at once and runs the work on a later turn, which
+    /// is what <see cref="QueueingPost"/> stands in for.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task A_burst_of_notifications_refreshes_the_list_once()
+    {
+        var core = StartedCore(("l1", "Home", false));
+        var post = new QueueingPost();
+        using var shell = new ShellViewModel(core, post.Post);
+        await shell.StartAsync();
+        post.Tick();
+        // Scripted generously: the point of the test is how many are asked for, and an
+        // unscripted answer would let a regression read as a refusal rather than as a count.
+        for (var i = 0; i < 60; i++)
+        {
+            core.AnswerOk("rowsForList", EmptyWindow())
+                .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        }
+        var before = core.SentKinds().Count(kind => kind == "rowsForList");
+
+        for (var i = 0; i < 50; i++)
+        {
+            core.Notify("task", $"t{i}");
+        }
+        post.Tick();
+
+        Assert.InRange(core.SentKinds().Count(kind => kind == "rowsForList") - before, 1, 2);
+    }
+
+    /// <summary>
+    /// Coalescing a burst does not lose what the burst said: the open task is still reloaded when
+    /// one of the changes named it, and only once (task 303f20c2).
+    /// </summary>
+    [Fact]
+    public async Task A_burst_reloads_the_open_task_once_when_a_change_named_it()
+    {
+        var core = StartedCore(("l1", "Home", false))
+            .AnswerOk("taskDetail", TaskDetail("t1"));
+        var post = new QueueingPost();
+        using var shell = new ShellViewModel(core, post.Post);
+        await shell.StartAsync();
+        await shell.OpenTaskAsync("t1");
+        post.Tick();
+        for (var i = 0; i < 60; i++)
+        {
+            core.AnswerOk("rowsForList", EmptyWindow())
+                .AnswerOk("taskDetail", TaskDetail("t1"))
+                .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        }
+        var before = core.SentKinds().Count(kind => kind == "taskDetail");
+
+        for (var i = 0; i < 50; i++)
+        {
+            core.Notify("task", i == 7 ? "t1" : $"other{i}");
+        }
+        post.Tick();
+
+        Assert.Equal(before + 1, core.SentKinds().Count(kind => kind == "taskDetail"));
+    }
+
+    /// <summary>
+    /// A post that queues work for a later turn, as a real dispatcher does (task 303f20c2).
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Tick"/> runs only the work queued when it was called, not whatever that work
+    /// queues in turn — so a test can tell "coalesced into one turn" from "drained in a loop".
+    /// </remarks>
+    private sealed class QueueingPost
+    {
+        private readonly List<Func<Task>> _queued = [];
+
+        public void Post(Func<Task> work) => _queued.Add(work);
+
+        public void Tick()
+        {
+            var turn = _queued.ToArray();
+            _queued.Clear();
+            foreach (var work in turn)
+            {
+                work().GetAwaiter().GetResult();
+            }
+        }
+    }
 }
