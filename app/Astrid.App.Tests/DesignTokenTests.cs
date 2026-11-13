@@ -317,7 +317,7 @@ public sealed class DesignTokenTests
     }
 
     /// <summary>The shared checkbox art, vendored beside the tokens at the same revision.</summary>
-    private static string CheckboxArtPath() =>
+    internal static string CheckboxArtPath() =>
         Path.Combine(RepoRoot(), "design", "AstridCheckbox.xaml");
 
     /// <summary>
