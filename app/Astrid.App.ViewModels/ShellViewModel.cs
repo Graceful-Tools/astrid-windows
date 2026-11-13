@@ -1382,12 +1382,60 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// Something changed underneath us. Refresh exactly that.
+    /// What a run of notifications has left to redraw (task 303f20c2).
     /// </summary>
     /// <remarks>
-    /// Not everything. The live stream can deliver several notifications a second while a
-    /// colleague works in the same list, and a full reload on each would make the app slower the
-    /// more people are using it.
+    /// One bit per piece of the window rather than a queue of notifications: fifty changes to the
+    /// same list are one <c>rowsForList</c>, and the only thing worth remembering about them is
+    /// that the rows are stale.
+    /// </remarks>
+    [Flags]
+    private enum Pending
+    {
+        None = 0,
+        Sidebar = 1 << 0,
+        Tasks = 1 << 1,
+        Board = 1 << 2,
+        Detail = 1 << 3,
+        Chat = 1 << 4,
+        Notifications = 1 << 5,
+        Outbox = 1 << 6,
+        Reminders = 1 << 7,
+        Sync = 1 << 8,
+        /// <summary>The live stream changed edge, so <see cref="ShowsLiveUpdatesDown"/> has moved.</summary>
+        StreamEdge = 1 << 9,
+
+        /// <summary>
+        /// Everything on screen, for a change that brought work in without saying — or without
+        /// being able to say — exactly what moved.
+        /// </summary>
+        CatchUp = Sidebar | Tasks | Board | Detail | Outbox,
+    }
+
+    /// <summary>
+    /// Guards <see cref="_pending"/> and <see cref="_drainScheduled"/>: notifications arrive on
+    /// whichever thread the core answers on, and the drain runs on the UI thread.
+    /// </summary>
+    private readonly object _pendingGate = new();
+    private Pending _pending;
+    private bool _drainScheduled;
+
+    /// <summary>
+    /// Something changed underneath us. Note what that makes stale, and redraw it once.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Not everything, and not once per notification. The live stream can deliver several a second
+    /// while a colleague works in the same list, and this used to run a full refresh for each — so
+    /// a fifty-task bulk edit cost fifty reloads of the same rows and the window got slower the
+    /// more there was to hear about (task 303f20c2).
+    /// </para>
+    /// <para>
+    /// So each notification only marks bits dirty, and one drain is posted for the run of them.
+    /// The part that depends on which task a change named is decided here, on arrival, while the
+    /// notification is still in hand; what depends on what is on screen stays in the drain, which
+    /// runs on the UI thread.
+    /// </para>
     /// </remarks>
     private void OnChanged(ChangeNotification notification)
     {
@@ -1396,105 +1444,151 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             return;
         }
 
-        _post(async () =>
+        bool schedule;
+        lock (_pendingGate)
         {
-            switch (notification.Change)
+            var wanted = WantedBy(notification);
+            if (wanted == Pending.None)
             {
-                case "task":
-                    await Tasks.RefreshAsync();
-                    if (IsBoardView)
-                    {
-                        await Board.RefreshAsync();
-                    }
-                    // Only when it is the task on screen. Reloading the detail pane for every
-                    // task somebody else touches would make the open task flicker while a
-                    // colleague works elsewhere in the same list.
-                    if (Detail.IsOpen && (notification.Id is null || notification.Id == Detail.TaskId))
-                    {
-                        await Detail.ReloadAsync();
-                    }
-                    await RefreshOutboxAsync();
-                    break;
-                case "comments":
-                    if (Detail.IsOpen && notification.Id == Detail.TaskId)
-                    {
-                        await Detail.ReloadAsync();
-                    }
-                    break;
-                case "list":
-                    await Sidebar.LoadAsync();
-                    break;
-                case "chat":
-                    if (IsChatOpen)
-                    {
-                        await Chat.RefreshAsync();
-                    }
-                    break;
-                case "remindersDue":
-                    await RaiseRemindersAsync();
-                    break;
-                case "needsSync":
-                    await SyncAsync();
-                    break;
-                case "notifications":
-                    // The timer's pass found the inbox moved and cached it; draw what it cached.
-                    await Notifications.LoadAsync();
-                    break;
-                case "synced":
-                    // A pass nobody asked for brought something in. The same refresh a sync
-                    // asked for here does afterwards — the cache moved, so the screen has to.
-                    await CatchUpAsync(notification);
-                    break;
-                case "delivered":
-                    // The Outbox settled some writes (AITD-454). It used to say so as a `synced`
-                    // naming nothing; now it names what it wrote and carries the journal's
-                    // counts. This shell ignores the counts and re-reads them, because the badge
-                    // is drawn from `outboxStats` everywhere else and two sources for one number
-                    // is how they come to disagree.
-                    await CatchUpAsync(notification);
-                    await RefreshOutboxAsync();
-                    break;
-                case "stream" when notification.Live is { } live:
-                    // The live stream went up or down, said once per edge (task ef92df55).
-                    _isStreamDown = !live;
-                    Raise(nameof(ShowsLiveUpdatesDown));
-                    if (live)
-                    {
-                        // Nothing missed while the stream was down is replayed — the core leaves
-                        // that to the next sync pass, and its sixty-second timer is a floor for
-                        // the screen, not a promise. So catch up now rather than up to a minute
-                        // late. The change names nothing, which is "could not say": everything
-                        // open is refreshed.
-                        await CatchUpAsync(notification);
-                    }
-                    break;
-                default:
-                    // A change this build does not draw anything for. The next sync carries it.
-                    break;
+                // A change this build does not draw anything for. The next sync carries it.
+                return;
             }
-        });
+            _pending |= wanted;
+            // Only one drain in flight: the rest of the run joins the one already posted.
+            schedule = !_drainScheduled;
+            _drainScheduled = true;
+        }
+
+        if (schedule)
+        {
+            _post(DrainAsync);
+        }
+    }
+
+    /// <summary>What one notification makes stale.</summary>
+    /// <remarks>
+    /// Called under <see cref="_pendingGate"/>. <c>stream</c> records the edge itself, because the
+    /// flag is the notification's whole content; saying so is <see cref="Pending.StreamEdge"/>'s
+    /// job, on the UI thread.
+    /// </remarks>
+    private Pending WantedBy(ChangeNotification notification)
+    {
+        switch (notification.Change)
+        {
+            case "task":
+                // The detail pane only when it is the task on screen. Reloading it for every task
+                // somebody else touches would make the open task flicker while a colleague works
+                // elsewhere in the same list.
+                return Pending.Tasks | Pending.Board | Pending.Outbox
+                    | (notification.Touches(Detail.TaskId) ? Pending.Detail : Pending.None);
+            case "comments":
+                // Stricter than `task` on purpose: a comment change that names no task says
+                // nothing about the one that is open.
+                return notification.Id == Detail.TaskId ? Pending.Detail : Pending.None;
+            case "list":
+                return Pending.Sidebar;
+            case "chat":
+                return Pending.Chat;
+            case "remindersDue":
+                return Pending.Reminders;
+            case "needsSync":
+                return Pending.Sync;
+            case "notifications":
+                // The timer's pass found the inbox moved and cached it; draw what it cached.
+                return Pending.Notifications;
+            case "synced":
+                // A pass nobody asked for brought something in. The same refresh a sync asked for
+                // here does afterwards — the cache moved, so the screen has to.
+                return Pending.CatchUp & DetailUnless(notification);
+            case "delivered":
+                // The Outbox settled some writes (AITD-454). It used to say so as a `synced`
+                // naming nothing; now it names what it wrote and carries the journal's counts.
+                // This shell ignores the counts and re-reads them, because the badge is drawn from
+                // `outboxStats` everywhere else and two sources for one number is how they come to
+                // disagree.
+                return (Pending.CatchUp & DetailUnless(notification)) | Pending.Outbox;
+            case "stream" when notification.Live is { } live:
+                // The live stream went up or down, said once per edge (task ef92df55).
+                _isStreamDown = !live;
+                // Nothing missed while the stream was down is replayed — the core leaves that to
+                // the next sync pass, and its sixty-second timer is a floor for the screen, not a
+                // promise. So catch up now rather than up to a minute late. The change names
+                // nothing, which is "could not say": everything open is refreshed.
+                return Pending.StreamEdge | (live ? Pending.CatchUp : Pending.None);
+            default:
+                return Pending.None;
+        }
     }
 
     /// <summary>
-    /// Redraw everything on screen from the cache, for a change that brought work in without
-    /// saying — or without being able to say — exactly what moved.
+    /// <see cref="Pending.CatchUp"/> without <see cref="Pending.Detail"/> when this change does not
+    /// touch the open task — as a mask, so it can be anded into the set.
+    /// </summary>
+    private Pending DetailUnless(ChangeNotification notification) =>
+        notification.Touches(Detail.TaskId) ? ~Pending.None : ~Pending.Detail;
+
+    /// <summary>
+    /// Redraw whatever the run of notifications marked stale, once.
     /// </summary>
     /// <remarks>
-    /// Shared by <c>synced</c> and by the stream coming back up. Both mean the same thing to the
-    /// window: the cache is ahead of what is drawn, and nothing here names which rows.
+    /// The set and the scheduled flag are taken and cleared first, so a notification that arrives
+    /// while this is awaiting the core posts the next drain rather than being swallowed by this
+    /// one. That is why a burst costs at most two refreshes and never one too few.
     /// </remarks>
-    private async Task CatchUpAsync(ChangeNotification notification)
+    private async Task DrainAsync()
     {
-        await Sidebar.LoadAsync();
-        await Tasks.RefreshAsync();
-        if (IsBoardView)
+        Pending pending;
+        lock (_pendingGate)
+        {
+            pending = _pending;
+            _pending = Pending.None;
+            _drainScheduled = false;
+        }
+
+        if (_disposed || pending == Pending.None)
+        {
+            return;
+        }
+
+        if (pending.HasFlag(Pending.StreamEdge))
+        {
+            Raise(nameof(ShowsLiveUpdatesDown));
+        }
+        if (pending.HasFlag(Pending.Sidebar))
+        {
+            await Sidebar.LoadAsync();
+        }
+        if (pending.HasFlag(Pending.Tasks))
+        {
+            await Tasks.RefreshAsync();
+        }
+        if (pending.HasFlag(Pending.Board) && IsBoardView)
         {
             await Board.RefreshAsync();
         }
-        if (Detail.IsOpen && notification.Touches(Detail.TaskId))
+        if (pending.HasFlag(Pending.Detail) && Detail.IsOpen)
         {
             await Detail.ReloadAsync();
         }
-        await RefreshOutboxAsync();
+        if (pending.HasFlag(Pending.Chat) && IsChatOpen)
+        {
+            await Chat.RefreshAsync();
+        }
+        if (pending.HasFlag(Pending.Notifications))
+        {
+            await Notifications.LoadAsync();
+        }
+        if (pending.HasFlag(Pending.Outbox))
+        {
+            await RefreshOutboxAsync();
+        }
+        if (pending.HasFlag(Pending.Reminders))
+        {
+            await RaiseRemindersAsync();
+        }
+        if (pending.HasFlag(Pending.Sync))
+        {
+            await SyncAsync();
+        }
     }
 }
