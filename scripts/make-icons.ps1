@@ -28,14 +28,29 @@
     directory entry per size, and the PNG bytes — PNG-compressed entries are what every Windows
     since Vista reads, and they keep a 256px icon from being 256 KB of bitmap.
 
+    A PARTNER GENERATES INTO THEIR OWN FOLDER with -OutDir, which is what makes a branded package
+    possible without editing anything tracked (board task 5bf1f1dc). The three outputs keep the
+    same relative paths under it, so the result is a mirror of this repo's own layout and a brand
+    profile's `windows.assets` can simply name `<out>/packaging/Assets`. Before this the script
+    wrote only into the repo, so a partner's assets directory stayed empty - and the brand loader
+    throws on an assets directory that does not exist, so `package.ps1 -Brand acme` failed before
+    it built anything.
+
 .EXAMPLE
     powershell -File scripts/make-icons.ps1
+
+.EXAMPLE
+    powershell -File scripts/make-icons.ps1 -Master acme.png -OutDir C:\brands\acme
 #>
 [CmdletBinding()]
 param(
     # Where the shared artwork lives. A sibling checkout by default, because that is how the three
     # repositories sit on a machine that works on more than one of them.
-    [string]$Master
+    [string]$Master,
+
+    # The root to write under, mirroring this repo's layout. Defaults to the repo itself, which is
+    # how Astrid's own assets are regenerated.
+    [string]$OutDir
 )
 
 $ErrorActionPreference = 'Stop'
@@ -53,10 +68,22 @@ if (-not (Test-Path $Master)) {
     Write-Error "Master icon not found at $Master — pass -Master with the path to icon-4096x4096.png"
 }
 
-$repo = Resolve-Path "$PSScriptRoot\.."
-$packageAssets = Join-Path $repo 'packaging\Assets'
-$appAssets = Join-Path $repo 'app\Astrid.App\Assets'
-$listing = Join-Path $repo 'packaging\listing'
+# The root every output hangs off. A partner's -OutDir is folded to an absolute path and created
+# if it is new - it is a folder that by definition does not exist yet the first time - while the
+# default resolves this checkout, so Astrid's own regeneration is unchanged.
+if ($OutDir) {
+    $root = [System.IO.Path]::GetFullPath(
+        [System.IO.Path]::Combine((Get-Location).ProviderPath, $OutDir))
+    New-Item -ItemType Directory -Force $root | Out-Null
+    Write-Host "out: $root" -ForegroundColor Cyan
+}
+else {
+    $root = (Resolve-Path "$PSScriptRoot\..").Path
+}
+
+$packageAssets = Join-Path $root 'packaging\Assets'
+$appAssets = Join-Path $root 'app\Astrid.App\Assets'
+$listing = Join-Path $root 'packaging\listing'
 New-Item -ItemType Directory -Force $packageAssets | Out-Null
 New-Item -ItemType Directory -Force $appAssets | Out-Null
 New-Item -ItemType Directory -Force $listing | Out-Null
@@ -151,7 +178,7 @@ foreach ($name in $squares.Keys | Sort-Object) {
 Save-Png -Bitmap (New-WideTile -Width 310 -Height 150) -Path (Join-Path $packageAssets 'Wide310x150Logo.png')
 Save-Png -Bitmap (New-WideTile -Width 620 -Height 300) -Path (Join-Path $packageAssets 'Wide310x150Logo.scale-200.png')
 Save-Png -Bitmap (New-WideTile -Width 620 -Height 300) -Path (Join-Path $packageAssets 'SplashScreen.png')
-Write-Host "wrote $($squares.Count + 3) package assets to packaging\Assets" -ForegroundColor Green
+Write-Host "wrote $($squares.Count + 3) package assets to $packageAssets" -ForegroundColor Green
 
 # ── The mark inside the window ──────────────────────────────────────────────────────────────
 #
@@ -160,7 +187,7 @@ Write-Host "wrote $($squares.Count + 3) package assets to packaging\Assets" -For
 # everything else, so the octopus in the window is the octopus on the taskbar.
 Save-Png -Bitmap (Resize-Square -Side 512) -Path (Join-Path $appAssets 'Astrid-512.png')
 Save-Png -Bitmap (Resize-Square -Side 96) -Path (Join-Path $appAssets 'Astrid-96.png')
-Write-Host "wrote Astrid-512.png and Astrid-96.png to app\Astrid.App\Assets" -ForegroundColor Green
+Write-Host "wrote Astrid-512.png and Astrid-96.png to $appAssets" -ForegroundColor Green
 
 # ── The Store listing's logo ─────────────────────────────────────────────────
 #
@@ -170,7 +197,7 @@ Write-Host "wrote Astrid-512.png and Astrid-96.png to app\Astrid.App\Assets" -Fo
 # Store listing page — so it lives beside the listing copy rather than in packaging\Assets.
 $logoSide = [Math]::Min($source.Width, $source.Height)
 Save-Png -Bitmap (Resize-Square -Side $logoSide) -Path (Join-Path $listing "store-logo-$logoSide.png")
-Write-Host "wrote store-logo-$logoSide.png to packaging\listing" -ForegroundColor Green
+Write-Host "wrote store-logo-$logoSide.png to $listing" -ForegroundColor Green
 
 # ── The executable's icon ───────────────────────────────────────────────────────────────────
 $icoSizes = @(16, 24, 32, 48, 64, 128, 256)

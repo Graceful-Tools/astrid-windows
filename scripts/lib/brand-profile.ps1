@@ -82,6 +82,13 @@ function Get-AstridBrandProfile {
         AssetsDirectory      = (Join-Path $RepoRoot 'packaging/Assets')
         IdentityName         = $null
         IdentityPublisher    = $null
+        # The stem of every file the build WRITES - the .msix, the .msixbundle, the .msixupload.
+        # Derived from ShortName below rather than set here, so a profile that moves the short name
+        # moves the file names with it and there is nothing extra for a partner to fill in. The one
+        # brand value that outlived the manifest work, because it lives in a path rather than in the
+        # manifest: a partner's upload reached Partner Center called Astrid-1.2.3.msixupload
+        # (task 5bf1f1dc).
+        FileStem             = 'Astrid'
     }
 
     if ([string]::IsNullOrWhiteSpace($Brand)) {
@@ -158,8 +165,31 @@ function Get-AstridBrandProfile {
             (Join-Path (Split-Path -Parent $file) $assets))
     }
 
+    # Last, so it follows whichever of the three places above settled ShortName.
+    $values.FileStem = Get-AstridBrandFileStem $values.ShortName
+
     Assert-AstridBrandProfile $values $file
     return [pscustomobject]$values
+}
+
+<#
+    A short name reduced to something that can be a file name.
+
+    DisplayName and ShortName are prose - "Acme Tasks", and nothing stops a partner using a comma
+    or a colon - while this ends up in a path that makeappx writes and Partner Center reads. So
+    letters, digits, hyphens and underscores survive; a space becomes a hyphen, because dropping it
+    would run two words together; everything else goes. Astrid's own 'Astrid' is unchanged, which is
+    the point: hosted Astrid keeps writing Astrid-<version>-arm64.msix.
+
+    Deliberately NOT a fallback to 'Astrid' when nothing survives - that would put our name on a
+    partner's upload, which is the failure this whole file exists to prevent. Assert-AstridBrandProfile
+    rejects it instead.
+#>
+function Get-AstridBrandFileStem {
+    param([string]$ShortName)
+
+    $collapsed = ($ShortName -replace '\s+', '-')
+    return ($collapsed -replace '[^A-Za-z0-9_-]', '')
 }
 
 function Resolve-AstridBrandFile {
@@ -220,6 +250,12 @@ function Assert-AstridBrandProfile {
     # reader copies, mails, and never hears back from - and nothing else in the build would notice.
     if ($Values.InboundTaskEmail -notmatch '^[^@\s]+@[^@\s]+$') {
         throw "brand profile $File has an unusable inbound task address '$($Values.InboundTaskEmail)': one local part, one host, no spaces."
+    }
+    # A short name with nothing a file name can keep - "!!!" - would otherwise be a stem of '' and
+    # a package called "-1.2.3-arm64.msix". Named here rather than inherited from Astrid: our name
+    # on a partner's Store upload is worse than a build that stops.
+    if ($Values.FileStem -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*$') {
+        throw "brand profile $File has a short name '$($Values.ShortName)' that leaves nothing usable as a file name: letters, digits, hyphens and underscores."
     }
     if (-not (Test-Path -LiteralPath $Values.AssetsDirectory)) {
         throw "brand profile $File names an assets directory that does not exist: $($Values.AssetsDirectory)"

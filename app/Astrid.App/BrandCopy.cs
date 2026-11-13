@@ -36,6 +36,33 @@ internal static class BrandCopy
     /// <summary>The address a task can be mailed to, on the Tasks settings page.</summary>
     public static string InboundTaskEmail { get; } = BrandDefaults.InboundTaskEmail;
 
+    /// <summary>What an exported file is called, before the date and the extension.</summary>
+    /// <remarks>
+    /// <para>
+    /// Not copy in the sense the rest of this file is — it is a file name — but it is a brand value
+    /// the user sees, and it was the last literal <c>Astrid</c> the shell put in front of one
+    /// (task 5bf1f1dc): a partner's user saved <c>astrid-export-2026-11-12.json</c> out of an app
+    /// that is not called Astrid.
+    /// </para>
+    /// <para>
+    /// Lower-cased and stripped the way <c>scripts/lib/brand-profile.ps1</c> strips the package
+    /// stem, for the same reason: a short name is prose and is free to carry a space or a comma,
+    /// and the save dialog rejects a suggested name that holds either. A name with nothing usable
+    /// left falls back to <c>export</c> rather than to Astrid's — our name has no business on a
+    /// partner's file.
+    /// </para>
+    /// </remarks>
+    public static string ExportFileStem { get; } = BuildExportFileStem();
+
+    private static string BuildExportFileStem()
+    {
+        var stem = new string(BrandDefaults.ShortName.ToLowerInvariant()
+            .Select(character => character is ' ' ? '-' : character)
+            .Where(character => char.IsAsciiLetterOrDigit(character) || character is '-' or '_')
+            .ToArray());
+        return stem.Length == 0 ? "export" : $"{stem}-export";
+    }
+
     /// <summary>Where to turn a board on, when a list has none.</summary>
     /// <remarks>
     /// This one named <c>astrid.app</c> — a host the product has never been on, and so a line that

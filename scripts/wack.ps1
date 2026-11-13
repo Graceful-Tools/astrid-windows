@@ -37,12 +37,18 @@
 #>
 param(
     [string]$Version = '0.1.0.0',
-    [string]$ReportPath = 'wack.xml'
+    [string]$ReportPath = 'wack.xml',
+    # The brand whose bundle to certify, since package.ps1 names it after the brand
+    # (task 5bf1f1dc). Empty means hosted Astrid, and finds the same file as before.
+    [string]$Brand = ''
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
+
+. (Join-Path $PSScriptRoot 'lib\brand-profile.ps1')
+$fileStem = (Get-AstridBrandProfile -Brand $Brand -RepoRoot $repoRoot).FileStem
 
 if ($Version -notmatch '^\d+\.\d+\.\d+\.\d+$') {
     throw "Version must have four parts, e.g. 0.1.0.0 - it names the package built by scripts/package.ps1."
@@ -83,9 +89,9 @@ then re-run this script.
 Write-Host "[+] $appcert" -ForegroundColor Green
 
 # --- 3. the package ----------------------------------------------------------------------------
-$bundle = Join-Path $repoRoot "dist\Astrid-$Version.msixbundle"
+$bundle = Join-Path $repoRoot "dist\$fileStem-$Version.msixbundle"
 if (-not (Test-Path $bundle)) {
-    throw "dist\Astrid-$Version.msixbundle does not exist. Build it first: powershell -File scripts/package.ps1 -Version $Version"
+    throw "$bundle does not exist. Build it first: powershell -File scripts/package.ps1 -Version $Version"
 }
 Write-Host "[+] $bundle" -ForegroundColor Green
 
