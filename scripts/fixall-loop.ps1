@@ -81,6 +81,19 @@ param(
     [string]$MaxUsd = $(if ($null -ne $env:FIXALL_MAX_USD) { $env:FIXALL_MAX_USD } else { '10' }),
     [string]$PermissionMode = $(if ($env:FIXALL_PERMISSION_MODE) { $env:FIXALL_PERMISSION_MODE } else { 'acceptEdits' }),
 
+    # WHEN A TASK FLAGGED `LONG-RUN` MAY START, and what it may spend (task 0216d83c). A long run
+    # holds the working-tree lock for its whole length and Task Scheduler starts no second copy
+    # while it lives, so an 8-hour tick is sixteen ticks in which nothing else on this board moves -
+    # hence a window, overnight by default. Outside it the flagged ids are DEFERRED and the rest of
+    # the queue is worked as usual; inside it the flagged task goes first, because the window is the
+    # only time it can run.
+    #
+    # `22-6` and `50` are astrid-web's own defaults (DEFAULT_LONG_RUN_WINDOW, and fixall-loop.sh's
+    # FIXALL_LONG_MAX_USD fallback). The DECISION is entirely astrid-web's - these are only what
+    # this loop asks with, and scripts/lib/fixall-longrun.ps1's header has the division in full.
+    [string]$LongRunWindow = $(if ($env:FIXALL_LONG_RUN_WINDOW) { $env:FIXALL_LONG_RUN_WINDOW } else { '22-6' }),
+    [string]$LongMaxUsd = $(if ($null -ne $env:FIXALL_LONG_MAX_USD) { $env:FIXALL_LONG_MAX_USD } else { '50' }),
+
     # How many Ready tasks one tick may take. ONE, because a run that takes the whole queue does not
     # fit either bound above once a predeploy costs ~10 minutes and a task costs real money: on
     # 2026-09-27 three runs in a row were cut off partway through a task they had already started.
@@ -131,6 +144,10 @@ if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Forc
 # Whether there is room to build at all. Task 4d9d42e6: the 2026-11-13 05:10 tick spent itself
 # reaching an `os error 112` with 31 MB free. The library's header has the incident and the marks.
 . (Join-Path $PSScriptRoot 'lib\fixall-disk.ps1')
+# How long this tick may be and which tasks it may take, read out of the preflight's own answer.
+# Task 0216d83c; the library's header has the division of labour with astrid-web, which owns the
+# decision itself.
+. (Join-Path $PSScriptRoot 'lib\fixall-longrun.ps1')
 
 # WHERE THE STATE A LATER TICK READS LIVES. Under %LOCALAPPDATA%, beside the log, and NOT in %TEMP%:
 # the wake journal, the task record and the claims record are each read by a LATER tick - that is
@@ -561,9 +578,17 @@ try {
     if (-not $IgnoreQueue) {
         $wake = Get-WakeVerdict -ArtifactPath $WakeArtifact -Preflight {
             param($ArtifactPath)
+            # The same call PLANS THE RUN'S LENGTH (AWTD-1041, astrid-web scripts/lib/long-run.ts).
+            # The plan is applied to the queue BEFORE the verdict over there, so a queue holding
+            # only a deferred long task reads as IDLE here and this tick skips quietly instead of
+            # booting a session that may take nothing. --default-minutes and --max-tasks are THIS
+            # loop's own numbers: planRun sizes the watchdog against the slice the run will take,
+            # and its own fallbacks are the web loop's, not ours.
             $out = Invoke-WebTool @('scripts/agent-queue-status.ts', '--agent', 'claude',
                 '--board', 'windows', '--include-unassigned', '--require-polling',
-                '--no-write-seen', '--output', $ArtifactPath)
+                '--no-write-seen', '--output', $ArtifactPath,
+                '--long-run-window', $LongRunWindow,
+                '--default-minutes', [string]$MaxMinutes, '--max-tasks', [string]$MaxTasks)
             return [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $out }
         }
         Say "  QUEUE: $($wake.Reason)"
@@ -580,6 +605,31 @@ try {
             Say "  WAKE: $(@($wake.WakeKeys).Count) key(s) journalled, to be acknowledged by this run's outcome"
         }
     }
+
+    # ── Size this tick, and say which tasks it may take (task 0216d83c) ───────────────────────
+    # 75 minutes fits one ordinary task. A task flagged `LONG-RUN` asks for up to eight hours, and
+    # the preflight above has already decided whether this tick may start it - so all that is left
+    # is to apply the answer. A missing or unreadable plan leaves every default exactly as it was,
+    # which is what an -IgnoreQueue tick (no preflight at all) gets.
+    #
+    # THE DEFER LIST IS THE POINT. Until this existed the flag was inert on this board: Jon flagged
+    # `1bdf84d7` and `9ef7edb4` on 2026-11-12 precisely because three runs in a row had each read
+    # them, concluded neither fits a 75-minute watchdog however it is split, and left them in Ready
+    # for the next run to repeat - and flagging them changed nothing, because nothing here had ever
+    # heard of the flag. Both came back at the top of every tick.
+    $plan = Get-RunPlan -Output $(if ($wake) { $wake.Output }) -DefaultMinutes $MaxMinutes `
+        -DefaultMaxUsd $MaxUsd -LongMaxUsd $LongMaxUsd
+    if ($plan.Note) { Say "  RUN: $($plan.Note)" }
+    $MaxMinutes = $plan.MaxMinutes
+    # The watchdog catches a run that HANGS, the budget one that stays BUSY. Raising only the first
+    # buys an eight-hour run that stops after an hour of spending, which is the ordinary tick again.
+    $MaxUsd = $plan.MaxUsd
+    # ALWAYS ASSIGNED, including to nothing: these are read by the session this script starts, and
+    # an id left over in an inherited environment would pin a run to a task that is not in its
+    # queue. The run takes NEXT_TASK first and never takes a DEFER_TASKS id - a deferred long task
+    # under an ordinary watchdog is exactly the kill the window exists to prevent.
+    $env:ASTRID_FIXALL_NEXT_TASK = $plan.NextTask
+    $env:ASTRID_FIXALL_DEFER_TASKS = $plan.DeferTasks
 
     # ── Can this machine CALL the board, and PUBLISH what it finishes? ────────────────────────
     # WARNS, never skips. A missing mcp__astrid__* grant leaves the run working - it falls back to

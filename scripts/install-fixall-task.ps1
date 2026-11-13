@@ -72,7 +72,15 @@ param(
     # minutes kills every real run, and one of hours lets a wedged tick swallow a whole evening of
     # them (MultipleInstances = IgnoreNew).
     [ValidateRange(10, 240)][int]$WatchdogMinutes = 75,
-    [ValidateRange(1, 60)][int]$RecoveryMinutes = 10
+    [ValidateRange(1, 60)][int]$RecoveryMinutes = 10,
+
+    # The LONGEST tick that can start, which since task 0216d83c is not the watchdog above: a task
+    # flagged `LONG-RUN` is given its own length inside the overnight window, up to astrid-web's
+    # LONG_RUN_MAX_MINUTES of 480 (scripts/lib/long-run.ts). The ordinary watchdog still bounds an
+    # ordinary tick - this only stops Task Scheduler from killing a long one at 85 minutes, which
+    # would run none of the loop's recovery. 0 disables long runs on this machine, and the deadline
+    # falls back to the watchdog.
+    [ValidateRange(0, 480)][int]$LongRunMaxMinutes = 480
 )
 
 $ErrorActionPreference = 'Stop'
@@ -136,7 +144,7 @@ $settings = New-ScheduledTaskSettingsSet `
     -DontStopIfGoingOnBatteries `
     -StartWhenAvailable `
     -MultipleInstances IgnoreNew `
-    -ExecutionTimeLimit (New-TimeSpan -Minutes ($WatchdogMinutes + $RecoveryMinutes)) `
+    -ExecutionTimeLimit (New-TimeSpan -Minutes ([Math]::Max($WatchdogMinutes, $LongRunMaxMinutes) + $RecoveryMinutes)) `
     -RestartCount 0
 
 $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" `

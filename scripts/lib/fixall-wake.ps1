@@ -116,6 +116,10 @@ function Get-WakeVerdict {
         WakeKeys = $keys
         ListId   = $listId
         Reason   = $reason
+        # What the preflight WROTE, carried forward so the long-run plan it prints (task 0216d83c,
+        # scripts/lib/fixall-longrun.ps1) can be read without a second call. Exactly one command in
+        # the loop is the board preflight, and this is how it stays that way.
+        Output   = $output
     }
 }
 
