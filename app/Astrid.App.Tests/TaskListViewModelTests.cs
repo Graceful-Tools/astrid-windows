@@ -710,7 +710,6 @@ public sealed class TaskListViewModelTests
         Assert.True(view.QuickAddIsCheckbox);
         Assert.False(view.QuickAddIsSquare);
         Assert.Equal(2, view.QuickAddPriority);
-        Assert.Contains("check_box_2.png", view.QuickAddCheckboxAsset);
         Assert.Equal(3, view.QuickAddAssignees.Count);
     }
 
@@ -757,7 +756,6 @@ public sealed class TaskListViewModelTests
         Assert.Contains("\"priority\":3", asked);
         Assert.Contains("\"listId\":\"l1\"", asked);
         Assert.Equal(3, view.QuickAddPriority);
-        Assert.Contains("check_box_3.png", view.QuickAddCheckboxAsset);
     }
 
     /// <summary>

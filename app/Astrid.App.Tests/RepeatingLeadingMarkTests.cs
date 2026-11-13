@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Runtime.Versioning;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Astrid.Core.Bindings;
 using Xunit;
@@ -29,6 +30,10 @@ namespace Astrid.App.Tests;
 public sealed class RepeatingLeadingMarkTests
 {
     private static readonly XNamespace Ui = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+    private static readonly XNamespace Xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
+
+    /// <summary>The shell's own namespace, which is where <c>PriorityMark</c> lives.</summary>
+    private static readonly XNamespace Shell = "using:Astrid.App";
 
     private static TaskRow Row(string kind, bool repeating, int priority = 2, bool completed = false) =>
         new()
@@ -50,7 +55,6 @@ public sealed class RepeatingLeadingMarkTests
 
         Assert.True(repeating.LeadingIsRepeatSquare);
         Assert.False(repeating.LeadingIsPlainSquare);
-        Assert.Equal("ms-appx:///Assets/Checkboxes/check_box_repeat_2.png", repeating.RepeatFrameAsset);
 
         Assert.False(oneOff.LeadingIsRepeatSquare);
         Assert.True(oneOff.LeadingIsPlainSquare);
@@ -61,7 +65,7 @@ public sealed class RepeatingLeadingMarkTests
     }
 
     /// <summary>
-    /// Your own task keeps its single-PNG mark: the frame is for the marks that are built out of
+    /// Your own task keeps its single mark: the frame is for the marks that are built out of
     /// controls, and drawing both would stack two sets of arrows.
     /// </summary>
     [Fact]
@@ -72,35 +76,15 @@ public sealed class RepeatingLeadingMarkTests
         Assert.True(yours.LeadingIsCheckbox);
         Assert.False(yours.LeadingIsRepeatSquare);
         Assert.False(yours.LeadingIsPlainSquare);
-        Assert.Equal("ms-appx:///Assets/Checkboxes/check_box_repeat_2.png", yours.CheckboxAsset);
     }
 
-    /// <summary>
-    /// A priority the server invented asks for a file this build does not carry, which would draw
-    /// nothing at all and lose the control a person taps — so it is clamped, exactly as
-    /// <see cref="TaskRow.CheckboxAsset"/> clamps it.
-    /// </summary>
-    [Theory]
-    [InlineData(-1)]
-    [InlineData(9)]
-    public void A_priority_this_build_does_not_know_still_draws_arrows_task_fa63a5dd(int priority)
-    {
-        var row = Row("avatar", repeating: true, priority: priority);
-
-        Assert.Equal("ms-appx:///Assets/Checkboxes/check_box_repeat_0.png", row.RepeatFrameAsset);
-    }
-
-    /// <summary>
-    /// The arrows are the unchecked art even when the task is done, as the web draws them: the
-    /// square never said "done" either — the row's opacity and the struck-through title do.
-    /// </summary>
-    [Fact]
-    public void A_completed_repeating_task_of_somebody_elses_keeps_the_open_arrows_task_fa63a5dd()
-    {
-        var row = Row("avatar", repeating: true, completed: true);
-
-        Assert.Equal("ms-appx:///Assets/Checkboxes/check_box_repeat_2.png", row.RepeatFrameAsset);
-    }
+    // Two assertions stood here that no longer have anything to say. Both read a PNG file name off
+    // the row — that an unknown priority clamped to `check_box_repeat_0.png`, and that a completed
+    // task kept the un-ticked arrows. Task 82e4ad32 replaced the sixteen pictures with one piece of
+    // `currentColor` art, so there is no file name to clamp: the clamp moved into
+    // `PriorityPalette.Key`, where `PriorityPaletteTests` covers it, and "the arrows never say
+    // done" is now simply that the repeat frame is drawn with `ShowTick` left false, which the
+    // view assertion below reads out of the XAML.
 
     /// <summary>
     /// Both surfaces that lead with a mark draw the frame, at the own-task mark's size, with the
@@ -115,14 +99,18 @@ public sealed class RepeatingLeadingMarkTests
         var mark = root.Descendants(Ui + "Button")
             .Single(button => (string?)button.Attribute("Click") == click);
 
-        var frameArt = mark.Descendants(Ui + "Image")
-            .Single(image => ((string?)image.Attribute("Source") ?? string.Empty).Contains("RepeatFrameAsset"));
+        var frameArt = RepeatFrame(mark);
         var frameSize = Number((string?)frameArt.Attribute("Width"));
 
         // The same 32px the own-task mark is drawn at, so the two read as one design.
-        var ownMark = mark.Descendants(Ui + "Image")
-            .Single(image => ((string?)image.Attribute("Source") ?? string.Empty).Contains("CheckboxAsset"));
+        var ownMark = mark.Descendants(Shell + "PriorityMark")
+            .Single(element => (string?)element.Attribute("IsRepeating") != "True");
         Assert.Equal(Number((string?)ownMark.Attribute("Width")), frameSize);
+
+        // The arrows never say "done" — the row's opacity and the struck-through title do — so the
+        // frame is drawn with no tick while the own-task mark takes its from the row.
+        Assert.Null(frameArt.Attribute("ShowTick"));
+        Assert.Contains("Completed", (string?)ownMark.Attribute("ShowTick") ?? string.Empty);
 
         // The letter sits inside the loop, so it is smaller than the frame — and larger than
         // nothing, which a missing Width would silently mean.
@@ -167,56 +155,66 @@ public sealed class RepeatingLeadingMarkTests
         var root = XDocument.Load(Path.Combine(LocalisationTests.AppDirectory(), "Views", view)).Root!;
         var mark = root.Descendants(Ui + "Button")
             .Single(button => (string?)button.Attribute("Click") == click);
-        var frameArt = mark.Descendants(Ui + "Image")
-            .Single(image => ((string?)image.Attribute("Source") ?? string.Empty).Contains("RepeatFrameAsset"));
+        var frameArt = RepeatFrame(mark);
 
         var frameSize = Number((string?)frameArt.Attribute("Width"));
         var inner = frameArt.Parent!.Elements(Ui + "Border").Single();
         var innerSize = Number((string?)inner.Attribute("Width"));
 
-        // Every priority's art, because one redrawn asset is exactly how this would drift.
-        foreach (var priority in new[] { 0, 1, 2, 3 })
-        {
-            var hollow = HollowWidth(priority, frameSize);
-            Assert.True(
-                innerSize <= hollow,
-                $"{view}: the mark is {innerSize} wide but check_box_repeat_{priority}.png "
-                    + $"leaves only {hollow:0.0} inside its arrows at a {frameSize} frame");
-        }
+        var hollow = HollowWidth(frameSize);
+        Assert.True(
+            innerSize <= hollow,
+            $"{view}: the mark is {innerSize} wide but the repeat art leaves only "
+                + $"{hollow:0.0} inside its arrows at a {frameSize} frame");
     }
+
+    /// <summary>The repeat arrows in one of the two views that lead with a mark.</summary>
+    private static XElement RepeatFrame(XElement mark) =>
+        mark.Descendants(Shell + "PriorityMark")
+            .Single(element => (string?)element.Attribute("IsRepeating") == "True");
 
     /// <summary>
     /// How wide the gap between the arrows is, at the size the frame is drawn.
     /// </summary>
     /// <remarks>
-    /// Measured across the middle of the shipped image: the widest run of transparent pixels
-    /// between the left and right strokes, scaled from the asset's canvas to the frame's size.
+    /// <para>
+    /// Measured out of the vendored art rather than restated, so a redrawn frame moves the limit
+    /// with it — the property the old pixel-reading version had and the reason it existed. It read
+    /// the widest transparent run across the middle of <c>check_box_repeat_N.png</c>; task 82e4ad32
+    /// replaced those pictures with <c>design/AstridCheckbox.xaml</c>, where the same gap is stated
+    /// rather than drawn.
+    /// </para>
+    /// <para>
+    /// The two brackets are each a stroked path on a 56-unit canvas, so the clear span between them
+    /// runs from the leftmost stroke's inner edge to the rightmost's: the extreme coordinates of the
+    /// <c>M</c> and <c>L</c> commands, each brought in by half the stroke's thickness. The arc
+    /// parameters are skipped — <c>A 2 2 0 0 1</c> is a radius and two flags, not a point, and
+    /// taking its numbers as coordinates would put the minimum at zero.
+    /// </para>
     /// </remarks>
-    [SupportedOSPlatform("windows")]
-    private static double HollowWidth(int priority, double frameSize)
+    private static double HollowWidth(double frameSize)
     {
-        var path = Path.Combine(
-            LocalisationTests.AppDirectory(), "Assets", "Checkboxes", $"check_box_repeat_{priority}.png");
-        using var image = System.Drawing.Image.FromFile(path);
-        using var bitmap = new System.Drawing.Bitmap(image);
+        var art = XDocument
+            .Load(Path.Combine(
+                DesignTokenTests.RepoRoot(), "design", "AstridCheckbox.xaml"))
+            .Root!;
+        var repeat = art.Elements(Ui + "Style")
+            .Single(style => (string?)style.Attribute(Xaml + "Key") == "AstridCheckboxRepeatStyle");
 
-        var y = bitmap.Height / 2;
-        var widest = 0;
-        var run = 0;
-        for (var x = 0; x < bitmap.Width; x++)
-        {
-            run = bitmap.GetPixel(x, y).A <= 24 ? run + 1 : 0;
+        var canvas = repeat.Descendants(Ui + "Canvas").Single();
+        var strokes = repeat.Descendants(Ui + "Path")
+            .Where(path => path.Attribute("Stroke") is not null)
+            .ToList();
 
-            // The runs outside the frame are transparent too, so only a gap that has ink on both
-            // sides counts — which is what resetting at every opaque pixel and taking the widest
-            // run that ENDS on ink gives.
-            if (run > widest && x + 1 < bitmap.Width && bitmap.GetPixel(x + 1, y).A > 24)
-            {
-                widest = run;
-            }
-        }
+        var points = strokes
+            .SelectMany(path => Regex.Matches(
+                (string)path.Attribute("Data")!, @"[ML]\s+(-?[\d.]+)\s+(-?[\d.]+)"))
+            .Select(match => double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture))
+            .ToList();
+        var thickness = Number((string?)strokes[0].Attribute("StrokeThickness"));
 
-        return widest * (frameSize / bitmap.Width);
+        var clear = (points.Max() - thickness / 2) - (points.Min() + thickness / 2);
+        return clear * (frameSize / Number((string?)canvas.Attribute("Width")));
     }
 
     private static double Number(string? value)

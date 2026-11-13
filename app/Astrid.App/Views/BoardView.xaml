@@ -73,8 +73,11 @@
                             Tag="{x:Bind Id}"
                             Click="OnCardMarkClicked">
                         <Grid Width="32" Height="32">
-                            <Image Source="{x:Bind CheckboxAsset}" Width="32" Height="32"
-                                   Visibility="{x:Bind LeadingIsCheckbox, Converter={StaticResource Visible}}" />
+                            <local:PriorityMark Priority="{x:Bind Priority}"
+                                                IsRepeating="{x:Bind IsRepeating}"
+                                                ShowTick="{x:Bind Completed}"
+                                                Width="32" Height="32"
+                                                Visibility="{x:Bind LeadingIsCheckbox, Converter={StaticResource Visible}}" />
                             <!-- A task in a public list the reader cannot edit: the tap copies. -->
                             <Border Width="24" Height="24" CornerRadius="6"
                                     BorderThickness="2"
@@ -85,7 +88,7 @@
                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <Border Width="24" Height="24" CornerRadius="6"
-                                    Background="{x:Bind Priority, Converter={StaticResource PriorityBrush}}"
+                                    local:PriorityFill.Priority="{x:Bind Priority}"
                                     Visibility="{x:Bind LeadingIsPlainSquare, Converter={StaticResource Visible}}">
                                 <TextBlock Text="{x:Bind (bindings:TaskRow), Converter={StaticResource LeadingMark}}"
                                            FontSize="12" FontWeight="SemiBold"
@@ -104,7 +107,9 @@
                             -->
                             <Grid Width="32" Height="32"
                                   Visibility="{x:Bind LeadingIsRepeatSquare, Converter={StaticResource Visible}}">
-                                <Image Source="{x:Bind RepeatFrameAsset}" Width="32" Height="32" />
+                                <local:PriorityMark Priority="{x:Bind Priority}"
+                                                    IsRepeating="True"
+                                                    Width="32" Height="32" />
                                 <!--
                                     14, not 0.6 of the frame as the web draws it: the art is a
                                     56px canvas with inset ink, so a 32 frame leaves a hollow of

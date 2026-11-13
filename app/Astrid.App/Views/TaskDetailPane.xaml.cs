@@ -1343,13 +1343,17 @@ public sealed partial class TaskDetailPane : UserControl
         void Paint(Button button, int level)
         {
             var (background, foreground, border) = PrioritySwatch.For(level, chosen);
-            button.BorderBrush = SwatchBrush(border);
-            button.Background = SwatchBrush(background);
-            button.Foreground = SwatchBrush(foreground);
+            button.BorderBrush = SwatchBrush(button, border);
+            button.Background = SwatchBrush(button, background);
+            button.Foreground = SwatchBrush(button, foreground);
         }
 
-        static Brush SwatchBrush(string hex) => hex == PrioritySwatch.Transparent
-            ? new SolidColorBrush(Colors.Transparent)
-            : new SolidColorBrush(Colours.Parse(hex) ?? Colors.Gray);
+        // The rule answers with a themed brush key, so the theme the button is wearing picks the
+        // colour (task 82e4ad32). Resolving from Application.Current.Resources would answer from
+        // the light dictionary and paint a dark-theme picker in light-theme blue.
+        static Brush SwatchBrush(FrameworkElement element, string key) =>
+            key == PrioritySwatch.Transparent
+                ? new SolidColorBrush(Colors.Transparent)
+                : ThemeBrushes.For(element, key);
     }
 }

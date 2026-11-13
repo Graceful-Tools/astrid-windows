@@ -417,7 +417,6 @@ public sealed class TaskDetailViewModel : ObservableObject
         private set
         {
             Set(ref _priority, value);
-            Raise(nameof(CheckboxAsset));
         }
     }
 
@@ -427,7 +426,6 @@ public sealed class TaskDetailViewModel : ObservableObject
         private set
         {
             Set(ref _completed, value);
-            Raise(nameof(CheckboxAsset));
         }
     }
 
@@ -1076,24 +1074,9 @@ public sealed class TaskDetailViewModel : ObservableObject
     /// <summary>Whether the open task repeats at all. What draws the glyph on the row.</summary>
     public bool IsRepeating => RepeatSummary.Count > 0;
 
-    /// <summary>
-    /// The mark this task wears, as an image path.
-    /// </summary>
-    /// <remarks>
-    /// The same one the row shows, so opening a task does not change how its priority reads. See
-    /// <see cref="Astrid.Core.Bindings.TaskRow.CheckboxAsset"/> for why it is one image rather than
-    /// three overlaid controls.
-    /// </remarks>
-    public string CheckboxAsset
-    {
-        get
-        {
-            var priority = Priority is >= 0 and <= 3 ? Priority : 0;
-            var repeat = IsRepeating ? "_repeat" : string.Empty;
-            var done = Completed ? "_checked" : string.Empty;
-            return $"ms-appx:///Assets/Checkboxes/check_box{repeat}{done}_{priority}.png";
-        }
-    }
+    // `CheckboxAsset` was here, picking one of sixteen PNGs from Priority, IsRepeating and
+    // Completed. The pane now binds those three to `PriorityMark`, which draws the shared art in
+    // the priority's colour (task 82e4ad32), so there is nothing left to compute or to raise.
 
     /// <summary>Fetch the files on the open task.</summary>
     public async Task LoadAttachmentsAsync(CancellationToken cancellationToken = default)
@@ -1266,7 +1249,6 @@ public sealed class TaskDetailViewModel : ObservableObject
         Replace(RepeatPresets, choices.Presets);
         Replace(RepeatSummary, choices.Summary);
         Raise(nameof(IsRepeating));
-        Raise(nameof(CheckboxAsset));
     }
 
     /// <summary>Choose one of the presets, or stop repeating.</summary>
@@ -2252,7 +2234,6 @@ public sealed class TaskDetailViewModel : ObservableObject
         // task repeats before anybody opens anything.
         Replace(RepeatSummary, Read<SummaryPart>(value, "repeatSummary"));
         Raise(nameof(IsRepeating));
-        Raise(nameof(CheckboxAsset));
         Timer = value.TryGetProperty("timer", out var timer)
             ? timer.Deserialize<TimerState>(CommandJson.Options) ?? new TimerState()
             : new TimerState();
