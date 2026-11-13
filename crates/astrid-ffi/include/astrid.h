@@ -1,9 +1,11 @@
 /*
  * astrid.h — the whole boundary between the WinUI shell and the Rust core.
  *
- * Seven functions and one callback type. Everything the app can do goes through astrid_call as a
+ * Eight functions and one callback type. Everything the app can DO goes through astrid_call as a
  * JSON command, so adding a feature means adding a Command variant in astrid-core rather than a
- * symbol here, a DllImport in C# and a marshalling rule for whatever it returns.
+ * symbol here, a DllImport in C# and a marshalling rule for whatever it returns. The eighth,
+ * astrid_rule, is the exception that rule earns: the core's pure half waits on nothing, so asking
+ * it a question needs neither a handle nor the runtime.
  *
  * Hand-written rather than generated, because it is short enough to read in one sitting and a
  * generated header is one more thing to keep in step. A test in src/lib.rs checks that every
