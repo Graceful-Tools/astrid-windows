@@ -409,33 +409,34 @@ public sealed class ListSettingsViewModel : ObservableObject
     /// <summary>The list's defaults, as last loaded.</summary>
     public ListDefaults Defaults => _defaults;
 
-    private static readonly string[] Repeats = ["never", "daily", "weekly", "monthly", "yearly"];
-
-    /// <summary>The word for a repeat value, by the key the core's own preset list uses.</summary>
-    /// <remarks>
-    /// This picker is the shell's — the core has no command for a list's defaults — but it must ask
-    /// for the keys the resources carry, and those follow the core's presets (D49). "never" is the
-    /// one that is not simply the value: the core calls it <c>repeating.one_time_only</c>.
-    /// </remarks>
-    private static string RepeatKey(string value) =>
-        value == "never" ? "repeating.one_time_only" : $"repeating.{value}";
-    private static readonly (string Value, string Key)[] Whens =
-    [
-        ("none", "picker.no_due_date"),
-        ("today", "picker.today"),
-        ("tomorrow", "picker.tomorrow"),
-        ("next_week", "picker.next_week"),
-    ];
-    private static readonly string[] PriorityKeys = ["priority.none", "priority.low", "priority.medium", "priority.high"];
+    /// <summary>
+    /// One picker's rows, from the core's answer: a key becomes a key, and a value with no key is
+    /// an hour, which only the reader's clock can spell.
+    /// </summary>
+    private static List<DefaultChoice> Choices(string field, IReadOnlyList<DefaultPick> picks) =>
+        picks.Select(pick => new DefaultChoice(
+            field,
+            pick.Value,
+            pick.Key,
+            pick.Key is null && pick.Value is { } time ? TimeLabel(time) : null,
+            pick.IsSelected)).ToList();
 
     private void RefreshDefaultChoices(ListDefaults defaults, IReadOnlyList<ListMember> members)
     {
         _defaults = defaults;
 
-        Replace(DefaultPriorityChoices, PriorityKeys
-            .Select((key, level) => new DefaultChoice("priority", level.ToString(), key, null, defaults.Priority == level))
-            .ToList());
+        // What may be chosen, and which row is ticked, is the core's
+        // (astrid_rules::rows::list_default_picks, locked by contracts/fixtures/list-default-picks.json).
+        // Four tables used to live here, and iOS and Android held their own copies — task 92830d81.
+        var picks = AstridClient.ListDefaultPicks(defaults);
 
+        Replace(DefaultPriorityChoices, Choices("priority", picks.Priority));
+        Replace(DefaultRepeatChoices, Choices("repeating", picks.Repeating));
+        Replace(DefaultWhenChoices, Choices("dueDate", picks.DueDate));
+        Replace(DefaultTimeChoices, Choices("dueTime", picks.DueTime));
+
+        // The assignee default stays the shell's: it is this list's members plus two fixed
+        // choices, which is data the shell already has rather than a table it invented.
         var assignees = new List<DefaultChoice>
         {
             new("assignee", null, "defaults.task_creator", null, string.IsNullOrEmpty(defaults.AssigneeId)),
@@ -444,30 +445,6 @@ public sealed class ListSettingsViewModel : ObservableObject
         assignees.AddRange(members.Select(member =>
             new DefaultChoice("assignee", member.UserId, null, member.DisplayName, defaults.AssigneeId == member.UserId)));
         Replace(DefaultAssigneeChoices, assignees);
-
-        Replace(DefaultRepeatChoices, Repeats
-            .Select(value => new DefaultChoice("repeating", value, RepeatKey(value), null, defaults.Repeating == value))
-            .ToList());
-
-        Replace(DefaultWhenChoices, Whens
-            .Select(when => new DefaultChoice("dueDate", when.Value, when.Key, null, defaults.DueDate == when.Value))
-            .ToList());
-
-        // All day, then the hours of a working day — and the stored time itself if it is not one
-        // of them, so a 09:15 set on the web is shown rather than silently rounded.
-        var times = new List<DefaultChoice>
-        {
-            new("dueTime", null, "defaults.all_day", null, defaults.DueTime is null),
-        };
-        var hours = Enumerable.Range(6, 17).Select(hour => $"{hour:00}:00").ToList();
-        if (defaults.DueTime is { } stored && !hours.Contains(stored))
-        {
-            hours.Add(stored);
-            hours.Sort(StringComparer.Ordinal);
-        }
-        times.AddRange(hours.Select(time =>
-            new DefaultChoice("dueTime", time, null, TimeLabel(time), defaults.DueTime == time)));
-        Replace(DefaultTimeChoices, times);
 
         Raise(nameof(Defaults));
         Raise(nameof(SelectedDefaultPriority));

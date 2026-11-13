@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using Astrid.Core.Bindings;
 using Xunit;
 
 namespace Astrid.App.Tests;
@@ -170,22 +171,39 @@ public sealed class CorePinFollowsIosTests
     }
 
     /// <summary>
-    /// A list's default-repeat picker offers the same keys the core's preset list does.
+    /// A list's default-repeat picker offers the same keys the core's preset list does, and the
+    /// shell has a resource for each of them.
     /// </summary>
     /// <remarks>
-    /// That picker is the shell's own — the core has no command for a list's defaults — so it
-    /// builds its labels from the repeat values. It still has to build the keys the resources
-    /// carry, and after D49 those are <c>repeating.*</c>, with "never" spelt
-    /// <c>repeating.one_time_only</c>.
+    /// <para>
+    /// This used to read the view model's own source text for the key it built, because that
+    /// picker was the shell's own. It is the core's since task 92830d81
+    /// (<c>astrid_rules::rows::list_default_picks</c>), so the keys are asked for rather than
+    /// grepped — the hand copy the cross-client review named. After D49 they are
+    /// <c>repeating.*</c>, with "never" spelt <c>repeating.one_time_only</c>.
+    /// </para>
+    /// <para>
+    /// Asking the door also catches the half a source grep never could: a key the core emits that
+    /// this shell has no resource for, which draws as the key itself.
+    /// </para>
     /// </remarks>
     [Fact]
     public void The_list_default_repeat_picker_uses_the_cores_preset_keys_task_6ee938cc()
     {
-        var source = File.ReadAllText(Path.Combine(
-            LocalisationTests.AppDirectory(), "..", "Astrid.App.ViewModels", "ListSettingsViewModel.cs"));
+        var picks = AstridClient.ListDefaultPicks(new ListDefaults());
+        var keys = picks.Repeating.Select(pick => pick.Key).ToList();
 
-        Assert.DoesNotContain("$\"repeat.{value}\"", source, StringComparison.Ordinal);
-        Assert.Contains("repeating.one_time_only", source, StringComparison.Ordinal);
+        Assert.Contains("repeating.one_time_only", keys);
+        Assert.DoesNotContain(keys, key => key?.StartsWith("repeat.", StringComparison.Ordinal) == true);
+
+        var resources = ResourceNames(LocalisationTests.AppDirectory());
+        foreach (var key in picks.Priority.Concat(picks.Repeating).Concat(picks.DueDate)
+                     .Concat(picks.DueTime)
+                     .Select(pick => pick.Key)
+                     .Where(key => key is not null))
+        {
+            Assert.Contains(Flatten(key!), resources);
+        }
     }
 
     /// <summary>
