@@ -420,3 +420,89 @@ fn every_crate_came_from_an_accepted_source_task_e750d9c1() {
         problems.join("\n  ")
     );
 }
+
+/// The graph as a REAL build of this app resolves it: default features, not `--all-features`.
+///
+/// Everything above wants the widest possible graph, because a feature nobody enables today is
+/// enabled by the next caller. The question below is the opposite one — what does *this* app
+/// actually compile — and `--all-features` cannot answer it: it would turn on the very feature
+/// being asserted and pass whatever the manifests said.
+fn default_metadata() -> &'static Value {
+    static META: OnceLock<Value> = OnceLock::new();
+    META.get_or_init(|| {
+        let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
+        let out = Command::new(&cargo)
+            .args(["metadata", "--format-version", "1"])
+            .arg("--manifest-path")
+            .arg(repo_root().join("Cargo.toml"))
+            .output()
+            .unwrap_or_else(|e| panic!("`{cargo} metadata` must run: {e}"));
+        assert!(
+            out.status.success(),
+            "`cargo metadata` failed:\n{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        serde_json::from_slice(&out.stdout).expect("cargo metadata emits JSON")
+    })
+}
+
+/// Which features a named crate resolves WITH, out of `resolve.nodes` — the answer cargo itself
+/// computed, rather than the manifests' request re-read by hand.
+fn resolved_features(meta: &Value, crate_name: &str) -> BTreeSet<String> {
+    let id = meta["packages"]
+        .as_array()
+        .expect("cargo metadata lists packages")
+        .iter()
+        .find(|pkg| pkg["name"] == crate_name)
+        .unwrap_or_else(|| panic!("`{crate_name}` is not in this app's dependency graph at all"))
+        ["id"]
+        .as_str()
+        .expect("a package id is a string")
+        .to_string();
+    meta["resolve"]["nodes"]
+        .as_array()
+        .expect("cargo metadata resolves a graph")
+        .iter()
+        .find(|node| node["id"].as_str() == Some(id.as_str()))
+        .unwrap_or_else(|| panic!("`{crate_name}` has no node in the resolved graph"))["features"]
+        .as_array()
+        .expect("a node lists its features")
+        .iter()
+        .map(|f| f.as_str().expect("a feature is a string").to_string())
+        .collect()
+}
+
+/// This app compiles SQLite in, and goes on doing so after the core made that a choice.
+///
+/// Task `f1210dd8`: `bundled` used to be requested by astrid-core's workspace manifest, which no
+/// consumer could take back. It is now the core's `bundled-sqlite` feature, on by default, so that
+/// Apple can link the system SQLite it already carries. Windows cannot: there is no `libsqlite3`
+/// for an MSVC link to find, so an unbundled build of this app fails to link — on both targets,
+/// and only at link time.
+///
+/// Which makes this the one assertion that has to live HERE. The core's own test can say that
+/// `default` carries the feature; only this repository can say that *this* app still ends up with
+/// it, through a `default-features = false` nobody meant, a feature resolution that changed under
+/// a pin bump, or a later crate in the graph taking rusqlite without it.
+#[test]
+fn the_app_still_compiles_sqlite_in_task_f1210dd8() {
+    let meta = default_metadata();
+
+    let core = resolved_features(meta, "astrid-core");
+    assert!(
+        core.contains("bundled-sqlite"),
+        "astrid-core resolved without `bundled-sqlite`, so this app would link against a system \
+         SQLite that Windows does not have. Features: {core:?}"
+    );
+
+    // The feature chain, end to end: a `bundled-sqlite` that reached neither crate would be a name
+    // that compiles and does nothing, and the link failure would be the first thing to notice.
+    for (crate_name, feature) in [("rusqlite", "bundled"), ("libsqlite3-sys", "bundled")] {
+        let features = resolved_features(meta, crate_name);
+        assert!(
+            features.contains(feature),
+            "`{crate_name}` resolved without `{feature}`, so the core's `bundled-sqlite` is not \
+             reaching the crate that compiles SQLite. Features: {features:?}"
+        );
+    }
+}
