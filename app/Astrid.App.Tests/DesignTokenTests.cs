@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
@@ -303,5 +305,77 @@ public sealed class DesignTokenTests
         var revision = File.ReadAllText(Path.Combine(RepoRoot(), "design", "REVISION")).Trim();
 
         Assert.Matches("^[0-9a-f]{40}$", revision);
+    }
+
+    /// <summary>The shared checkbox art, vendored beside the tokens at the same revision.</summary>
+    private static string CheckboxArtPath() =>
+        Path.Combine(RepoRoot(), "design", "AstridCheckbox.xaml");
+
+    /// <summary>
+    /// The art's own <c>body-sha256</c> header is the hash of everything below it (task 82e4ad32).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// astrid-core stamps every generated source file with a hash of its body, and its
+    /// <c>design/README.md</c> says what the stamp is for: "A consumer checks that hash in its own
+    /// gate, with no access to this repository, so a hand-edited copy fails there." This is that
+    /// gate. The tokens have <see cref="The_vendored_tokens_name_their_revision_task_b4807cb5"/>,
+    /// which says the copy knows which revision it came from; this says the copy has not been
+    /// touched since.
+    /// </para>
+    /// <para>
+    /// It matters more here than for the tokens. <c>tokens.resolved.json</c> is read by these tests
+    /// and nothing else, so an edit to it shows up as a brush assertion failing. The art is XAML
+    /// that the shell will merge and draw, where a hand-tweaked path or a retyped colour would look
+    /// deliberate and never fail anything.
+    /// </para>
+    /// <para>
+    /// <c>\r\n</c> is folded to <c>\n</c> before hashing, which is what astrid-core itself does when
+    /// it hashes a file (<c>crates/xtask/src/assets.rs</c>: <c>file_hash</c>). Git checks a text
+    /// file out in the platform's endings, so a byte-exact comparison would fail on Windows for a
+    /// file nobody had edited — <c>.gitattributes</c> pins this one to LF, and the fold means a
+    /// checkout that somehow missed that still gates the content rather than the line endings.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void The_vendored_checkbox_art_matches_its_declared_hash_task_82e4ad32()
+    {
+        var text = File.ReadAllText(CheckboxArtPath()).Replace("\r\n", "\n");
+        var stamp = Regex.Match(
+            text, @"^<!-- body-sha256: (?<hash>[0-9a-f]{64}) -->\n", RegexOptions.Multiline);
+        Assert.True(stamp.Success, "the vendored checkbox art carries no body-sha256 header");
+
+        var body = text[(stamp.Index + stamp.Length)..];
+        var hashed = Convert
+            .ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(body)))
+            .ToLowerInvariant();
+
+        Assert.Equal(stamp.Groups["hash"].Value, hashed);
+    }
+
+    /// <summary>
+    /// The one colour in the art that is not <c>currentColor</c> is the shared token (task 82e4ad32).
+    /// </summary>
+    /// <remarks>
+    /// The box and the repeat frame stroke from <c>{TemplateBinding Foreground}</c>, so whatever
+    /// draws them decides their colour and nothing can drift. The tick cannot: it is a fixed
+    /// <c>SolidColorBrush</c> inside the dictionary, and it is therefore the one value in this file
+    /// that could quietly stop agreeing with every other client. astrid-core publishes it as
+    /// <c>checkbox-check</c>, in all three themes, so this reads the vendored tokens rather than
+    /// repeating the hex.
+    /// </remarks>
+    [Theory]
+    [InlineData("light")]
+    [InlineData("dark")]
+    [InlineData("ocean")]
+    public void The_checkbox_tick_is_the_shared_token_task_82e4ad32(string theme)
+    {
+        var art = XDocument.Load(CheckboxArtPath()).Root!;
+        var tick = art.Elements(Ui + "SolidColorBrush")
+            .Single(brush => (string?)brush.Attribute(Xaml + "Key") == "AstridCheckboxCheckBrush");
+
+        Assert.Equal(
+            Token(Tokens(), theme, "checkbox-check"),
+            ((string)tick.Attribute("Color")!).ToUpperInvariant());
     }
 }
