@@ -116,6 +116,11 @@ internal sealed class FakeCore : IAstridCore
         using var document = JsonDocument.Parse(json);
         var kind = document.RootElement.GetProperty("kind").GetString() ?? string.Empty;
 
+        if (kind == "sidebar" && !Scripted("sidebar") && Scripted("lists"))
+        {
+            return Task.FromResult(AstridResponse.Parse(SidebarFromLists()));
+        }
+
         if (_answers.TryGetValue(kind, out var queue) && queue.Count > 0)
         {
             var answer = AstridResponse.Parse(queue.Dequeue());
@@ -130,6 +135,69 @@ internal sealed class FakeCore : IAstridCore
         // with nothing makes a test pass while proving nothing at all.
         return Task.FromResult(AstridResponse.Parse(
             _fallback ?? $"{{\"ok\":false,\"error\":{{\"kind\":\"badRequest\",\"message\":\"nothing scripted for {kind}\"}}}}"));
+    }
+
+    private bool Scripted(string kind) =>
+        _answers.TryGetValue(kind, out var queue) && queue.Count > 0;
+
+    /// <summary>
+    /// The <c>sidebar</c> answer a scripted <c>lists</c> implies, for a test whose subject is not
+    /// the sidebar (task e22621e2).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// `sidebar` replaced the shell's `lists` + `myTasksList` + `listBadges`, and dozens of tests
+    /// script a list or two only so that the shell has somewhere to open. Rather than rewrite each
+    /// of those scripts, this splits the scripted lists into the sections the core would — and
+    /// deliberately does no filtering or ordering, so nothing here can stand in for the rule.
+    /// Which lists are places, in what order, with what badge, is tested where it is decided:
+    /// astrid-core's `rows::sidebar` and its dispatch test. A test about the sidebar scripts
+    /// <c>sidebar</c> itself, and this is then not used.
+    /// </para>
+    /// </remarks>
+    private string SidebarFromLists()
+    {
+        var lists = JsonDocument.Parse(_answers["lists"].Dequeue()).RootElement;
+        if (!lists.TryGetProperty("value", out var value) || value.ValueKind != JsonValueKind.Array)
+        {
+            return lists.GetRawText();
+        }
+        var badges = Scripted("listBadges")
+            ? JsonDocument.Parse(_answers["listBadges"].Dequeue()).RootElement
+            : default;
+        var myTasks = Scripted("myTasksList")
+            ? JsonDocument.Parse(_answers["myTasksList"].Dequeue()).RootElement
+            : default;
+
+        string Badged(JsonElement list)
+        {
+            var id = list.TryGetProperty("id", out var held) ? held.GetString() : null;
+            if (id is null
+                || badges.ValueKind != JsonValueKind.Object
+                || !badges.TryGetProperty("value", out var counts)
+                || !counts.TryGetProperty(id, out var count))
+            {
+                return list.GetRawText();
+            }
+            var fields = list.EnumerateObject()
+                .Where(field => field.Name != "taskCount")
+                .Select(field => $"{JsonSerializer.Serialize(field.Name)}:{field.Value.GetRawText()}");
+            return $"{{{string.Join(",", fields.Append($"\"taskCount\":{count.GetRawText()}"))}}}";
+        }
+
+        bool IsFavorite(JsonElement list) =>
+            list.TryGetProperty("isFavorite", out var held)
+            && held.ValueKind == JsonValueKind.True;
+
+        var favorites = value.EnumerateArray().Where(IsFavorite).Select(Badged);
+        var rest = value.EnumerateArray().Where(list => !IsFavorite(list)).Select(Badged);
+        var mine = myTasks.ValueKind == JsonValueKind.Object
+            && myTasks.TryGetProperty("value", out var entry)
+                ? Badged(entry)
+                : "null";
+        return $"{{\"ok\":true,\"value\":{{\"myTasks\":{mine},"
+            + $"\"favorites\":[{string.Join(",", favorites)}],"
+            + $"\"lists\":[{string.Join(",", rest)}]}}}}";
     }
 
     /// <summary>The commands that were sent, by kind, in order.</summary>

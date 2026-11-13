@@ -6,114 +6,138 @@ using Xunit;
 namespace Astrid.App.Tests;
 
 /// <summary>
-/// The number beside each list in the sidebar.
+/// What the sidebar draws, and where it comes from.
 /// </summary>
 /// <remarks>
-/// The count is the core's — <c>listBadges</c>, which iOS's <c>ListTaskCount</c> draws from too.
-/// The sidebar used to draw <c>lists</c>' own <c>taskCount</c>, which is the server's total for the
-/// list and counts the completed tasks with the open ones (task 8d37457b).
+/// All of it is the core's answer to one <c>sidebar</c> call (task e22621e2): which lists are
+/// places, the order of both sections, and the number beside each entry — the open tasks, not the
+/// server's lifetime total for the list (task 8d37457b). The shell used to make three calls and
+/// run a filter and two sorts over the result, which is how Android came to offer a GitHub
+/// milestone as somewhere to file a task.
 /// </remarks>
 public class SidebarViewModelTests
 {
-    private static FakeCore Core(object lists) =>
-        new FakeCore().AnswerOk("lists", lists);
+    private static object Sections(object? myTasks = null, object[]? favorites = null,
+        object[]? lists = null) => new
+        {
+            myTasks,
+            favorites = favorites ?? [],
+            lists = lists ?? [],
+        };
 
-    private static object OneList(int serverTotal) => new[]
+    private static FakeCore Core(object sections) => new FakeCore().AnswerOk("sidebar", sections);
+
+    /// <summary>
+    /// Regression, task e22621e2: one call. The acceptance of the task is that <c>LoadAsync</c>
+    /// asks once and sorts nothing — the three calls it replaced were three chances for this shell
+    /// to disagree with web about what a sidebar holds.
+    /// </summary>
+    [Fact]
+    public async Task The_sidebar_is_one_call_and_the_shell_re_orders_nothing()
     {
-        new { id = "l1", name = "Home", taskCount = serverTotal },
-    };
+        var core = Core(Sections(
+            myTasks: new { id = "virtual:my-tasks", name = "My Tasks", isVirtual = true, taskCount = 3 },
+            favorites: [new { id = "f1", name = "Zoo", isFavorite = true, favoriteOrder = 0 }],
+            // Deliberately not alphabetical: this is the core's order, and the shell keeps it.
+            lists: [
+                new { id = "l2", name = "Work", isFavorite = false, favoriteOrder = (int?)null },
+                new { id = "l1", name = "Home", isFavorite = false, favoriteOrder = (int?)null },
+            ]));
+        var sidebar = new SidebarViewModel(core);
+
+        await sidebar.LoadAsync();
+
+        Assert.Equal(["sidebar"], core.SentKinds());
+        Assert.Equal("My Tasks", Assert.Single(sidebar.MyTasks).Name);
+        Assert.Equal("Zoo", Assert.Single(sidebar.Favorites).Name);
+        Assert.Equal(["Work", "Home"], sidebar.Lists.Select(list => list.Name));
+    }
 
     /// <summary>
     /// Regression, task 8d37457b: "Astrid Windows To-do is 124 tasks" beside a list holding a
-    /// dozen open ones. The server's total is every task the list has ever held.
+    /// dozen open ones. The badge arrives on the entry, already the open count.
     /// </summary>
     [Fact]
-    public async Task The_number_beside_a_list_is_its_open_tasks_not_the_servers_total()
+    public async Task The_number_beside_a_list_is_the_one_the_core_put_there()
     {
-        var core = Core(OneList(124))
-            .AnswerOk("listBadges", new Dictionary<string, int> { ["l1"] = 12 });
+        var core = Core(Sections(
+            myTasks: new { id = "virtual:my-tasks", name = "My Tasks", isVirtual = true, taskCount = 3 },
+            lists: [new { id = "l1", name = "Home", taskCount = 12 }]));
         var sidebar = new SidebarViewModel(core);
 
         await sidebar.LoadAsync();
 
         Assert.Equal(12, Assert.Single(sidebar.Lists).TaskCount);
-    }
-
-    /// <summary>
-    /// My Tasks' number is what is assigned to the reader, which only the core can work out — so
-    /// it has to be told which list is My Tasks.
-    /// </summary>
-    [Fact]
-    public async Task My_tasks_is_named_so_the_core_counts_what_is_assigned_to_the_reader()
-    {
-        var core = Core(OneList(124))
-            .AnswerOk("myTasksList", new { id = "virtual:my-tasks", name = "My Tasks", isVirtual = true })
-            .AnswerOk("listBadges", new Dictionary<string, int>
-            {
-                ["l1"] = 12,
-                ["virtual:my-tasks"] = 3,
-            });
-        var sidebar = new SidebarViewModel(core);
-
-        await sidebar.LoadAsync();
-
         Assert.Equal(3, Assert.Single(sidebar.MyTasks).TaskCount);
-        Assert.Equal("virtual:my-tasks", SentListBadges(core).GetProperty("myTasksId").GetString());
     }
 
     /// <summary>
-    /// The lists go to the core as they arrived, not rebuilt from <c>ListSummary</c>. What a list
-    /// counts depends on fields the sidebar never draws — its privacy, and its saved filters — and
-    /// a shell that reassembled the payload would be deciding what counts.
+    /// A core that cannot answer leaves the sidebar as it was and says why. It used to be able to
+    /// half-answer — lists without badges — and drawing the server's total instead was the bug.
     /// </summary>
     [Fact]
-    public async Task The_lists_reach_the_core_with_the_fields_the_sidebar_never_draws()
+    public async Task A_core_that_cannot_answer_says_so_and_draws_nothing()
     {
-        var core = Core(new[]
-            {
-                new
-                {
-                    id = "l1",
-                    name = "Shared",
-                    privacy = "PUBLIC",
-                    taskCount = 124,
-                    filterCompleted = "hide",
-                },
-            })
-            .AnswerOk("listBadges", new Dictionary<string, int> { ["l1"] = 12 });
+        var core = new FakeCore().AnswerFailure("sidebar", AstridFailureKind.BadRequest, "nope");
         var sidebar = new SidebarViewModel(core);
 
         await sidebar.LoadAsync();
 
-        var sent = SentListBadges(core).GetProperty("lists")[0];
-        Assert.Equal("PUBLIC", sent.GetProperty("privacy").GetString());
-        Assert.Equal("hide", sent.GetProperty("filterCompleted").GetString());
+        Assert.Equal("nope", sidebar.ErrorMessage);
+        Assert.Empty(sidebar.Lists);
+        Assert.Empty(sidebar.Favorites);
     }
 
     /// <summary>
-    /// A core that cannot answer for the badges leaves the badge off rather than falling back to
-    /// the server's total: that total is the wrong number, and drawing it is the bug.
+    /// My Tasks has no row on the server, so the core says whether there is one at all. A build
+    /// whose core does not offer it draws no My Tasks rather than inventing an id for it.
     /// </summary>
     [Fact]
-    public async Task A_core_that_cannot_count_draws_no_number_rather_than_the_wrong_one()
+    public async Task No_my_tasks_in_the_answer_draws_no_my_tasks()
     {
-        var core = Core(OneList(124))
-            .AnswerFailure("listBadges", AstridFailureKind.BadRequest);
+        var core = Core(Sections(lists: [new { id = "l1", name = "Home" }]));
         var sidebar = new SidebarViewModel(core);
 
         await sidebar.LoadAsync();
 
-        Assert.Null(Assert.Single(sidebar.Lists).TaskCount);
+        Assert.Empty(sidebar.MyTasks);
+        Assert.Equal("Home", sidebar.Selected?.Name);
     }
 
-    /// <summary>The <c>listBadges</c> command as it was sent.</summary>
-    private static JsonElement SentListBadges(FakeCore core)
+    /// <summary>The selection survives a refresh, which happens several times a minute.</summary>
+    [Fact]
+    public async Task The_open_list_stays_open_across_a_refresh()
     {
-        var json = core.Sent.Single(sent =>
-        {
-            using var document = JsonDocument.Parse(sent);
-            return document.RootElement.GetProperty("kind").GetString() == "listBadges";
-        });
-        return JsonDocument.Parse(json).RootElement.Clone();
+        var core = Core(Sections(lists: [
+            new { id = "l1", name = "Home" },
+            new { id = "l2", name = "Work" },
+        ]));
+        var sidebar = new SidebarViewModel(core);
+        await sidebar.LoadAsync();
+        sidebar.Selected = sidebar.Lists.Single(list => list.Id == "l2");
+
+        core.AnswerOk("sidebar", Sections(lists: [
+            new { id = "l1", name = "Home" },
+            new { id = "l2", name = "Work" },
+        ]));
+        await sidebar.LoadAsync();
+
+        Assert.Equal("l2", sidebar.Selected?.Id);
+    }
+
+    /// <summary>
+    /// The sidebar command carries nothing: whose tasks to count is the signed-in reader's, which
+    /// the core knows and the shell must not second-guess.
+    /// </summary>
+    [Fact]
+    public async Task The_command_asks_for_nothing_but_the_sidebar()
+    {
+        var core = Core(Sections(lists: [new { id = "l1", name = "Home" }]));
+        var sidebar = new SidebarViewModel(core);
+
+        await sidebar.LoadAsync();
+
+        using var document = JsonDocument.Parse(Assert.Single(core.Sent));
+        Assert.Equal(["kind"], document.RootElement.EnumerateObject().Select(field => field.Name));
     }
 }

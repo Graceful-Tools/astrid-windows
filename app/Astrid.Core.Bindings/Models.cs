@@ -379,6 +379,32 @@ public sealed record RowWindow
     [JsonPropertyName("sortBy")] public string? SortBy { get; init; }
 }
 
+/// <summary>
+/// The sidebar, whole: the core's answer to <c>sidebar</c> (task e22621e2).
+/// </summary>
+/// <remarks>
+/// The sections arrive filtered to the places — no board columns, no labels, no GitHub milestones
+/// or iterations — in the order they are drawn, each entry's <see cref="ListSummary.TaskCount"/>
+/// already the sidebar's number rather than the server's lifetime total. So the shell binds this
+/// and sorts nothing: which places, in what order, is a product decision shared with web, iOS and
+/// Android, and three shells answering it in three languages is how Android came to offer a
+/// milestone as somewhere to file a task.
+/// </remarks>
+public sealed record SidebarSections
+{
+    /// <summary>
+    /// My Tasks: what you are holding, wherever it lives. Above the favourites, because it is the
+    /// view the app opens on rather than one of the lists.
+    /// </summary>
+    [JsonPropertyName("myTasks")] public ListSummary? MyTasks { get; init; }
+
+    /// <summary>Favourites, in the order the user arranged them.</summary>
+    [JsonPropertyName("favorites")] public IReadOnlyList<ListSummary> Favorites { get; init; } = [];
+
+    /// <summary>Everything else that can hold a task.</summary>
+    [JsonPropertyName("lists")] public IReadOnlyList<ListSummary> Lists { get; init; } = [];
+}
+
 /// <summary>A list, as the sidebar needs it.</summary>
 public sealed record ListSummary
 {
@@ -427,8 +453,18 @@ public sealed record ListSummary
     /// </summary>
     public bool IsLabelList => ListType == "label";
 
-    /// <summary>Somewhere a person can go and file a task: not a column, not a label.</summary>
-    public bool IsDomainList => !IsStatusList && !IsLabelList;
+    /// <summary>
+    /// Somewhere a person can go and file a task: not a column, and not a tag.
+    /// </summary>
+    /// <remarks>
+    /// A GitHub milestone and a GitHub project iteration are tags too — of which a task has at
+    /// most one, and which GitHub owns (core's <c>is_tag_list</c>, AITD-506). Reading them as
+    /// places offered them as drop targets and as lists to link a Google list to; Android's copy
+    /// of this predicate had the same gap, which is the bug task e22621e2 ends. The sidebar no
+    /// longer asks this at all — it binds the core's <c>sidebar</c> answer.
+    /// </remarks>
+    public bool IsDomainList => !IsStatusList && !IsLabelList
+        && ListType != "milestone" && ListType != "iteration";
 
     /// <summary>
     /// Somewhere a dragged row can be dropped (task 27cae198): a real list. A virtual list is a

@@ -238,7 +238,7 @@ public sealed class ShellViewModelTests
         var moved = Assert.Single(core.Sent, json => json.Contains("\"kind\":\"setTaskLists\""));
         Assert.Contains("\"taskId\":\"t1\"", moved);
         Assert.Contains("\"listIds\":[\"l2\"]", moved);
-        Assert.Equal(["setTaskLists", "rowsForList", "lists"], core.SentKinds().Skip(sentBefore).Take(3));
+        Assert.Equal(["setTaskLists", "rowsForList", "sidebar"], core.SentKinds().Skip(sentBefore).Take(3));
 
         Assert.True(await shell.DropTaskOnListAsync("t1", "l2", add: true));
         var added = Assert.Single(core.Sent, json => json.Contains("\"kind\":\"addTaskToList\""));
@@ -907,15 +907,11 @@ public sealed class ShellViewModelTests
 
         var kinds = core.SentKinds().ToList();
         Assert.Equal("isSignedIn", kinds[0]);
-        Assert.Equal("lists", kinds[1]);
-        // My Tasks sits above the lists in the sidebar, so the sidebar asks for it while it is
-        // drawing — still before anything reaches the network.
-        Assert.Equal("myTasksList", kinds[2]);
-        // And the numbers beside them, which are counted from the cache too (task 8d37457b). My
-        // Tasks is asked for first because the count for it is the one the core cannot work out
-        // without being told which list it is.
-        Assert.Equal("listBadges", kinds[3]);
-        Assert.Equal("rowsForList", kinds[4]);
+        // One call for the whole sidebar — My Tasks, the favourites, the lists and the number
+        // beside each, all counted from the cache (task e22621e2, replacing `lists` +
+        // `myTasksList` + `listBadges`). Still before anything reaches the network.
+        Assert.Equal("sidebar", kinds[1]);
+        Assert.Equal("rowsForList", kinds[2]);
         Assert.Contains("sync", kinds);
         Assert.True(kinds.IndexOf("rowsForList") < kinds.IndexOf("sync"));
     }
@@ -980,19 +976,22 @@ public sealed class ShellViewModelTests
     }
 
     /// <summary>
-    /// A board column is a state, not a place to file a task; a label is a tag, drawn on the
-    /// tasks that carry it and never offered as somewhere to go (the web's list flavours).
+    /// A board column is a state, not a place to file a task; a label, a milestone and an
+    /// iteration are tags, drawn on the tasks that carry them and never offered as somewhere to
+    /// go. Which is which is the core's answer now — the <c>sidebar</c> command sends the places
+    /// only (task e22621e2, and `rows::sidebar`'s own tests) — so what this asserts is that the
+    /// shell draws what it was sent and nothing else.
     /// </summary>
     [Fact]
-    public async Task Board_columns_and_labels_never_appear_in_the_sidebar()
+    public async Task The_sidebar_draws_the_places_the_core_sent_and_adds_none()
     {
         var core = new FakeCore()
             .AnswerOk("isSignedIn", new { signedIn = true, waitingForCallback = false })
-            .AnswerOk("lists", new object[]
+            .AnswerOk("sidebar", new
             {
-                new { id = "l1", name = "Home" },
-                new { id = "s1", name = "Doing", listType = "status" },
-                new { id = "b1", name = "Bugs", listType = "label" },
+                myTasks = (object?)null,
+                favorites = Array.Empty<object>(),
+                lists = new object[] { new { id = "l1", name = "Home" } },
             })
             .AnswerOk("rowsForList", EmptyWindow())
             .AnswerOk("outboxStats", new { hasUnsentWork = false })
@@ -1003,6 +1002,7 @@ public sealed class ShellViewModelTests
 
         Assert.Single(shell.Sidebar.Lists);
         Assert.Equal("Home", shell.Sidebar.Lists[0].Name);
+        Assert.DoesNotContain("lists", core.SentKinds());
     }
 
     /// <summary>
@@ -1161,7 +1161,7 @@ public sealed class ShellViewModelTests
         await shell.StartAsync();
         await shell.OpenTaskAsync("t1");
         core.NotifyStream(live: false);
-        var listsBefore = core.SentKinds().Count(kind => kind == "lists");
+        var listsBefore = core.SentKinds().Count(kind => kind == "sidebar");
         var rowsBefore = core.SentKinds().Count(kind => kind == "rowsForList");
         var detailBefore = core.SentKinds().Count(kind => kind == "taskDetail");
 
@@ -1171,7 +1171,7 @@ public sealed class ShellViewModelTests
             .AnswerOk("outboxStats", new { hasUnsentWork = false });
         core.NotifyStream(live: true);
 
-        Assert.Equal(listsBefore + 1, core.SentKinds().Count(kind => kind == "lists"));
+        Assert.Equal(listsBefore + 1, core.SentKinds().Count(kind => kind == "sidebar"));
         Assert.Equal(rowsBefore + 1, core.SentKinds().Count(kind => kind == "rowsForList"));
         // The stream names nothing it missed, so "could not say" applies and the open task reloads.
         Assert.Equal(detailBefore + 1, core.SentKinds().Count(kind => kind == "taskDetail"));
@@ -1392,11 +1392,11 @@ public sealed class ShellViewModelTests
 
         core.AnswerOk("rowsForList", EmptyWindow())
             .AnswerOk("outboxStats", new { hasUnsentWork = false });
-        var before = core.SentKinds().Count(kind => kind == "lists");
+        var before = core.SentKinds().Count(kind => kind == "sidebar");
 
         core.Notify("task", "t1");
 
-        Assert.Equal(before, core.SentKinds().Count(kind => kind == "lists"));
+        Assert.Equal(before, core.SentKinds().Count(kind => kind == "sidebar"));
         Assert.Contains("rowsForList", core.SentKinds());
     }
 
@@ -1426,7 +1426,7 @@ public sealed class ShellViewModelTests
         using var shell = new ShellViewModel(core, RunInline);
         await shell.StartAsync();
         await shell.OpenTaskAsync("t1");
-        var listsBefore = core.SentKinds().Count(kind => kind == "lists");
+        var listsBefore = core.SentKinds().Count(kind => kind == "sidebar");
         var rowsBefore = core.SentKinds().Count(kind => kind == "rowsForList");
         var detailBefore = core.SentKinds().Count(kind => kind == "taskDetail");
 
@@ -1436,7 +1436,7 @@ public sealed class ShellViewModelTests
             .AnswerOk("outboxStats", new { hasUnsentWork = false });
         core.NotifySynced("t1", "t7");
 
-        Assert.Equal(listsBefore + 1, core.SentKinds().Count(kind => kind == "lists"));
+        Assert.Equal(listsBefore + 1, core.SentKinds().Count(kind => kind == "sidebar"));
         Assert.Equal(rowsBefore + 1, core.SentKinds().Count(kind => kind == "rowsForList"));
         Assert.Equal(detailBefore + 1, core.SentKinds().Count(kind => kind == "taskDetail"));
     }
