@@ -32,6 +32,18 @@ public static class BrandDefaults
     private const string AstridScheme = "astrid";
     private const string AstridShortName = "Astrid";
 
+    /// <summary>
+    /// The ways hosted Astrid lets a reader in, in the order the sign-in card names them.
+    /// </summary>
+    /// <remarks>
+    /// Not astrid-web's own default, which is google, apple and passkey: the Apple button is drawn
+    /// only when NextAuth also has Apple credentials, and astrid.cc has none, so the three-way
+    /// default is what the switches say rather than what the sign-in page shows. These two are what
+    /// a reader is actually offered, and <c>packaging/brands/astrid.brand.json</c> states the same
+    /// pair, so a build with no profile and <c>-Brand astrid</c> stay the one thing.
+    /// </remarks>
+    private static readonly string[] AstridAuthProviders = ["passkey", "google"];
+
     /// <summary>The server a build with no <c>ASTRID_SERVER_URL</c> talks to.</summary>
     public static string ServerOrigin { get; } = ReadOrigin();
 
@@ -69,6 +81,18 @@ public static class BrandDefaults
     /// bounces, rather than one that files their user's task in someone else's account.
     /// </remarks>
     public static string InboundTaskEmail { get; } = ReadInboundTaskEmail();
+
+    /// <summary>
+    /// The sign-in providers this build's deployment offers, in the order it shows them.
+    /// </summary>
+    /// <remarks>
+    /// astrid-web's <c>NEXT_PUBLIC_BRAND_AUTH_PROVIDERS</c>, resolved from the legacy
+    /// <c>ENABLE_AUTH_*</c> switches by <c>scripts/lib/brand-profile.ps1</c> when the profile names
+    /// no list — the same rule, in the one place on this side that reads a profile. A magic link is
+    /// not in it: it is not a provider web can be configured out of, and every deployment has one.
+    /// </remarks>
+    public static IReadOnlyList<string> AuthProviders { get; } =
+        AuthMethods.Parse(Read("AstridBrandAuthProviders"), AstridAuthProviders);
 
     /// <summary>The assistant's name: "Let Astrid choose".</summary>
     /// <remarks>

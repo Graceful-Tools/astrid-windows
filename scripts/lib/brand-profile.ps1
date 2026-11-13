@@ -20,6 +20,13 @@
         NEXT_PUBLIC_BRAND_INBOUND_TASK_EMAIL  the address a task can be mailed to
         NEXT_PUBLIC_BRAND_AGENT_NAME       what the assistant is called on screen
         NEXT_PUBLIC_BRAND_WORDMARK         the handle it is mentioned by, without the "@"
+        NEXT_PUBLIC_BRAND_AUTH_PROVIDERS   the ways a reader may sign in, in the order shown
+
+    AUTH PROVIDERS ARE RESOLVED HERE, not in the app, because this is the only thing on the Windows
+    side that reads a profile. The rule is astrid-web's (lib/brand/auth-providers.ts): a stated list
+    wins and keeps its order; with none stated the three legacy switches decide, each ON unless
+    turned off, in their documented order; and github and sso are never on unless listed, because a
+    provider that needs credentials must not appear by default.
 
     The last three are the words a reader sees rather than the package's identity (task 8d241526),
     and each falls back the way astrid-web's does: the agent's name and handle to the brand name,
@@ -79,6 +86,10 @@ function Get-AstridBrandProfile {
         InboundTaskEmail     = 'remindme@astrid.cc'
         AgentName            = 'Astrid'
         Wordmark             = 'astrid'
+        # What hosted Astrid actually offers on its sign-in page, which is what the card has always
+        # said. NOT astrid-web's own switch default of google+apple+passkey: the Apple button is
+        # drawn only where NextAuth has Apple credentials too, and astrid.cc has none.
+        AuthProviders        = 'passkey,google'
         AssetsDirectory      = (Join-Path $RepoRoot 'packaging/Assets')
         IdentityName         = $null
         IdentityPublisher    = $null
@@ -139,6 +150,7 @@ function Get-AstridBrandProfile {
     if ($inbound) { $values.InboundTaskEmail = $inbound }
     if ($agentName) { $values.AgentName = $agentName }
     if ($wordmark) { $values.Wordmark = $wordmark.ToLowerInvariant() }
+    $values.AuthProviders = Get-AstridBrandAuthProviders $shared
 
     # The Windows block, last, because it is the only one written for this platform and so it wins.
     foreach ($pair in @(
@@ -185,6 +197,56 @@ function Get-AstridBrandProfile {
     partner's upload, which is the failure this whole file exists to prevent. Assert-AstridBrandProfile
     rejects it instead.
 #>
+<#
+    The sign-in providers a profile offers, as a comma list in the order they are shown.
+
+    astrid-web's resolveAuthProviders (lib/brand/auth-providers.ts), ported rather than invented so
+    one profile describes one deployment across platforms:
+
+      - A stated NEXT_PUBLIC_BRAND_AUTH_PROVIDERS wins, in its own order. Unknown names and repeats
+        are dropped, and a legacy switch turned off still removes its provider from the list - a
+        deployment that turned Google off stays that way however the list is written.
+      - With nothing stated, the three legacy switches decide, each ON unless turned off, in web's
+        order: google, apple, passkey.
+      - github and sso are reached only by listing them. They need credentials, and the "on unless
+        switched off" convention would sprout buttons that fail.
+
+    A profile that resolves to nothing at all is NOT an error here. It is a deployment with no way
+    in, which astrid-web's boot preflight is the thing that refuses; a Windows package that would
+    not build over it only makes that harder to diagnose. The card falls back to this brand's own
+    methods, which is the least misleading sentence available.
+#>
+function Get-AstridBrandAuthProviders {
+    param($Shared)
+
+    $known = @('github', 'google', 'apple', 'passkey', 'sso')
+    $legacy = [ordered]@{ google = $true; apple = $true; passkey = $true }
+    foreach ($id in @($legacy.Keys)) {
+        $switch = Get-AstridBrandMember $Shared "NEXT_PUBLIC_BRAND_ENABLE_AUTH_$($id.ToUpperInvariant())"
+        if ($null -ne $switch) {
+            # Web's `enabled`: anything but an explicit off is on.
+            $legacy[$id] = @('false', '0', 'off', 'no') -notcontains "$switch".Trim().ToLowerInvariant()
+        }
+    }
+
+    $stated = Get-AstridBrandMember $Shared 'NEXT_PUBLIC_BRAND_AUTH_PROVIDERS'
+    $named = @()
+    if ($stated) {
+        $named = @("$stated".Split(',') | ForEach-Object { $_.Trim().ToLowerInvariant() } | Where-Object { $_ })
+    }
+    if ($named.Count -eq 0) {
+        $named = @($legacy.Keys | Where-Object { $legacy[$_] })
+    }
+
+    $resolved = @()
+    foreach ($id in $named) {
+        if ($known -notcontains $id -or $resolved -contains $id) { continue }
+        if ($legacy.Contains($id) -and -not $legacy[$id]) { continue }
+        $resolved += $id
+    }
+    return ($resolved -join ',')
+}
+
 function Get-AstridBrandFileStem {
     param([string]$ShortName)
 

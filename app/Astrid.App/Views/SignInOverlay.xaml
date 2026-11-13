@@ -75,10 +75,10 @@
                         Style="{ThemeResource AccentButtonStyle}"
                         Click="OnSignIn" />
 
-                <TextBlock x:Uid="passkeys_google_and_magic_links_all" TextWrapping="Wrap" TextAlignment="Center"
+                <TextBlock TextWrapping="Wrap" TextAlignment="Center"
                            Style="{ThemeResource CaptionTextBlockStyle}"
                            Foreground="{ThemeResource AstridTextMuted}"
-                           Text="Passkeys, Google and magic links all work there. You stay signed in here afterwards." />
+                           Text="{x:Bind local:BrandCopy.SignInMethods}" />
 
                 <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center"
                             Visibility="{x:Bind Shell.SignIn.IsWaitingForBrowser, Mode=OneWay, Converter={StaticResource Visible}}">

@@ -163,6 +163,7 @@ public partial class App : Application
         // window it belongs to, and without that it throws rather than opening — a failure that
         // looks like the button doing nothing at all.
         MainWindowHandle = WinRT.Interop.WindowNative.GetWindowHandle(_window);
+        ShowTheBuildsOwnIcon(_window);
         _window.Closed += (_, _) =>
         {
             Core?.Dispose();
@@ -177,6 +178,32 @@ public partial class App : Application
         {
             Deliver(_launchActivation);
         }
+    }
+
+    /// <summary>
+    /// Put this build's own icon on the window (task 28348df8).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The executable's icon is compiled in and reaches Explorer and the taskbar; the WINDOW's is a
+    /// separate thing that nothing was setting, so the title bar's corner and the Alt-Tab card wore
+    /// the framework's default — and a partner's build advertised Astrid there however carefully
+    /// the rest of the package was branded.
+    /// </para>
+    /// <para>
+    /// Guarded on the file rather than caught afterwards: <c>SetIcon</c> throws on a path it cannot
+    /// read, and a missing icon is not worth taking the window down over. It is missing exactly
+    /// when the build's assets did not make it next to the executable — the same condition that
+    /// already costs this build its strings.
+    /// </para>
+    /// </remarks>
+    private static void ShowTheBuildsOwnIcon(Window window)
+    {
+        if (window.AppWindow is not { } appWindow || !File.Exists(Brand.IconPath))
+        {
+            return;
+        }
+        appWindow.SetIcon(Brand.IconPath);
     }
 
     /// <summary>Pull the URI out of an activation and tell whoever is listening.</summary>

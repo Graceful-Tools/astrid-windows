@@ -130,6 +130,7 @@ foreach ($architecture in $Architectures) {
             "-p:AstridBrandInboundTaskEmail=$($brandProfile.InboundTaskEmail)" `
             "-p:AstridBrandAgentName=$($brandProfile.AgentName)" `
             "-p:AstridBrandWordmark=$($brandProfile.Wordmark)" `
+            "-p:AstridBrandAuthProviders=$($brandProfile.AuthProviders)" `
             -o $publish
     }
 

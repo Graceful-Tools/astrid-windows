@@ -1197,9 +1197,6 @@
   <data name="palette_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Befehlspalette</value>
   </data>
-  <data name="passkeys_google_and_magic_links_all.Text" xml:space="preserve">
-    <value>Passkeys, Google und Magic Links funktionieren dort alle. Danach bleiben Sie hier angemeldet.</value>
-  </data>
   <data name="paste_a_key_then_enter.PlaceholderText" xml:space="preserve">
     <value>Schlüssel einfügen, dann Enter</value>
   </data>
@@ -1628,6 +1625,33 @@
   </data>
   <data name="appearance_hotkey_hint" xml:space="preserve">
     <value>Holt {0} von überall in den Vordergrund, bereit für eine neue Aufgabe. Strg, Alt oder Win plus ein Buchstabe oder eine Ziffer.</value>
+  </data>
+  <data name="auth_method_apple" xml:space="preserve">
+    <value>Apple</value>
+  </data>
+  <data name="auth_method_github" xml:space="preserve">
+    <value>GitHub</value>
+  </data>
+  <data name="auth_method_google" xml:space="preserve">
+    <value>Google</value>
+  </data>
+  <data name="auth_method_magic_link" xml:space="preserve">
+    <value>Magic Links</value>
+  </data>
+  <data name="auth_method_passkey" xml:space="preserve">
+    <value>Passkeys</value>
+  </data>
+  <data name="auth_method_sso" xml:space="preserve">
+    <value>das Single Sign-on Ihrer Organisation</value>
+  </data>
+  <data name="list_conjunction" xml:space="preserve">
+    <value>{0} und {1}</value>
+  </data>
+  <data name="list_separator" xml:space="preserve">
+    <value>, </value>
+  </data>
+  <data name="brand_sign_in_methods" xml:space="preserve">
+    <value>{0} funktionieren dort alle. Danach bleiben Sie hier angemeldet.</value>
   </data>
   <data name="brand_board_turn_one_on" xml:space="preserve">
     <value>Schalten Sie eines für diese Liste in {0} ein, und seine Spalten erscheinen hier.</value>

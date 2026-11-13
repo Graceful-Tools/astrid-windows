@@ -6,7 +6,9 @@
     "NEXT_PUBLIC_BRAND_TITLE": "Acme Tasks",
     "NEXT_PUBLIC_BRAND_TAGLINE": "Everything the roadrunner is working on.",
     "NEXT_PUBLIC_BRAND_DOMAIN": "tasks.acme.example",
-    "NEXT_PUBLIC_BRAND_APP_URL_SCHEME": "acmetasks"
+    "NEXT_PUBLIC_BRAND_APP_URL_SCHEME": "acmetasks",
+    "NEXT_PUBLIC_BRAND_AUTH_PROVIDERS": "sso,github,passkey",
+    "NEXT_PUBLIC_BRAND_ENABLE_AUTH_GOOGLE": "false"
   },
   "windows": {
     "publisherDisplayName": "Acme Corporation",
