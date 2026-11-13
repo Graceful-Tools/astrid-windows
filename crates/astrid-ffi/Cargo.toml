@@ -26,7 +26,7 @@ crate-type = ["cdylib", "rlib"]
 # down because a default is someone else's decision to change, and the failure would be a link
 # error on both targets rather than anything a test could explain. `supply_chain_contract.rs`
 # asserts the resolved graph still carries it.
-astrid-core = { git = "https://github.com/Graceful-Tools/astrid-core.git", version = "0.1", rev = "65ad6f05763b33577c0426d812046e1cb6b08ab2", features = ["bundled-sqlite"] }
+astrid-core = { git = "https://github.com/Graceful-Tools/astrid-core.git", version = "0.1", rev = "317e5468aa637a33c22ff01047cf265df52697af", features = ["bundled-sqlite"] }
 serde_json = { workspace = true }
 tokio = { workspace = true }
 async-trait = { workspace = true }
