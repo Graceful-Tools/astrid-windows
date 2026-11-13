@@ -44,7 +44,7 @@ function Invoke-Step {
 foreach ($scriptTest in @('tests/fixall-loop-cleanup.Tests.ps1', 'tests/fixall-sweep.Tests.ps1',
         'tests/fixall-loop-guards.Tests.ps1', 'tests/fixall-wake.Tests.ps1',
         'tests/fixall-loop-doing.Tests.ps1', 'tests/fixall-state.Tests.ps1',
-        'tests/fixall-disk.Tests.ps1',
+        'tests/fixall-disk.Tests.ps1', 'tests/fixall-longrun.Tests.ps1',
         'tests/packaging-manifest.Tests.ps1', 'tests/packaging-scripts.Tests.ps1')) {
     $testPath = Join-Path $PSScriptRoot $scriptTest
     Invoke-Step "script tests - $(Split-Path -Leaf $scriptTest)" {

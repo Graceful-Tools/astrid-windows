@@ -95,12 +95,51 @@ all:
    See [waking for replies](#waking-for-replies) for the two-phase acknowledgement this guard is
    half of.
 
-### One task per tick, and what happens when a tick dies
+### One task per tick
 
 A tick takes **one** Ready task. `ASTRID_FIXALL_MAX_TASKS`, which the loop exports as `1`, is the
 shared contract (`astrid-web/docs/FIXALL_WORKFLOW.md` → *One task per scheduled run*): stop after
 that many, push, report, end the run. `RECHECK` / `REVIEW` do not count. An interactive `/fixall`
 leaves it unset and drives the queue to empty.
+
+### A task that will not fit one tick
+
+Some tasks cannot be finished in 75 minutes however they are split. Those carry a `LONG-RUN` line
+in their description (`astrid-web/docs/FIXALL_WORKFLOW.md` → *Tasks longer than one run*), and
+since task `0216d83c` this loop honours it. **The decision is astrid-web's** — how long the flag
+asks for, and whether the overnight window is open — in `scripts/lib/long-run.ts`, printed by the
+preflight this loop already runs. `scripts/lib/fixall-longrun.ps1` only reads the answer:
+
+| Preflight line | What the loop does with it |
+|---|---|
+| `RUN-MINUTES: <n>` | raises `-MaxMinutes` to `n` — never lowers it |
+| `RUN-LONG: 1` | raises the budget cap to `-LongMaxUsd` (`FIXALL_LONG_MAX_USD`, default `50`) |
+| `RUN-TASK: <id>` | exported as `ASTRID_FIXALL_NEXT_TASK` |
+| `RUN-DEFER: <ids>` | exported as `ASTRID_FIXALL_DEFER_TASKS` |
+| `RUN: <note>` | logged |
+
+The window is `-LongRunWindow` (`FIXALL_LONG_RUN_WINDOW`, default `22-6`), because a tick holds the
+working-tree lock for its whole length: an 8-hour run is sixteen ticks in which nothing else on
+this board moves, so a long task only *starts* overnight. Outside the window its id is deferred and
+the rest of the queue is worked under the ordinary bounds — and a queue holding **nothing but**
+deferred work reads as idle, so that tick never starts a session at all. Anything malformed leaves
+both bounds exactly alone; the asymmetry is deliberate, since a long task run under a 75-minute
+watchdog dies mid-task and a short task given eight hours merely wastes a night.
+
+**The run side owes two things**, and `.claude/commands/fixall.md` is where they are asked for:
+take `ASTRID_FIXALL_NEXT_TASK` first, and never take an id listed in `ASTRID_FIXALL_DEFER_TASKS` —
+leave those in Ready, untouched and **without comment**, since the loop's log already records the
+deferral and a comment every half hour is the churn the flag exists to stop.
+
+`install-fixall-task.ps1 -LongRunMinutes` (default `480`) is the other half, and it is not
+optional: Task Scheduler's `ExecutionTimeLimit` is fixed at registration, long before any tick
+knows which task it is taking, and a kill by the scheduler runs **none** of the recovery below. So
+the deadline is `max(watchdog, long-run ceiling) + recovery`. That weakens the outer guard against
+the launcher itself wedging — accepted, because the loop's own watchdog still kills an ordinary
+wedged run at 75 minutes, and the alternative is a tick legitimately given eight hours being killed
+at 85 with no WIP commit, no `Doing` release and no comment. `-LongRunMinutes 0` opts out.
+
+### Why the bounds are what they are, and what happens when a tick dies
 
 The cap is a count of **tasks**, not of dollars, because the agent cannot see its own remaining
 spend until it is nearly gone. On 2026-09-27 three runs in a row started a task they could not
