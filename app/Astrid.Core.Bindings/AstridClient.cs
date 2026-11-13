@@ -56,8 +56,29 @@ public sealed class AstridClient : IAstridCore, IDisposable
     /// </remarks>
     public event Action<ChangeNotification>? Changed;
 
-    /// <summary>The version of the core this build is talking to.</summary>
+    /// <summary>
+    /// This build's binding version and the revision of the core inside it —
+    /// <c>0.1.0 (core a8591a93c022)</c>.
+    /// </summary>
     public static string Version => NativeMethods.BorrowString(NativeMethods.Version());
+
+    /// <summary>
+    /// Answer one of the core's pure rules, synchronously, without a started client.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The stateless half of the core waits on nothing — repeating rollover, permissions, filters,
+    /// smart parsing, the row projections — so asking it needs no handle, no runtime and no
+    /// callback. Static for that reason: a caller that only wants arithmetic should not have to
+    /// start a client, and a disposed one is no reason to refuse the question (task ab249b76).
+    /// </para>
+    /// <para>
+    /// The request is the core's <c>Rule</c> vocabulary, tagged by <c>kind</c>; the answer is the
+    /// same <c>{"ok":…}</c> envelope a command answers with, never null and never empty.
+    /// </para>
+    /// </remarks>
+    public static string Rule(string requestJson) =>
+        NativeMethods.TakeString(NativeMethods.Rule(requestJson));
 
     /// <summary>
     /// Start the core against a cache at <paramref name="cachePath"/>.

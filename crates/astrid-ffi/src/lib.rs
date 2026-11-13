@@ -1,9 +1,13 @@
 //! The C ABI the WinUI shell calls `astrid-core` through.
 //!
-//! Seven functions and one callback type. That is the whole boundary, and keeping it that small is
-//! the point: everything the app can do is a JSON command through [`astrid_call`], so adding a
+//! Eight functions and one callback type. That is the whole boundary, and keeping it that small is
+//! the point: everything the app can *do* is a JSON command through [`astrid_call`], so adding a
 //! feature means adding a `Command` variant in the core, not a symbol here, a declaration in a
 //! header, a `DllImport` in C# and a marshalling rule for whatever it returns.
+//!
+//! The eighth is [`astrid_rule`], and it is the one exception the rule above earns: the core's
+//! pure half waits on nothing, so asking it a question needs neither a handle nor the runtime,
+//! and routing arithmetic through a started app and a callback was machinery for nothing.
 //!
 //! ## The rules of this file
 //!
@@ -44,13 +48,13 @@ pub struct AstridApp {
     runtime: tokio::runtime::Runtime,
     /// Where change notifications go, if the shell asked for them.
     subscriber: std::sync::Mutex<Option<Arc<Subscriber>>>,
-    /// Cleared by [`astrid_stop`], watched by the background loops.
+    /// The background loops, stopped by [`astrid_stop`] and on drop.
     ///
     /// Dropping the runtime would stop them anyway, but only at their next await point — which for
     /// a stream sitting on a socket is whenever the server next says something. Asking them to
     /// stop first means shutting the app takes a moment rather than however long a quiet
     /// connection stays quiet.
-    running: Arc<std::sync::atomic::AtomicBool>,
+    loops: background::BackgroundLoops,
 }
 
 /// A callback plus its context, marked as safe to move between threads.
@@ -69,15 +73,60 @@ struct Subscriber {
 unsafe impl Send for Subscriber {}
 unsafe impl Sync for Subscriber {}
 
-/// The version of this library — astrid-ffi's own `CARGO_PKG_VERSION`, not the core's revision
-/// (AWTD2-168 makes it the core revision). For an about box and a crash report.
+/// The version of this library, and the revision of the core inside it — `0.1.0 (core a8591a93c022)`.
+///
+/// Both, because they answer different questions and a crash report needs the second one.
+/// Almost every line in this process is the core's, the shell takes it by a pin somebody moves,
+/// and this crate's own version is a number nobody bumps: a report saying `0.1.0` could not
+/// distinguish a fortnight of core changes (task `ab249b76`). `astrid_core::BUILD_REV` is
+/// resolved by the core's `build.rs` and is never empty.
 ///
 /// # Safety
 /// The returned pointer is static and must not be freed.
 #[no_mangle]
 pub extern "C" fn astrid_version() -> *const c_char {
-    // A `\0`-terminated literal, so the pointer is valid for the life of the process.
-    concat!(env!("CARGO_PKG_VERSION"), "\0").as_ptr() as *const c_char
+    // Built once, leaked once: the signature promises a pointer good for the life of the process,
+    // and the revision is only known at compile time of the *core*, so this cannot be a literal.
+    static VERSION: std::sync::OnceLock<CString> = std::sync::OnceLock::new();
+    VERSION
+        .get_or_init(|| {
+            CString::new(format!(
+                "{} (core {})",
+                env!("CARGO_PKG_VERSION"),
+                astrid_core::BUILD_REV
+            ))
+            // A revision with an interior nul would be a corrupt build; the version is still owed.
+            .unwrap_or_else(|_| {
+                CString::new(env!("CARGO_PKG_VERSION")).expect("a literal has no nul")
+            })
+        })
+        .as_ptr()
+}
+
+/// Answer one pure rule: JSON in, JSON out, no handle and no runtime.
+///
+/// The stateless half of the core — repeating rollover, permissions, filters, smart parsing, the
+/// row projections — is a synchronous function that waits on nothing, and web and the wasm build
+/// have called it directly since it existed. This shell could only reach it through
+/// [`astrid_call`], which needs a started app, a tokio pool and a callback for a question that is
+/// pure arithmetic (task `ab249b76`). The vocabulary is `astrid_core::rules::Rule`, tagged by
+/// `kind`, and the answer is the same `{"ok":…}` envelope every other client reads.
+///
+/// Never null: a request that cannot be read answers a refusal envelope, because a caller that
+/// has to tell a bad request from a dead library by checking for null gets it wrong once.
+///
+/// # Safety
+/// `request_json` must be a valid `\0`-terminated string, or null. The returned string is the
+/// caller's, to free with [`astrid_free_string`].
+#[no_mangle]
+pub unsafe extern "C" fn astrid_rule(request_json: *const c_char) -> *mut c_char {
+    let answer = catch_unwind(AssertUnwindSafe(|| match read_string(request_json) {
+        Some(request) => astrid_core::rules::run_json(&request),
+        // The same envelope the core's own refusals use, which is also what `astrid_call` answers.
+        None => failure_json("the rule request was not readable text"),
+    }))
+    .unwrap_or_else(|_| failure_json("the core panicked answering that rule"));
+    to_c_string(answer)
 }
 
 /// Start the client.
@@ -120,56 +169,16 @@ pub unsafe extern "C" fn astrid_start(
         // the live stream, a half-minute look for a reminder that has come due, and a five-minute
         // mirror of the Google-linked lists.
         // Started here rather than by the shell, because "is the app current?" is not a question a
-        // window should have to remember to ask.
-        let running = Arc::new(std::sync::atomic::AtomicBool::new(true));
-        {
-            let (app, running) = (app.clone(), running.clone());
-            let keep_going = move || running.load(std::sync::atomic::Ordering::Relaxed);
-            runtime.spawn(background::sync_loop(
-                app,
-                keep_going,
-                background::default_sync_interval(),
-            ));
-        }
-        {
-            let (app, running) = (app.clone(), running.clone());
-            let keep_going = move || running.load(std::sync::atomic::Ordering::Relaxed);
-            let nudge = app.outbox_nudge().clone();
-            runtime.spawn(background::outbox_loop(app, keep_going, nudge));
-        }
-        {
-            let (app, running) = (app.clone(), running.clone());
-            let keep_going = move || running.load(std::sync::atomic::Ordering::Relaxed);
-            runtime.spawn(background::reminder_loop(
-                app,
-                keep_going,
-                background::REMINDER_INTERVAL,
-            ));
-        }
-        {
-            let (app, running) = (app.clone(), running.clone());
-            let keep_going = move || running.load(std::sync::atomic::Ordering::Relaxed);
-            runtime.spawn(background::external_loop(
-                app,
-                keep_going,
-                background::EXTERNAL_INTERVAL,
-            ));
-        }
-        {
-            let (app, running) = (app.clone(), running.clone());
-            // `Copy` so the reconnect loop inside can check it too.
-            let keep_going = move || running.load(std::sync::atomic::Ordering::Relaxed);
-            runtime.spawn(async move {
-                let keep_going = keep_going;
-                background::realtime_loop(app, &keep_going).await;
-            });
-        }
+        // window should have to remember to ask — and *which* loops run is the core's to say, not
+        // this file's. Five hand-written spawns lived here, and Apple's five were three, so an
+        // account current on one platform was stale on another (task `ab249b76`).
+        let loops = app.start_background(runtime.handle(), background::LoopSet::ALL);
 
         Ok::<_, String>(AstridApp {
             app,
             runtime,
             subscriber: std::sync::Mutex::new(None),
-            running,
+            loops,
         })
     }));
 
@@ -206,10 +215,10 @@ pub unsafe extern "C" fn astrid_stop(handle: *mut AstridApp) {
     let _ = catch_unwind(AssertUnwindSafe(|| {
         let handle = Box::from_raw(handle);
         // Ask the background loops to stop before the runtime is torn down, so shutting the app
-        // takes a moment rather than however long the live stream stays quiet.
-        handle
-            .running
-            .store(false, std::sync::atomic::Ordering::Relaxed);
+        // takes a moment rather than however long the live stream stays quiet. Dropping the handle
+        // would stop them too; saying so here keeps the order explicit, because the runtime's own
+        // drop is what blocks.
+        handle.loops.stop();
         drop(handle);
     }));
 }
@@ -532,12 +541,72 @@ mod tests {
         assert_eq!(Change::NeedsSync.to_json(), r#"{"change":"needsSync"}"#);
     }
 
+    /// A crash report has to name the code that crashed, and almost all of it is the core's.
+    ///
+    /// This used to answer astrid-ffi's own `0.1.0` — a number nobody bumps, describing the
+    /// thinnest layer in the process, while the core it was running came from a pin somebody
+    /// moved a fortnight ago (task `ab249b76`). Now it carries both: this crate's version for the
+    /// shell, and `astrid_core::BUILD_REV` for what it was built against.
     #[test]
-    fn the_version_is_readable_and_static() {
+    fn task_ab249b76_the_version_names_the_core_revision() {
         let version = unsafe { CStr::from_ptr(astrid_version()) }
             .to_string_lossy()
             .into_owned();
-        assert_eq!(version, env!("CARGO_PKG_VERSION"));
+
+        assert!(
+            version.starts_with(env!("CARGO_PKG_VERSION")),
+            "{version} does not start with this crate's version"
+        );
+        assert!(
+            version.contains(astrid_core::BUILD_REV),
+            "{version} does not name the core revision ({})",
+            astrid_core::BUILD_REV
+        );
+        // Static, so the pointer outlives the call. Asking twice must give the same bytes.
+        let again = unsafe { CStr::from_ptr(astrid_version()) }.to_string_lossy();
+        assert_eq!(version, again);
+    }
+
+    /// The stateless rules, without a handle and without a runtime.
+    ///
+    /// Web and the wasm build have reached `rules::run_json` since it existed; this shell could
+    /// only ask through `astrid_call`, which needs a started app, a tokio pool and a callback for
+    /// a question that is pure arithmetic (task `ab249b76`). An unknown rule answers an error
+    /// envelope rather than null, because a shell that has to tell a parse failure from a dead
+    /// library by checking for null gets it wrong once and then crashes.
+    #[test]
+    fn task_ab249b76_a_rule_answers_without_a_handle() {
+        const REQUEST: &str = r#"{"kind":"ratingKey"}"#;
+        let request = CString::new(REQUEST).expect("a literal");
+        let text = read_rule_answer(unsafe { astrid_rule(request.as_ptr()) });
+
+        // The core's own answer, passed through unchanged.
+        assert_eq!(text, astrid_core::rules::run_json(REQUEST));
+        assert!(text.contains(r#""ok":true"#), "{text} is not a success");
+    }
+
+    /// Null and nonsense are a shell on a path that already failed. Both answer a refusal
+    /// envelope, because a caller that has to tell a bad request from a dead library by checking
+    /// for null gets it wrong once and then crashes.
+    #[test]
+    fn task_ab249b76_a_rule_that_cannot_be_read_still_answers_json() {
+        let text = read_rule_answer(unsafe { astrid_rule(std::ptr::null()) });
+        assert!(text.contains(r#""ok":false"#), "{text} is not a refusal");
+
+        let garbage = CString::new("not json at all").expect("a literal");
+        let text = read_rule_answer(unsafe { astrid_rule(garbage.as_ptr()) });
+        assert!(text.contains(r#""ok":false"#), "{text} is not a refusal");
+    }
+
+    /// Copy what [`astrid_rule`] returned and hand the allocation back, so a test reads a `String`
+    /// and cannot leak.
+    fn read_rule_answer(answer: *mut c_char) -> String {
+        assert!(!answer.is_null(), "astrid_rule answered null");
+        let text = unsafe { CStr::from_ptr(answer) }
+            .to_string_lossy()
+            .into_owned();
+        unsafe { astrid_free_string(answer) };
+        text
     }
 
     /// Freeing null, and stopping null, are both things a shell does on a path that failed
@@ -562,7 +631,7 @@ mod tests {
             .collect();
 
         assert!(
-            exported.len() >= 7,
+            exported.len() >= 8,
             "the scan found {} symbols, so it has stopped working: {exported:?}",
             exported.len()
         );
@@ -570,6 +639,42 @@ mod tests {
             assert!(
                 HEADER.contains(symbol),
                 "{symbol} is exported but not in include/astrid.h"
+            );
+        }
+    }
+
+    /// And the shell can actually call every one of them.
+    ///
+    /// The header stops the *C* declaration drifting; nothing stopped the C# one. A function
+    /// added to the ABI and the header but not to `NativeMethods.cs` is a door the shell cannot
+    /// open, and it is invisible — both sides compile, and only the feature that needed it is
+    /// missing. `astrid_rule` was added by task `ab249b76` and is the first such function since
+    /// the boundary was written, which is exactly when the guard is worth having.
+    #[test]
+    fn task_ab249b76_the_shell_binds_every_exported_symbol() {
+        const NATIVE_METHODS: &str =
+            include_str!("../../../app/Astrid.Core.Bindings/NativeMethods.cs");
+        const SOURCE: &str = include_str!("lib.rs");
+
+        let exported: Vec<&str> = SOURCE
+            .lines()
+            .zip(SOURCE.lines().skip(1))
+            .filter(|(attribute, _)| attribute.trim() == "#[no_mangle]")
+            .filter_map(|(_, signature)| {
+                let after = signature.split("fn ").nth(1)?;
+                Some(after.split('(').next()?.trim())
+            })
+            .collect();
+
+        assert!(
+            exported.len() >= 8,
+            "the scan found {} symbols, so it has stopped working: {exported:?}",
+            exported.len()
+        );
+        for symbol in exported {
+            assert!(
+                NATIVE_METHODS.contains(&format!("EntryPoint = \"{symbol}\"")),
+                "{symbol} is exported but no LibraryImport in NativeMethods.cs names it"
             );
         }
     }
