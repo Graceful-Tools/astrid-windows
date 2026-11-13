@@ -210,7 +210,31 @@ public sealed partial class TaskDetailPane : UserControl
         if (sender is FrameworkElement { Tag: string columnId })
         {
             await Shell.Detail.SetStatusAsync(columnId);
+            await AskForWaitConditionAsync();
         }
+    }
+
+    /// <summary>
+    /// Ask what the task is waiting for, if the core said the move needs it (task 7462618e).
+    /// </summary>
+    /// <remarks>
+    /// The same ask a dragged card gets, because it is the same move. Cancelling leaves the task
+    /// where it was: the core refused before writing anything.
+    /// </remarks>
+    private async Task AskForWaitConditionAsync()
+    {
+        if (Shell.Detail.WaitPrompt is not { } prompt)
+        {
+            return;
+        }
+        var condition = await WaitConditionDialog.AskAsync(
+            XamlRoot, prompt, query => Shell.SearchTasksAsync(query));
+        if (condition is null)
+        {
+            Shell.Detail.CancelWaitPrompt();
+            return;
+        }
+        await Shell.Detail.ResolveWaitAsync(condition);
     }
 
     /// <summary>
@@ -227,6 +251,7 @@ public sealed partial class TaskDetailPane : UserControl
         }
         chip.IsChecked = !chip.IsChecked;
         await Shell.Detail.SetStatusAsync(columnId);
+        await AskForWaitConditionAsync();
     }
 
     private async void OnToggleWontDo(object sender, RoutedEventArgs args) =>

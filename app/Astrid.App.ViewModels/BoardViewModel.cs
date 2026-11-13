@@ -37,6 +37,8 @@ public sealed class BoardViewModel : ObservableObject
     /// the same reason.
     /// </remarks>
     private readonly Dictionary<string, string> _drafts = [];
+    /// <summary>A move into Waiting that is waiting on a date or a task (task 7462618e).</summary>
+    private readonly PendingWait _pendingWait;
     private string _listId = string.Empty;
     private Board? _board;
     private bool _isLoading;
@@ -46,6 +48,7 @@ public sealed class BoardViewModel : ObservableObject
     public BoardViewModel(IAstridCore core)
     {
         _core = core;
+        _pendingWait = new PendingWait(() => Raise(nameof(WaitPrompt)));
     }
 
     /// <summary>The columns, in the order the board shows them.</summary>
@@ -78,6 +81,17 @@ public sealed class BoardViewModel : ObservableObject
         get => _expandedTaskId;
         private set => Set(ref _expandedTaskId, value);
     }
+
+    /// <summary>
+    /// The condition the shell must ask for before this move into Waiting can happen, if one is
+    /// outstanding (task 7462618e).
+    /// </summary>
+    /// <remarks>
+    /// Not an error: nothing was written, and the card never left its column. The view draws the
+    /// "waiting until… / waiting on…" picker while this is set, and answers with
+    /// <see cref="ResolveWaitAsync"/> or <see cref="CancelWaitPrompt"/>.
+    /// </remarks>
+    public WaitPrompt? WaitPrompt => _pendingWait.Prompt;
 
     /// <summary>Load the board the given list belongs to, if it belongs to one.</summary>
     public async Task LoadAsync(string listId, CancellationToken cancellationToken = default)
@@ -142,11 +156,24 @@ public sealed class BoardViewModel : ObservableObject
     /// one column — dropping a repeating card on Done rolls it forward and leaves it in the column
     /// it came from — and a view that moved the card itself would have to know that.
     /// </remarks>
+    /// <param name="wait">
+    /// The wait condition, when this is the second attempt and the user has answered for one. A
+    /// first attempt sends none: whether the column needs one is the core's decision, not a
+    /// predicate this class evaluates against a column name (task 7462618e).
+    /// </param>
     public async Task<bool> MoveAsync(string taskId, string columnId,
-        CancellationToken cancellationToken = default)
+        WaitCondition? wait = null, CancellationToken cancellationToken = default)
     {
         var response = await _core.CallAsync(
-            Commands.MoveTaskToColumn(taskId, columnId, _listId), cancellationToken);
+            Commands.MoveTaskToColumn(taskId, columnId, _listId, wait), cancellationToken);
+        if (response.NeedsWaitCondition)
+        {
+            // Nothing was written, so the card is still where it was. Ask, rather than report.
+            _pendingWait.Ask(
+                new WaitPrompt(columnId, NameOf(columnId), taskId, null),
+                (condition, token) => MoveAsync(taskId, columnId, condition, token));
+            return false;
+        }
         if (!response.Ok)
         {
             // Offline is not a failure: the move is in the Outbox and the board already shows it.
@@ -155,6 +182,30 @@ public sealed class BoardViewModel : ObservableObject
         await RefreshAsync(cancellationToken);
         return response.Ok;
     }
+
+    /// <summary>
+    /// Answer an outstanding <see cref="WaitPrompt"/>, which sends the refused move again.
+    /// </summary>
+    /// <returns>
+    /// <c>false</c> when there was nothing to answer, when the answer named neither a date nor a
+    /// task, or when the core refused it as well — in the last case the prompt is up again.
+    /// </returns>
+    public Task<bool> ResolveWaitAsync(WaitCondition condition,
+        CancellationToken cancellationToken = default) =>
+        _pendingWait.ResolveAsync(condition, cancellationToken);
+
+    /// <summary>Drop the prompt and leave the task where it was.</summary>
+    public void CancelWaitPrompt() => _pendingWait.Cancel();
+
+    /// <summary>
+    /// A column's name as the core last gave it, for the prompt's title.
+    /// </summary>
+    /// <remarks>
+    /// The id is the fallback rather than a hardcoded "Waiting": the column is whatever this
+    /// board calls it, and only a stale board would fail to name it.
+    /// </remarks>
+    private string NameOf(string columnId) =>
+        _board?.Columns.FirstOrDefault(column => column.Id == columnId)?.Name ?? columnId;
 
     /// <summary>
     /// Complete a card's task, or bring it back (task 6979e694).
@@ -223,17 +274,37 @@ public sealed class BoardViewModel : ObservableObject
     /// swallow what they typed.
     /// </para>
     /// </remarks>
-    public async Task<bool> AddCardAsync(string columnId, CancellationToken cancellationToken = default)
+    public Task<bool> AddCardAsync(string columnId, CancellationToken cancellationToken = default)
     {
         var title = DraftFor(columnId).Trim();
         if (title.Length == 0)
         {
-            return false;
+            return Task.FromResult(false);
         }
         _drafts[columnId] = string.Empty;
+        return AddCardAsync(columnId, title, null, cancellationToken);
+    }
 
+    /// <summary>
+    /// Create the card, with a wait condition when the column turned out to need one.
+    /// </summary>
+    /// <remarks>
+    /// The title is a parameter rather than re-read from the draft: the field was cleared before
+    /// the first attempt, so a retry that read it again would create an empty card.
+    /// </remarks>
+    private async Task<bool> AddCardAsync(string columnId, string title, WaitCondition? wait,
+        CancellationToken cancellationToken)
+    {
         var response = await _core.CallAsync(
-            Commands.AddBoardCard(_listId, columnId, title), cancellationToken);
+            Commands.AddBoardCard(_listId, columnId, title, wait), cancellationToken);
+        if (response.NeedsWaitCondition)
+        {
+            // A card born in Waiting is a task entering Waiting, so the same rule and the same ask.
+            _pendingWait.Ask(
+                new WaitPrompt(columnId, NameOf(columnId), null, title),
+                (condition, token) => AddCardAsync(columnId, title, condition, token));
+            return false;
+        }
         if (!response.Ok)
         {
             // Offline is not a failure: the card is in the Outbox and the board already shows it.

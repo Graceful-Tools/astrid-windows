@@ -92,6 +92,7 @@ public sealed partial class BoardView : UserControl
             if (!string.IsNullOrEmpty(taskId))
             {
                 await Shell.Board.MoveAsync(taskId, columnId);
+                await AskForWaitConditionAsync();
             }
         }
         finally
@@ -152,6 +153,32 @@ public sealed partial class BoardView : UserControl
         column.Draft = field.Text;
         await column.AddCardAsync();
         field.Text = column.Draft;
+        await AskForWaitConditionAsync();
+    }
+
+    /// <summary>
+    /// Ask what the task is waiting for, if the core said the move needs it (task 7462618e).
+    /// </summary>
+    /// <remarks>
+    /// Called after every board write that can put a task in Waiting, rather than from the columns
+    /// the view thinks are Waiting columns: which columns need a condition is the core's decision,
+    /// and this asks only because it was told to. Cancelling drops the prompt and leaves the task
+    /// where it was — nothing was written.
+    /// </remarks>
+    private async Task AskForWaitConditionAsync()
+    {
+        if (Shell.Board.WaitPrompt is not { } prompt)
+        {
+            return;
+        }
+        var condition = await WaitConditionDialog.AskAsync(
+            XamlRoot, prompt, query => Shell.SearchTasksAsync(query));
+        if (condition is null)
+        {
+            Shell.Board.CancelWaitPrompt();
+            return;
+        }
+        await Shell.Board.ResolveWaitAsync(condition);
     }
 
     private void OnInlineDetailSlotLoaded(object sender, RoutedEventArgs args)
@@ -181,7 +208,11 @@ public sealed partial class BoardView : UserControl
         foreach (var column in Shell.Board.Columns)
         {
             var item = new MenuFlyoutItem { Text = column.Name, Tag = column.Id };
-            item.Click += async (_, _) => await Shell.Board.MoveAsync(taskId, column.Id);
+            item.Click += async (_, _) =>
+            {
+                await Shell.Board.MoveAsync(taskId, column.Id);
+                await AskForWaitConditionAsync();
+            };
             menu.Items.Add(item);
         }
         menu.ShowAt(card, args.GetPosition(card));

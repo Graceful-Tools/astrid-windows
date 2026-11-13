@@ -40,6 +40,17 @@ public sealed class AstridResponse
     /// </remarks>
     public bool IsStillPending => Error?.Kind == AstridFailureKind.Offline;
 
+    /// <summary>
+    /// Whether this was a move into Waiting that named no condition.
+    /// </summary>
+    /// <remarks>
+    /// <c>astrid_rules::waiting</c> R2: Waiting means waiting on a date or on a task, so a move
+    /// that names neither is refused and nothing is written. Not an error to report — the shell's
+    /// cue to ask, and send the same command again carrying the answer. Asked here rather than
+    /// compared to the literal at each call site, which is how one of them comes to spell it wrong.
+    /// </remarks>
+    public bool NeedsWaitCondition => Error?.Code == WaitCondition.NeedsConditionCode;
+
     public static AstridResponse Parse(string json)
     {
         if (string.IsNullOrEmpty(json))
@@ -75,7 +86,7 @@ public sealed class AstridResponse
     }
 
     private static AstridResponse Failed(AstridFailureKind kind, string message) =>
-        new(false, default, new AstridFailure(kind, message, null, null));
+        new(false, default, new AstridFailure(kind, message, null, null, null));
 
     /// <summary>Read the value as <typeparamref name="T"/>, or <c>null</c> if it is not there.</summary>
     public T? ValueAs<T>() where T : class =>
@@ -108,11 +119,18 @@ public enum AstridFailureKind
 }
 
 /// <summary>The failure a command reported.</summary>
+/// <param name="Code">
+/// A machine-readable reason within the kind, when the core or the server gave one —
+/// <c>WAITING_NEEDS_CONDITION</c> is the first. Null is the ordinary case: treat the failure by
+/// its <paramref name="Kind"/> and show its <paramref name="Message"/>. Never branch on the
+/// message, which is prose and is translated.
+/// </param>
 public sealed record AstridFailure(
     AstridFailureKind Kind,
     string Message,
     int? Status,
-    string? Id)
+    string? Id,
+    string? Code = null)
 {
     internal static AstridFailure Read(JsonElement element)
     {
@@ -126,7 +144,8 @@ public sealed record AstridFailure(
             ? statusElement.GetInt32()
             : (int?)null;
         var id = element.TryGetProperty("id", out var idElement) ? idElement.GetString() : null;
-        return new AstridFailure(kind, message, status, id);
+        var code = element.TryGetProperty("code", out var codeElement) ? codeElement.GetString() : null;
+        return new AstridFailure(kind, message, status, id, code);
     }
 }
 
