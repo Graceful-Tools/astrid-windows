@@ -614,8 +614,15 @@ public static class Commands
         new BoardRequest("board", listId, limit);
 
     /// <summary>Move a card to a column.</summary>
-    public static object MoveTaskToColumn(string taskId, string columnId, string listId) =>
-        new MoveRequest("moveTaskToColumn", taskId, columnId, listId);
+    /// <param name="wait">
+    /// The wait condition, when the column is Waiting and the user has answered for one. Omitted
+    /// otherwise — and a first attempt is always omitted, because the condition is only asked for
+    /// once the core says it is needed (<see cref="WaitCondition"/>).
+    /// </param>
+    public static object MoveTaskToColumn(string taskId, string columnId, string listId,
+        WaitCondition? wait = null) =>
+        new MoveRequest("moveTaskToColumn", taskId, columnId, listId,
+            wait?.DueDateTime, wait?.IsAllDay, wait?.WaitOnTaskId, wait?.KeepAssigneeOrNull);
 
     /// <summary>
     /// When to be reminded about one task, and the instant each choice means.
@@ -742,8 +749,13 @@ public static class Commands
     /// card created bare and moved afterwards is the Mac's AITD-328, where the role was lost in
     /// between and every card typed into a column turned up in the Inbox.
     /// </remarks>
-    public static object AddBoardCard(string listId, string columnId, string title) =>
-        new AddBoardCardRequest("addBoardCard", listId, columnId, title);
+    /// <param name="wait">
+    /// The wait condition, for a card typed straight into Waiting — see <see cref="WaitCondition"/>.
+    /// </param>
+    public static object AddBoardCard(string listId, string columnId, string title,
+        WaitCondition? wait = null) =>
+        new AddBoardCardRequest("addBoardCard", listId, columnId, title,
+            wait?.DueDateTime, wait?.IsAllDay, wait?.WaitOnTaskId, wait?.KeepAssigneeOrNull);
 
     /// <summary>
     /// Edit a task. <paramref name="changes"/> carries only what changed; a property present and
@@ -774,8 +786,13 @@ public static class Commands
     public static object TaskStatusOptions(string taskId) => new WithTaskId("taskStatusOptions", taskId);
 
     /// <summary>Put a task in a column from its menu: the same move a dragged card makes.</summary>
-    public static object SetTaskStatus(string taskId, string columnId) =>
-        new StatusRequest("setTaskStatus", taskId, columnId);
+    /// <param name="wait">
+    /// The wait condition — the same rule as a dragged card, because it is the same move
+    /// (<see cref="WaitCondition"/>).
+    /// </param>
+    public static object SetTaskStatus(string taskId, string columnId, WaitCondition? wait = null) =>
+        new StatusRequest("setTaskStatus", taskId, columnId,
+            wait?.DueDateTime, wait?.IsAllDay, wait?.WaitOnTaskId, wait?.KeepAssigneeOrNull);
 
     /// <summary>Mint a link to the task other people can open. Online-only, like the web's.</summary>
     public static object ShareTask(string taskId) => new WithTaskId("shareTask", taskId);
@@ -826,8 +843,14 @@ public static class Commands
     public static object ListInsights(string listId, int days, string timeZone) =>
         new InsightsRequest("listInsights", listId, days, timeZone);
 
-    public static object SetTaskStatusRole(string taskId, string? statusRole) =>
-        new StatusRoleRequest("setTaskStatusRole", taskId, statusRole);
+    /// <param name="wait">
+    /// The wait condition, when <paramref name="statusRole"/> is the waiting role — see
+    /// <see cref="WaitCondition"/>.
+    /// </param>
+    public static object SetTaskStatusRole(string taskId, string? statusRole,
+        WaitCondition? wait = null) =>
+        new StatusRoleRequest("setTaskStatusRole", taskId, statusRole,
+            wait?.DueDateTime, wait?.IsAllDay, wait?.WaitOnTaskId, wait?.KeepAssigneeOrNull);
 
     public static object CreateList(string name, string? color = null) =>
         new CreateListRequest("createList", name, color);
@@ -1095,7 +1118,11 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("listId")] string ListId,
         [property: JsonPropertyName("columnId")] string ColumnId,
-        [property: JsonPropertyName("title")] string Title);
+        [property: JsonPropertyName("title")] string Title,
+        [property: JsonPropertyName("dueDateTime")] string? DueDateTime,
+        [property: JsonPropertyName("isAllDay")] bool? IsAllDay,
+        [property: JsonPropertyName("waitOnTaskId")] string? WaitOnTaskId,
+        [property: JsonPropertyName("keepAssignee")] bool? KeepAssignee);
 
     private sealed record UpdateRequest(
         [property: JsonPropertyName("kind")] string Kind,
@@ -1138,7 +1165,11 @@ public static class Commands
     private sealed record StatusRoleRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
-        [property: JsonPropertyName("statusRole")] string? StatusRole);
+        [property: JsonPropertyName("statusRole")] string? StatusRole,
+        [property: JsonPropertyName("dueDateTime")] string? DueDateTime,
+        [property: JsonPropertyName("isAllDay")] bool? IsAllDay,
+        [property: JsonPropertyName("waitOnTaskId")] string? WaitOnTaskId,
+        [property: JsonPropertyName("keepAssignee")] bool? KeepAssignee);
 
     private sealed record CreateListRequest(
         [property: JsonPropertyName("kind")] string Kind,
@@ -1395,7 +1426,11 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("columnId")] string ColumnId,
-        [property: JsonPropertyName("listId")] string ListId);
+        [property: JsonPropertyName("listId")] string ListId,
+        [property: JsonPropertyName("dueDateTime")] string? DueDateTime,
+        [property: JsonPropertyName("isAllDay")] bool? IsAllDay,
+        [property: JsonPropertyName("waitOnTaskId")] string? WaitOnTaskId,
+        [property: JsonPropertyName("keepAssignee")] bool? KeepAssignee);
 
     private sealed record WithId(
         [property: JsonPropertyName("kind")] string Kind,
@@ -1424,7 +1459,11 @@ public static class Commands
     private sealed record StatusRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
-        [property: JsonPropertyName("columnId")] string ColumnId);
+        [property: JsonPropertyName("columnId")] string ColumnId,
+        [property: JsonPropertyName("dueDateTime")] string? DueDateTime,
+        [property: JsonPropertyName("isAllDay")] bool? IsAllDay,
+        [property: JsonPropertyName("waitOnTaskId")] string? WaitOnTaskId,
+        [property: JsonPropertyName("keepAssignee")] bool? KeepAssignee);
 
     private sealed record SnoozeRequest(
         [property: JsonPropertyName("kind")] string Kind,

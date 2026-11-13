@@ -616,6 +616,33 @@
   <data name="dialog_close" xml:space="preserve">
     <value>Close</value>
   </data>
+  <data name="dialog_cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="wait_title" xml:space="preserve">
+    <value>Waiting for what?</value>
+  </data>
+  <data name="wait_explanation" xml:space="preserve">
+    <value>{0} means waiting on a date or on another task. Waiting on a person to act is not waiting — send it to their Inbox instead.</value>
+  </data>
+  <data name="wait_until_label" xml:space="preserve">
+    <value>Waiting until</value>
+  </data>
+  <data name="wait_until_placeholder" xml:space="preserve">
+    <value>Pick a date</value>
+  </data>
+  <data name="wait_on_label" xml:space="preserve">
+    <value>Waiting on</value>
+  </data>
+  <data name="wait_on_placeholder" xml:space="preserve">
+    <value>Find a task</value>
+  </data>
+  <data name="wait_keep_assigned" xml:space="preserve">
+    <value>Keep assigned</value>
+  </data>
+  <data name="wait_confirm" xml:space="preserve">
+    <value>Move to waiting</value>
+  </data>
   <data name="settings_account" xml:space="preserve">
     <value>Account</value>
   </data>

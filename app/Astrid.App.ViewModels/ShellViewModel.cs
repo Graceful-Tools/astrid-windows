@@ -201,6 +201,28 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// <summary>The open list's settings and members, loaded when they are asked for.</summary>
     public ListSettingsViewModel ListSettings { get; }
 
+    /// <summary>
+    /// Tasks matching <paramref name="query"/>, for a picker that needs to name one — the "waiting
+    /// on…" picker is the first (task 7462618e).
+    /// </summary>
+    /// <remarks>
+    /// What counts as a match is <c>searchTasks</c>'s, as it is for the search box; a picker with
+    /// its own idea of matching would be a second search. An empty query matches nothing, and a
+    /// failure is an empty result rather than an error line — the dialog has nowhere to put one,
+    /// and a picker that finds nothing reads the same either way.
+    /// </remarks>
+    public async Task<IReadOnlyList<TaskRow>> SearchTasksAsync(string query,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return [];
+        }
+        var response = await _core.CallAsync(
+            Commands.SearchTasks(query, limit: 20), cancellationToken);
+        return response.Ok ? response.Read<RowWindow>()?.Rows ?? [] : [];
+    }
+
     /// <summary>What the open list has been doing lately (task 48c624ad).</summary>
     public ListInsightsViewModel Insights { get; }
 

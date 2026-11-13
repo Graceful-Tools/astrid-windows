@@ -587,6 +587,48 @@ public sealed class TaskDetailViewModelTests
     }
 
     /// <summary>
+    /// The Status menu asks for a wait condition rather than reporting a refusal (task 7462618e).
+    /// </summary>
+    /// <remarks>
+    /// The same rule as a dragged card, because it is the same move: <c>setTaskStatus</c> carries
+    /// the four <c>WaitOptions</c> keys too. <see cref="TaskDetailViewModel.ErrorMessage"/> stays
+    /// null — the user has not been asked yet, so there is nothing to report.
+    /// </remarks>
+    [Fact]
+    public async Task Setting_status_to_waiting_with_no_condition_asks_for_one_task_7462618e()
+    {
+        var chips = new
+        {
+            current = "doing",
+            chips = new[]
+            {
+                new { id = "waiting", name = "Waiting", kind = "status", isCurrent = false },
+                new { id = "doing", name = "Doing", kind = "status", isCurrent = true },
+            },
+        };
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail(boardState: chips))
+            .Answer("setTaskStatus",
+                """{"ok":false,"error":{"kind":"refused","message":"waiting on what?","code":"WAITING_NEEDS_CONDITION"}}""")
+            .AnswerOk("setTaskStatus", new { id = "t1", statusRole = "waiting" })
+            .AnswerOk("taskDetail", Detail(boardState: chips));
+        var view = new TaskDetailViewModel(core);
+
+        await view.OpenAsync("t1");
+
+        Assert.False(await view.SetStatusAsync("waiting"));
+        Assert.Null(view.ErrorMessage);
+        Assert.NotNull(view.WaitPrompt);
+        Assert.Equal("Waiting", view.WaitPrompt!.ColumnName);
+
+        Assert.True(await view.ResolveWaitAsync(new WaitCondition(DueDateTime: "2026-12-01T09:00:00Z")));
+        var retry = core.Sent.Last(sent => sent.Contains("setTaskStatus"));
+        Assert.Contains("\"columnId\":\"waiting\"", retry);
+        Assert.Contains("\"dueDateTime\":\"2026-12-01T09:00:00Z\"", retry);
+        Assert.Null(view.WaitPrompt);
+    }
+
+    /// <summary>
     /// Most tasks are not on a board, and the core says so with no row at all; the pane draws
     /// nothing rather than an empty strip.
     /// </summary>

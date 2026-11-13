@@ -65,9 +65,13 @@ public sealed class TaskDetailViewModel : ObservableObject
     /// </summary>
     public const string ClassicDeleteTaskMode = "delete";
 
+    /// <summary>A move into Waiting that is waiting on a date or a task (task 7462618e).</summary>
+    private readonly PendingWait _pendingWait;
+
     public TaskDetailViewModel(IAstridCore core)
     {
         _core = core;
+        _pendingWait = new PendingWait(() => Raise(nameof(WaitPrompt)));
         // Every path that fills the thread goes through Replace on Comments, so following that
         // collection is how the filtered view stays true without each caller remembering it.
         Comments.CollectionChanged += (_, _) => ApplyCommentFilter();
@@ -1716,13 +1720,30 @@ public sealed class TaskDetailViewModel : ObservableObject
     /// Put the open task in a column. The core makes the same move a dragged card makes, so Done
     /// here means completed there too.
     /// </summary>
-    public async Task<bool> SetStatusAsync(string columnId, CancellationToken cancellationToken = default)
+    /// <param name="wait">
+    /// The wait condition, on the second attempt, once the user has answered for one. Dragging a
+    /// card to Waiting and choosing Waiting here are the same move and are refused by the same
+    /// rule, so the same ask-and-resend applies (task 7462618e).
+    /// </param>
+    public async Task<bool> SetStatusAsync(string columnId, WaitCondition? wait = null,
+        CancellationToken cancellationToken = default)
     {
         if (TaskId is null)
         {
             return false;
         }
-        var response = await _core.CallAsync(Commands.SetTaskStatus(TaskId, columnId), cancellationToken);
+        var taskId = TaskId;
+        var response = await _core.CallAsync(
+            Commands.SetTaskStatus(taskId, columnId, wait), cancellationToken);
+        if (response.NeedsWaitCondition)
+        {
+            // Not reported through Handle: nothing was written and nothing is wrong, so an error
+            // line under a question nobody has been asked yet would be the bug this task names.
+            _pendingWait.Ask(
+                new WaitPrompt(columnId, NameOf(columnId), taskId, null),
+                (condition, token) => SetStatusAsync(columnId, condition, token));
+            return false;
+        }
         if (!Handle(response))
         {
             return false;
@@ -1730,6 +1751,32 @@ public sealed class TaskDetailViewModel : ObservableObject
         await ReloadAsync(cancellationToken);
         return true;
     }
+
+    /// <summary>
+    /// The condition the shell must ask for before this task can enter Waiting, if one is
+    /// outstanding (task 7462618e).
+    /// </summary>
+    public WaitPrompt? WaitPrompt => _pendingWait.Prompt;
+
+    /// <summary>Answer an outstanding <see cref="WaitPrompt"/>, which sends the refused move again.</summary>
+    public Task<bool> ResolveWaitAsync(WaitCondition condition,
+        CancellationToken cancellationToken = default) =>
+        _pendingWait.ResolveAsync(condition, cancellationToken);
+
+    /// <summary>Drop the prompt and leave the task where it was.</summary>
+    public void CancelWaitPrompt() => _pendingWait.Cancel();
+
+    /// <summary>
+    /// A column's name as the core last gave it, for the prompt's title.
+    /// </summary>
+    /// <remarks>
+    /// From the status choices the menu was drawn from, so the prompt names the column the user
+    /// just picked rather than a hardcoded "Waiting" — this board may call it something else.
+    /// </remarks>
+    private string NameOf(string columnId) =>
+        StatusChoices.FirstOrDefault(choice => choice.Id == columnId)?.Name
+        ?? BoardStateChips.FirstOrDefault(chip => chip.Id == columnId)?.Name
+        ?? columnId;
 
     /// <summary>
     /// Mint a share link for the open task. The address, or null with the reason in
