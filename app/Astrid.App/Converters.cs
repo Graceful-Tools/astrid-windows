@@ -13,41 +13,26 @@ using Windows.UI.Text;
 namespace Astrid.App;
 
 /// <summary>
-/// A colour for a priority, or for a list's hex.
+/// A colour for a list, from the hex the server stores.
 /// </summary>
 /// <remarks>
-/// The hex values match every other client — see <c>Task.Priority.color</c> on Apple. They are
-/// stated in App.xaml as brushes and read here rather than written twice.
+/// It used to answer for a priority too, building a brush out of <c>PriorityPalette</c>'s hex. That
+/// moved to the <c>PriorityFill</c> attached property in task 82e4ad32, because a priority's colour
+/// now depends on the theme — <c>priority-low</c> is a different brand value on dark — and a
+/// converter is handed a value and a target type but never the element, so it has no theme to
+/// resolve in. A list's colour is a person's pick out of a fixed palette and the same in every
+/// theme, so it stays here.
 /// </remarks>
 public sealed partial class PriorityBrushConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language) => value switch
     {
-        int priority => new SolidColorBrush(PriorityColor(priority)),
-        // A list colour arrives as the hex the server stores.
         string hex => new SolidColorBrush(Parse(hex)),
         _ => new SolidColorBrush(Colors.Transparent),
     };
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("colours are read-only in the UI");
-
-    /// <summary>
-    /// The colour for a priority, from the one table that also describes the row marks.
-    /// </summary>
-    /// <remarks>
-    /// These were hardcoded here, in values that disagreed with the checkbox images every row
-    /// draws — priority 1 was green here and blue on screen (task 204c9d98). The table is now
-    /// <see cref="PriorityPalette"/>, pinned against the shipped assets by a test.
-    ///
-    /// Zero is the exception, and stays transparent: no priority draws nothing at all rather than
-    /// grey, because a stripe on every row is a stripe that says nothing and the point of the
-    /// stripe is that it is glanceable. The picker's swatch, which needs a visible outline, asks
-    /// the palette for the grey directly.
-    /// </remarks>
-    private static Color PriorityColor(int priority) => priority is 1 or 2 or 3
-        ? Parse(PriorityPalette.Hex(priority))
-        : Colors.Transparent;
 
     /// <summary>
     /// Read <c>#rrggbb</c> or <c>#aarrggbb</c>.

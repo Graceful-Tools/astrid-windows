@@ -541,13 +541,7 @@ public sealed class TaskListViewModel : ObservableObject
     public int QuickAddPriority
     {
         get => _quickAddPriority;
-        private set
-        {
-            if (Set(ref _quickAddPriority, value))
-            {
-                Raise(nameof(QuickAddCheckboxAsset));
-            }
-        }
+        private set => Set(ref _quickAddPriority, value);
     }
 
     /// <summary>Who the task would go to, resolved. Null is nobody.</summary>
@@ -582,18 +576,10 @@ public sealed class TaskListViewModel : ObservableObject
     /// <summary>Somebody else's, or nobody's: a priority-coloured square with a mark in it.</summary>
     public bool QuickAddIsSquare => !QuickAddIsCheckbox;
 
-    /// <summary>
-    /// The same PNG a row draws, so the mark above the box and the mark on the row it makes are
-    /// one picture rather than two that resemble each other.
-    /// </summary>
-    public string QuickAddCheckboxAsset
-    {
-        get
-        {
-            var priority = QuickAddPriority is >= 0 and <= 3 ? QuickAddPriority : 0;
-            return $"ms-appx:///Assets/Checkboxes/check_box_{priority}.png";
-        }
-    }
+    // `QuickAddCheckboxAsset` was here, naming one of the sixteen PNGs. Quick-add binds
+    // `QuickAddPriority` straight to `PriorityMark` now (task 82e4ad32), so the mark above the box
+    // and the mark on the row it makes are the same art drawn from the same token rather than two
+    // pictures that resemble each other.
 
     /// <summary>What goes in the square: their initials, or the unassigned mark for nobody.</summary>
     public string QuickAddMark => QuickAddAssignees

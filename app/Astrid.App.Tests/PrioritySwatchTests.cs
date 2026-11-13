@@ -16,19 +16,40 @@ public sealed class PrioritySwatchTests
         foreach (var level in new[] { 1, 2, 3 })
         {
             var lit = PrioritySwatch.For(level, chosen: level);
-            Assert.Equal(PriorityPalette.Hex(level), lit.Background);
-            Assert.Equal(PrioritySwatch.White, lit.Foreground);
-            Assert.Equal(PriorityPalette.Hex(level), lit.Border);
+            Assert.Equal(PriorityPalette.Key(level), lit.Background);
+            Assert.Equal(PrioritySwatch.OnFill, lit.Foreground);
+            Assert.Equal(PriorityPalette.Key(level), lit.Border);
 
             var off = PrioritySwatch.For(level, chosen: 0);
             Assert.Equal(PrioritySwatch.Transparent, off.Background);
-            Assert.Equal(PriorityPalette.Hex(level), off.Foreground);
-            Assert.Equal(PriorityPalette.Hex(level), off.Border);
+            Assert.Equal(PriorityPalette.Key(level), off.Foreground);
+            Assert.Equal(PriorityPalette.Key(level), off.Border);
         }
 
         // No priority is grey, not invisible: a square has to be seen to be chosen.
         Assert.Equal(PriorityPalette.None, PrioritySwatch.For(0, chosen: 0).Background);
-        Assert.Equal(PrioritySwatch.White, PrioritySwatch.For(0, chosen: 0).Foreground);
+        Assert.Equal(PrioritySwatch.OnFill, PrioritySwatch.For(0, chosen: 0).Foreground);
         Assert.Equal(PriorityPalette.None, PrioritySwatch.For(0, chosen: 2).Foreground);
+    }
+
+    /// <summary>
+    /// What it answers with is a resource key, never a colour (task 82e4ad32).
+    /// </summary>
+    /// <remarks>
+    /// The point of the move: a view-model has no theme, and <c>priority-low</c> is a different
+    /// brand value on dark. A hex escaping back into this rule would paint a dark-theme picker in
+    /// the light theme's blue, and every assertion above would still pass.
+    /// </remarks>
+    [Fact]
+    public void A_swatch_names_a_brush_rather_than_a_colour_task_82e4ad32()
+    {
+        foreach (var level in new[] { 0, 1, 2, 3 })
+        {
+            var (background, foreground, border) = PrioritySwatch.For(level, chosen: 1);
+            foreach (var value in new[] { background, foreground, border })
+            {
+                Assert.DoesNotContain("#", value, StringComparison.Ordinal);
+            }
+        }
     }
 }

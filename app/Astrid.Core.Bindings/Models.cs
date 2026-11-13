@@ -131,49 +131,12 @@ public sealed record TaskRow
         }
     }
 
-    /// <summary>
-    /// The mark this row wears, as an image path.
-    /// </summary>
-    /// <remarks>
-    /// The same PNGs astrid-web draws (its <c>TaskCheckbox</c>), carried into this repo so a
-    /// priority reads identically on both. One image says three things at once — the colour is the
-    /// priority, the ring is whether it repeats, the tick is whether it is done — which is why this
-    /// is a file name rather than three overlaid controls.
-    ///
-    /// The priority is clamped rather than trusted: it arrives from the server, and a value this
-    /// build has not seen would otherwise ask for an image that does not exist and draw nothing at
-    /// all, losing the control a person taps to finish the task.
-    /// </remarks>
-    public string CheckboxAsset =>
-        CheckboxArt(Priority, repeating: IsRepeating, done: Completed);
-
-    /// <summary>
-    /// The repeat arrows drawn as the border of somebody else's mark, or nobody's
-    /// (task fa63a5dd).
-    /// </summary>
-    /// <remarks>
-    /// The same art <see cref="CheckboxAsset"/> uses, so the arrows a teammate's task wears and
-    /// the arrows your own wears are one shape and not two. Always the open arrows, never the
-    /// ticked ones, as the web draws them: this square never said "done" either — the row's
-    /// opacity and its struck-through title do.
-    /// </remarks>
-    public string RepeatFrameAsset => CheckboxArt(Priority, repeating: true, done: false);
-
-    /// <summary>
-    /// One mark's image path, with the priority clamped rather than trusted.
-    /// </summary>
-    /// <remarks>
-    /// The priority arrives from the server, and a value this build has not seen would otherwise
-    /// ask for an image that does not exist and draw nothing at all, losing the control a person
-    /// taps to finish the task.
-    /// </remarks>
-    private static string CheckboxArt(int priority, bool repeating, bool done)
-    {
-        var safe = priority is >= 0 and <= 3 ? priority : 0;
-        var repeat = repeating ? "_repeat" : string.Empty;
-        var checked_ = done ? "_checked" : string.Empty;
-        return $"ms-appx:///Assets/Checkboxes/check_box{repeat}{checked_}_{safe}.png";
-    }
+    // The mark this row wears used to be here, as one of sixteen PNG paths: `CheckboxAsset` and
+    // `RepeatFrameAsset`, picking a picture that said priority, repeating and done at once. Task
+    // 82e4ad32 replaced it with the shared `currentColor` art, composed by the shell's
+    // `PriorityMark` from `Priority`, `IsRepeating` and `Completed` — the three facts the file name
+    // encoded — so that a priority token can colour it. Nothing is computed here any more; the
+    // properties the control binds to were always on this record.
 
     /// <summary>
     /// Whether there is a second line to draw at all.

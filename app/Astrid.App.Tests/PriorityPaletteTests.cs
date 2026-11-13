@@ -1,81 +1,102 @@
-using System.Globalization;
-using System.Runtime.Versioning;
+using System.Text.RegularExpressions;
 using Astrid.Core.Bindings;
 using Xunit;
 
 namespace Astrid.App.Tests;
 
 /// <summary>
-/// A priority is one colour, and the row agrees with the control that sets it (task 204c9d98).
+/// A priority is the shared token's colour, in the theme the reader is in (task 82e4ad32).
 /// </summary>
 /// <remarks>
-/// The app drew priority 1 as blue on every row — the shared checkbox image — and green in the
-/// picker, which resolved from a hardcoded switch. These tests read the images the app actually
-/// ships and assert the palette matches them, so the two cannot drift apart again: swapping an
-/// asset without updating the palette fails here rather than on somebody's screen.
+/// <para>
+/// These tests used to read <c>Assets/Checkboxes/check_box_{0..3}.png</c> and assert that
+/// <see cref="PriorityPalette"/>'s four hexes matched the border pixel. That was the right test for
+/// task 204c9d98, where the bug was the picker saying green while every row said blue, and the
+/// images were the thing neither side could restyle. It is the wrong test now: the images were
+/// never a design token, their four values disagree with astrid-core's (<c>#328ACC</c> against
+/// <c>priority-low</c>'s <c>#2563EB</c>), and pinning to them pinned the drift in place.
+/// </para>
+/// <para>
+/// So the palette names a themed <b>brush</b> rather than carrying a colour, and the colour lives
+/// in <c>App.xaml</c>'s theme dictionaries where the vendored tokens can be compared to it. That
+/// indirection is not ceremony: <c>priority-low</c> is an alias resolving to <c>{brand.accent}</c>
+/// on light and ocean but <c>{brand.accent-ink-dark}</c> on dark, so a priority is not four
+/// constants and a <c>const string</c> cannot express it.
+/// </para>
 /// </remarks>
 public sealed class PriorityPaletteTests
 {
-    /// <summary>Where the shipped marks live, relative to the test binary.</summary>
-    private static string AssetPath(int priority)
-    {
-        var root = AppContext.BaseDirectory;
-        for (var depth = 0; depth < 8 && root is not null; depth++)
-        {
-            var candidate = Path.Combine(
-                root, "app", "Astrid.App", "Assets", "Checkboxes", $"check_box_{priority}.png");
-            if (File.Exists(candidate))
-            {
-                return candidate;
-            }
-            root = Directory.GetParent(root)?.FullName;
-        }
-        throw new FileNotFoundException($"check_box_{priority}.png was not found above the test binary");
-    }
+    /// <summary>Each priority, the brush it draws in, and the token that brush takes.</summary>
+    private static readonly (int Level, string Brush, string Token)[] Priorities =
+    [
+        (0, "AstridPriorityNone", "priority-none"),
+        (1, "AstridPriorityLow", "priority-low"),
+        (2, "AstridPriorityMedium", "priority-medium"),
+        (3, "AstridPriorityHigh", "priority-high"),
+    ];
 
     /// <summary>
-    /// The first opaque pixel across the middle of the image: the border stroke, which is the
-    /// colour a reader sees as "this task's priority".
+    /// The four colours are the vendored tokens, per theme.
     /// </summary>
-    [SupportedOSPlatform("windows")]
-    private static string BorderHex(int priority)
-    {
-        using var image = System.Drawing.Image.FromFile(AssetPath(priority));
-        using var bitmap = new System.Drawing.Bitmap(image);
-        var y = bitmap.Height / 2;
-        for (var x = 0; x < bitmap.Width; x++)
-        {
-            var pixel = bitmap.GetPixel(x, y);
-            if (pixel.A > 200)
-            {
-                return $"#{pixel.R:X2}{pixel.G:X2}{pixel.B:X2}";
-            }
-        }
-        throw new InvalidOperationException($"check_box_{priority}.png has no opaque border pixel");
-    }
-
-    /// <summary>
-    /// The bug: the row said blue and the picker said green, about the same task, at the same time.
-    /// </summary>
+    /// <remarks>
+    /// Written out here rather than left to <c>DesignTokenTests.Brushes</c>, which also covers them:
+    /// the way these values escaped before was that nothing named them, so this fails even if a
+    /// future edit drops their rows from that table.
+    /// </remarks>
     [Theory]
-    [InlineData(0)]
-    [InlineData(1)]
-    [InlineData(2)]
-    [InlineData(3)]
-    [SupportedOSPlatform("windows")]
-    public void The_palette_matches_the_mark_drawn_on_every_row(int priority)
+    [InlineData("Default", "light")]
+    [InlineData("Light", "light")]
+    [InlineData("Dark", "dark")]
+    public void Priority_colours_are_the_shared_tokens_per_theme_task_82e4ad32(
+        string dictionary,
+        string theme)
     {
-        Assert.Equal(
-            BorderHex(priority),
-            PriorityPalette.Hex(priority).ToUpperInvariant());
+        var tokens = DesignTokenTests.Tokens();
+        var brushes = DesignTokenTests.ThemeBrushes(dictionary);
+        var wrong = new List<string>();
+
+        foreach (var (_, brush, token) in Priorities)
+        {
+            Assert.True(brushes.ContainsKey(brush), $"{dictionary} has no {brush}, which is {token}");
+
+            var expected = DesignTokenTests.Token(tokens, theme, token);
+            if (brushes[brush] != expected)
+            {
+                wrong.Add($"{dictionary}/{brush}: {brushes[brush]}, but {theme}.{token} is {expected}");
+            }
+        }
+
+        Assert.Empty(wrong);
     }
 
-    /// <summary>Low is blue. Naming it, because green is the value that was wrong.</summary>
+    /// <summary>
+    /// Low is a different colour in a dark theme, which is the whole reason for the indirection.
+    /// </summary>
+    /// <remarks>
+    /// The mid-tone accent is 2.84:1 against a dark card — the same reason <c>AstridBorderFocus</c>
+    /// goes lighter there (DS25). A test that only checked light would pass with the dark value
+    /// wrong and the mark unreadable, which is the failure this class exists to stop.
+    /// </remarks>
     [Fact]
-    public void Low_priority_is_blue()
+    public void Low_priority_is_lighter_on_a_dark_theme_task_82e4ad32()
     {
-        Assert.Equal("#328ACC", PriorityPalette.Low);
-        Assert.NotEqual("#10B981", PriorityPalette.Low);
+        var light = DesignTokenTests.ThemeBrushes("Light")["AstridPriorityLow"];
+        var dark = DesignTokenTests.ThemeBrushes("Dark")["AstridPriorityLow"];
+
+        Assert.NotEqual(light, dark);
+        Assert.Equal(DesignTokenTests.Token(DesignTokenTests.Tokens(), "light", "priority-low"), light);
+        Assert.Equal(DesignTokenTests.Token(DesignTokenTests.Tokens(), "dark", "priority-low"), dark);
+    }
+
+    /// <summary>The palette answers with a brush key, so the theme decides the colour.</summary>
+    [Theory]
+    [InlineData(0, "AstridPriorityNone")]
+    [InlineData(1, "AstridPriorityLow")]
+    [InlineData(2, "AstridPriorityMedium")]
+    [InlineData(3, "AstridPriorityHigh")]
+    public void The_palette_names_a_themed_brush_task_82e4ad32(int priority, string brush)
+    {
+        Assert.Equal(brush, PriorityPalette.Key(priority));
     }
 
     /// <summary>
@@ -85,22 +106,30 @@ public sealed class PriorityPaletteTests
     [Fact]
     public void An_unknown_level_draws_as_no_priority()
     {
-        Assert.Equal(PriorityPalette.None, PriorityPalette.Hex(4));
-        Assert.Equal(PriorityPalette.None, PriorityPalette.Hex(-1));
+        Assert.Equal(PriorityPalette.None, PriorityPalette.Key(4));
+        Assert.Equal(PriorityPalette.None, PriorityPalette.Key(-1));
     }
 
-    /// <summary>Every value is a colour a parser can read, so a typo fails here.</summary>
-    [Theory]
-    [InlineData(0)]
-    [InlineData(1)]
-    [InlineData(2)]
-    [InlineData(3)]
-    public void Every_entry_is_a_readable_hex_colour(int priority)
+    /// <summary>
+    /// No colour is written in the palette at all (task 82e4ad32).
+    /// </summary>
+    /// <remarks>
+    /// The task's own wording: "with no sampled hex left in <c>PriorityPalette.cs</c>". A hex
+    /// retyped into that file would be a value living in a client's copy, which astrid-core's
+    /// <c>design/README.md</c> forbids outright — and it would pass every other test here, because
+    /// the brushes it checks are in <c>App.xaml</c>. So the file is read.
+    /// </remarks>
+    [Fact]
+    public void No_colour_is_written_in_the_palette_task_82e4ad32()
     {
-        var hex = PriorityPalette.Hex(priority);
-        Assert.StartsWith("#", hex);
-        Assert.Equal(7, hex.Length);
-        Assert.True(int.TryParse(
-            hex[1..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out _));
+        var source = File.ReadAllText(Path.Combine(
+            DesignTokenTests.RepoRoot(), "app", "Astrid.Core.Bindings", "PriorityPalette.cs"));
+
+        // The doc comments explain the move and name the old values, so only code is read.
+        var code = string.Join(
+            "\n",
+            source.Split('\n').Where(line => !line.TrimStart().StartsWith("///", StringComparison.Ordinal)));
+
+        Assert.DoesNotMatch(new Regex("#[0-9A-Fa-f]{6}"), code);
     }
 }

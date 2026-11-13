@@ -29,9 +29,10 @@ namespace Astrid.App.Tests;
 /// There is no exception list. There was one, holding four brushes at astrid-web's older CSS with
 /// the reason "DS26 names Light's two selection tints among the values that stay" — and DS26 is the
 /// accent and error darkening, not the surfaces. Their row is DS3, which reads "open on Windows", so
-/// task 1481f33a took the tokens and the list went with them. The priority palette is the one thing
-/// that still does not follow a token, and it is not in this file: it is sampled from the checkbox
-/// art and pinned to those images by <c>PriorityPaletteTests</c> (astrid-core DS21).
+/// task 1481f33a took the tokens and the list went with them. The priority palette was the last
+/// thing outside this file — sampled from the checkbox art and pinned to those images — until task
+/// 82e4ad32 moved it in here too (astrid-core DS2/DS21), which is why the table below carries four
+/// <c>AstridPriority*</c> rows and <c>PriorityPaletteTests</c> now names them as well.
 /// </para>
 /// </remarks>
 public sealed class DesignTokenTests
@@ -44,8 +45,12 @@ public sealed class DesignTokenTests
     /// <c>AstridSurface</c> and <c>AstridSurfaceHover</c> are the card and the card's hover, which
     /// are different tokens in a light theme and a dark one — astrid-core's DS9: the card is
     /// <c>bg-hover</c> on light, <c>bg-secondary</c> on dark.
+    ///
+    /// <c>AstridPriorityLow</c> is the other one: <c>priority-low</c> is an alias resolving to
+    /// <c>{brand.accent}</c> on light and <c>{brand.accent-ink-dark}</c> on dark, which is why the
+    /// four priority colours could not stay <c>const string</c>s (task 82e4ad32).
     /// </remarks>
-    private static readonly (string Brush, string LightToken, string DarkToken)[] Brushes =
+    internal static readonly (string Brush, string LightToken, string DarkToken)[] Brushes =
     [
         ("AstridSurface", "bg-hover", "bg-secondary"),
         ("AstridSurfaceHover", "bg-tertiary", "bg-tertiary"),
@@ -62,6 +67,10 @@ public sealed class DesignTokenTests
         ("AstridBorderFocus", "border-focus", "border-focus"),
         ("AstridError", "error", "error"),
         ("AstridErrorInk", "error-ink", "error-ink"),
+        ("AstridPriorityNone", "priority-none", "priority-none"),
+        ("AstridPriorityLow", "priority-low", "priority-low"),
+        ("AstridPriorityMedium", "priority-medium", "priority-medium"),
+        ("AstridPriorityHigh", "priority-high", "priority-high"),
     ];
 
     /// <summary>The WinUI brushes an accent button is drawn from, and the token each one takes.</summary>
@@ -72,16 +81,16 @@ public sealed class DesignTokenTests
         ("TextOnAccentFillColorPrimaryBrush", "accent-text"),
     ];
 
-    private static string RepoRoot() =>
+    internal static string RepoRoot() =>
         Path.GetFullPath(Path.Combine(LocalisationTests.AppDirectory(), "..", ".."));
 
-    private static JsonElement Tokens() =>
+    internal static JsonElement Tokens() =>
         JsonDocument
             .Parse(File.ReadAllText(Path.Combine(RepoRoot(), "design", "tokens.resolved.json")))
             .RootElement;
 
     /// <summary>A token's value, following a <c>{brand.x}</c> reference to the brand it names.</summary>
-    private static string Token(JsonElement tokens, string theme, string name)
+    internal static string Token(JsonElement tokens, string theme, string name)
     {
         var value = tokens.GetProperty("themes").GetProperty(theme).GetProperty("colors")
             .GetProperty(name).GetString()!;
@@ -93,7 +102,7 @@ public sealed class DesignTokenTests
     }
 
     /// <summary>Every <c>SolidColorBrush</c> in one of App.xaml's theme dictionaries.</summary>
-    private static Dictionary<string, string> ThemeBrushes(string dictionary)
+    internal static Dictionary<string, string> ThemeBrushes(string dictionary)
     {
         var app = XDocument.Load(Path.Combine(LocalisationTests.AppDirectory(), "App.xaml")).Root!;
         var themed = app.Descendants(Ui + "ResourceDictionary.ThemeDictionaries").Single();

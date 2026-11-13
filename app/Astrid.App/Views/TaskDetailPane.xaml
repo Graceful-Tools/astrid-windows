@@ -262,9 +262,11 @@
                         AutomationProperties.Name="Complete this task"
                         Visibility="{x:Bind Shell.Detail.IsCopyOnly, Mode=OneWay, Converter={StaticResource NotVisible}}"
                         Click="OnDetailMarkClicked">
-                    <Image Source="{x:Bind Shell.Detail.CheckboxAsset, Mode=OneWay}"
-                           Width="{StaticResource DetailFieldIconColumn}"
-                           Height="{StaticResource DetailFieldIconColumn}" />
+                    <local:PriorityMark Priority="{x:Bind Shell.Detail.Priority, Mode=OneWay}"
+                                        IsRepeating="{x:Bind Shell.Detail.IsRepeating, Mode=OneWay}"
+                                        ShowTick="{x:Bind Shell.Detail.Completed, Mode=OneWay}"
+                                        Width="{StaticResource DetailFieldIconColumn}"
+                                        Height="{StaticResource DetailFieldIconColumn}" />
                 </Button>
                 <!--
                     A task in a public list the reader cannot edit (task f6bc59e8): the web's

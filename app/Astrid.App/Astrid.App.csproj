@@ -68,17 +68,23 @@
   </ItemGroup>
 
   <!--
-    The checkbox marks, copied from astrid-web's public/icons.
+    The shared checkbox art, vendored at design/AstridCheckbox.xaml.
 
-    The same PNGs the web draws, so a priority reads identically on both. Drawing an equivalent in
-    XAML was the alternative and it is the wrong one: the mark carries priority, repetition and
-    completion in one image, and a hand-drawn copy would drift from the web the first time either
-    changed.
+    Linked rather than copied, so there is one file in the repo and `DesignTokenTests` gates the
+    same bytes the shell compiles: the vendored copy carries a `body-sha256` of its own body, and a
+    second copy here could drift from it silently. astrid-core generates it from the source the web
+    and the Apple clients draw, and it strokes from `{TemplateBinding Foreground}` so a priority
+    token can colour it (task 82e4ad32, DS21).
+
+    It replaced the sixteen PNGs that used to live beside it, which baked priority, repetition and
+    completion into one picture — and four colours in with them. Those files are no longer
+    referenced; removing them needs an approval this loop does not have, so they are left in place.
   -->
   <ItemGroup>
-    <Content Include="Assets\Checkboxes\*.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <Page Include="..\..\design\AstridCheckbox.xaml" Link="Assets\Design\AstridCheckbox.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!--
       The mark the window draws — title bar, sign-in, the empty list, a reminder — at the web's
       two sizes (BRAND.icon 512, BRAND.iconSmall 96). Written by scripts/make-icons.ps1 from the
