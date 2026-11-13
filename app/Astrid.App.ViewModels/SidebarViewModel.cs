@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Text.Json;
 using Astrid.Core.Bindings;
 
 namespace Astrid.App.ViewModels;
@@ -8,9 +7,10 @@ namespace Astrid.App.ViewModels;
 /// The lists down the side, and which one is open.
 /// </summary>
 /// <remarks>
-/// Board columns never appear here. A column is a state a task is in, not a place to put one, and
-/// a sidebar that offers "Doing" beside "Home" invites somebody to file a task into a state. The
-/// core answers that question — <c>listType == "status"</c> — and this reads the answer.
+/// Board columns never appear here, nor labels, milestones or iterations. A column is a state a
+/// task is in, not a place to put one, and a sidebar that offers "Doing" beside "Home" invites
+/// somebody to file a task into a state. The core answers that question, and the ordering, and the
+/// number beside each entry, in one <c>sidebar</c> call (task e22621e2); this binds the answer.
 /// </remarks>
 public sealed class SidebarViewModel : ObservableObject
 {
@@ -63,7 +63,7 @@ public sealed class SidebarViewModel : ObservableObject
         IsLoading = true;
         try
         {
-            var response = await _core.CallAsync(Commands.Lists(), cancellationToken);
+            var response = await _core.CallAsync(Commands.Sidebar(), cancellationToken);
             if (!response.Ok)
             {
                 ErrorMessage = response.IsStillPending ? null : response.Error?.Message;
@@ -71,37 +71,21 @@ public sealed class SidebarViewModel : ObservableObject
             }
             ErrorMessage = null;
 
-            // Places only. A board column is a state and a label is a tag; neither is somewhere
-            // to go, and the web's sidebar offers neither.
-            var all = response.ReadArray<ListSummary>()
-                .Where(list => list.IsDomainList)
-                .ToList();
+            // Bound, not assembled. The core has already dropped what is not a place, put both
+            // sections in order and put each entry's badge on it (task e22621e2) — one call where
+            // there were three, and no second opinion about any of the three questions.
+            var sections = response.Read<SidebarSections>() ?? new SidebarSections();
 
-            var mine = await _core.CallAsync(Commands.MyTasksList(), cancellationToken);
-            var entry = mine.Ok ? mine.Read<ListSummary>() : null;
-
-            var numbers = await NumbersAsync(response.Value, entry?.Id, cancellationToken);
-            all = all.Select(list => list with { TaskCount = Number(numbers, list.Id) }).ToList();
-            entry = entry is null ? null : entry with { TaskCount = Number(numbers, entry.Id) };
-
-            Replace(MyTasks, entry is null ? [] : [entry]);
-
-            Replace(Favorites, all
-                .Where(list => list.IsFavorite == true)
-                .OrderBy(list => list.FavoriteOrder ?? int.MaxValue)
-                // A favourite saved before ordering existed has no order at all, and leaving those
-                // in whatever order they arrived reshuffles the sidebar on every launch.
-                .ThenBy(list => list.Name, StringComparer.CurrentCultureIgnoreCase));
-
-            Replace(Lists, all
-                .Where(list => list.IsFavorite != true)
-                .OrderBy(list => list.Name, StringComparer.CurrentCultureIgnoreCase));
+            Replace(MyTasks, sections.MyTasks is null ? [] : [sections.MyTasks]);
+            Replace(Favorites, sections.Favorites);
+            Replace(Lists, sections.Lists);
 
             // Keep the open list open across a refresh. Re-selecting by identity would drop the
             // selection every time the list was re-fetched, which is several times a minute.
             if (Selected is not null)
             {
-                Selected = all.FirstOrDefault(list => list.Id == Selected.Id) ?? Selected;
+                Selected = sections.Favorites.Concat(sections.Lists)
+                    .FirstOrDefault(list => list.Id == Selected.Id) ?? Selected;
             }
             Selected ??= MyTasks.FirstOrDefault()
                 ?? Favorites.FirstOrDefault()
@@ -149,40 +133,6 @@ public sealed class SidebarViewModel : ObservableObject
         await LoadAsync(cancellationToken);
         return true;
     }
-
-    /// <summary>
-    /// The core's number for each list.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <c>lists</c> carries a <c>taskCount</c> of its own, but it is the server's total for the
-    /// list — every task it has ever held, completed ones included — which read as "124" beside a
-    /// list of a dozen open tasks (task 8d37457b). The number a sidebar is scanned for is the open
-    /// ones, and which tasks those are is the core's answer, not a sum the shell may take.
-    /// </para>
-    /// <para>
-    /// <c>null</c> when the core could not say. Falling back to the total would be drawing the
-    /// wrong number, which is the bug; the badge is left off instead.
-    /// </para>
-    /// </remarks>
-    private async Task<IReadOnlyDictionary<string, int>?> NumbersAsync(
-        JsonElement lists, string? myTasksId, CancellationToken cancellationToken)
-    {
-        if (lists.ValueKind != JsonValueKind.Array)
-        {
-            return null;
-        }
-        var response = await _core.CallAsync(Commands.ListBadges(lists, myTasksId), cancellationToken);
-        return response.Ok ? response.ReadCounts() : null;
-    }
-
-    /// <summary>A list's number: none at all when the core could not count.</summary>
-    /// <remarks>
-    /// Zero for a list the answer omits, which the core does not do — it answers for every list it
-    /// was handed — but "it was counted and came to nothing" is the right reading if it ever does.
-    /// </remarks>
-    private static int? Number(IReadOnlyDictionary<string, int>? numbers, string listId) =>
-        numbers is null ? null : numbers.TryGetValue(listId, out var count) ? count : 0;
 
     private static void Replace(ObservableCollection<ListSummary> target, IEnumerable<ListSummary> source)
     {

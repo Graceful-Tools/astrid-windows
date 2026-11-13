@@ -48,6 +48,19 @@ public static class Commands
         new ListBadgesRequest("listBadges", lists, myTasksId);
 
     /// <summary>
+    /// The sidebar, whole (task e22621e2): My Tasks, the favourites and the rest of the places,
+    /// each in the order it is drawn and carrying the number <see cref="ListBadges"/> would give
+    /// it. Answers <see cref="SidebarSections"/>.
+    /// </summary>
+    /// <remarks>
+    /// This replaces <c>lists</c> + <c>myTasksList</c> + <c>listBadges</c> and the filter and two
+    /// sorts the shell ran over them. Not a saving of three calls so much as of three opinions:
+    /// which lists are somewhere to go, and in what order, is one product answer, and Android's
+    /// copy of it had already drifted into offering GitHub milestones as lists.
+    /// </remarks>
+    public static object Sidebar() => new KindOnly("sidebar");
+
+    /// <summary>
     /// The rows to draw for a list — filtered, sorted, subtask-spliced and projected by the core.
     /// </summary>
     /// <param name="offset">Where the window starts. Zero for the top.</param>
