@@ -7,7 +7,9 @@
     "NEXT_PUBLIC_BRAND_TAGLINE": "Tasks, shared with the people you share them with.",
     "NEXT_PUBLIC_BRAND_DOMAIN": "astrid.cc",
     "NEXT_PUBLIC_BRAND_APP_URL_SCHEME": "astrid",
-    "NEXT_PUBLIC_BRAND_AUTH_PROVIDERS": "passkey,google"
+    "NEXT_PUBLIC_BRAND_AUTH_PROVIDERS": "passkey,google",
+    "NEXT_PUBLIC_BRAND_SUPPORT_EMAIL": "support@astrid.cc",
+    "NEXT_PUBLIC_BRAND_PRIVACY_URL": "https://www.astrid.cc/privacy"
   },
   "windows": {
     "publisherDisplayName": "Graceful Tools LLC",

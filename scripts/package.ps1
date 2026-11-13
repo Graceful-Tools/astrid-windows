@@ -63,6 +63,9 @@ Set-Location $repoRoot
 # Which brand this package is. Everything a partner can change comes from here, and with no -Brand
 # every value is today's Astrid one.
 . (Join-Path $PSScriptRoot 'lib\brand-profile.ps1')
+# The Partner Center listing, filled for the same brand and written beside the upload (task
+# AWTD-1636). With no -Brand it is hosted Astrid's listing, byte for byte.
+. (Join-Path $PSScriptRoot 'lib\store-listing.ps1')
 
 if ($Version -notmatch '^\d+\.\d+\.\d+\.\d+$') {
     throw "Version must have four parts, e.g. 0.1.0.0 — MSIX will not accept anything else."
@@ -220,6 +223,11 @@ if ($packages.Count -gt 1) {
     Compress-Archive -Path $bundle -DestinationPath $uploadZip -CompressionLevel Optimal
     Move-Item -Force $uploadZip $upload
     Write-Host "[+] $upload" -ForegroundColor Green
+
+    # What to paste into Partner Center for this upload, named after it. A partner's copy carries
+    # holes to fill, which it lists as warnings; hosted Astrid's has none.
+    $listing = Write-AstridStoreListing -BrandProfile $brandProfile -RepoRoot $repoRoot -OutDir $dist -Version $Version
+    Write-Host "[+] $listing" -ForegroundColor Green
 }
 
 Write-Host ""
