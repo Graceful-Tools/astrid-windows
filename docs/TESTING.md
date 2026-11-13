@@ -16,6 +16,31 @@ not: what covers the UI smoke tests, and when.*
 
 The first three need nothing but a checkout. The fourth needs a desktop.
 
+## The design budget is a count, not a rule (task `d7e381a7`)
+
+Some drift cannot be forbidden outright — the shell has 380 literal margins, and a test that banned
+them would simply be deleted. So the hand-written colours, sizes and strings are **counted**, the
+count is committed in `app/Astrid.App.Tests/design-metrics.json`, and `DesignMetricsTests` fails
+when one rises. It is in the view-model layer above, so `npm run predeploy` checks it and no
+autonomous run can walk past it, which is the half Jon asked for: the loops must not regress the
+reduction.
+
+```powershell
+powershell -File scripts/report-design-metrics.ps1            # the table: budgeted, now, delta
+powershell -File scripts/report-design-metrics.ps1 -Update    # rewrite the budget
+```
+
+A **fall** fails too, asking for the budget to be lowered — a budget left above where the code is
+hands the room back, and the next drift spends it silently. `-Update` is the answer to both, and a
+rise that is genuinely intended needs a reason in the commit message, since nothing else records
+one. The counting lives in `DesignMetrics.cs`, not in the script: a second counter in PowerShell
+would drift from the one in the gate and the two reports would just disagree.
+
+`App.xaml` and `Views/ShellResources.xaml` are exempt — they are where the tokens are written down.
+XAML strings are absent because `LocalisationTests` already holds untranslatable literals at zero;
+`code.strings` counts the other half of [ASTRID.md](./ASTRID.md) rule 10, the prose built in C#,
+which no `x:Uid` can reach.
+
 ## The UI smoke suite runs when a person runs it
 
 **`npm run predeploy:full`, by hand, at an unlocked machine. Nothing runs it automatically, and

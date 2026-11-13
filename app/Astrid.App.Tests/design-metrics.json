@@ -1,0 +1,10 @@
+{
+  "_": "The committed design budget (task d7e381a7). A count must not rise; when one falls, lower it with scripts/report-design-metrics.ps1 -Update.",
+  "counts": {
+    "xaml.hex-colours": 14,
+    "xaml.corner-radius": 44,
+    "xaml.font-size": 158,
+    "xaml.spacing": 380,
+    "code.strings": 242
+  }
+}
