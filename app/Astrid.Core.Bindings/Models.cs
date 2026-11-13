@@ -1671,6 +1671,48 @@ public sealed record ListDefaults
     [JsonPropertyName("dueTime")] public string? DueTime { get; init; }
 }
 
+/// <summary>
+/// One row of one picker in a list's defaults editor (task 92830d81).
+/// </summary>
+public sealed record DefaultPick
+{
+    /// <summary>
+    /// What choosing this stores. Null is a real choice rather than an absence: no priority is
+    /// <c>"0"</c>, but all day is the <em>lack</em> of a time.
+    /// </summary>
+    [JsonPropertyName("value")] public string? Value { get; init; }
+
+    /// <summary>
+    /// The resource key for its label, or null when the value is its own label — an hour, which
+    /// only the reader's clock can spell, so the shell formats it.
+    /// </summary>
+    [JsonPropertyName("key")] public string? Key { get; init; }
+
+    [JsonPropertyName("isSelected")] public bool IsSelected { get; init; }
+}
+
+/// <summary>
+/// What a list's defaults editor may offer, with the list's own defaults ticked — the core's
+/// <c>listDefaultPicks</c> rule (task 92830d81).
+/// </summary>
+/// <remarks>
+/// These four tables used to be written here, under a comment saying the core had no command for
+/// them, while iOS and Android held their own copies. The rule is
+/// <c>astrid_rules::rows::list_default_picks</c> and the fixture is
+/// <c>contracts/fixtures/list-default-picks.json</c>.
+/// </remarks>
+public sealed record ListDefaultPicks
+{
+    [JsonPropertyName("priority")] public IReadOnlyList<DefaultPick> Priority { get; init; } = [];
+
+    [JsonPropertyName("repeating")] public IReadOnlyList<DefaultPick> Repeating { get; init; } = [];
+
+    [JsonPropertyName("dueDate")] public IReadOnlyList<DefaultPick> DueDate { get; init; } = [];
+
+    /// <summary>All day first, then the hours offered, in clock order.</summary>
+    [JsonPropertyName("dueTime")] public IReadOnlyList<DefaultPick> DueTime { get; init; } = [];
+}
+
 /// <summary>One column of a project board, and the cards in it.</summary>
 public sealed record BoardColumn
 {

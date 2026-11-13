@@ -81,6 +81,44 @@ public sealed class AstridClient : IAstridCore, IDisposable
         NativeMethods.TakeString(NativeMethods.Rule(requestJson));
 
     /// <summary>
+    /// What a list's defaults editor may offer, with <paramref name="defaults"/> ticked — the
+    /// core's <c>listDefaultPicks</c> rule (task 92830d81).
+    /// </summary>
+    /// <remarks>
+    /// The shell held four tables for this. Asked through the stateless door rather than through a
+    /// command because drawing a picker waits on nothing: no cache, no clock, no handle.
+    /// </remarks>
+    public static ListDefaultPicks ListDefaultPicks(ListDefaults defaults)
+    {
+        var request = JsonSerializer.Serialize(new ListDefaultPicksRequest
+        {
+            Priority = defaults.Priority,
+            Repeating = defaults.Repeating,
+            DueDate = defaults.DueDate,
+            DueTime = defaults.DueTime,
+        });
+        return AstridResponse.Parse(Rule(request)).ValueAs<ListDefaultPicks>() ?? new ListDefaultPicks();
+    }
+
+    private sealed record ListDefaultPicksRequest
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("kind")]
+        public string Kind { get; init; } = "listDefaultPicks";
+
+        [System.Text.Json.Serialization.JsonPropertyName("priority")]
+        public int Priority { get; init; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("repeating")]
+        public string? Repeating { get; init; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("dueDate")]
+        public string? DueDate { get; init; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("dueTime")]
+        public string? DueTime { get; init; }
+    }
+
+    /// <summary>
     /// Start the core against a cache at <paramref name="cachePath"/>.
     /// </summary>
     /// <exception cref="AstridStartupException">
