@@ -19,34 +19,24 @@ rust-version = "1.82"
 license = "MIT"
 repository = "https://github.com/Graceful-Tools/astrid-windows"
 
+# Only what a member actually takes.
+#
+# This table used to carry twelve more — the HTTP stack, the SQLite build, the Markdown dialect,
+# the PKCE primitives — each with a comment explaining a decision. The decisions were real; they
+# just stopped being this repository's when the core was extracted in September 2026, and the
+# entries stayed behind describing a graph that no longer existed. A workspace dependency nothing
+# instantiates never reaches the lockfile, so nothing went red: it only misled the people and the
+# robots that read manifests, and Dependabot opened PR #12 to bump a crate this app never builds.
+#
+# `no_workspace_dependency_goes_uninstantiated_task_d24777f5` in
+# `crates/astrid-ffi/tests/supply_chain_contract.rs` is what keeps the table honest from here. If
+# a choice below is ever reversed, the comment explaining it goes where the choice lives — which
+# for anything shared is astrid-core.
 [workspace.dependencies]
-chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
-serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-thiserror = "2"
-# Desktop hand-off sign-in: PKCE is SHA-256 + base64url, the callback arrives as a
-# URL that must be parsed rather than string-matched, and the verifier has to come
-# from the OS CSPRNG.
-sha2 = "0.10"
-base64 = "0.22"
-getrandom = "0.2"
-url = "2"
-# The HTTP stack, over the platform's own TLS: schannel on Windows, Security.framework on macOS,
-# OpenSSL on Linux. A bundled rustls would ship a second root store that ignores the enterprise
-# roots and revocation policy a managed Windows machine expects — and its `ring` backend needs
-# clang to assemble on aarch64-pc-windows-msvc, which is the architecture this is built ON.
-reqwest = { version = "0.12", default-features = false, features = ["json", "native-tls", "gzip", "stream", "charset", "http2"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "sync", "time", "fs"] }
 async-trait = "0.1"
-futures-util = { version = "0.3", default-features = false, features = ["std"] }
-# The offline cache. `bundled` compiles SQLite itself: the version is then the same on every
-# machine and on both architectures, rather than whatever the OS happens to ship.
-rusqlite = { version = "0.32", features = ["bundled", "chrono", "serde_json", "backup"] }
-uuid = { version = "1", features = ["v4"] }
 tracing = "0.1"
-# Markdown, for task descriptions, comments and chat: the same GFM the web renders through
-# `marked`, turned into blocks the shell draws. No HTML output is wanted, so no `html` feature.
-pulldown-cmark = { version = "0.13", default-features = false }
 
 [profile.release]
 lto = "thin"

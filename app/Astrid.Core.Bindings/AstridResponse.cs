@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 namespace Astrid.Core.Bindings;
 
@@ -229,9 +230,42 @@ public sealed record ChangeNotification(
 /// </remarks>
 public static class CommandJson
 {
-    public static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
+    public static readonly JsonSerializerOptions Options = Create();
+
+    /// <summary>
+    /// The models first, reflection behind them (task <c>d24777f5</c>).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A chain rather than a single resolver, and the order is the whole point.
+    /// <see cref="ModelJsonContext"/> answers for the 111 shapes this assembly declares, which it
+    /// worked out when the app was compiled; anything it does not know — the command records,
+    /// which are private to <see cref="Commands"/> and so cannot be named from a context outside
+    /// it, and the records that belong to the shell's own assemblies — falls through to the
+    /// reflecting resolver behind it and behaves exactly as it did before.
+    /// </para>
+    /// <para>
+    /// That fallback is not optional. Setting any resolver at all turns OFF the implicit
+    /// reflection default, so a chain with only the context would leave every unregistered type
+    /// throwing <c>NotSupportedException</c> at the first call — at run time, on whichever screen
+    /// happened to open first, with nothing at build time to warn about it.
+    /// </para>
+    /// <para>
+    /// Frozen once built. These options are shared by every call site in the app, and a converter
+    /// or a naming policy added to them later would change what half the app sends depending on
+    /// when it first serialised something.
+    /// </para>
+    /// </remarks>
+    private static JsonSerializerOptions Create()
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    };
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        };
+        options.TypeInfoResolverChain.Add(ModelJsonContext.Default);
+        options.TypeInfoResolverChain.Add(new DefaultJsonTypeInfoResolver());
+        options.MakeReadOnly();
+        return options;
+    }
 }
