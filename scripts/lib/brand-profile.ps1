@@ -21,6 +21,16 @@
         NEXT_PUBLIC_BRAND_AGENT_NAME       what the assistant is called on screen
         NEXT_PUBLIC_BRAND_WORDMARK         the handle it is mentioned by, without the "@"
         NEXT_PUBLIC_BRAND_AUTH_PROVIDERS   the ways a reader may sign in, in the order shown
+        NEXT_PUBLIC_BRAND_SUPPORT_EMAIL    the Store listing's support contact
+        NEXT_PUBLIC_BRAND_PRIVACY_URL      the Store listing's privacy policy
+        NEXT_PUBLIC_BRAND_OPERATOR_NAME    the Store listing's copyright line
+
+    The last three are read only by the Store listing (scripts/lib/store-listing.ps1, task
+    AWTD-1636), and none of them falls back to Astrid's once the profile names another domain:
+    the privacy policy becomes the deployment's own built-in /privacy page, the copyright holder
+    the publisher, and the support address NOTHING - it is the address Microsoft's certification
+    writes to and expects a person to answer, so a guessed one fails certification where a
+    visible hole only costs a line of typing.
 
     AUTH PROVIDERS ARE RESOLVED HERE, not in the app, because this is the only thing on the Windows
     side that reads a profile. The rule is astrid-web's (lib/brand/auth-providers.ts): a stated list
@@ -100,6 +110,11 @@ function Get-AstridBrandProfile {
         # manifest: a partner's upload reached Partner Center called Astrid-1.2.3.msixupload
         # (task 5bf1f1dc).
         FileStem             = 'Astrid'
+        # The Store listing's three (task AWTD-1636), exactly as packaging/listing/store-listing.md
+        # has always said them.
+        SupportEmail         = 'support@astrid.cc'
+        PrivacyUrl           = 'https://www.astrid.cc/privacy'
+        OperatorName         = 'Graceful Tools LLC'
     }
 
     if ([string]::IsNullOrWhiteSpace($Brand)) {
@@ -119,6 +134,9 @@ function Get-AstridBrandProfile {
     $inbound = Get-AstridBrandMember $shared 'NEXT_PUBLIC_BRAND_INBOUND_TASK_EMAIL'
     $agentName = Get-AstridBrandMember $shared 'NEXT_PUBLIC_BRAND_AGENT_NAME'
     $wordmark = Get-AstridBrandMember $shared 'NEXT_PUBLIC_BRAND_WORDMARK'
+    $supportEmail = Get-AstridBrandMember $shared 'NEXT_PUBLIC_BRAND_SUPPORT_EMAIL'
+    $privacyUrl = Get-AstridBrandMember $shared 'NEXT_PUBLIC_BRAND_PRIVACY_URL'
+    $operatorName = Get-AstridBrandMember $shared 'NEXT_PUBLIC_BRAND_OPERATOR_NAME'
 
     $profileName = Get-AstridBrandMember $json 'name'
     if ($profileName) { $values.Name = $profileName }
@@ -146,10 +164,17 @@ function Get-AstridBrandProfile {
         # is not harmless in a window: it is the address a partner's user would be told to mail,
         # and it would file their task in someone else's account. A deliberate divergence from web.
         $values.InboundTaskEmail = "remindme@$domain"
+        # The deployment's own policy page, which astrid-web serves at /privacy unless the operator
+        # publishes one elsewhere (NEXT_PUBLIC_BRAND_PRIVACY_URL, below). The support address has
+        # no such answer - see the header - so it is emptied rather than guessed.
+        $values.PrivacyUrl = "https://$domain/privacy"
+        $values.SupportEmail = $null
     }
     if ($inbound) { $values.InboundTaskEmail = $inbound }
     if ($agentName) { $values.AgentName = $agentName }
     if ($wordmark) { $values.Wordmark = $wordmark.ToLowerInvariant() }
+    if ($supportEmail) { $values.SupportEmail = $supportEmail }
+    if ($privacyUrl) { $values.PrivacyUrl = $privacyUrl }
     $values.AuthProviders = Get-AstridBrandAuthProviders $shared
 
     # The Windows block, last, because it is the only one written for this platform and so it wins.
@@ -165,10 +190,21 @@ function Get-AstridBrandProfile {
             @('agentName', 'AgentName'),
             @('wordmark', 'Wordmark'),
             @('identityName', 'IdentityName'),
-            @('identityPublisher', 'IdentityPublisher'))) {
+            @('identityPublisher', 'IdentityPublisher'),
+            @('supportEmail', 'SupportEmail'),
+            @('privacyUrl', 'PrivacyUrl'))) {
         $value = Get-AstridBrandMember $windows $pair[0]
         if ($value) { $values[$pair[1]] = $value }
     }
+
+    # The copyright holder: the operator the profile names, else whoever settled as publisher -
+    # which is the brand name when the profile says nothing, astrid-web's operatorName rule
+    # (lib/brand/config.ts). Never Graceful Tools LLC by default on a partner's listing: that is a
+    # legal statement about someone else's company.
+    $values.OperatorName = $values.PublisherDisplayName
+    if ($operatorName) { $values.OperatorName = $operatorName }
+    $windowsOperator = Get-AstridBrandMember $windows 'operatorName'
+    if ($windowsOperator) { $values.OperatorName = $windowsOperator }
 
     $assets = Get-AstridBrandMember $windows 'assets'
     if ($assets) {
@@ -318,6 +354,14 @@ function Assert-AstridBrandProfile {
     # on a partner's Store upload is worse than a build that stops.
     if ($Values.FileStem -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*$') {
         throw "brand profile $File has a short name '$($Values.ShortName)' that leaves nothing usable as a file name: letters, digits, hyphens and underscores."
+    }
+    # Both pasted into Partner Center, and certification follows each one. Empty support is allowed
+    # (the listing shows a hole for it); a malformed one is not.
+    if ($Values.SupportEmail -and $Values.SupportEmail -notmatch '^[^@\s]+@[^@\s]+$') {
+        throw "brand profile $File has an unusable support address '$($Values.SupportEmail)': one local part, one host, no spaces."
+    }
+    if ($Values.PrivacyUrl -notmatch '^https://[^/\s]+(/\S*)?$') {
+        throw "brand profile $File has an unusable privacy policy URL '$($Values.PrivacyUrl)': https, a host and an optional path."
     }
     if (-not (Test-Path -LiteralPath $Values.AssetsDirectory)) {
         throw "brand profile $File names an assets directory that does not exist: $($Values.AssetsDirectory)"
