@@ -60,6 +60,27 @@
       waiting with.
     -->
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <!--
+      Compile the IL ahead of time in the published build (task d24777f5).
+
+      Only `dotnet publish -r <rid>` can do this, which is exactly what scripts/package.ps1 runs
+      per architecture, so it costs a developer's inner loop nothing: `dotnet build` and F5 are
+      untouched. What it buys is the first screen. Without it the JIT compiles the startup path —
+      the generated XAML, the view models, the bindings — while the user is looking at the window,
+      and on an ARM64 machine that is the slowest work the app ever does.
+
+      ReadyToRun is a cache, never a replacement: the IL ships beside the native code and the
+      runtime falls back to it whenever the precompiled form does not apply. So nothing here can
+      change behaviour, only the package's size, which is the trade being made.
+
+      NOT PublishTrimmed, deliberately, though the same review asked for both. WinUI resolves XAML
+      types by name at run time — a page is found through its generated type name, bindings through
+      reflection over the view model — and the trimmer cannot see any of that. It would be a
+      packaging flag whose failure mode is a blank page in a signed build that every test here
+      passes, since the tests drive the unpackaged build and never publish. Worth doing one day
+      behind the UI smoke suite running against a trimmed publish; not worth doing blind.
+    -->
+    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
   <ItemGroup>

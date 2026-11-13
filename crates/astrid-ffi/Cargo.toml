@@ -34,7 +34,13 @@ tracing = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 # DPAPI, for the credential at rest. See `secure_store` for why this rather than PasswordVault.
-windows-sys = { version = "0.60", features = [
+#
+# 0.61 because that is what tokio's IOCP reactor already brings into this graph, and `windows-sys`
+# is the whole generated Win32 ABI — a second major version is a second copy of it compiled and
+# linked into the same binary, on both architectures, for the same declarations of the same
+# operating system. `each_shipped_target_carries_one_windows_sys_task_d24777f5` in
+# `tests/supply_chain_contract.rs` fails if the two ever drift apart again.
+windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
     "Win32_Security_Cryptography",
     "Win32_System_Memory",
