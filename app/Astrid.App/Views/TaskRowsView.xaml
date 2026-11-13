@@ -251,6 +251,7 @@
                   SelectedItem="{x:Bind Shell.Tasks.Selected, Mode=TwoWay}"
                   SelectionMode="Single"
                   SelectionChanged="OnRowSelected"
+                  ContainerContentChanging="OnRowContainerChanging"
                   ShowsScrollingPlaceholders="True">
             <ListView.Resources>
                 <!--
@@ -396,10 +397,19 @@
                                            VerticalAlignment="Center"
                                            Foreground="{ThemeResource AstridTextMuted}"
                                            Visibility="{x:Bind ShowsIdentifier, Converter={StaticResource Visible}}" />
+                                <!--
+                                    DS19 (task 3d5cca89): a title wraps without limit, and the
+                                    "Task titles" appearance setting may cut it to two lines or
+                                    one. No MaxLines here on purpose - WinUI's default of 0 IS
+                                    "as many as it needs", so the register's default is the
+                                    XAML's, and a row drawn before the setting has been read is
+                                    already right. OnRowContainerChanging applies a narrower
+                                    choice as each row is realised.
+                                -->
                                 <TextBlock Grid.Column="1"
+                                           x:Name="RowTitle"
                                            Text="{x:Bind Title}"
                                            TextWrapping="Wrap"
-                                           MaxLines="2"
                                            TextTrimming="CharacterEllipsis"
                                            Foreground="{ThemeResource AstridTextPrimary}"
                                            TextDecorations="{x:Bind Completed, Converter={StaticResource CompletedStrike}}" />

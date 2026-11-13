@@ -1489,6 +1489,21 @@
   <data name="three_things_worth_knowing.Text" xml:space="preserve">
     <value>Three things worth knowing</value>
   </data>
+  <data name="title_display_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Task titles</value>
+  </data>
+  <data name="titles_setting" xml:space="preserve">
+    <value>Task titles</value>
+  </data>
+  <data name="titles_wrap" xml:space="preserve">
+    <value>Wrap</value>
+  </data>
+  <data name="titles_twoLines" xml:space="preserve">
+    <value>Two lines</value>
+  </data>
+  <data name="titles_oneLine" xml:space="preserve">
+    <value>One line</value>
+  </data>
   <data name="time.Text" xml:space="preserve">
     <value>Time</value>
   </data>

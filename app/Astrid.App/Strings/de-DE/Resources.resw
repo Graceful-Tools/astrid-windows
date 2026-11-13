@@ -1476,6 +1476,21 @@
   <data name="theme_box.Header" xml:space="preserve">
     <value>Design</value>
   </data>
+  <data name="title_display_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Aufgabentitel</value>
+  </data>
+  <data name="titles_setting" xml:space="preserve">
+    <value>Aufgabentitel</value>
+  </data>
+  <data name="titles_wrap" xml:space="preserve">
+    <value>Umbrechen</value>
+  </data>
+  <data name="titles_twoLines" xml:space="preserve">
+    <value>Zwei Zeilen</value>
+  </data>
+  <data name="titles_oneLine" xml:space="preserve">
+    <value>Eine Zeile</value>
+  </data>
   <data name="theme_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Erscheinungsbild</value>
   </data>

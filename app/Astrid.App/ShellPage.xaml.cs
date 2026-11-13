@@ -184,6 +184,11 @@ public sealed partial class ShellPage : UserControl
         // in. It comes from the cache, so this does not wait for a network.
         Shell.Settings.Appearance.ThemeChanged += ApplyTheme;
         await Shell.Settings.Appearance.LoadThemeAsync();
+        // How much of a title a row shows (DS19, task 3d5cca89). From the cache like the look, and
+        // before the first list is drawn, so a person who chose one line does not watch their rows
+        // shrink a moment after they appear.
+        Shell.Settings.Appearance.TitleDisplayChanged += Rows.ApplyTitleDisplay;
+        await Shell.Settings.Appearance.LoadTitleDisplayAsync();
         await Shell.StartAsync();
         await Shell.RaiseRemindersAsync();
         await Shell.MaybeShowTourAsync();
