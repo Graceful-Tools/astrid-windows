@@ -272,10 +272,25 @@
 
             <!--
                 The same accent as a Color, which a tint needs: a SolidColorBrush takes an opacity
-                off a colour, not off another brush, and the sidebar's selected row is the accent at
-                15%.
+                off a colour, not off another brush.
             -->
             <Color x:Key="AstridAccentColor">#2563EB</Color>
+
+            <!--
+                A selected row's outline (astrid-core DS5, task 787c7aa5): the accent at
+                `state.selection-outline-opacity`. The Mac's answer, which Jon took for every client
+                on 2026-11-10 - the sidebar used to FILL the row instead, at 0.15, with its hover and
+                pressed states at 0.22, three numbers carried over from astrid-web's CSS and pinned
+                to nothing.
+
+                Stated here beside the accent rather than in the theme dictionaries, for the same
+                reason `AstridAccentBrush` is: the accent does not follow the theme (DS26), so the
+                outline drawn from it does not either. The width that goes with it is a density
+                lookup and lives with the other sizes, in `Views/ShellResources.xaml`.
+            -->
+            <SolidColorBrush x:Key="AstridSelectionOutline"
+                             Color="{StaticResource AstridAccentColor}"
+                             Opacity="0.55" />
 
             <!-- The Ocean surface, so the wash is stated once rather than per screen. -->
             <LinearGradientBrush x:Key="AstridOceanBrush" StartPoint="0,0" EndPoint="0.35,1">

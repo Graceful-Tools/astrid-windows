@@ -1,6 +1,8 @@
+using System.Numerics;
 using Astrid.Core.Bindings;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Hosting;
 
 namespace Astrid.App;
 
@@ -79,10 +81,80 @@ public sealed partial class PriorityMark : Grid
     }
 
     public static readonly DependencyProperty ShowTickProperty = DependencyProperty.Register(
-        nameof(ShowTick), typeof(bool), typeof(PriorityMark), new PropertyMetadata(false, OnChanged));
+        nameof(ShowTick), typeof(bool), typeof(PriorityMark), new PropertyMetadata(false, OnTickChanged));
 
     private static void OnChanged(DependencyObject element, DependencyPropertyChangedEventArgs args) =>
         ((PriorityMark)element).Apply();
+
+    /// <summary>
+    /// The tick arriving is a task being completed, and that is the one change that is animated
+    /// (astrid-core DS16, task 787c7aa5).
+    /// </summary>
+    /// <remarks>
+    /// Only false → true, and only on a mark that is on screen. A row scrolling into view, a list
+    /// reloading and the already-done rows of a completed filter all set <see cref="ShowTick"/> to
+    /// true as well, and a pop on each of those is a list that twitches rather than a task that was
+    /// just finished.
+    /// </remarks>
+    private static void OnTickChanged(DependencyObject element, DependencyPropertyChangedEventArgs args)
+    {
+        var mark = (PriorityMark)element;
+        mark.Apply();
+
+        if (args.NewValue is true && args.OldValue is false && mark.IsLoaded)
+        {
+            mark.Pop();
+        }
+    }
+
+    /// <summary>
+    /// Scales the whole mark to <c>state.complete-pop-scale</c> and lets the token's spring settle
+    /// it back (astrid-core DS16).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A spring, not an easing curve. <c>motion.spring</c> is a named entry in the shared tokens
+    /// carrying a damping ratio and a period rather than a duration and a cubic-bezier, and DS16
+    /// says to read it rather than approximate it. Composition's
+    /// <c>SpringVector3NaturalMotionAnimation</c> is that shape exactly — those two numbers and no
+    /// others — so the shell runs the token rather than something that looks like it, and there is
+    /// nothing for astrid-core's register to record as a substitution.
+    /// </para>
+    /// <para>
+    /// The overshoot comes from where it starts, not from the animation: the scale is set to the
+    /// pop and the spring's <c>FinalValue</c> is 1, so it falls back through and settles. Centred on
+    /// the mark, or it would grow away from its own corner and shove the title.
+    /// </para>
+    /// </remarks>
+    private void Pop()
+    {
+        var pop = (float)Number("AstridCompletePopScale", 1);
+        var visual = ElementCompositionPreview.GetElementVisual(this);
+
+        visual.CenterPoint = new Vector3((float)(ActualWidth / 2), (float)(ActualHeight / 2), 0);
+        visual.Scale = new Vector3(pop, pop, 1);
+
+        var spring = visual.Compositor.CreateSpringVector3Animation();
+        spring.DampingRatio = (float)Number("AstridSpringDamping", 1);
+        spring.Period = TimeSpan.FromMilliseconds(Number("AstridSpringMs", 0));
+        spring.FinalValue = Vector3.One;
+        visual.StartAnimation("Scale", spring);
+    }
+
+    /// <summary>
+    /// One of the design numbers out of the application's resources, with the value that leaves the
+    /// mark alone if it is missing.
+    /// </summary>
+    /// <remarks>
+    /// The same route the art itself takes (<see cref="Apply"/>), so the four values of DS5 and DS16
+    /// all sit in the two XAML files the design-metrics budget exempts and one test compares them
+    /// with the vendored tokens. A fallback rather than a throw: a missing resource should cost the
+    /// animation, never the row.
+    /// </remarks>
+    private static double Number(string key, double fallback) =>
+        Application.Current.Resources.TryGetValue(key, out var found) && found is double value
+            ? value
+            : fallback;
 
     private void Apply()
     {

@@ -210,6 +210,34 @@
     <CornerRadius x:Key="AstridRadiusLarge">12</CornerRadius>
     <CornerRadius x:Key="AstridRadiusXLarge">16</CornerRadius>
 
+    <!--
+        How wide a selection outline is (astrid-core DS5, task 787c7aa5).
+
+        A density lookup, not a constant: the tokens carry `size.compact.selection-outline` at 1.5
+        and `size.comfortable.selection-outline` at 2.5, and the register reads DS5 as "1.5 wide on
+        pointer layouts and 2.5 on touch". This shell is a pointer layout and has no density setting
+        of its own, so it takes the compact one — stated rather than assumed, so that the day a
+        comfortable mode arrives this is the line that changes. `DesignTokenTests` names which of the
+        two it is.
+    -->
+    <Thickness x:Key="AstridSelectionOutlineThickness">1.5</Thickness>
+
+    <!--
+        Completing a task pops its mark (astrid-core DS16, task 787c7aa5).
+
+        `state.complete-pop-scale`, on `motion.spring` — which is a named entry with its own damping
+        ratio and period rather than a duration and a curve, so it is read rather than approximated.
+        Composition's SpringVector3NaturalMotionAnimation takes exactly those two, which is why
+        `PriorityMark` can run the token's spring and not a stand-in for it.
+
+        Here rather than in the control because that keeps all four of DS5's and DS16's numbers in
+        the two files the design-metrics budget exempts, where one test compares them with the
+        vendored tokens.
+    -->
+    <x:Double x:Key="AstridCompletePopScale">1.28</x:Double>
+    <x:Double x:Key="AstridSpringDamping">0.85</x:Double>
+    <x:Double x:Key="AstridSpringMs">280</x:Double>
+
     <Style x:Key="SidebarRowStyle" TargetType="ListViewItem">
         <!--
             Keyboard focus stays visible — it has to — but as a hairline in the accent rather
@@ -225,6 +253,72 @@
         <Setter Property="CornerRadius" Value="8" />
         <Setter Property="Margin" Value="0,0,0,2" />
         <Setter Property="Background" Value="Transparent" />
+        <!--
+            The row draws its own states, which is the only way to get DS5's outline.
+
+            WinUI's ListViewItem renders through a ListViewItemPresenter, and that presenter offers
+            a selected BACKGROUND (`ListViewItemBackgroundSelected` and the pointer-over and pressed
+            variants) and no selected BORDER. So there is no theme-resource route to an outline, and
+            overriding those three brushes is exactly what the sidebar did instead: a 15% fill with
+            22% hover and pressed states, which is the thing DS5 replaced.
+
+            A Border and a ContentPresenter is the whole template. `Control.IsTemplateFocusTarget`
+            keeps the four focus-visual setters above working, and the states below are the names
+            SelectorItem goes to, so hover and pressed still read as they did — only selection
+            changes.
+        -->
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListViewItem">
+                    <Border x:Name="Row"
+                            Control.IsTemplateFocusTarget="True"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="Transparent"
+                            BorderThickness="{StaticResource AstridSelectionOutlineThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}">
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup x:Name="CommonStates">
+                                <VisualState x:Name="Normal" />
+                                <VisualState x:Name="PointerOver">
+                                    <VisualState.Setters>
+                                        <Setter Target="Row.Background" Value="{ThemeResource AstridSurfaceHover}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="Pressed">
+                                    <VisualState.Setters>
+                                        <Setter Target="Row.Background" Value="{ThemeResource AstridSurfaceHover}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="Selected">
+                                    <VisualState.Setters>
+                                        <Setter Target="Row.BorderBrush" Value="{ThemeResource AstridSelectionOutline}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="PointerOverSelected">
+                                    <VisualState.Setters>
+                                        <Setter Target="Row.Background" Value="{ThemeResource AstridSurfaceHover}" />
+                                        <Setter Target="Row.BorderBrush" Value="{ThemeResource AstridSelectionOutline}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="PressedSelected">
+                                    <VisualState.Setters>
+                                        <Setter Target="Row.Background" Value="{ThemeResource AstridSurfaceHover}" />
+                                        <Setter Target="Row.BorderBrush" Value="{ThemeResource AstridSelectionOutline}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
+                        <ContentPresenter x:Name="ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          ContentTransitions="{TemplateBinding ContentTransitions}"
+                                          Padding="{TemplateBinding Padding}"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <local:CompletedOpacityConverter x:Key="CompletedOpacity" />
