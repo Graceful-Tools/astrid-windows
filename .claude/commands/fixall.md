@@ -18,6 +18,21 @@ worse than none.
 **If `ASTRID_FIXALL_MAX_TASKS` is set, stop after working that many Ready tasks**, and say so.
 `scripts/fixall-loop.ps1` sets it to `1`. `RECHECK` / `REVIEW` do not count toward it.
 
+**`ASTRID_FIXALL_NEXT_TASK` and `ASTRID_FIXALL_DEFER_TASKS` are not advice.** The loop sized this
+tick's watchdog and budget for a specific task before starting you, from astrid-web's answer about
+the `LONG-RUN` flag (FIXALL_WORKFLOW.md → *Tasks longer than one run*). So:
+
+- `ASTRID_FIXALL_NEXT_TASK` — take that id FIRST, ahead of the queue's own order. The bounds you
+  are running under were chosen for it.
+- `ASTRID_FIXALL_DEFER_TASKS` — a comma-separated list of ids you must **not** take this tick, even
+  though the queue still shows them. They are flagged `LONG-RUN` and the window is shut; a tick
+  that takes one anyway is working an eight-hour task under a 75-minute watchdog, which dies
+  mid-task and runs none of the recovery. Leave them in Ready, untouched and **without comment** —
+  the loop's log already records the deferral, and a comment every half hour is the churn the flag
+  exists to stop.
+
+Both are empty when the loop had no plan, which is the ordinary case.
+
 **A branch whose tip reads `wip: … UNFINISHED, UNVERIFIED` is a resume point** — check it out and
 continue from it rather than starting over. It has passed no gate; never treat it as done.
 
