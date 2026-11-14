@@ -245,13 +245,13 @@ public sealed class BrandProfileTests
     [Fact]
     public void The_core_is_started_with_the_brands_url_scheme_task_8cbed184()
     {
-        var astrid = AstridClient.BuildStartConfig(":memory:", null, BrandDefaults.UrlScheme);
+        var astrid = AstridClient.BuildStartConfig(":memory:", BrandDefaults.ServerOrigin, BrandDefaults.UrlScheme);
         Assert.Contains("\"urlScheme\":\"astrid\"", astrid, StringComparison.Ordinal);
 
-        var partner = AstridClient.BuildStartConfig(":memory:", null, "acme");
+        var partner = AstridClient.BuildStartConfig(":memory:", "https://acme.example", "acme");
         Assert.Contains("\"urlScheme\":\"acme\"", partner, StringComparison.Ordinal);
 
-        var unsaid = AstridClient.BuildStartConfig(":memory:", null, null);
+        var unsaid = AstridClient.BuildStartConfig(":memory:", BrandDefaults.ServerOrigin, null);
         Assert.DoesNotContain("urlScheme", unsaid, StringComparison.Ordinal);
     }
 

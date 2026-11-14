@@ -126,7 +126,7 @@ public sealed class AstridClient : IAstridCore, IDisposable
     /// there is nothing the app can do without it, and a null client that fails on every later call
     /// reports the problem in the wrong place.
     /// </exception>
-    public static AstridClient Start(string cachePath, string? baseUrl = null, string? urlScheme = null)
+    public static AstridClient Start(string cachePath, string baseUrl, string? urlScheme = null)
     {
         var config = BuildStartConfig(cachePath, baseUrl, urlScheme);
 
@@ -152,12 +152,23 @@ public sealed class AstridClient : IAstridCore, IDisposable
     /// name a scheme behaves exactly as every client did before the field existed.
     /// </para>
     /// <para>
+    /// <paramref name="baseUrl"/> is the exception, and it is required (task <c>7e68a733</c>).
+    /// The core's default for it is Astrid's own server, which is the one answer a white-label
+    /// build must never give: a partner that left it out sent its sync, its Outbox and its live
+    /// stream to astrid.cc while every call the shell made went to the partner's server. There is
+    /// deliberately no way to ask for the core's default here, and astrid-core is removing it from
+    /// its own side as well — a core built with <c>require-base-url</c> refuses a start without
+    /// one, with <c>CONFIG_BASE_URL_REQUIRED</c>. Pass
+    /// <c>ServerSelection.Origin(…)</c>, which answers the brand's origin when nothing was chosen;
+    /// never <c>ServerSelection.Parse(…)</c>, which answers null for exactly that case.
+    /// </para>
+    /// <para>
     /// Separate from <see cref="Start"/> so the contract can be asserted without a running core:
     /// the core ignores a key it does not know, which makes a wrong or missing one invisible at the
     /// boundary (task 8cbed184).
     /// </para>
     /// </remarks>
-    public static string BuildStartConfig(string cachePath, string? baseUrl, string? urlScheme) =>
+    public static string BuildStartConfig(string cachePath, string baseUrl, string? urlScheme) =>
         JsonSerializer.Serialize(new Dictionary<string, string?>
         {
             ["cachePath"] = cachePath,

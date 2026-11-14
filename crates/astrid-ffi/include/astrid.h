@@ -68,8 +68,15 @@ char *astrid_rule(const char *request_json);
 /*
  * Start the client.
  *
- * `config_json` is {"cachePath": "...", "baseUrl": "..."} — baseUrl is optional and defaults to
- * production. Returns NULL on failure, writing the reason to *error_out (which you then free with
+ * `config_json` is {"cachePath": "...", "baseUrl": "...", "urlScheme": "..."}. baseUrl is NOT
+ * optional: a caller that leaves it out used to get Astrid's own server, which is the one answer a
+ * white-label build must never give — its sync, Outbox and live stream would go to astrid.cc while
+ * everything the shell asks for went to the partner (task 7e68a733). A core built with the
+ * `require-base-url` feature has no Astrid server compiled in and refuses such a start with
+ * CONFIG_BASE_URL_REQUIRED at the head of the error; absent and null both count as missing.
+ * urlScheme stays optional and defaults to `astrid`.
+ *
+ * Returns NULL on failure, writing the reason to *error_out (which you then free with
  * astrid_free_string). error_out may be NULL if you do not want the reason.
  */
 AstridApp *astrid_start(const char *config_json, char **error_out);
