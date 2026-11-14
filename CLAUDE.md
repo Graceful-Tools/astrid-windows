@@ -65,8 +65,14 @@ installs. The ARM64 MSVC component is required — `predeploy` cross-builds ARM6
 **`cargo deny check` is CI's, not `predeploy`'s.** It asks the RustSec advisory database about this
 repo's lockfile, so it needs the network and `cargo install cargo-deny --locked`; the `supply-chain`
 job in `.github/workflows/ci.yml` runs it on every push and PR and again every Monday, because an
-advisory is published between commits. astrid-core and astrid-ios carry their own copies of
-`deny.toml` over their own lockfiles. `.github/dependabot.yml` proposes the bumps.
+advisory is published between commits. `.github/dependabot.yml` proposes the bumps.
+
+**`deny.toml` here is GENERATED and must not be hand-edited** (task `32d7c04d`). astrid-core owns
+the content; `cargo xtask gen-deny` there writes `supply-chain/deny.astrid-windows.toml`, and
+`crates/astrid-ffi/tests/supply_chain_contract.rs` asserts this copy against `astrid_core::supply_chain`
+at the revision `crates/astrid-ffi/Cargo.toml` pins. A licence or ban change is made in astrid-core
+and arrives here with a pin bump: bump the pin, then copy that file over this one. astrid-ios and
+astrid-android take the same file the same way.
 
 ## Test locations
 

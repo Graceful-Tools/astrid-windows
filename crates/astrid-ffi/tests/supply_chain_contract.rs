@@ -49,6 +49,47 @@ fn deny_toml() -> &'static str {
     })
 }
 
+/// `deny.toml` is the core's, at the revision this repo pins — task `32d7c04d`.
+///
+/// Four Rust workspaces carry one of these: astrid-core, this one, astrid-ios' `core/` and
+/// astrid-android's `core/`. They were four hand-copied files that drifted, and the drift was
+/// invisible until somebody compared them — on 2026-11-14 astrid-core had allowed `BSD-2-Clause`
+/// for a crate under `resvg` and the other three did not know. A licence decision reached the other
+/// repositories only when a person remembered.
+///
+/// So the core generates each copy now (`cargo xtask gen-deny` there) and carries them in
+/// `astrid_core::supply_chain`, which means this test compares against **the core this repository
+/// pins** rather than against its `main`. That is the only question this repo can act on, and it
+/// keeps what the old headers in both files insisted on: nothing crosses implicitly, the copy moves
+/// when the pin moves, and in between this file gates this repository's own lockfile on its own.
+///
+/// What this is NOT is a second opinion about the config's contents — every other test in this file
+/// reads `deny.toml` for that. This one asks only whether the file is still the one the core wrote.
+///
+/// The comparison lives in the core, so all three consumers normalise line endings the same way:
+/// `core.autocrlf` differing between two checkouts made `check-contracts` report thirteen fixtures
+/// as drift in task `f1c7b53f`, and a gate that said "your deny.toml is not the core's" for that
+/// reason would be worse than no gate.
+#[test]
+fn deny_toml_is_the_core_it_pins_task_32d7c04d() {
+    assert!(
+        astrid_core::supply_chain::deny_toml("astrid-windows").is_some(),
+        "the core generates no copy for `astrid-windows`, so this test would pass vacuously. \
+         Either the key changed or this repository was dropped from `gen-deny`'s consumer list."
+    );
+
+    assert!(
+        astrid_core::supply_chain::matches("astrid-windows", deny_toml()),
+        "deny.toml is not what astrid-core generated for this repository at the revision \
+         crates/astrid-ffi/Cargo.toml pins.\n\n\
+         This file is GENERATED. A change to what the Rust workspaces accept — a licence, an \
+         advisory ignore, a ban — is made in astrid-core's own deny.toml and arrives here when the \
+         pin is bumped. To take it: bump the pin, then copy \
+         `supply-chain/deny.astrid-windows.toml` from that revision over this file.\n\n\
+         Editing this copy instead is how the four configs drifted in the first place."
+    );
+}
+
 /// The resolved graph, asked for once however many tests want it.
 fn metadata() -> &'static Value {
     static META: OnceLock<Value> = OnceLock::new();
@@ -77,16 +118,7 @@ fn metadata() -> &'static Value {
 /// `key = [` and quoted entries until `]` — and a list it cannot find is a panic, never an empty
 /// allow list that would make every assertion below vacuous.
 fn string_list(table: &str, key: &str) -> BTreeSet<String> {
-    let src = deny_toml();
-    let table_at = src
-        .find(&format!("[{table}]"))
-        .unwrap_or_else(|| panic!("deny.toml has no [{table}] table"));
-    let rest = &src[table_at..];
-    // Stop at the next table header so a key is never read out of the wrong one.
-    let rest = match rest[1..].find("\n[") {
-        Some(end) => &rest[..end + 1],
-        None => rest,
-    };
+    let rest = table_body(table);
     let key_at = rest
         .find(&format!("{key} = ["))
         .unwrap_or_else(|| panic!("deny.toml's [{table}] has no `{key}` list"));
@@ -104,13 +136,46 @@ fn string_list(table: &str, key: &str) -> BTreeSet<String> {
         .collect()
 }
 
+/// A named table's body: from its header line to the next table header, or the end of the file.
+///
+/// The header must START A LINE, and that is not fussiness — task `32d7c04d` made `deny.toml` a
+/// generated file whose header prose explains the config, so the comments at the top now contain
+/// the words `[sources]` and `[licenses]`. A search for the bare text found the PROSE first and
+/// then stopped the slice at the next line beginning with `[`, so `allow-git` was reported missing
+/// from a file that plainly has it — a parser reading comments as structure, which was always a
+/// trap and only now had something to trip on.
+fn table_body(table: &str) -> &'static str {
+    let src = deny_toml();
+    let header = format!("[{table}]");
+    let table_at = src
+        .lines()
+        .scan(0usize, |offset, line| {
+            let at = *offset;
+            // `lines()` drops the separator; a CRLF checkout adds one more byte per line, which
+            // `line.len()` does not count.
+            *offset += line.len()
+                + if src[at + line.len()..].starts_with("\r\n") {
+                    2
+                } else {
+                    1
+                };
+            Some((at, line))
+        })
+        .find(|(_, line)| line.trim_end() == header)
+        .map(|(at, _)| at)
+        .unwrap_or_else(|| panic!("deny.toml has no [{table}] table"));
+
+    let rest = &src[table_at..];
+    // Stop at the next table header so a key is never read out of the wrong one.
+    match rest[1..].find("\n[") {
+        Some(end) => &rest[..end + 1],
+        None => rest,
+    }
+}
+
 /// A `key = "value"` string out of a named table, for the lint levels.
 fn lint_level(table: &str, key: &str) -> String {
-    let src = deny_toml();
-    let table_at = src
-        .find(&format!("[{table}]"))
-        .unwrap_or_else(|| panic!("deny.toml has no [{table}] table"));
-    let rest = &src[table_at..];
+    let rest = table_body(table);
     let line = rest
         .lines()
         .find(|l| l.trim_start().starts_with(&format!("{key} = ")))

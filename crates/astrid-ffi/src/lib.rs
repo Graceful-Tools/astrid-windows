@@ -420,8 +420,20 @@ mod tests {
         heard.lock().expect("lock").push(text);
     }
 
+    /// A started core over an in-memory cache, configured the way the shell configures one.
+    ///
+    /// `baseUrl` is named because it is REQUIRED, in every build, since astrid-core `39c8f3f`
+    /// (AWTD-1627) deleted `DEFAULT_BASE_URL`: the core carries no server of its own, so a start
+    /// that omits it fails with `CONFIG_BASE_URL_REQUIRED` rather than quietly reaching astrid.cc.
+    /// That commit said shell tests omitting it would fail on their next pin bump, and these four
+    /// did. The shell itself has passed `ServerOrigin` since AWTD2-192, so this is the test
+    /// fixture catching up with the contract, not a change in what the app does.
+    ///
+    /// `astrid.invalid` for the reason `omitted_field_sync_guard.rs` gives: never a real host, so
+    /// a request these tests do not expect fails rather than leaving the machine.
     fn start_in_memory() -> *mut AstridApp {
-        let config = CString::new(r#"{"cachePath":":memory:"}"#).expect("a literal");
+        let config = CString::new(r#"{"cachePath":":memory:","baseUrl":"https://astrid.invalid"}"#)
+            .expect("a literal");
         let mut error: *mut c_char = std::ptr::null_mut();
         let handle = unsafe { astrid_start(config.as_ptr(), &mut error) };
         assert!(!handle.is_null(), "the core did not start");
