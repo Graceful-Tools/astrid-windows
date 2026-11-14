@@ -1400,6 +1400,89 @@ public sealed class ShellViewModelTests
         Assert.Contains("rowsForList", core.SentKinds());
     }
 
+    /// <summary>
+    /// A colleague working in a list nobody has open costs nothing (task 05c95986).
+    /// </summary>
+    /// <remarks>
+    /// Task 303f20c2 coalesced a burst of changes into one redraw and could not do this, because
+    /// the change did not name a list. Now it does, so the read is not merely cheap but skipped.
+    /// </remarks>
+    [Fact]
+    public async Task A_task_change_in_a_list_that_is_not_open_reloads_nothing_task_05c95986()
+    {
+        var core = StartedCore(("l1", "Home", false));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        Assert.Equal("l1", shell.Tasks.ListId);
+
+        core.AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        var rowsBefore = core.SentKinds().Count(kind => kind == "rowsForList");
+
+        core.NotifyTask("t9", "l2");
+
+        Assert.Equal(rowsBefore, core.SentKinds().Count(kind => kind == "rowsForList"));
+    }
+
+    /// <summary>The same change, in the list that <i>is</i> open, still reloads it.</summary>
+    [Fact]
+    public async Task A_task_change_in_the_open_list_still_reloads_it_task_05c95986()
+    {
+        var core = StartedCore(("l1", "Home", false));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        core.AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        var rowsBefore = core.SentKinds().Count(kind => kind == "rowsForList");
+
+        core.NotifyTask("t1", "l1");
+
+        Assert.Equal(rowsBefore + 1, core.SentKinds().Count(kind => kind == "rowsForList"));
+    }
+
+    /// <summary>
+    /// A change that names no list is "could not say", which is "refresh anyway" — the rule the
+    /// open task already follows for a change that names no task (task 05c95986).
+    /// </summary>
+    [Fact]
+    public async Task A_task_change_that_names_no_list_still_reloads_task_05c95986()
+    {
+        var core = StartedCore(("l1", "Home", false));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        core.AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        var rowsBefore = core.SentKinds().Count(kind => kind == "rowsForList");
+
+        core.NotifyTask("t9");
+
+        Assert.Equal(rowsBefore + 1, core.SentKinds().Count(kind => kind == "rowsForList"));
+    }
+
+    /// <summary>
+    /// My Tasks is synthesised from across the account, so it is in no task's <c>listIds</c>.
+    /// Deciding by membership would freeze the view the app opens on (task 05c95986).
+    /// </summary>
+    [Fact]
+    public async Task A_task_change_elsewhere_still_reloads_a_virtual_list_task_05c95986()
+    {
+        var core = StartedCoreWith(Lists(("l1", "Home", null)))
+            .AnswerOk("myTasksList", new { id = "virtual:my-tasks", name = "My Tasks", isVirtual = true });
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        Assert.Equal("virtual:my-tasks", shell.Tasks.ListId);
+
+        core.AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        var rowsBefore = core.SentKinds().Count(kind => kind == "rowsForList");
+
+        core.NotifyTask("t9", "l2");
+
+        Assert.Equal(rowsBefore + 1, core.SentKinds().Count(kind => kind == "rowsForList"));
+    }
+
     [Fact]
     public async Task A_list_notification_refreshes_the_sidebar()
     {

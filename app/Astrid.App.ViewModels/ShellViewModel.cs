@@ -1476,10 +1476,21 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         switch (notification.Change)
         {
             case "task":
+                // The list and the board only when the change is in a list one of them is drawing
+                // (task 05c95986). A colleague working in a list nobody has open used to cost a
+                // full `rowsForList` of the list that is open, once per dispatcher turn; task
+                // 303f20c2 made that cheap by coalescing, and this makes it free. A change that
+                // names no list still refreshes both — "could not say" is not "did not".
+                //
                 // The detail pane only when it is the task on screen. Reloading it for every task
                 // somebody else touches would make the open task flicker while a colleague works
                 // elsewhere in the same list.
-                return Pending.Tasks | Pending.Board | Pending.Outbox
+                //
+                // The Outbox badge is unconditional: it counts this device's unsent work, which
+                // has nothing to do with which list the change landed in.
+                return Pending.Outbox
+                    | (notification.TouchesList(Tasks.ListId) ? Pending.Tasks : Pending.None)
+                    | (notification.TouchesList(Board.ListId) ? Pending.Board : Pending.None)
                     | (notification.Touches(Detail.TaskId) ? Pending.Detail : Pending.None);
             case "comments":
                 // Stricter than `task` on purpose: a comment change that names no task says
