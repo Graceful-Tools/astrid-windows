@@ -10,7 +10,7 @@ not: what covers the UI smoke tests, and when.*
 | Layer | Where | Runs in |
 |---|---|---|
 | The rules, the services, the Outbox, sync | astrid-core (its own repo) | astrid-core's gate |
-| The bindings contract — `Commands.cs` against the core's command list | `crates/astrid-ffi/tests/` | `npm run predeploy` |
+| The bindings contract — `Commands.cs` and `Models.cs` against the core's command list and its **wire schema** (task 9ef7edb4) | `crates/astrid-ffi/tests/` | `npm run predeploy` |
 | Shell view-models, against a fake core | `app/Astrid.App.Tests/` | `npm run predeploy` |
 | The app itself: a real window, the real core, a real SQLite file | `app/Astrid.App.UITests/` | `npm run predeploy:full` **only** |
 

@@ -23,10 +23,24 @@
 //! The core's half is `astrid_core::app::command_kinds()`, which every shell reads its own bindings
 //! against; this file is the Windows shell's half. It lives with the FFI crate because that is the
 //! Rust that stays beside the C#: the core is its own repository and knows nothing of `Commands.cs`.
+//!
+//! ## The third question: the FIELDS, not just the kinds (task 9ef7edb4)
+//!
+//! The two questions above are about the command's `kind` and nothing else — which left the ~6,000
+//! lines of hand-written request and response shapes across the clients checked by nobody. And the
+//! failure that produces is silent: `serde` **ignores an unknown request field**, so a field
+//! renamed in the core arrives from this shell under its old name, decodes as `None`, and writes
+//! nothing. No error, no log line, a control that half works.
+//!
+//! The core now publishes a JSON Schema derived from the types that ARE the wire
+//! (`astrid_core::app::schema`), and the rest of this file holds `Commands.cs` and `Models.cs`
+//! against it. As with `NOT_BOUND`, **leaving things out stays allowed** — this shell binds what it
+//! draws — but **inventing a name does not**.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 const COMMANDS_CS: &str = include_str!("../../../app/Astrid.Core.Bindings/Commands.cs");
+const MODELS_CS: &str = include_str!("../../../app/Astrid.Core.Bindings/Models.cs");
 
 /// Every `kind` the C# factories send: the first string literal handed to one of the request
 /// records declared in the same file.
@@ -393,5 +407,355 @@ fn an_unregistered_command_is_caught() {
     assert!(
         unregistered(&core, &csharp, &[("registered", "…"), ("neither", "…")]).is_empty(),
         "and registering it is what makes the gate pass again"
+    );
+}
+
+// ── The fields (task 9ef7edb4) ──────────────────────────────────────────────────────────────────
+
+/// Every property name the core's wire schema knows, anywhere in it.
+///
+/// The request vocabulary and the response shapes together, because a shell's names come from
+/// both and the question asked of each is the same: is this a name this core knows at all?
+///
+/// Deliberately NOT "is this field legal on command X". That needs every C# call site mapped to a
+/// `Command` variant, which is a C# parser nobody should write — and the flat question already
+/// catches the whole class of bug this exists for.
+fn schema_names() -> BTreeSet<String> {
+    use astrid_core::app::schema;
+    let mut names = schema::property_names(&schema::command());
+    names.extend(schema::property_names(&schema::wire()));
+    assert!(
+        names.len() >= 200,
+        "the core's schema names only {} properties; the derive has stopped seeing fields",
+        names.len()
+    );
+    names
+}
+
+/// Every field name this shell SENDS: the `[property: JsonPropertyName("…")]` on the request
+/// records at the foot of `Commands.cs`.
+///
+/// That attribute form appears nowhere else in the file — `Models.cs` writes the plain
+/// `[JsonPropertyName]` on properties — so the scan needs no notion of where the records begin.
+fn csharp_request_fields() -> BTreeSet<String> {
+    let fields = attribute_values(COMMANDS_CS, "[property: JsonPropertyName(\"");
+    assert!(
+        fields.len() >= 50,
+        "found only {} request fields in Commands.cs; the scan has stopped working",
+        fields.len()
+    );
+    fields.into_iter().collect()
+}
+
+/// Each `public sealed record` in `Models.cs` and the wire names it decodes, in file order.
+fn csharp_model_records() -> BTreeMap<String, Vec<String>> {
+    let mut records: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    let mut current: Option<String> = None;
+    for line in MODELS_CS.lines() {
+        if let Some(rest) = line.strip_prefix("public sealed record ") {
+            let name: String = rest
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .collect();
+            if !name.is_empty() {
+                records.entry(name.clone()).or_default();
+                current = Some(name);
+            }
+            continue;
+        }
+        let Some(record) = current.as_ref() else {
+            continue;
+        };
+        for field in attribute_values(line, "[JsonPropertyName(\"") {
+            records.entry(record.clone()).or_default().push(field);
+        }
+    }
+    assert!(
+        records.len() >= 80,
+        "found only {} records in Models.cs; the scan has stopped working",
+        records.len()
+    );
+    records
+}
+
+/// Every string literal that follows `opener` in `source`.
+fn attribute_values(source: &str, opener: &str) -> Vec<String> {
+    let mut values = Vec::new();
+    let mut rest = source;
+    while let Some(at) = rest.find(opener) {
+        let literal = &rest[at + opener.len()..];
+        let end = literal.find('"').expect("a closed string literal");
+        values.push(literal[..end].to_string());
+        rest = &literal[end..];
+    }
+    values
+}
+
+/// **Every field the shell sends must be a name the core knows.**
+///
+/// This is the acceptance criterion of task 9ef7edb4 on the request side, and the half that
+/// catches the silent regression: `serde` ignores an unknown request field, so until this existed
+/// a rename in the core made this shell's write do nothing, quietly, with no way to tell from the
+/// outside but noticing the value had not changed.
+///
+/// It passes clean today — all 97 fields `Commands.cs` sends are in the schema — which is the
+/// point of adding it now rather than after the first rename.
+#[test]
+fn every_field_the_shell_sends_is_one_the_core_knows_9ef7edb4() {
+    let known = schema_names();
+    let unknown: Vec<String> = csharp_request_fields()
+        .into_iter()
+        .filter(|field| !known.contains(field))
+        .collect();
+    assert!(
+        unknown.is_empty(),
+        "Commands.cs sends field names the core's schema has no property for. A command does NOT \
+         fail on one — serde ignores it — so each of these is a write that silently does nothing: \
+         {unknown:?}"
+    );
+}
+
+/// The records in `Models.cs` that mirror ONE named type in the core, and which.
+///
+/// The pair is the whole point, and the flat `schema_names()` set is not enough for this half:
+/// `authorName` exists on `CommentRow` as well as `MessageRow`, so renaming it on one of them
+/// leaves the name in the schema and a union check sees nothing. Holding each record against **its
+/// own type's** properties is what makes the rename fail — the acceptance criterion of task
+/// 9ef7edb4 over the response side.
+///
+/// **A ratchet, not a register of exceptions.** The other ~85 records are not listed, and their
+/// reason is one fact rather than eighty-five: either they mirror a shape the core builds by hand
+/// with `serde_json::json!` in `app/dispatch/` (`row_json.rs` alone is 663 lines of it), so there
+/// is no Rust type to name here; or they are a composite a dispatch assembles from several. Giving
+/// those projections types is astrid-core's own task — "Move list-row assembly into astrid-rules;
+/// return TaskRow projections from both doors" — and each one that lands can be added here as a
+/// pair.
+///
+/// A record is listed only when the pairing is TRUE. Several unlisted ones would pass a mechanical
+/// check today by accident — a two-field record of `id` and `name` resolves against half the
+/// schema — and listing those would claim a guarantee this is not giving.
+const SCHEMA_BACKED_MODELS: &[(&str, &str)] = &[
+    ("AgentCredential", "CredentialRow"),
+    ("AssigneeOption", "AssigneeOption"),
+    ("DefaultPick", "DefaultPick"),
+    ("FilterGroup", "FilterGroup"),
+    ("FilterPick", "FilterPick"),
+    ("ListDefaultPicks", "ListDefaultPicks"),
+    ("ListMember", "ListMember"),
+    ("ListPick", "ListPick"),
+    ("ListPicks", "ListPicks"),
+    ("ListSummary", "TaskList"),
+    ("ListSupports", "ListSupports"),
+    ("MarkdownBlock", "Block"),
+    ("MarkdownCell", "GridCell"),
+    ("MarkdownInline", "Inline"),
+    ("MarkdownListItem", "ListItem"),
+    ("MessageRow", "MessageRow"),
+    ("PublicListOwner", "User"),
+    ("ReminderPick", "ReminderPick"),
+    ("RepeatPreset", "RepeatPreset"),
+    ("SidebarSections", "Sections"),
+    ("SummaryPart", "SummaryPart"),
+    ("UserSummary", "User"),
+];
+
+/// The property names one named type in the core's schema has.
+///
+/// `None` when the schema has no such type — which is itself a failure worth reporting by name,
+/// because a type renamed or deleted in the core leaves a pairing here pointing at nothing.
+///
+/// The union over a tagged enum's variants, because that is one C# record on this side:
+/// `MarkdownBlock` decodes every `Block` variant through one shape with the unused fields left
+/// null, which is how `System.Text.Json` reads a discriminated union without a converter per case.
+fn schema_type_properties(type_name: &str) -> Option<BTreeSet<String>> {
+    use astrid_core::app::schema;
+    for document in [schema::command(), schema::wire()] {
+        let Some(definition) = document.get("$defs").and_then(|defs| defs.get(type_name)) else {
+            continue;
+        };
+        let mut names = BTreeSet::new();
+        collect_properties(definition, &mut names);
+        return Some(names);
+    }
+    None
+}
+
+/// Every `properties` key anywhere under one schema node, variants included.
+fn collect_properties(node: &serde_json::Value, names: &mut BTreeSet<String>) {
+    match node {
+        serde_json::Value::Object(fields) => {
+            for (key, value) in fields {
+                if key == "properties" {
+                    if let serde_json::Value::Object(properties) = value {
+                        names.extend(properties.keys().cloned());
+                    }
+                }
+                collect_properties(value, names);
+            }
+        }
+        serde_json::Value::Array(items) => items
+            .iter()
+            .for_each(|item| collect_properties(item, names)),
+        _ => {}
+    }
+}
+
+/// **Every paired record still resolves against its own type.**
+///
+/// The response half of task 9ef7edb4's acceptance: rename a field on `User`, `TaskList`,
+/// `MessageRow` or any other paired type in the core, and this goes red naming the record that
+/// decodes it.
+#[test]
+fn every_schema_backed_model_still_resolves_9ef7edb4() {
+    let records = csharp_model_records();
+    let broken = unresolved(SCHEMA_BACKED_MODELS, &records, &schema_type_properties);
+    assert!(
+        broken.is_empty(),
+        "a shape this shell decodes has moved in the core. Follow the rename here — or, if the \
+         projection stopped having a type, take the pair off SCHEMA_BACKED_MODELS and say \
+         why:\n  {}",
+        broken.join("\n  ")
+    );
+}
+
+/// Which pairs no longer hold, and how each fails.
+///
+/// A function over its inputs, so the enforcement is tested on lists of our own as well as on
+/// today's two — see [`a_renamed_field_is_caught_9ef7edb4`]. A gate whose failing case is never
+/// exercised is a gate nobody knows the shape of.
+fn unresolved(
+    pairs: &[(&str, &str)],
+    records: &BTreeMap<String, Vec<String>>,
+    properties: &dyn Fn(&str) -> Option<BTreeSet<String>>,
+) -> Vec<String> {
+    let mut broken = Vec::new();
+    for (record, core_type) in pairs {
+        let Some(fields) = records.get(*record) else {
+            broken.push(format!(
+                "{record} is paired with {core_type} but is no longer a record in Models.cs — \
+                 delete the pair or correct the spelling"
+            ));
+            continue;
+        };
+        assert!(
+            !fields.is_empty(),
+            "{record} decodes no fields at all; the scan has stopped working"
+        );
+        let Some(known) = properties(core_type) else {
+            broken.push(format!(
+                "{record} is paired with {core_type}, which the core's schema has no type for — \
+                 it was renamed or removed"
+            ));
+            continue;
+        };
+        let unknown: Vec<&String> = fields.iter().filter(|f| !known.contains(*f)).collect();
+        if !unknown.is_empty() {
+            broken.push(format!(
+                "{record} decodes {unknown:?}, which {core_type} no longer has"
+            ));
+        }
+    }
+    broken
+}
+
+/// The enforcement itself, on inputs of our own — so this file proves it FAILS when it should
+/// rather than only that today's core passes.
+///
+/// The middle case is the one a flat union of every property name in the schema cannot catch, and
+/// the reason this check is per-type: `authorName` moving off `MessageRow` leaves the name in the
+/// schema, on `CommentRow`.
+#[test]
+fn a_renamed_field_is_caught_9ef7edb4() {
+    let records = BTreeMap::from([(
+        "MessageRow".to_string(),
+        vec!["id".to_string(), "authorName".to_string()],
+    )]);
+    let pairs = &[("MessageRow", "MessageRow")][..];
+
+    let intact = |_: &str| Some(BTreeSet::from(["id".to_string(), "authorName".to_string()]));
+    assert!(
+        unresolved(pairs, &records, &intact).is_empty(),
+        "a pair that still holds must not be reported"
+    );
+
+    // The field was renamed on ITS type, and the old name lives on elsewhere in the schema.
+    let renamed = |_: &str| Some(BTreeSet::from(["id".to_string(), "writtenBy".to_string()]));
+    let broken = unresolved(pairs, &records, &renamed);
+    assert_eq!(broken.len(), 1, "the rename is the whole point: {broken:?}");
+    assert!(
+        broken[0].contains("authorName") && broken[0].contains("MessageRow"),
+        "it should name the field and the type: {}",
+        broken[0]
+    );
+
+    // And a type that left the core entirely says so, rather than passing for want of properties.
+    let gone = |_: &str| None;
+    assert!(
+        unresolved(pairs, &records, &gone)[0].contains("no type for"),
+        "a missing type is its own failure"
+    );
+}
+
+/// The pairs do not rot: every record is in `Models.cs`, every type is in the schema, and no
+/// record is paired twice.
+#[test]
+fn the_pairs_name_things_that_exist_9ef7edb4() {
+    let records = csharp_model_records();
+    let listed: BTreeSet<&str> = SCHEMA_BACKED_MODELS.iter().map(|(name, _)| *name).collect();
+    assert_eq!(
+        listed.len(),
+        SCHEMA_BACKED_MODELS.len(),
+        "SCHEMA_BACKED_MODELS pairs a record twice"
+    );
+    for (record, core_type) in SCHEMA_BACKED_MODELS {
+        assert!(
+            records.contains_key(*record),
+            "{record} is not a record in Models.cs"
+        );
+        assert!(
+            schema_type_properties(core_type).is_some(),
+            "{core_type} is not a type in the core's schema"
+        );
+    }
+}
+
+/// The pin is one revision, written twice.
+///
+/// `bindings_contract.rs` needs the core's `schema` feature, which is a DEV dependency so that
+/// `schemars` stays out of the shipped `astrid_ffi.dll` — and a dev dependency has to name the
+/// source again, which means naming the `rev` again. Two revisions that can drift is exactly the
+/// trap `CONSUMERS.md` exists to close, so the two are held together here: a pin bump that touched
+/// one and not the other would otherwise run this whole gate against the OLD core while the shell
+/// built against the new one, and report that everything agreed.
+///
+/// Read as "every forty-character sha in the manifest", deliberately, rather than by TOML shape.
+/// The two are written differently on purpose — the normal one inline, because the release
+/// workflow's `sed` extracts it from a line starting `astrid-core = `; the dev one sectioned,
+/// because a SECOND such line would make that `sed` print two shas
+/// (`release_pointers_contract.rs`). A check that knew only one spelling would stop seeing the
+/// other the moment somebody reformatted it, and say nothing.
+#[test]
+fn the_dev_and_normal_core_pins_are_the_same_revision_9ef7edb4() {
+    const MANIFEST: &str = include_str!("../Cargo.toml");
+    let revisions: Vec<&str> = MANIFEST
+        .lines()
+        .map(|line| line.split('#').next().unwrap_or_default())
+        .filter_map(|line| line.rsplit_once("rev = \""))
+        .filter_map(|(_, rest)| rest.get(..40))
+        .filter(|sha| {
+            sha.chars()
+                .all(|c| c.is_ascii_hexdigit() && !c.is_uppercase())
+        })
+        .collect();
+    assert_eq!(
+        revisions.len(),
+        2,
+        "Cargo.toml should pin astrid-core twice — once for the shell, once for the tests' \
+         `schema` feature — and found {revisions:?}"
+    );
+    assert_eq!(
+        revisions.iter().collect::<BTreeSet<_>>().len(),
+        1,
+        "the two astrid-core pins have drifted apart: {revisions:?}"
     );
 }

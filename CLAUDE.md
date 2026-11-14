@@ -73,7 +73,7 @@ advisory is published between commits. astrid-core and astrid-ios carry their ow
 | Type | Path |
 |---|---|
 | Core tests | in astrid-core, beside the code and under `crates/astrid-core/tests/` |
-| The bindings contract (`Commands.cs` against the core's command list) | `crates/astrid-ffi/tests/` |
+| The bindings contract (`Commands.cs` and `Models.cs` against the core's commands **and its wire schema**) | `crates/astrid-ffi/tests/` |
 | Shell view-model tests | `app/Astrid.App.Tests/` |
 | UI smoke tests | `app/Astrid.App.UITests/` |
 
