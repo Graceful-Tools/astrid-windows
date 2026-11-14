@@ -596,8 +596,11 @@ public sealed class DesignTokenTests
     /// So the assertion is the question, not one answer to it: a selecting list either names an
     /// <c>ItemContainerStyle</c> — <c>SidebarRowStyle</c> and its DS5 outline, for the sidebar's
     /// three lists, the settings cards and now the palette — or overrides WinUI's selected-row
-    /// brushes itself, which is what the task rows do to wear DS3's tint. What it may not do is
-    /// stay silent. <c>SelectionMode="None"</c> lists are skipped: they have no selected state to
+    /// brushes itself, which is what the task rows do to wear DS3's tint. The rows doing that is
+    /// the answer rather than the one surface still to be converted: task 16392d99 settled that
+    /// DS5's outline is the <em>chrome's</em> selection and a row of content keeps its own tint,
+    /// and <see cref="The_outline_is_the_chromes_selection_and_the_rows_tint_task_16392d99"/> is
+    /// that split as a test. What a selecting list may not do is stay silent. <c>SelectionMode="None"</c> lists are skipped: they have no selected state to
     /// get wrong, which is why the notification flyout and the scope grid are not here.
     /// </para>
     /// </remarks>
@@ -643,6 +646,109 @@ public sealed class DesignTokenTests
         // The sidebar's three, the settings sections, the task rows, the palette. A sweep that
         // stopped finding them would pass by reading nothing.
         Assert.Equal(6, checkedLists);
+    }
+
+    /// <summary>
+    /// DS5's outline is the chrome's selection; a task row keeps DS3's tint (task 16392d99).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The sweep above asks every selecting list to answer. It deliberately does not ask <em>which</em>
+    /// answer, because when it was written nobody had decided: three surfaces outlined and a fourth
+    /// tinted, and the register did not say whether the odd one out was the rule or the bug. This
+    /// test is that decision, so the sweep's "which is what the task rows do to wear DS3's tint" is
+    /// now an expectation with a test under it rather than a note of what was there.
+    /// </para>
+    /// <para>
+    /// It is the rule. astrid-core's register names <c>bg-selected-border</c> as "the line around a
+    /// selected row" — a row-selection token that is not <c>state.selection-outline-opacity</c>, and
+    /// would have nothing left to be if DS5 answered for every selected row. And DS26, decided the
+    /// day after DS5 was taken, keeps <c>bg-selected</c> among the values that stay and measures
+    /// <c>priority-low</c> <em>on a selected row</em> — a contrast ratio that only exists if a
+    /// selected row still has a fill to read a mark against. So DS5 is the selection of a list that
+    /// navigates or configures, where there is no card to tint; a row of content carries its own
+    /// selected state. DS5's register row now says that, naming these four surfaces.
+    /// </para>
+    /// <para>
+    /// Asserted as a split rather than four checks, because the failure worth catching is a surface
+    /// crossing from one side to the other — which is what a reader of DS5 alone would do to the
+    /// task rows. The rows are named by file rather than by line: the sweep above already reports
+    /// line numbers, and a line number here would go stale on the next edit to the view.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void The_outline_is_the_chromes_selection_and_the_rows_tint_task_16392d99()
+    {
+        var views = Path.Combine(LocalisationTests.AppDirectory(), "Views");
+        var files = Directory.EnumerateFiles(views, "*.xaml", SearchOption.AllDirectories).ToArray();
+
+        // SidebarRowStyle, and every style based on it: the settings cards are a BasedOn style, and
+        // a BasedOn style inherits the ControlTemplate that draws the outline.
+        var outlineStyles = new HashSet<string> { "SidebarRowStyle" };
+        foreach (var file in files)
+        {
+            foreach (var style in XDocument.Load(file).Root!.Descendants(Ui + "Style"))
+            {
+                var key = (string?)style.Attribute(Xaml + "Key");
+                var basedOn = (string?)style.Attribute("BasedOn");
+
+                if (key is not null && basedOn is not null
+                    && outlineStyles.Any(name => basedOn.Contains(name, StringComparison.Ordinal)))
+                {
+                    outlineStyles.Add(key);
+                }
+            }
+        }
+
+        var outlined = new List<string>();
+        var tinted = new List<string>();
+
+        foreach (var file in files)
+        {
+            var root = XDocument.Load(file).Root!;
+
+            foreach (var list in root.Descendants().Where(el => Selectors.Contains(el.Name.LocalName)))
+            {
+                if ((string?)list.Attribute("SelectionMode") == "None")
+                {
+                    continue;
+                }
+
+                var named = (string?)list.Attribute("ItemContainerStyle") ?? string.Empty;
+
+                if (outlineStyles.Any(name => named.Contains(name, StringComparison.Ordinal)))
+                {
+                    outlined.Add(Path.GetFileName(file));
+                    continue;
+                }
+
+                // Not the chrome's outline, so it must say what it tints with, and the tint is the
+                // token's. A row that overrode these keys with anything else would pass the sweep
+                // above — it answered the question — while drawing a selection from nothing.
+                var kind = list.Name.LocalName;
+                var selected = (list.Element(Ui + $"{kind}.Resources")?.Elements() ?? [])
+                    .Where(entry => ((string?)entry.Attribute(Xaml + "Key"))
+                        ?.StartsWith("ListViewItemBackgroundSelected", StringComparison.Ordinal) == true)
+                    .Select(entry => (string?)entry.Attribute("ResourceKey"))
+                    .ToArray();
+
+                Assert.NotEmpty(selected);
+                Assert.All(selected, key => Assert.Equal("AstridBgSelected", key));
+                tinted.Add(Path.GetFileName(file));
+            }
+        }
+
+        // One surface tints, and it is the task rows. The other five are the chrome: the sidebar's
+        // three lists, the settings cards and the command palette.
+        Assert.Equal(["TaskRowsView.xaml"], tinted);
+        Assert.Equal(5, outlined.Count);
+
+        // And the rows do not wear both. The outline brush is a ThemeResource any view could reach
+        // for, so the register's answer is only kept if this view never names it.
+        Assert.DoesNotContain(
+            "AstridSelectionOutline",
+            File.ReadAllText(Path.Combine(views, "TaskRowsView.xaml")),
+            StringComparison.Ordinal);
     }
 
     /// <summary>

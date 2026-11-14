@@ -261,6 +261,15 @@
                     These are the brushes the default ListViewItem template reaches for, so
                     pointing them at the tokens is what makes the container wear the web's
                     states instead of Windows's.
+
+                    A tint, and not the DS5 outline the sidebar, the settings cards and the
+                    command palette took on 2026-11-10 (task 787c7aa5): DS5 is the CHROME's
+                    selection, and a row of content keeps its own selected state. astrid-core's
+                    register says so in DS5's row now, decided in task 16392d99 — a row's line
+                    is `bg-selected-border`, which is not the outline's opacity, and DS26 kept
+                    `bg-selected` the day after DS5 was taken, measuring a priority mark against
+                    a selected row's fill. DesignTokenTests holds the split; do not "fix" this
+                    one to match the other three.
                 -->
                 <StaticResource x:Key="ListViewItemBackgroundSelected" ResourceKey="AstridBgSelected" />
                 <StaticResource x:Key="ListViewItemBackgroundSelectedPointerOver" ResourceKey="AstridBgSelected" />
