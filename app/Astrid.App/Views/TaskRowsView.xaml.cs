@@ -165,21 +165,21 @@ public sealed partial class TaskRowsView : UserControl
     /// now an image: it draws the state the core reported and asks for the opposite. A repeating
     /// task does not finish here either way — it rolls forward — which is why this always goes
     /// through the complete command rather than writing a flag.
+    ///
+    /// Which of the three things it does is the core's answer, relayed (task 3c0dfb73). This read
+    /// only <c>copy</c> and completed on everything else, so a row nobody owned finished on the
+    /// click that was meant to ask whose it is.
     /// </remarks>
     private async void OnRowMarkClicked(object sender, RoutedEventArgs args)
     {
-        if (sender is not FrameworkElement { Tag: string taskId })
+        if (sender is not FrameworkElement { Tag: string taskId } mark)
         {
             return;
         }
-        var row = Shell.Tasks.Rows.FirstOrDefault(candidate => candidate.Id == taskId);
-        if (row is { IsCopyOnly: true })
+        if (await Shell.Tasks.ActivateLeadingAsync(taskId) == LeadingOutcome.OpenPicker)
         {
-            // The core drew a copy control, so the tap copies (task f6bc59e8).
-            await Shell.Tasks.CopyAsync(taskId);
-            return;
+            LeadingPickerFlyout.ShowAt(mark, Shell.Tasks.LeadingPicker);
         }
-        await Shell.Tasks.SetCompletedAsync(taskId, completed: row is null || !row.Completed);
     }
 
     private async Task SetCompleted(object sender, bool completed)

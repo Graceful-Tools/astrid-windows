@@ -330,6 +330,21 @@
   <data name="assignee_unassigned" xml:space="preserve">
     <value>Nicht zugewiesen</value>
   </data>
+  <data name="picker_priority" xml:space="preserve">
+    <value>Priorität</value>
+  </data>
+  <data name="picker_assignee" xml:space="preserve">
+    <value>Zugewiesen an</value>
+  </data>
+  <data name="picker_status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="picker_complete" xml:space="preserve">
+    <value>Erledigen</value>
+  </data>
+  <data name="picker_options_for" xml:space="preserve">
+    <value>Optionen für {0}</value>
+  </data>
   <data name="user_unknown" xml:space="preserve">
     <value>Unbekannter Benutzer</value>
   </data>

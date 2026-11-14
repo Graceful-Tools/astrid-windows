@@ -48,8 +48,20 @@ public sealed record TaskRow
 
     [JsonPropertyName("leading")] public LeadingControl Leading { get; init; } = new();
 
-    /// <summary>What clicking the leading control does: <c>complete</c> or <c>openPicker</c>.</summary>
+    /// <summary>What clicking the leading control does: <c>complete</c>, <c>copy</c> or
+    /// <c>openPicker</c>.</summary>
     [JsonPropertyName("action")] public string Action { get; init; } = "complete";
+
+    /// <summary>
+    /// Whether the picker <see cref="OpensPicker"/> opens offers the board column as well as who
+    /// and priority (task 3c0dfb73).
+    /// </summary>
+    /// <remarks>
+    /// <c>astrid_rules::rows::LeadingControl::picker_shows_project_state</c>, carried per row. Read,
+    /// never computed: the rule weighs the surface, the display mode and whose task it is, and only
+    /// the last of those is on the row at all.
+    /// </remarks>
+    [JsonPropertyName("pickerShowsProjectState")] public bool PickerShowsProjectState { get; init; }
 
     /// <summary>How far to indent, from the subtask chain.</summary>
     [JsonPropertyName("depth")] public int Depth { get; init; }
@@ -84,8 +96,28 @@ public sealed record TaskRow
     /// </summary>
     public bool IsCopyOnly => Action == "copy";
 
-    /// <summary>What the mark does, for the accessibility tree: complete, or copy.</summary>
-    public string LeadingActionName => IsCopyOnly ? $"Copy {Title}" : CompleteActionName;
+    /// <summary>
+    /// The mark opens the picker rather than finishing the task (task 3c0dfb73): somebody else's
+    /// task on any surface, any card on a board, and a row nobody owns.
+    /// </summary>
+    /// <remarks>
+    /// The third of the core's three answers, and the one the shell ignored until this task — so a
+    /// click finished a task the core had said to ask about, with no way back but hunting it down
+    /// in the Done column.
+    /// </remarks>
+    public bool OpensPicker => Action == "openPicker";
+
+    /// <summary>What the mark does, for the accessibility tree: complete, copy, or open options.</summary>
+    /// <remarks>
+    /// A screen reader was told "Complete" for a control that opens a picker, which is the same
+    /// trapdoor as the click, only harder to notice.
+    /// </remarks>
+    public string LeadingActionName => Action switch
+    {
+        "copy" => $"Copy {Title}",
+        "openPicker" => $"Options for {Title}",
+        _ => CompleteActionName,
+    };
 
     public bool LeadingIsCopy => Leading.Kind == "copy";
 

@@ -113,23 +113,22 @@ public sealed partial class BoardView : UserControl
 
     /// <summary>
     /// A card's mark, which does what a row's does (task 6979e694): copies a task the reader
-    /// cannot edit, and otherwise completes or un-completes it.
+    /// cannot edit, and otherwise does whatever the core said this control does.
     /// </summary>
+    /// <remarks>
+    /// Which, on a board, is almost always "open the picker" — a card's mark sets the task's
+    /// column, and finishing it outright from here is the trapdoor task 3c0dfb73 closed.
+    /// </remarks>
     private async void OnCardMarkClicked(object sender, RoutedEventArgs args)
     {
-        if (sender is not FrameworkElement { Tag: string taskId })
+        if (sender is not FrameworkElement { Tag: string taskId } mark)
         {
             return;
         }
-        var card = Shell.Board.Columns
-            .SelectMany(column => column.Cards)
-            .FirstOrDefault(candidate => candidate.Id == taskId);
-        if (card is { IsCopyOnly: true })
+        if (await Shell.Board.ActivateLeadingAsync(taskId) == LeadingOutcome.OpenPicker)
         {
-            await Shell.Board.CopyAsync(taskId);
-            return;
+            LeadingPickerFlyout.ShowAt(mark, Shell.Board.LeadingPicker);
         }
-        await Shell.Board.SetCompletedAsync(taskId, completed: card is null || !card.Completed);
     }
 
     /// <summary>

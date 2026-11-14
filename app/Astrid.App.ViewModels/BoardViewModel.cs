@@ -224,6 +224,46 @@ public sealed class BoardViewModel : ObservableObject
     /// move re-reads it: a rolled-forward task is a different card now, with a new date and
     /// possibly a different column, and only the core knows what it looks like.
     /// </remarks>
+    /// <summary>The picker a card's mark opens, which is always what a card's mark does.</summary>
+    public LeadingPickerViewModel LeadingPicker => _leadingPicker ??=
+        new LeadingPickerViewModel(_core, RefreshAsync);
+
+    private LeadingPickerViewModel? _leadingPicker;
+
+    /// <summary>
+    /// A card's mark, tapped (task 3c0dfb73).
+    /// </summary>
+    /// <remarks>
+    /// A board card always opens the picker, in both display modes: a board is where a task has a
+    /// status, so the control is how you set it. Completing outright from a card is the trapdoor
+    /// tasks <c>9be8cb1b</c> and <c>f9d7ed42</c> closed on Apple — one tap that reads as "pick this
+    /// one" finished the task instead, and Windows had it the whole time. The surface still asks
+    /// rather than assuming, because the answer is the core's and a copy-only card is a card too.
+    /// </remarks>
+    public async Task<LeadingOutcome> ActivateLeadingAsync(string taskId,
+        CancellationToken cancellationToken = default)
+    {
+        var card = Columns
+            .SelectMany(column => column.Cards)
+            .FirstOrDefault(candidate => candidate.Id == taskId);
+        if (card is null)
+        {
+            return LeadingOutcome.Gone;
+        }
+        if (card.IsCopyOnly)
+        {
+            await CopyAsync(taskId, cancellationToken);
+            return LeadingOutcome.Copied;
+        }
+        if (card.OpensPicker)
+        {
+            await LeadingPicker.OpenAsync(card, cancellationToken);
+            return LeadingOutcome.OpenPicker;
+        }
+        await SetCompletedAsync(taskId, completed: !card.Completed, cancellationToken);
+        return LeadingOutcome.Completed;
+    }
+
     public async Task<bool> SetCompletedAsync(string taskId, bool completed,
         CancellationToken cancellationToken = default)
     {

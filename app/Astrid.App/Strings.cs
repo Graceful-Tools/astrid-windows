@@ -93,6 +93,13 @@ internal static class Strings
         ["picker.evening"] = "Evening",
         ["picker.night"] = "Night",
         ["assignee.unassigned"] = "Unassigned",
+        // The popover a leading mark opens when the core says to ask rather than to finish
+        // (task 3c0dfb73). The board state is only in it when `pickerShowsProjectState` says so.
+        ["picker.priority"] = "Priority",
+        ["picker.assignee"] = "Assigned to",
+        ["picker.status"] = "Status",
+        ["picker.complete"] = "Complete",
+        ["picker.options_for"] = "Options for {0}",
         ["defaults.task_creator"] = "Task creator",
         ["detail.copy_link"] = "Copy link",
         ["detail.copy_task_id"] = "Copy task id",
