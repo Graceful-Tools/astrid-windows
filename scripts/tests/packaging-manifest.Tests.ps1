@@ -33,10 +33,23 @@
     manifest and the csproj and checks they agree, which is seconds long and fails for exactly the
     reason the app failed.
 
-    THE VERSIONS HAVE TO AGREE. The runtime's package name carries the SDK's major.minor
-    (`Microsoft.WindowsAppSDK` 1.7.x needs `Microsoft.WindowsAppRuntime.1.7`), so bumping the
-    PackageReference without the manifest reintroduces the same crash with a different version
-    number. That pairing is asserted below rather than left to whoever does the bump.
+    THE VERSIONS HAVE TO AGREE, and the SDK is the only honest source for what they are.
+    Bumping the PackageReference without the manifest reintroduces the same crash with a
+    different version number, so that pairing is asserted below rather than left to whoever
+    does the bump.
+
+    THE PAIRING RULE IS NOT DERIVABLE FROM THE VERSION STRING, which is what task 57603c11
+    found on the way from SDK 1.7 to 2.5. This file used to compute the expected name as
+    `Microsoft.WindowsAppRuntime.<major>.<minor>`, true of every 1.x release and wrong from 2.0
+    on, where the family is `Microsoft.WindowsAppRuntime.<major>` alone. Nor is MinVersion
+    derivable: 1.7.250606001 shipped runtime 7000.785.2325.0, while 2.5.1 ships 2.5.1.0.
+
+    So the restored `Microsoft.WindowsAppSDK.Runtime` package's `WindowsAppSDK-VersionInfo.json`
+    is read instead, which states both outright. It is in the NuGet cache rather than the repo,
+    and `predeploy` runs these script tests BEFORE any build, so on a checkout that has never
+    restored there is nothing to read: that case SAYS SO and the surrounding cases still run.
+    A skip that announces itself is the price of not re-encoding a scheme Microsoft has already
+    changed once.
 
     This file is ASCII only, so it reads the same under any codepage Windows PowerShell 5.1 picks -
     the same reason sign-local.ps1 says so about itself.
@@ -153,17 +166,40 @@ Invoke-Case 'the Windows App SDK runtime is declared as a PackageDependency' {
 
 Invoke-Case 'the declared runtime matches the SDK the app references' {
     $csproj = Get-Content $CsprojPath -Raw
-    $sdk = [regex]::Match($csproj, 'Include="Microsoft\.WindowsAppSDK"\s+Version="(\d+)\.(\d+)\.')
+    $sdk = [regex]::Match($csproj, 'Include="Microsoft\.WindowsAppSDK"\s+Version="([^"]+)"')
     Assert-True 'the csproj references Microsoft.WindowsAppSDK' $sdk.Success
     if (-not $sdk.Success) { return }
+    $sdkVersion = $sdk.Groups[1].Value
 
-    $expected = "Microsoft.WindowsAppRuntime.$($sdk.Groups[1].Value).$($sdk.Groups[2].Value)"
     $runtime = @($Manifest.SelectNodes('/m:Package/m:Dependencies/m:PackageDependency', $Namespace) |
         Where-Object { $_.Name -like 'Microsoft.WindowsAppRuntime.*' })
     Assert-True 'there is a runtime dependency to compare' ($runtime.Count -eq 1)
     if ($runtime.Count -ne 1) { return }
-    Assert-Equal "the manifest names the runtime for SDK $($sdk.Groups[1].Value).$($sdk.Groups[2].Value)" `
-        $expected $runtime[0].Name
+
+    # What the SDK itself says it ships. Not computed from $sdkVersion - see the header note.
+    $packages = Join-Path $env:USERPROFILE '.nuget\packages\microsoft.windowsappsdk.runtime'
+    $versionInfo = Join-Path $packages "$sdkVersion\WindowsAppSDK-VersionInfo.json"
+    if (-not (Test-Path $versionInfo)) {
+        Write-Host "    SKIPPED the runtime identity check: $versionInfo is not restored yet"
+        Write-Host '      (script tests run before any build; `dotnet restore` then re-run)'
+        return
+    }
+
+    # PS 5.1's ConvertFrom-Json returns a PSCustomObject, and the file carries a BOM.
+    $info = (Get-Content $versionInfo -Raw) -replace '^\xEF\xBB\xBF', '' | ConvertFrom-Json
+    $family = $info.Runtime.Packages.Framework.PackageFamilyName
+    Assert-True 'the SDK states a framework package family' (-not [string]::IsNullOrWhiteSpace($family))
+    if ([string]::IsNullOrWhiteSpace($family)) { return }
+
+    # The family name is "<name>_<publisherId>"; the manifest declares the name half.
+    $expectedName = ($family -split '_')[0]
+    Assert-Equal "the manifest names the runtime SDK $sdkVersion ships" `
+        $expectedName $runtime[0].Name
+
+    # MinVersion is the other half, and the half nothing checked before: a correct name with a
+    # version the installed runtime does not satisfy fails at install, not at the first call.
+    Assert-Equal "MinVersion is the runtime SDK $sdkVersion ships" `
+        $info.Runtime.Version.DotQuadNumber $runtime[0].MinVersion
 }
 
 Invoke-Case 'the dependency is required because the SDK is NOT self-contained' {

@@ -71,13 +71,23 @@
       dependencies. No PackageDependency had ever been here, so no MSIX this repo built had ever
       started — installing was as far as it had been tested.
 
-      MinVersion is the runtime that ships with the Microsoft.WindowsAppSDK version the csproj
-      references (1.7.250606001); keep the two in step when that is bumped. The alternative is
-      `-p:WindowsAppSDKSelfContained=true`, which copies these binaries into the package instead —
-      bigger, and not what the Store build should be.
+      BOTH HALVES COME FROM THE SDK ITSELF, and neither is guessable from its version string.
+      The restored Microsoft.WindowsAppSDK.Runtime package ships WindowsAppSDK-VersionInfo.json,
+      which states the framework package family name and the runtime version; scripts/tests/
+      packaging-manifest.Tests.ps1 reads that file and holds this element to it.
+
+      THE NAME IS NOT major.minor ANY MORE. Through 1.x the framework package carried both
+      (`Microsoft.WindowsAppRuntime.1.7`). From 2.0 it carries the MAJOR alone -
+      `Microsoft.WindowsAppRuntime.2` serves every 2.x runtime - so a 2.5 package that asked for
+      `Microsoft.WindowsAppRuntime.2.5` would be asking for something that does not exist, and
+      would fail at install rather than at the first WinRT call. MinVersion is what picks the
+      servicing level within that family.
+
+      The alternative is `-p:WindowsAppSDKSelfContained=true`, which copies these binaries into
+      the package instead - bigger, and not what the Store build should be.
     -->
-    <PackageDependency Name="Microsoft.WindowsAppRuntime.1.7"
-                       MinVersion="7000.785.2325.0"
+    <PackageDependency Name="Microsoft.WindowsAppRuntime.2"
+                       MinVersion="2.5.1.0"
                        Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" />
   </Dependencies>
 
