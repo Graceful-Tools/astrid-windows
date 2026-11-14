@@ -91,7 +91,22 @@ go back.
 
 `listing/store-listing.md` is the Partner Center listing, drafted 2026-09-13 (task f91d2f07) to
 match the iOS App Store listing for Astrid Tasks: description, features, search terms, the
-age-rating answers, and what to put in every other field. `listing/screenshots/` holds the seven
+age-rating answers, and what to put in every other field.
+
+**It is a template since task AWTD-1636; paste the filled copy, not the file.** `package.ps1` writes
+`dist/<stem>-<version>.store-listing.md` beside the `.msixupload`, and
+`powershell -File scripts/store-listing.ps1 [-Brand acme] [-Version 1.2.3.0]` writes it on its own,
+without a publish. Identifying values are `{PLACEHOLDER}`s the brand profile fills (the name, the
+upload's file name, the website, the support address, the privacy policy, the copyright holder);
+prose that is hosted Astrid's own sits in `<!-- brand: astrid -->` / `<!-- brand: partner -->`
+blocks, and a partner gets the second half — guidance and `[TO WRITE: ...]` holes, since their
+marketing copy is theirs to write. A value the profile does not give is a `[TO FILL: ...]` hole,
+never ours, and the script lists every hole as a warning. **With no profile the output is byte for
+byte the listing hosted Astrid has always submitted**: `scripts/tests/store-listing.Tests.ps1`
+holds it to a SHA-256, so a deliberate edit to the hosted listing updates that hash in the same
+commit. `scripts/lib/store-listing.ps1` has the rules.
+
+`listing/screenshots/` holds the seven
 Store screenshots, 2538x1589 PNGs taken from the app signed in as the demo account. Take new ones
 the same way when the app changes: run the debug build into its own `ASTRID_DATA_DIR`, size the
 window to at least 1366x768 physical pixels, and capture the DWM frame bounds.

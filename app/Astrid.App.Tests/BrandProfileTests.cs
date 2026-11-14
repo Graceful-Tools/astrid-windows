@@ -52,6 +52,11 @@ public sealed class BrandProfileTests
         // The ways in, added by task 28348df8 — the two astrid.cc actually offers, which is what
         // the sign-in card has always said.
         ("AuthProviders", "passkey,google"),
+        // The Store listing's three, added by task AWTD-1636 — as the listing has always said
+        // them. scripts/tests/store-listing.Tests.ps1 holds the filled listing itself to a hash.
+        ("SupportEmail", "support@astrid.cc"),
+        ("PrivacyUrl", "https://www.astrid.cc/privacy"),
+        ("OperatorName", "Graceful Tools LLC"),
     ];
 
     /// <summary>
@@ -367,7 +372,11 @@ public sealed class BrandProfileTests
     [Fact]
     public void The_packaging_scripts_parse_task_ac40a6ee()
     {
-        foreach (var script in new[] { "package.ps1", Path.Combine("lib", "brand-profile.ps1") })
+        foreach (var script in new[]
+                 {
+                     "package.ps1", "store-listing.ps1",
+                     Path.Combine("lib", "brand-profile.ps1"), Path.Combine("lib", "store-listing.ps1"),
+                 })
         {
             var path = Path.Combine(RepoRoot(), "scripts", script).Replace("'", "''");
             var errors = PowerShell(
@@ -569,6 +578,25 @@ public sealed class BrandProfileTests
             Path.Combine(RepoRoot(), "app", "Astrid.App", "Views", "SignInOverlay.xaml"));
         Assert.Contains("BrandCopy.SignInMethods", overlay, StringComparison.Ordinal);
         Assert.DoesNotContain("magic links", overlay, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// The Store listing is a template a brand profile fills, and hosted Astrid's comes out of it
+    /// byte for byte.
+    /// </summary>
+    /// <remarks>
+    /// The assertions live in <c>scripts/tests/store-listing.Tests.ps1</c>, which
+    /// <c>predeploy</c> runs as a script test; this runs the same file so CI, which does not run
+    /// the script tests, holds the hosted listing to its hash too. A partner having a template must
+    /// not change what hosted Astrid pastes into Partner Center.
+    /// </remarks>
+    [Fact]
+    public void The_store_listing_is_a_template_that_leaves_hosted_astrid_unchanged_task_AWTD_1636()
+    {
+        var test = Path.Combine(RepoRoot(), "scripts", "tests", "store-listing.Tests.ps1").Replace("'", "''");
+
+        // PowerShell() fails the test on a non-zero exit, which is how the script reports a failure.
+        PowerShell($"& '{test}'; exit $LASTEXITCODE");
     }
 
     /// <summary>The profile <c>Get-AstridBrandProfile</c> returns, as a dictionary.</summary>

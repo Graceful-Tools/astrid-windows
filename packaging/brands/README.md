@@ -23,6 +23,12 @@ From the shared `env` block, because one profile describes a deployment across p
 | `NEXT_PUBLIC_BRAND_TAGLINE` | the description |
 | `NEXT_PUBLIC_BRAND_APP_URL_SCHEME` | the scheme the installer registers |
 | `NEXT_PUBLIC_BRAND_DOMAIN` | the server the build talks to, as `https://<domain>` |
+| `NEXT_PUBLIC_BRAND_SUPPORT_EMAIL` | the Store listing's support contact — **no fallback** once the domain moves: certification writes to it, so the listing shows a hole rather than a guess |
+| `NEXT_PUBLIC_BRAND_PRIVACY_URL` | the Store listing's privacy policy; else `https://<domain>/privacy`, the page astrid-web serves |
+| `NEXT_PUBLIC_BRAND_OPERATOR_NAME` | the Store listing's copyright holder; else the publisher display name |
+
+The last three are read only by the Store listing (`scripts/store-listing.ps1`, and the end of
+`package.ps1`); `packaging/README.md` → *The listing* says how it is filled.
 
 And from an optional `windows` block — the same arrangement as the `ios` one — for the four things
 that have nowhere to live in a cross-platform profile:
@@ -34,8 +40,9 @@ that have nowhere to live in a cross-platform profile:
 | `assets` | a directory of tiles, relative to the profile, replacing `packaging/Assets` |
 
 Anything else in the file is another platform's and is skipped, not rejected. Every Windows key may
-also be given as `displayName`, `shortName`, `description`, `scheme`, `schemeDisplayName` or
-`serverUrl` when a partner wants Windows to differ from the rest of the deployment.
+also be given as `displayName`, `shortName`, `description`, `scheme`, `schemeDisplayName`,
+`serverUrl`, `supportEmail`, `privacyUrl` or `operatorName` when a partner wants Windows to differ
+from the rest of the deployment.
 
 The scheme and the server are checked before anything is built: a scheme outside `[a-z0-9-]`
 registers nothing and loses every sign-in, and a server that is not `https://<host>` would send the
