@@ -331,6 +331,21 @@
   <data name="assignee_unassigned" xml:space="preserve">
     <value>Unassigned</value>
   </data>
+  <data name="picker_priority" xml:space="preserve">
+    <value>Priority</value>
+  </data>
+  <data name="picker_assignee" xml:space="preserve">
+    <value>Assigned to</value>
+  </data>
+  <data name="picker_status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="picker_complete" xml:space="preserve">
+    <value>Complete</value>
+  </data>
+  <data name="picker_options_for" xml:space="preserve">
+    <value>Options for {0}</value>
+  </data>
   <data name="user_unknown" xml:space="preserve">
     <value>Unknown user</value>
   </data>

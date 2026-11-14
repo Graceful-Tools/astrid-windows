@@ -682,6 +682,43 @@ public sealed class TaskListViewModel : ObservableObject
         return true;
     }
 
+    /// <summary>The picker a row's mark opens when the core says to ask rather than to finish.</summary>
+    public LeadingPickerViewModel LeadingPicker => _leadingPicker ??=
+        new LeadingPickerViewModel(_core, RefreshAsync);
+
+    private LeadingPickerViewModel? _leadingPicker;
+
+    /// <summary>
+    /// A row's mark, tapped: do whatever the core said this control does (task 3c0dfb73).
+    /// </summary>
+    /// <remarks>
+    /// The three answers, all three of them. The shell read only <c>copy</c> until this task and
+    /// completed on everything else, so a row nobody owned finished on a click that the core had
+    /// said should first ask whose it is (AITD-382) — and so did somebody else's (AITD-375).
+    /// </remarks>
+    public async Task<LeadingOutcome> ActivateLeadingAsync(string taskId,
+        CancellationToken cancellationToken = default)
+    {
+        if (Rows.FirstOrDefault(candidate => candidate.Id == taskId) is not { } row)
+        {
+            // A row that is no longer here is not a row to guess about. Completing on a miss is
+            // what made this a trapdoor in the first place.
+            return LeadingOutcome.Gone;
+        }
+        if (row.IsCopyOnly)
+        {
+            await CopyAsync(taskId, cancellationToken);
+            return LeadingOutcome.Copied;
+        }
+        if (row.OpensPicker)
+        {
+            await LeadingPicker.OpenAsync(row, cancellationToken);
+            return LeadingOutcome.OpenPicker;
+        }
+        await SetCompletedAsync(taskId, completed: !row.Completed, cancellationToken);
+        return LeadingOutcome.Completed;
+    }
+
     /// <summary>
     /// Complete or un-complete a row.
     /// </summary>
