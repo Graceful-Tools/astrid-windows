@@ -380,6 +380,137 @@ Invoke-Case 'the escaping survives everything a partner can type (task 13c6af65)
     Assert-True 'a malformed property name throws rather than being escaped' $threw
 }
 
+# ── The argument construction, RUN rather than read (task 181fb1b5) ───────────────────────────
+# Everything above this point asserts on package.ps1 as SOURCE, off the parsed AST or its text.
+# That catches a line written wrongly. It cannot catch a VALUE that breaks the command line, and
+# twice now a value has:
+#
+#   2026-10-25  packaging broken for six days behind a green gate (a manifest error).
+#   2026-11-13  AuthProviders became `passkey,google` in 7bd739e, MSBuild split the -p: list on
+#               the comma, and every build died with MSB1006 "Property is not valid. Switch:
+#               google". No MSIX for any brand on any architecture, for a day.
+#
+# Both were found by a human or an accident. `npm run predeploy` has never run package.ps1 - it is
+# a ~4-minute publish per architecture - so the cheap half is run here instead: resolve the brand,
+# format every argument, substitute the manifest, and stop before dotnet publish. Seconds, and it
+# would have caught both.
+
+$PackageScript = Join-Path $RepoRoot 'scripts\package.ps1'
+
+# -Version is deliberately not the default: a dry run must not be mistakable for a real build in
+# any log, and 9.9.9.9 is obviously not a release.
+# CALL THIS AS `@(Invoke-PackageDryRun ...)`. PowerShell UNROLLS an array on return, so a one
+# architecture dry run comes back as the bare pscustomobject rather than a one-element array, and
+# `.Count` on a PSCustomObject under 5.1 is $null — which prints as empty and reads exactly like
+# "the script returned nothing". It cost a wrong diagnosis here: a bare `return` and a `continue`
+# in package.ps1 were both suspected and both innocent. The `@()` is at the call site because that
+# is the scope the array has to survive into.
+function Invoke-PackageDryRun {
+    param([string]$Brand = '')
+    # A HASHTABLE splat, not an array one: splatting an array passes every element POSITIONALLY,
+    # so `@('-NoPublish', ...)` lands `-NoPublish` in $Version and the script dies on "Version must
+    # have four parts" — which reads exactly like the switch not existing.
+    $dryArgs = @{
+        NoPublish     = $true
+        Architectures = @('arm64')
+        Version       = '9.9.9.9'
+    }
+    if ($Brand) { $dryArgs['Brand'] = $Brand }
+    # package.ps1 does Set-Location to the repo root; restore it so a later case is unaffected.
+    Push-Location $RepoRoot
+    try { return @(& $PackageScript @dryArgs) }
+    finally { Pop-Location }
+}
+
+# The brand profiles a partner build can select, by the name package.ps1 takes: the file stem
+# before `.brand.json`. Enumerated rather than listed, so a new profile is covered the day it
+# lands rather than the day someone remembers this file.
+$BrandProfiles = @(Get-ChildItem -Path (Join-Path $RepoRoot 'packaging\brands') -Filter '*.brand.json' |
+        ForEach-Object { $_.BaseName -replace '\.brand$', '' } | Sort-Object)
+
+Invoke-Case 'package.ps1 computes its arguments without building anything' {
+    # NOT "dist\publish\win-arm64 does not exist": a real build legitimately leaves that behind,
+    # so asserting its absence fails on any machine that has ever packaged (it was there from
+    # 0.1.9.0, built earlier the same morning). What must be true is that the dry run does not
+    # WRITE there - the manifest is the file the real path puts in that directory - so compare it
+    # across the call. Correct on a clean checkout (absent, then still absent) and on a dirty one.
+    $publishManifest = Join-Path $RepoRoot 'dist\publish\win-arm64\AppxManifest.xml'
+    $manifestBefore = if (Test-Path $publishManifest) { [string](Get-Item $publishManifest).LastWriteTimeUtc.Ticks } else { 'absent' }
+
+    $result = @(Invoke-PackageDryRun)
+    Assert-Equal 'one result for the one architecture asked for' '1' ([string]$result.Count)
+    if ($result.Count -ne 1) { return }
+    $one = $result[0]
+    Assert-Equal 'it reports the architecture' 'arm64' $one.Architecture
+    Assert-True 'it computed publish arguments' ($one.PublishArguments.Count -gt 0)
+    Assert-True 'they name the app project' (@($one.PublishArguments) -match 'Astrid\.App\.csproj').Count
+    Assert-True 'they carry AstridPackaged' (@($one.PublishArguments) -contains '-p:AstridPackaged=true')
+    Assert-True 'it computed a manifest' ($one.Manifest -and $one.Manifest.Length -gt 0)
+
+    # The point of the switch: nothing was published, so nothing took four minutes.
+    $manifestAfter = if (Test-Path $publishManifest) { [string](Get-Item $publishManifest).LastWriteTimeUtc.Ticks } else { 'absent' }
+    Assert-Equal 'the dry run wrote no manifest into the publish layout' $manifestBefore $manifestAfter
+}
+
+Invoke-Case 'every manifest placeholder is substituted, for every brand' {
+    # 2026-10-25's incident was a manifest error. A leftover {PLACEHOLDER} is the shape of it, and
+    # makeappx would reject the whole file for one.
+    foreach ($brand in @('') + $BrandProfiles) {
+        $label = if ($brand) { $brand } else { '(default)' }
+        $result = @(Invoke-PackageDryRun -Brand $brand)
+        if ($result.Count -lt 1) {
+            Assert-True "$label produced a result" $false
+            continue
+        }
+        $leftover = [regex]::Matches($result[0].Manifest, '\{[A-Z_]+\}') |
+            ForEach-Object { $_.Value } | Sort-Object -Unique
+        Assert-Equal "$label leaves no placeholder in the manifest" '' ($leftover -join ',')
+    }
+}
+
+Invoke-Case 'every -p: argument is one well-formed property, for every brand (task 181fb1b5)' {
+    # THE 2026-11-13 REGRESSION, as a test. A raw comma or semicolon in a value ends it on
+    # MSBuild's command line and the remainder is parsed as a switch; $ @ ' " are evaluated inside
+    # a property value. Format-MsBuildProperty escapes all seven, so a well-formed argument has
+    # none of them raw after the `=`.
+    foreach ($brand in @('') + $BrandProfiles) {
+        $label = if ($brand) { $brand } else { '(default)' }
+        $result = @(Invoke-PackageDryRun -Brand $brand)
+        if ($result.Count -lt 1) {
+            Assert-True "$label produced a result" $false
+            continue
+        }
+        $properties = @(@($result[0].PublishArguments) | Where-Object { $_ -like '-p:*' })
+        Assert-True "$label passes brand properties at all" ($properties.Count -ge 7)
+
+        $malformed = @()
+        foreach ($property in $properties) {
+            if ($property -notmatch '^-p:[A-Za-z_][A-Za-z0-9_]*=') {
+                $malformed += $property
+                continue
+            }
+            $value = $property.Substring($property.IndexOf('=') + 1)
+            if ($value -match '[,;$@''"]') { $malformed += $property }
+        }
+        Assert-Equal "$label has no argument MSBuild would split or evaluate" '' ($malformed -join ' | ')
+    }
+}
+
+Invoke-Case 'the value that broke the build arrives escaped (task 181fb1b5)' {
+    # Named explicitly rather than left to the sweep above, because this is the exact string from
+    # 7bd739e and a future change to the default brand should have to look at this line.
+    $default = @(Invoke-PackageDryRun)
+    Assert-True 'the default brand escapes its comma-separated auth providers' `
+        (@($default[0].PublishArguments) -contains '-p:AstridBrandAuthProviders=passkey%2Cgoogle')
+
+    # And a partner profile, whose list is different and also commas.
+    if ($BrandProfiles -contains 'acme') {
+        $acme = @(Invoke-PackageDryRun -Brand 'acme')
+        Assert-True 'a partner brand escapes its own list' `
+            (@($acme[0].PublishArguments) -contains '-p:AstridBrandAuthProviders=sso%2Cgithub%2Cpasskey')
+    }
+}
+
 Write-Host ''
 if ($script:Checks -lt 25) {
     Write-Host "FAIL: only $($script:Checks) assertion(s) ran - this file is meant to make more" -ForegroundColor Red
