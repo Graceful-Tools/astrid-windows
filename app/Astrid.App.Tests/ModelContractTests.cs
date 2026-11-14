@@ -7,7 +7,8 @@ namespace Astrid.App.Tests;
 
 /// <summary>
 /// What the models promise a caller, independent of how they are serialised (task
-/// <c>2ba2c53e</c>, formerly <c>d24777f5</c>).
+/// <c>2ba2c53e</c>, formerly <c>d24777f5</c>; settled by the measurement in task
+/// <c>91d1a865</c>).
 /// </summary>
 public sealed class ModelContractTests
 {
@@ -60,6 +61,22 @@ public sealed class ModelContractTests
     /// resolver, which honours initializers, and goes red the moment a resolver that does not is
     /// put in front of it. That is its whole job: the failure it guards against is silent, costs
     /// nothing at build time, and shows up as a null on whichever screen opens first.
+    /// </para>
+    /// <para>
+    /// <strong>Then it was measured, and the measurement settled it (task <c>91d1a865</c>).</strong>
+    /// The open question was whether the startup time a context buys is worth the mutability it
+    /// costs. Both sides were built and timed in a fresh process against the real bindings
+    /// assembly — the first-touch cost of all 113 models, which is exactly and only what a context
+    /// changes. With <c>ReadyToRun</c>, which is how this app ships, the context saves about 20 ms
+    /// (48 ms down to 28 ms) and adds 2.2 MB of precompiled native code to the bindings assembly
+    /// (1.07 MB to 3.27 MB). Without it — every <c>dotnet build</c> anyone runs — the context is
+    /// 44 ms <em>slower</em> (49 ms up to 93 ms), because 113 generated factories are cold IL to
+    /// be jitted while the reflecting resolver runs one already-warm generic path.
+    /// </para>
+    /// <para>
+    /// Twenty milliseconds, once, in the shipped configuration only, is not worth 493 wire
+    /// properties becoming settable for the life of the repo. So the answer is to leave it, and
+    /// this test stays as the thing that makes that answer hold.
     /// </para>
     /// </remarks>
     [Fact]
