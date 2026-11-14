@@ -115,19 +115,36 @@ const NOT_SAID: &[(&str, &str)] = &[
         "As `tasks.addNewTask`, and it interpolates a list name — `Add a task to {list}` — which \
          the resw's positional `{0}` would have to be matched to at the same time.",
     ),
-    (
-        "format.ordinal",
-        "New at the revision this repository pins — astrid-core `e2cad6a` (task `3564db06`) gave \
-         repeat summaries their plural and ordinal categories, so the catalog now offers the word \
-         for `1st`/`2nd`/`3rd`. This shell does not ask for it yet: `Converters.cs` still spells \
-         ordinals itself in its private `Ordinal(long)`, which is English-only, and feeds the \
-         result to `repeat.on_day_of_month` and two siblings. Swapping those over is its own \
-         change — tasks `d06daa76` (adopt the core's plural and ordinal categories in \
-         `Converters.cs`) and `b656efce` (delete `Ordinal()` and the four `count == 1` arms) — and \
-         doing it inside a supply-chain change would bury a user-visible localisation fix. When \
-         either lands, `the_not_said_register_is_current_task_b63d8679` forces this entry out.",
-    ),
 ];
+
+/// The key or keys a shell must actually hold a word for.
+///
+/// For an ordinary key that is the key itself. **For a PLURAL key it is one name per CLDR
+/// category** — Windows has no plural resource, so `format.ordinal` is held as
+/// `format.ordinal.one` and its siblings, and looking for a bare `format.ordinal` would report a
+/// string missing that has already been translated four times (task `b656efce`).
+///
+/// Which keys pluralise is the core's answer, not a list here: `plurals::PLURAL_KEYS`, which
+/// astrid-core holds to `strings/catalog.json` in its own `check-strings`. Which CATEGORIES a
+/// language has is also the core's — `plurals::category` — but this test reads only the English
+/// resources, and English is the language the fallback table is written in, so the categories
+/// wanted here are the ones English can select. `LocalisationTests` asks the same question of
+/// every other language, where the answer differs: German has one ordinal form, not four.
+fn wanted(key: &str) -> Vec<String> {
+    let Some(form) = astrid_core::plurals::form_of(key) else {
+        return vec![key.to_string()];
+    };
+    let mut categories: Vec<&'static str> = (0..=130)
+        .chain([1_000, 1_000_000])
+        .map(|count| astrid_core::plurals::category("en", form, count))
+        .collect();
+    categories.sort_unstable();
+    categories.dedup();
+    categories
+        .into_iter()
+        .map(|category| format!("{key}.{category}"))
+        .collect()
+}
 
 /// Every key the pinned core can hand this shell is sayable, or registered as deliberately not.
 #[test]
@@ -139,6 +156,8 @@ fn every_copy_key_has_a_word_task_b63d8679() {
     let silent: Vec<String> = astrid_core::copy_keys()
         .into_iter()
         .filter(|key| !registered.contains(key.as_str()))
+        .flat_map(|key| wanted(&key))
+        .filter(|key| !resources.contains(&flatten(key)) || !fallback.contains(key))
         .flat_map(|key| {
             [
                 (!resources.contains(&flatten(&key))).then(|| format!("{key} — no resource")),

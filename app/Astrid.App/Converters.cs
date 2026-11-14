@@ -576,26 +576,18 @@ public sealed partial class RepeatSummaryConverter : IValueConverter
     {
         var count = part.Count ?? 1;
         var format = System.Globalization.CultureInfo.CurrentCulture;
-        // The singular is its own key rather than a rule about the number: "every 1 week" is wrong
-        // in English and differently wrong in languages with more than two plural forms.
+        // The plural keys carry one word per CLDR category and the core picks between them. The
+        // shell used to ask `count == 1` and keep a singular key beside each plural one, which is
+        // right in English and in German and wrong in every language with more than two forms --
+        // Russian needs a third word at 2, Polish a different one at 22 (task b656efce).
         return part.Key switch
         {
             // The four cadences took iOS's spelling when the core followed it (D49); the
             // qualifiers below kept theirs.
             "repeating.daily" or "repeating.weekly" or "repeating.monthly" or "repeating.yearly"
                 or "repeat.from_due_date" => Strings.Get(part.Key),
-            "repeat.every_n_days" => count == 1
-                ? Strings.Get("repeat.every_day")
-                : Strings.Get("repeat.every_n_days", count),
-            "repeat.every_n_weeks" => count == 1
-                ? Strings.Get("repeat.every_week")
-                : Strings.Get("repeat.every_n_weeks", count),
-            "repeat.every_n_months" => count == 1
-                ? Strings.Get("repeat.every_month")
-                : Strings.Get("repeat.every_n_months", count),
-            "repeat.every_n_years" => count == 1
-                ? Strings.Get("repeat.every_year")
-                : Strings.Get("repeat.every_n_years", count),
+            "repeat.every_n_days" or "repeat.every_n_weeks" or "repeat.every_n_months"
+                or "repeat.every_n_years" => Plural(part.Key, count),
             "repeat.on_weekdays" => Strings.Get(
                 "repeat.on_weekdays", string.Join(", ", part.Values.Select(Weekday))),
             "repeat.on_day_of_month" => Strings.Get("repeat.on_day_of_month", Ordinal(count)),
@@ -630,24 +622,33 @@ public sealed partial class RepeatSummaryConverter : IValueConverter
             ? System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month)
             : string.Empty;
 
-    /// <summary>
-    /// "1st", "22nd", "13th" — the suffix rule is English, but the suffixes themselves are
-    /// resources, so a language whose ordinals are "1." or "1er" sets all four keys and gets
-    /// its own. A rule that produces the right form for every language is a bigger job than a
-    /// repeat summary is worth; this is the honest halfway.
-    /// </summary>
-    private static string Ordinal(long number)
+    /// <summary>"1st", "22nd", "13th" — in whatever language this reader is in.</summary>
+    /// <remarks>
+    /// <para>
+    /// This was a private <c>% 100</c> / <c>% 10</c> suffix rule with four keys of its own,
+    /// described in the code it replaced as "the honest halfway" because a rule that produces the
+    /// right form for every language was "a bigger job than a repeat summary is worth". The core
+    /// has that rule now — CLDR for twelve languages, fixtured — so the halfway is no longer the
+    /// best available (task b656efce).
+    /// </para>
+    /// <para>
+    /// The categories are the ORDINAL ones, which is not the same question as the cardinal plural
+    /// above: English's cardinal 3 is <c>other</c> and its ordinal 3 is <c>few</c>.
+    /// </para>
+    /// </remarks>
+    private static string Ordinal(long number) =>
+        Plural(Plurals.OrdinalKey, number, CountForm.Ordinal);
+
+    /// <summary>The word for a plural key, from the category the core picks for this reader.</summary>
+    /// <remarks>
+    /// The locale is the reader's UI culture, passed whole: the core takes the language subtag, so
+    /// <c>de-DE</c> and <c>pt-BR</c> are answered rather than falling through to <c>other</c>.
+    /// </remarks>
+    private static string Plural(string key, long count, CountForm form = CountForm.Cardinal)
     {
-        var key = (number % 100) is >= 11 and <= 13
-            ? "ordinal.th"
-            : (number % 10) switch
-            {
-                1 => "ordinal.st",
-                2 => "ordinal.nd",
-                3 => "ordinal.rd",
-                _ => "ordinal.th",
-            };
-        return Strings.Get(key, number);
+        var locale = System.Globalization.CultureInfo.CurrentUICulture.Name;
+        var category = AstridClient.PluralCategory(locale, form, count);
+        return Strings.Get($"{key}.{category}", count);
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>

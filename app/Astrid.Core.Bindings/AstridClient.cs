@@ -100,6 +100,55 @@ public sealed class AstridClient : IAstridCore, IDisposable
         return AstridResponse.Parse(Rule(request)).ValueAs<ListDefaultPicks>() ?? new ListDefaultPicks();
     }
 
+    /// <summary>
+    /// Which CLDR category <paramref name="count"/> selects in <paramref name="locale"/> — the row
+    /// a plural key's word is read from (task b656efce).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The catalog holds the words and this picks the row, which is the split astrid-core's
+    /// <c>strings/README.md</c> describes. The shell used to decide with <c>count == 1</c> and a
+    /// <c>% 100</c> suffix rule of its own: right in English, right in German, and wrong in every
+    /// language with more than two forms — which is the whole reason the catalog pluralises.
+    /// </para>
+    /// <para>
+    /// <paramref name="form"/> is not inferable from the number. English's <em>cardinal</em> 3 is
+    /// <c>other</c> ("3 weeks") while its <em>ordinal</em> 3 is <c>few</c> ("3rd"): genuinely
+    /// different CLDR rules, and the caller already knows which question it is asking.
+    /// </para>
+    /// <para>
+    /// A locale this core has never met answers <c>other</c>, the one category every language has,
+    /// so a newer Windows language setting costs a less precise word rather than an exception. A
+    /// refusal falls back the same way, because a repeat summary is not worth throwing over.
+    /// </para>
+    /// </remarks>
+    public static string PluralCategory(string locale, CountForm form, long count)
+    {
+        var request = JsonSerializer.Serialize(new PluralCategoryRequest
+        {
+            Locale = locale,
+            Form = form == CountForm.Ordinal ? "ordinal" : "cardinal",
+            Count = count,
+        });
+        var answer = AstridResponse.Parse(Rule(request));
+        return answer.Ok ? answer.ValueAs<string>() ?? "other" : "other";
+    }
+
+    private sealed record PluralCategoryRequest
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("kind")]
+        public string Kind { get; init; } = "pluralCategory";
+
+        [System.Text.Json.Serialization.JsonPropertyName("locale")]
+        public string Locale { get; init; } = "en";
+
+        [System.Text.Json.Serialization.JsonPropertyName("form")]
+        public string Form { get; init; } = "cardinal";
+
+        [System.Text.Json.Serialization.JsonPropertyName("count")]
+        public long Count { get; init; }
+    }
+
     private sealed record ListDefaultPicksRequest
     {
         [System.Text.Json.Serialization.JsonPropertyName("kind")]

@@ -60,6 +60,17 @@ public sealed class CorePinFollowsIosTests
     private static readonly string[] RetiredKeys =
     [
         "filter.completion.hide", "repeat.never",
+        // The five joined the list with the pin bump past core `ba154ed` (task b656efce), which
+        // is the moment the paragraph above said they would: from that revision the repeat FILTER
+        // asks for `repeating.daily` too, so these stop being emitted and their words -- in
+        // `Strings.cs` and in both `.resw` -- became unreachable.
+        "repeat.daily", "repeat.weekly", "repeat.monthly", "repeat.yearly", "repeat.custom",
+        // The shell's own ordinal suffixes and the singular halves of the four repeat cadences.
+        // Both were replaced by the catalog's plural keys, whose word the core now picks between
+        // by CLDR category (`format.ordinal.*`, `repeat.every_n_days.*` and its three siblings).
+        // They were never core keys, so nothing but this list holds them gone.
+        "ordinal.st", "ordinal.nd", "ordinal.rd", "ordinal.th",
+        "repeat.every_day", "repeat.every_week", "repeat.every_month", "repeat.every_year",
     ];
 
     /// <summary>
