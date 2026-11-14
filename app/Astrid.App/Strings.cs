@@ -284,6 +284,14 @@ internal static class Strings
         ["filter.assignee.nobody"] = "Nobody",
         ["filter.repeat"] = "Repeat",
         ["filter.repeat.never"] = "Does not repeat",
+        // The repeat FILTER's rows. The repeat picker's are `repeating.*` — two spellings for one
+        // word, which astrid-core's `strings/README.md` keeps deliberately because both are keys it
+        // emits. Missing until task b63d8679, so this filter group drew its own keys (CONTRACTS D60).
+        ["repeat.daily"] = "Daily",
+        ["repeat.weekly"] = "Weekly",
+        ["repeat.monthly"] = "Monthly",
+        ["repeat.yearly"] = "Yearly",
+        ["repeat.custom"] = "Custom",
         ["filter.assigned_by"] = "Assigned by",
         ["filter.assigned_by.me"] = "Me",
         ["filter.assigned_by.someone_else"] = "Somebody else",
@@ -360,6 +368,14 @@ internal static class Strings
         ["copy.include_comments"] = "Include comments",
         ["copy.button"] = "Copy",
         ["copy.done"] = "Copied",
+        // The trade-off grid's rating words, under the core's own spelling — the registry's, which
+        // `Strings.Get` flattens to `tasks_tradeoffRatings_veryGood`. This shell had them under an
+        // invented `tradeoff_very_good` until task b63d8679, and no fallback at all.
+        ["tasks.tradeoffRatings.veryPoor"] = "Very poor",
+        ["tasks.tradeoffRatings.poor"] = "Poor",
+        ["tasks.tradeoffRatings.mixed"] = "Mixed",
+        ["tasks.tradeoffRatings.good"] = "Good",
+        ["tasks.tradeoffRatings.veryGood"] = "Very good",
         // The first letter of the reader's word for "unassigned": U here, 未 in Japanese, Н in
         // Russian (PRODUCT_CONTRACT.md §4). A translator changes this, not the code.
         ["tasks.unassigned_mark"] = "U",

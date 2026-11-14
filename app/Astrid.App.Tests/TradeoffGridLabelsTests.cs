@@ -48,11 +48,11 @@ public sealed class TradeoffGridLabelsTests
     /// caught by this test failing to find them rather than by a blank cell on a screen.
     /// </remarks>
     [Theory]
-    [InlineData("veryPoor", "AstridTradeoffVeryPoor", "tradeoff_very_poor")]
-    [InlineData("poor", "AstridTradeoffPoor", "tradeoff_poor")]
-    [InlineData("mixed", "AstridTradeoffMixed", "tradeoff_mixed")]
-    [InlineData("good", "AstridTradeoffGood", "tradeoff_good")]
-    [InlineData("veryGood", "AstridTradeoffVeryGood", "tradeoff_very_good")]
+    [InlineData("veryPoor", "AstridTradeoffVeryPoor", "tasks.tradeoffRatings.veryPoor")]
+    [InlineData("poor", "AstridTradeoffPoor", "tasks.tradeoffRatings.poor")]
+    [InlineData("mixed", "AstridTradeoffMixed", "tasks.tradeoffRatings.mixed")]
+    [InlineData("good", "AstridTradeoffGood", "tasks.tradeoffRatings.good")]
+    [InlineData("veryGood", "AstridTradeoffVeryGood", "tasks.tradeoffRatings.veryGood")]
     public void A_rating_has_a_fill_an_ink_and_a_word_task_cca2483d(string rating, string fill,
         string labelKey)
     {

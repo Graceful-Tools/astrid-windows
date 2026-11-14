@@ -23,65 +23,33 @@ namespace Astrid.App.Tests;
 /// its source is not here to scan, and the bindings contract next door makes the same trade for
 /// the same reason.
 /// </para>
+/// <para>
+/// <strong>One of those lists is gone (task b63d8679.)</strong> There used to be fourteen keys
+/// copied out here under the heading "every key the pinned core sends has a word", and astrid-core's
+/// <c>copy.rs</c> names this file by name as the hand copy its string catalog replaces. The core
+/// now publishes the whole set — <c>astrid_core::copy_keys()</c>, computed from the very tables the
+/// pickers read — so that question is asked of all 106 of them in
+/// <c>crates/astrid-ffi/tests/copy_catalog_contract.rs</c>, in Rust, where the pinned crate is
+/// actually linked. What stays here is what a Rust test cannot see: the retired keys, and the arms
+/// of a WinUI converter's <c>switch</c>.
+/// </para>
 /// </remarks>
 public sealed class CorePinFollowsIosTests
 {
-    /// <summary>The repeat presets, as iOS spells them (D49).</summary>
-    private static readonly string[] RepeatPresetKeys =
-    [
-        "repeating.one_time_only", "repeating.daily", "repeating.weekly", "repeating.monthly",
-        "repeating.yearly", "repeating.custom",
-    ];
-
-    /// <summary>The completion filter's rows, which gained two and lost one.</summary>
-    private static readonly string[] CompletionFilterKeys =
-    [
-        "filter.completion.recent", "filter.completion.all", "filter.completion.completed",
-        "filter.completion.incomplete",
-    ];
-
-    /// <summary>The priority filter's rows, which the core names per level.</summary>
-    private static readonly string[] PriorityFilterKeys =
-    [
-        "lists.highest_priority", "lists.high_priority", "lists.medium_priority",
-        "lists.low_priority",
-    ];
-
     /// <summary>Keys the pinned core no longer sends. A word for one is a word nobody can reach.</summary>
+    /// <remarks>
+    /// <c>repeat.daily</c> and its four siblings were here until task b63d8679, on the belief that
+    /// D49 retired them with the rest. D49 renamed the repeat <em>picker</em>'s keys; the repeat
+    /// <em>filter</em> group still asks for <c>repeat.daily</c>, which is why this shell drew that
+    /// key as text in the filter sheet (CONTRACTS D60) while a test asserted it must have no word.
+    /// That cannot happen quietly again: a key listed here that the core still emits is required to
+    /// have a word by <c>copy_catalog_contract.rs</c> and required not to by this test, so the two
+    /// gates disagree out loud rather than agreeing on a wrong answer.
+    /// </remarks>
     private static readonly string[] RetiredKeys =
     [
-        "filter.completion.hide",
-        "repeat.never", "repeat.daily", "repeat.weekly", "repeat.monthly", "repeat.yearly",
-        "repeat.custom",
+        "filter.completion.hide", "repeat.never",
     ];
-
-    /// <summary>
-    /// Every key the pinned core sends has a word, in the resources and in the fallback table.
-    /// </summary>
-    /// <remarks>
-    /// Both, because they fail differently: a missing resource is a key on screen in a packaged
-    /// build, and a missing fallback is a key on screen in an unpackaged one. A key with neither
-    /// comes back as itself — <c>Strings.Get</c> says so — so "repeating.daily" is what the reader
-    /// sees.
-    /// </remarks>
-    [Fact]
-    public void Every_key_the_pinned_core_sends_has_a_word_task_6ee938cc()
-    {
-        var app = LocalisationTests.AppDirectory();
-        var resources = ResourceNames(app);
-        var fallback = FallbackKeys(app);
-
-        var missing = RepeatPresetKeys.Concat(CompletionFilterKeys).Concat(PriorityFilterKeys)
-            .SelectMany(key => new[]
-                {
-                    resources.Contains(Flatten(key)) ? null : $"{key} — no resource",
-                    fallback.Contains(key) ? null : $"{key} — no fallback",
-                }.OfType<string>())
-            .ToList();
-
-        Assert.True(missing.Count == 0,
-            "the pinned core sends keys this shell has no word for:\n  " + string.Join("\n  ", missing));
-    }
 
     /// <summary>
     /// And the keys it stopped sending are gone from both, rather than left behind.

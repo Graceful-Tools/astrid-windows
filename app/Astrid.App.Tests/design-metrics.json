@@ -1,11 +1,11 @@
 {
   "_": "The committed design budget (task d7e381a7). A count must not rise; when one falls, lower it with scripts/report-design-metrics.ps1 -Update.",
-  "_code.strings": "Raised by two for task 28348df8: the window's own .ico file name, and the resource key the sign-in card's method list is composed from. Neither is a word a reader sees - the sentence itself moved OUT of code and into Resources.resw in the same change - but code.strings cannot tell a file name from a label, so the number moves and the reason is written down.",
+  "_code.strings": "Raised by two for task 28348df8: the window's own .ico file name, and the resource key the sign-in card's method list is composed from. Neither is a word a reader sees - the sentence itself moved OUT of code and into Resources.resw in the same change - but code.strings cannot tell a file name from a label, so the number moves and the reason is written down. Raised by two more for task b63d8679: 'Very poor' and 'Very good' joined the Fallback table in Strings.cs, which is the one place in the shell whose job IS to hold English. The other eight words added in that change are one word each, and IsProse only counts a literal with a space in it - so the metric is counting a space rather than a hardcoded string. The trade is deliberate: the alternative is leaving two of the core's keys with no fallback, which is the key drawn on screen in an unpackaged build.",
   "counts": {
     "xaml.hex-colours": 14,
     "xaml.corner-radius": 44,
     "xaml.font-size": 158,
     "xaml.spacing": 380,
-    "code.strings": 244
+    "code.strings": 246
   }
 }
