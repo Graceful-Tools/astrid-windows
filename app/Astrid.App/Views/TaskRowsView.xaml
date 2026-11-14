@@ -254,32 +254,6 @@
                   SelectionChanged="OnRowSelected"
                   ContainerContentChanging="OnRowContainerChanging"
                   ShowsScrollingPlaceholders="True">
-            <ListView.Resources>
-                <!--
-                    The web tints the whole card on selection and hover and keeps the same
-                    thin border — "no blue glow ring, no heavier shadow", as its CSS says.
-                    These are the brushes the default ListViewItem template reaches for, so
-                    pointing them at the tokens is what makes the container wear the web's
-                    states instead of Windows's.
-
-                    A tint, and not the DS5 outline the sidebar, the settings cards and the
-                    command palette took on 2026-11-10 (task 787c7aa5): DS5 is the CHROME's
-                    selection, and a row of content keeps its own selected state. astrid-core's
-                    register says so in DS5's row now, decided in task 16392d99 — a row's line
-                    is `bg-selected-border`, which is not the outline's opacity, and DS26 kept
-                    `bg-selected` the day after DS5 was taken, measuring a priority mark against
-                    a selected row's fill. DesignTokenTests holds the split; do not "fix" this
-                    one to match the other three.
-                -->
-                <StaticResource x:Key="ListViewItemBackgroundSelected" ResourceKey="AstridBgSelected" />
-                <StaticResource x:Key="ListViewItemBackgroundSelectedPointerOver" ResourceKey="AstridBgSelected" />
-                <StaticResource x:Key="ListViewItemBackgroundSelectedPressed" ResourceKey="AstridBgSelected" />
-                <StaticResource x:Key="ListViewItemBackgroundPointerOver" ResourceKey="AstridSurfaceHover" />
-                <StaticResource x:Key="ListViewItemBackgroundPressed" ResourceKey="AstridSurfaceHover" />
-                <StaticResource x:Key="ListViewItemForegroundSelected" ResourceKey="AstridTextPrimary" />
-                <!-- The accent bar down the left of a selected row is Windows', not ours. -->
-                <SolidColorBrush x:Key="ListViewItemSelectionIndicatorBrush" Color="Transparent" />
-            </ListView.Resources>
             <ListView.ItemContainerStyle>
                 <Style TargetType="ListViewItem">
                     <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource AstridBorderFocus}" />
@@ -295,6 +269,101 @@
                     <Setter Property="BorderThickness" Value="1" />
                     <Setter Property="BorderBrush" Value="{ThemeResource AstridBorder}" />
                     <Setter Property="Background" Value="{ThemeResource AstridSurface}" />
+                    <!--
+                        The row draws its own states, which is the only way to get the LINE around
+                        a selected row (task 066ae38c).
+
+                        The web tints the whole card on selection and hover and keeps a thin
+                        border — "no blue glow ring, no heavier shadow", as its CSS says. A tint,
+                        and NOT the DS5 outline the sidebar, the settings cards and the command
+                        palette took (task 787c7aa5): DS5 is the CHROME's selection, and a row of
+                        content keeps its own selected state. astrid-core's register says so in
+                        DS5's row, decided in task 16392d99 — a row's line is `bg-selected-border`,
+                        which is not the outline's opacity, and DS26 kept `bg-selected` the day
+                        after DS5 was taken, measuring a priority mark against a selected row's
+                        fill. DesignTokenTests holds the split; do not "fix" this one to match the
+                        other three.
+
+                        Six `ListViewItem*` brush overrides used to sit in `ListView.Resources`
+                        and do this job — the selected, pointer-over and pressed backgrounds, the
+                        selected foreground, and a transparent selection indicator. The template
+                        replaced every one of them, so they are gone rather than left behind: an
+                        override that looks like it decides the colour, and does not, is how
+                        somebody comes to change the wrong line. The accent bar down the left of a
+                        selected row went with them — it was Windows', not ours, and this template
+                        simply does not draw one.
+
+                        WinUI's ListViewItem renders through a ListViewItemPresenter, and that
+                        presenter offers a selected BACKGROUND and no selected BORDER. The tint
+                        above arrived through `ListViewItemBackgroundSelected`; there is no
+                        matching resource for the line, so `AstridBgSelectedBorder` sat declared
+                        in all three theme dictionaries, asserted against the vendored tokens, and
+                        drawn by nothing. The register pairs them — `bg-selected` is the fill and
+                        `bg-selected-border` is "the line around a selected row" — and DS26 keeps
+                        both. A row with only the tint drew that answer half way.
+
+                        The same template the sidebar takes for DS5's outline, and for the same
+                        reason; what differs is which answer it draws. A task row is CONTENT, so
+                        it keeps DS3's tint with its line, while the sidebar is CHROME and takes
+                        DS5's outline over an untouched surface (task 16392d99).
+
+                        `Control.IsTemplateFocusTarget` keeps the four focus-visual setters above
+                        working, and the state names are the ones SelectorItem goes to, so hover
+                        and pressed read as they did.
+                    -->
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ListViewItem">
+                                <Border x:Name="Row"
+                                        Control.IsTemplateFocusTarget="True"
+                                        Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        CornerRadius="{TemplateBinding CornerRadius}">
+                                    <VisualStateManager.VisualStateGroups>
+                                        <VisualStateGroup x:Name="CommonStates">
+                                            <VisualState x:Name="Normal" />
+                                            <VisualState x:Name="PointerOver">
+                                                <VisualState.Setters>
+                                                    <Setter Target="Row.Background" Value="{ThemeResource AstridSurfaceHover}" />
+                                                </VisualState.Setters>
+                                            </VisualState>
+                                            <VisualState x:Name="Pressed">
+                                                <VisualState.Setters>
+                                                    <Setter Target="Row.Background" Value="{ThemeResource AstridSurfaceHover}" />
+                                                </VisualState.Setters>
+                                            </VisualState>
+                                            <VisualState x:Name="Selected">
+                                                <VisualState.Setters>
+                                                    <Setter Target="Row.Background" Value="{ThemeResource AstridBgSelected}" />
+                                                    <Setter Target="Row.BorderBrush" Value="{ThemeResource AstridBgSelectedBorder}" />
+                                                </VisualState.Setters>
+                                            </VisualState>
+                                            <VisualState x:Name="PointerOverSelected">
+                                                <VisualState.Setters>
+                                                    <Setter Target="Row.Background" Value="{ThemeResource AstridBgSelected}" />
+                                                    <Setter Target="Row.BorderBrush" Value="{ThemeResource AstridBgSelectedBorder}" />
+                                                </VisualState.Setters>
+                                            </VisualState>
+                                            <VisualState x:Name="PressedSelected">
+                                                <VisualState.Setters>
+                                                    <Setter Target="Row.Background" Value="{ThemeResource AstridBgSelected}" />
+                                                    <Setter Target="Row.BorderBrush" Value="{ThemeResource AstridBgSelectedBorder}" />
+                                                </VisualState.Setters>
+                                            </VisualState>
+                                        </VisualStateGroup>
+                                    </VisualStateManager.VisualStateGroups>
+                                    <ContentPresenter x:Name="ContentPresenter"
+                                                      Content="{TemplateBinding Content}"
+                                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                      ContentTransitions="{TemplateBinding ContentTransitions}"
+                                                      Padding="{TemplateBinding Padding}"
+                                                      HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                </Border>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
                 </Style>
             </ListView.ItemContainerStyle>
             <ListView.ItemTemplate>
