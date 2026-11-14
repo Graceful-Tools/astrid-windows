@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Xml;
 using System.Xml.Linq;
 using Xunit;
 
@@ -573,5 +574,117 @@ public sealed class DesignTokenTests
         {
             Assert.Contains(key, mark, StringComparison.Ordinal);
         }
+    }
+
+    /// <summary>The three XAML elements that give a row a selected state of its own.</summary>
+    private static readonly string[] Selectors = ["ListView", "GridView", "ListBox"];
+
+    /// <summary>
+    /// Every surface in the shell that can select says how it selects (task b37d76c3).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 787c7aa5 gave the sidebar DS5's outline and checked the other selectable surfaces by hand.
+    /// This is that check as a test, because the thing it found is the kind that comes back: the
+    /// command palette was a bare <c>ListView</c> with <c>SelectionMode="Single"</c> and no answer
+    /// at all, so it wore WinUI's own <c>ListViewItemPresenter</c> — a grey fill and an accent
+    /// indicator bar — while the other three surfaces outlined or tinted. Not the machine's accent
+    /// (see <see cref="Every_theme_dictionary_pins_the_accent_to_the_brand_task_b37d76c3"/>), but
+    /// the same question answered a fourth way by a surface nobody had asked.
+    /// </para>
+    /// <para>
+    /// So the assertion is the question, not one answer to it: a selecting list either names an
+    /// <c>ItemContainerStyle</c> — <c>SidebarRowStyle</c> and its DS5 outline, for the sidebar's
+    /// three lists, the settings cards and now the palette — or overrides WinUI's selected-row
+    /// brushes itself, which is what the task rows do to wear DS3's tint. What it may not do is
+    /// stay silent. <c>SelectionMode="None"</c> lists are skipped: they have no selected state to
+    /// get wrong, which is why the notification flyout and the scope grid are not here.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void Every_selectable_list_says_how_it_selects_task_b37d76c3()
+    {
+        var views = Path.Combine(LocalisationTests.AppDirectory(), "Views");
+        var silent = new List<string>();
+        var checkedLists = 0;
+
+        foreach (var file in Directory.EnumerateFiles(views, "*.xaml", SearchOption.AllDirectories))
+        {
+            var root = XDocument.Load(file, LoadOptions.SetLineInfo).Root!;
+
+            foreach (var list in root.Descendants().Where(el => Selectors.Contains(el.Name.LocalName)))
+            {
+                if ((string?)list.Attribute("SelectionMode") == "None")
+                {
+                    continue;
+                }
+
+                checkedLists++;
+
+                var kind = list.Name.LocalName;
+                var namesStyle = list.Attribute("ItemContainerStyle") is not null
+                    || list.Element(Ui + $"{kind}.ItemContainerStyle") is not null;
+                var overridesBrushes = (list.Element(Ui + $"{kind}.Resources")?.Elements() ?? [])
+                    .Any(entry => ((string?)entry.Attribute(Xaml + "Key"))
+                        ?.Contains("ItemBackgroundSelected", StringComparison.Ordinal) == true);
+
+                if (!namesStyle && !overridesBrushes)
+                {
+                    silent.Add(
+                        $"{Path.GetFileName(file)}:{((IXmlLineInfo)list).LineNumber} — a selecting "
+                        + $"{kind} with neither an ItemContainerStyle nor selected-row brushes of "
+                        + "its own, so it wears WinUI's selection chrome rather than the shell's");
+                }
+            }
+        }
+
+        Assert.Empty(silent);
+
+        // The sidebar's three, the settings sections, the task rows, the palette. A sweep that
+        // stopped finding them would pass by reading nothing.
+        Assert.Equal(6, checkedLists);
+    }
+
+    /// <summary>
+    /// The accent a selected row is drawn in is the brand's, in every theme (task b37d76c3).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// WinUI derives its selection chrome — the indicator bar, a selected accent fill, the focus
+    /// ring — from <c>SystemAccentColor</c>, which follows Windows personalisation. <c>App.xaml</c>
+    /// has overridden that colour rather than the brushes since the shell was written, under the
+    /// comment "the accent is the BRAND's, not the machine's", and that is what keeps a palette row
+    /// on an orange machine Astrid blue.
+    /// </para>
+    /// <para>
+    /// It was held by the comment alone. A fourth theme dictionary, or a dropped line in an
+    /// existing one, would hand that surface back to personalisation and nothing would say so —
+    /// the brushes would still be tokens and every other test here would stay green. So the pin is
+    /// read back: each dictionary states the colour, and states the accent token's value.
+    /// <c>SystemAccentColorLight1</c> and the rest are not checked against tokens, because they are
+    /// the shades WinUI expects to derive and the token set has no name for them.
+    /// </para>
+    /// </remarks>
+    [Theory]
+    [InlineData("Default", "light")]
+    [InlineData("Light", "light")]
+    [InlineData("Dark", "dark")]
+    public void Every_theme_dictionary_pins_the_accent_to_the_brand_task_b37d76c3(
+        string dictionary,
+        string theme)
+    {
+        var app = XDocument.Load(Path.Combine(LocalisationTests.AppDirectory(), "App.xaml")).Root!;
+        var themed = app.Descendants(Ui + "ResourceDictionary.ThemeDictionaries").Single();
+        var wanted = themed.Elements(Ui + "ResourceDictionary")
+            .Single(entry => (string?)entry.Attribute(Xaml + "Key") == dictionary);
+
+        var accent = wanted.Elements(Ui + "Color")
+            .SingleOrDefault(color => (string?)color.Attribute(Xaml + "Key") == "SystemAccentColor");
+
+        Assert.True(
+            accent is not null,
+            $"{dictionary} does not pin SystemAccentColor, so WinUI draws its selection chrome in "
+            + "whatever accent the person chose in Windows personalisation");
+        Assert.Equal(Token(Tokens(), theme, "accent"), accent!.Value.Trim().ToUpperInvariant());
     }
 }
