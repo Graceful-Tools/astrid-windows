@@ -61,6 +61,13 @@ internal sealed class FakeCore : IAstridCore
     public void Notify(string change, string? id = null) =>
         Changed?.Invoke(new ChangeNotification(change, id));
 
+    /// <summary>
+    /// Deliver a <c>task</c> change naming the lists it is in, as the core sends it since task
+    /// 05c95986. Pass no list to get the older "could not say" shape.
+    /// </summary>
+    public void NotifyTask(string taskId, params string[] listIds) =>
+        Changed?.Invoke(new ChangeNotification("task", taskId, ListIds: listIds));
+
     /// <summary>Deliver a <c>synced</c> change naming the tasks a background pass moved.</summary>
     public void NotifySynced(params string[] taskIds) =>
         Changed?.Invoke(new ChangeNotification("synced", null, taskIds));

@@ -93,6 +93,13 @@ public sealed class BoardViewModel : ObservableObject
     /// </remarks>
     public WaitPrompt? WaitPrompt => _pendingWait.Prompt;
 
+    /// <summary>The list this board was last loaded for, or empty if it has not been.</summary>
+    /// <remarks>
+    /// Read by the shell to decide whether a <c>task</c> change is worth a reload at all (task
+    /// 05c95986): a change in some other list leaves this board exactly as it was drawn.
+    /// </remarks>
+    public string ListId => _listId;
+
     /// <summary>Load the board the given list belongs to, if it belongs to one.</summary>
     public async Task LoadAsync(string listId, CancellationToken cancellationToken = default)
     {

@@ -165,8 +165,14 @@ public sealed record AstridFailure(
 /// For a <c>stream</c> change, which edge it is: the live stream connected, or dropped. Null on
 /// every other change, which says nothing about the stream — and "says nothing" is not "down".
 /// </param>
+/// <param name="ListIds">
+/// For a <c>task</c> change, the lists the task is in — and any it has just left, because a move
+/// makes both stale (task 05c95986). Empty or absent means the core could not say, which is
+/// "refresh anyway", never "no list is affected".
+/// </param>
 public sealed record ChangeNotification(
-    string Change, string? Id, IReadOnlyList<string>? TaskIds = null, bool? Live = null)
+    string Change, string? Id, IReadOnlyList<string>? TaskIds = null, bool? Live = null,
+    IReadOnlyList<string>? ListIds = null)
 {
     public static ChangeNotification Parse(string json)
     {
@@ -176,17 +182,13 @@ public sealed record ChangeNotification(
             var root = document.RootElement;
             var change = root.TryGetProperty("change", out var kind) ? kind.GetString() : null;
             var id = ReadFirst(root, "id", "taskId", "channelId");
-            var taskIds = root.TryGetProperty("taskIds", out var ids) && ids.ValueKind == JsonValueKind.Array
-                ? ids.EnumerateArray()
-                    .Where(element => element.ValueKind == JsonValueKind.String)
-                    .Select(element => element.GetString()!)
-                    .ToList()
-                : null;
+            var taskIds = Strings(root, "taskIds");
+            var listIds = Strings(root, "listIds");
             var live = root.TryGetProperty("live", out var flag)
                 && flag.ValueKind is JsonValueKind.True or JsonValueKind.False
                 ? flag.GetBoolean()
                 : (bool?)null;
-            return new ChangeNotification(change ?? "unknown", id, taskIds, live);
+            return new ChangeNotification(change ?? "unknown", id, taskIds, live, listIds);
         }
         catch (JsonException)
         {
@@ -207,6 +209,40 @@ public sealed record ChangeNotification(
         }
         return TaskIds is null || TaskIds.Count == 0 || (taskId is not null && TaskIds.Contains(taskId));
     }
+
+    /// <summary>Whether this change touches the list with <paramref name="listId"/>.</summary>
+    /// <remarks>
+    /// <para>
+    /// The same "could not say means everything" rule <see cref="Touches"/> applies: a change that
+    /// names no list is taken to touch every one of them, because the alternative leaves whatever
+    /// is on screen stale for as long as nothing else happens (task 05c95986).
+    /// </para>
+    /// <para>
+    /// A <b>virtual</b> list always matches. <c>virtual:my-tasks</c> is synthesised from across the
+    /// account and is in no task's <c>listIds</c>, so deciding by membership would freeze the one
+    /// view the app opens on.
+    /// </para>
+    /// </remarks>
+    public bool TouchesList(string? listId)
+    {
+        if (ListIds is null || ListIds.Count == 0 || string.IsNullOrEmpty(listId))
+        {
+            return true;
+        }
+        return IsVirtual(listId) || ListIds.Contains(listId);
+    }
+
+    /// <summary>A list the core assembles rather than stores, so no task names it.</summary>
+    public static bool IsVirtual(string listId) =>
+        listId.StartsWith("virtual:", StringComparison.Ordinal);
+
+    private static IReadOnlyList<string>? Strings(JsonElement root, string name) =>
+        root.TryGetProperty(name, out var ids) && ids.ValueKind == JsonValueKind.Array
+            ? ids.EnumerateArray()
+                .Where(element => element.ValueKind == JsonValueKind.String)
+                .Select(element => element.GetString()!)
+                .ToList()
+            : null;
 
     private static string? ReadFirst(JsonElement root, params string[] names)
     {

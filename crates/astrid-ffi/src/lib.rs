@@ -543,8 +543,8 @@ mod tests {
     #[test]
     fn a_change_notification_names_only_what_moved() {
         assert_eq!(
-            Change::Task("t1".into()).to_json(),
-            r#"{"change":"task","id":"t1"}"#
+            Change::task("t1", ["l1"]).to_json(),
+            r#"{"change":"task","id":"t1","listIds":["l1"]}"#
         );
         assert_eq!(
             Change::Comments("t1".into()).to_json(),
