@@ -292,6 +292,34 @@
                              Color="{StaticResource AstridAccentColor}"
                              Opacity="0.55" />
 
+            <!--
+                A trade-off grid's five ratings, worst to best (task cca2483d).
+
+                Outside the theme dictionaries on purpose, like the accent above and for a stronger
+                version of the same reason. These are not Astrid's palette at all — they are the
+                Google Docs ratings palette, `palette/tradeoff` in the vendored design tokens, and
+                web draws exactly these five in both themes with no dark variant. A grid is read by
+                comparing one cell against another, so the comparison has to survive a reader on a
+                dark machine talking to a reader on a light one about the same decision.
+
+                Each fill carries its own ink (`palette/tradeoff-text`): the two dark fills take
+                white and the three light ones near-black, which is the contrast decision already
+                made for these exact colours rather than one taken again here.
+
+                `The_tradeoff_palette_matches_the_tokens_task_cca2483d` in DesignTokenTests reads
+                both arrays out of design/tokens.resolved.json and fails if either drifts.
+            -->
+            <SolidColorBrush x:Key="AstridTradeoffVeryPoor" Color="#CC0000" />
+            <SolidColorBrush x:Key="AstridTradeoffVeryPoorInk" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="AstridTradeoffPoor" Color="#E06666" />
+            <SolidColorBrush x:Key="AstridTradeoffPoorInk" Color="#111827" />
+            <SolidColorBrush x:Key="AstridTradeoffMixed" Color="#FFD966" />
+            <SolidColorBrush x:Key="AstridTradeoffMixedInk" Color="#111827" />
+            <SolidColorBrush x:Key="AstridTradeoffGood" Color="#93C47D" />
+            <SolidColorBrush x:Key="AstridTradeoffGoodInk" Color="#111827" />
+            <SolidColorBrush x:Key="AstridTradeoffVeryGood" Color="#38761D" />
+            <SolidColorBrush x:Key="AstridTradeoffVeryGoodInk" Color="#FFFFFF" />
+
             <!-- The Ocean surface, so the wash is stated once rather than per screen. -->
             <LinearGradientBrush x:Key="AstridOceanBrush" StartPoint="0,0" EndPoint="0.35,1">
                 <GradientStop Color="#88DCF8" Offset="0" />
