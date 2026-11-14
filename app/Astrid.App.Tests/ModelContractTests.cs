@@ -65,18 +65,28 @@ public sealed class ModelContractTests
     /// <para>
     /// <strong>Then it was measured, and the measurement settled it (task <c>91d1a865</c>).</strong>
     /// The open question was whether the startup time a context buys is worth the mutability it
-    /// costs. Both sides were built and timed in a fresh process against the real bindings
-    /// assembly — the first-touch cost of all 113 models, which is exactly and only what a context
-    /// changes. With <c>ReadyToRun</c>, which is how this app ships, the context saves about 20 ms
-    /// (48 ms down to 28 ms) and adds 2.2 MB of precompiled native code to the bindings assembly
-    /// (1.07 MB to 3.27 MB). Without it — every <c>dotnet build</c> anyone runs — the context is
-    /// 44 ms <em>slower</em> (49 ms up to 93 ms), because 113 generated factories are cold IL to
-    /// be jitted while the reflecting resolver runs one already-warm generic path.
+    /// costs, and <c>2ba2c53e</c>'s acceptance had asked for a number nobody had taken. App-level
+    /// cold start is the wrong instrument — a WinUI launch is dominated by XAML and the core load,
+    /// and its run-to-run spread is wider than the whole quantity under test. So both sides were
+    /// built for real and the quantity was timed directly, in a fresh process against the real
+    /// bindings assembly: the first-touch cost of every model — reflect the properties, build a
+    /// <c>JsonTypeInfo</c>, emit an accessor per member — which is exactly and only what a context
+    /// removes. Median of seven fresh processes each, 110 models, on ARM64.
     /// </para>
     /// <para>
-    /// Twenty milliseconds, once, in the shipped configuration only, is not worth 493 wire
-    /// properties becoming settable for the life of the repo. So the answer is to leave it, and
-    /// this test stays as the thing that makes that answer hold.
+    /// With <c>ReadyToRun</c>, which is how this app ships, the context saves 15 ms (41 ms down to
+    /// 25 ms) and costs 1.8 MB of precompiled native code in the bindings assembly (1.02 MB up to
+    /// 2.82 MB). Without it — every <c>dotnet build</c> and every F5 anyone runs — the context is
+    /// 34 ms <em>slower</em> (44 ms up to 78 ms), because 113 generated factories are cold IL to
+    /// be jitted while the reflecting resolver runs one already-warm generic path in a framework
+    /// that is precompiled either way. The sign of the change depends on the build configuration.
+    /// </para>
+    /// <para>
+    /// Fifteen milliseconds, once, in the shipped configuration only — against 1.8 MB in the
+    /// package, a 34 ms regression in every build a developer waits on, and 498 wire properties
+    /// becoming settable for the life of the repo. That trade is not worth making, so option 3 of
+    /// the three the task listed is the answer: leave it. This test stays as the thing that makes
+    /// that answer hold.
     /// </para>
     /// </remarks>
     [Fact]
