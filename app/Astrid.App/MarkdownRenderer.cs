@@ -395,7 +395,7 @@ internal sealed class MarkdownRenderer
     /// An unrated cell is left unpainted rather than painted in a neutral — "nothing recorded"
     /// should not look like a rating of its own.
     /// </remarks>
-    private UIElement Cell(MarkdownCell cell)
+    private FrameworkElement Cell(MarkdownCell cell)
     {
         var text = Paragraph(cell.Inlines, 13, FontWeights.Normal, new Thickness(0));
         text.TextAlignment = TextAlignment.Center;
@@ -426,7 +426,7 @@ internal sealed class MarkdownRenderer
     /// Null when the block lists no ratings this client knows — a grid of entirely unrated cells
     /// has nothing to explain, and an empty key would be a row of blank space under it.
     /// </remarks>
-    private UIElement? Key(IReadOnlyList<string> ratings)
+    private FrameworkElement? Key(IReadOnlyList<string> ratings)
     {
         var known = TradeoffGridLabels.KnownRatings(ratings);
         if (known.Count == 0)
@@ -458,7 +458,7 @@ internal sealed class MarkdownRenderer
         return key;
     }
 
-    private static void Place(Grid grid, UIElement element, int row, int column)
+    private static void Place(Grid grid, FrameworkElement element, int row, int column)
     {
         Grid.SetRow(element, row);
         Grid.SetColumn(element, column);
