@@ -17,7 +17,7 @@ namespace Astrid.App;
 /// </summary>
 /// <remarks>
 /// It used to answer for a priority too, building a brush out of <c>PriorityPalette</c>'s hex. That
-/// moved to the <c>PriorityFill</c> attached property in task 82e4ad32, because a priority's colour
+/// moved to the <c>PriorityOutline</c> attached property in task 82e4ad32, because a priority's colour
 /// now depends on the theme — <c>priority-low</c> is a different brand value on dark — and a
 /// converter is handed a value and a target type but never the element, so it has no theme to
 /// resolve in. A list's colour is a person's pick out of a fixed palette and the same in every

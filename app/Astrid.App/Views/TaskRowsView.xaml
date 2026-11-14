@@ -75,11 +75,12 @@
                                             Width="32" Height="32"
                                             Visibility="{x:Bind Shell.Tasks.QuickAddIsCheckbox, Mode=OneWay, Converter={StaticResource Visible}}" />
                         <Border Width="24" Height="24" CornerRadius="6"
-                                local:PriorityFill.Priority="{x:Bind Shell.Tasks.QuickAddPriority, Mode=OneWay}"
+                                BorderThickness="2"
+                                local:PriorityOutline.Priority="{x:Bind Shell.Tasks.QuickAddPriority, Mode=OneWay}"
                                 Visibility="{x:Bind Shell.Tasks.QuickAddIsSquare, Mode=OneWay, Converter={StaticResource Visible}}">
                             <TextBlock Text="{x:Bind Shell.Tasks.QuickAddMark, Mode=OneWay}"
                                        FontSize="12" FontWeight="SemiBold"
-                                       Foreground="White"
+                                       local:PriorityOutline.Priority="{x:Bind Shell.Tasks.QuickAddPriority, Mode=OneWay}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                     </Grid>
@@ -337,11 +338,12 @@
                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
                                 <Border Width="24" Height="24" CornerRadius="6"
-                                        local:PriorityFill.Priority="{x:Bind Priority}"
+                                        BorderThickness="2"
+                                        local:PriorityOutline.Priority="{x:Bind Priority}"
                                         Visibility="{x:Bind LeadingIsPlainSquare, Converter={StaticResource Visible}}">
                                     <TextBlock Text="{x:Bind (bindings:TaskRow), Converter={StaticResource LeadingMark}}"
                                                FontSize="12" FontWeight="SemiBold"
-                                               Foreground="White"
+                                               local:PriorityOutline.Priority="{x:Bind Priority}"
                                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
                                 <!--

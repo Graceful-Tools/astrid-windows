@@ -96,10 +96,19 @@ internal static class Seeds
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The tasks belong to the signed-in user, which is what makes each row's mark the checkbox —
-    /// <c>LeadingControl::for_task</c> gives an unassigned task the square instead, and the square
-    /// deliberately draws nothing at all at priority 0, so three quarters of the thing under test
-    /// would be invisible.
+    /// <paramref name="assigned"/> chooses which of the two marks the rows wear, because
+    /// <c>LeadingControl::for_task</c> decides it from the assignee: the signed-in user's task
+    /// leads with the checkbox, and a task belonging to nobody leads with the square instead. Both
+    /// are drawn from the same four priority colours and neither can stand in for the other — the
+    /// checkbox is one piece of art in the control's foreground, the square an outline with a glyph
+    /// inside it — so each is seeded and read.
+    /// </para>
+    /// <para>
+    /// Unassigned was unseedable until task f1a8ff9f: the square was filled with the priority
+    /// colour, no priority painted it transparent, and the glyph on top was a literal white, so an
+    /// unassigned row with no priority drew nothing at all and a quarter of the thing under test
+    /// was invisible. The square is a priority outline now, as astrid-web has always drawn it, and
+    /// every priority including 0 is a colour.
     /// </para>
     /// <para>
     /// Who is signed in is <c>account.current-user</c> in the cache's metadata, which is where
@@ -113,7 +122,7 @@ internal static class Seeds
     /// for that, so nothing here arranges them.
     /// </para>
     /// </remarks>
-    internal static Action<string> ListWithEveryPriority(string theme) => cachePath =>
+    internal static Action<string> ListWithEveryPriority(string theme, bool assigned = true) => cachePath =>
     {
         using var connection = new SqliteConnection($"Data Source={cachePath}");
         connection.Open();
@@ -134,12 +143,17 @@ internal static class Seeds
         {
             var id = $"p{priority}";
             var title = PriorityTitles[priority];
+            var owner = assigned
+                ? $$"""
+                    "assigneeId":"{{OwnerId}}","assignee":{"id":"{{OwnerId}}","name":"Smoke Tester"},
+                    """
+                : string.Empty;
             Execute(connection,
                 "INSERT OR REPLACE INTO tasks (id, title, json) VALUES ($id, $title, $json)",
                 ("$id", id),
                 ("$title", title),
                 ("$json", $$"""
-                    {"id":"{{id}}","title":"{{title}}","priority":{{priority}},"assigneeId":"{{OwnerId}}","assignee":{"id":"{{OwnerId}}","name":"Smoke Tester"},"lists":[{"id":"l3","name":"{{PriorityListName}}"}]}
+                    {"id":"{{id}}","title":"{{title}}","priority":{{priority}},{{owner}}"lists":[{"id":"l3","name":"{{PriorityListName}}"}]}
                     """));
             Execute(connection,
                 "INSERT OR REPLACE INTO task_lists_membership (task_id, list_id) VALUES ($id, 'l3')",

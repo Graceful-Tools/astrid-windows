@@ -44,13 +44,28 @@ public sealed class PriorityMarkColourTests
     /// </remarks>
     private const int Enough = 50;
 
+    /// <summary>
+    /// Both marks, in both appearances — the checkbox on your own task and the square on nobody's
+    /// (task f1a8ff9f).
+    /// </summary>
+    /// <remarks>
+    /// The unassigned half is the regression. The square was a priority fill with a white glyph on
+    /// it, and no priority painted the fill transparent, so an unassigned task with no priority —
+    /// the ordinary row on a fresh board — drew nothing at all and the white letter went with it.
+    /// It is a priority outline now, as astrid-web has always drawn it, so priority 0 has a colour
+    /// like the other three. No other test here can see a white-on-white mark: this one reads the
+    /// pixels.
+    /// </remarks>
     [Theory]
-    [InlineData("light")]
-    [InlineData("dark")]
-    public void Every_priority_mark_draws_its_own_token_task_82e4ad32(string theme)
+    [InlineData("light", true)]
+    [InlineData("dark", true)]
+    [InlineData("light", false)]
+    [InlineData("dark", false)]
+    public void Every_priority_mark_draws_its_own_token_task_82e4ad32(string theme, bool assigned)
     {
         var expected = PriorityBrushes(theme);
-        using var app = AstridApp.Launch(signedIn: true, seed: Seeds.ListWithEveryPriority(theme));
+        using var app = AstridApp.Launch(
+            signedIn: true, seed: Seeds.ListWithEveryPriority(theme, assigned));
         Select(app, Seeds.PriorityListName);
         Assert.True(
             app.Sees(Seeds.PriorityTitles[0]),
@@ -63,7 +78,9 @@ public sealed class PriorityMarkColourTests
             shot.IsBlank(),
             "the window captured as one flat colour, so nothing was rendered — a locked or "
             + "non-rendering session. See docs/TESTING.md.");
-        var png = shot.SavePng(Path.Combine(AppContext.BaseDirectory, $"priority-marks-{theme}.png"));
+        var whose = assigned ? "own" : "unassigned";
+        var png = shot.SavePng(
+            Path.Combine(AppContext.BaseDirectory, $"priority-marks-{whose}-{theme}.png"));
 
         for (var priority = 0; priority < Seeds.PriorityTitles.Length; priority++)
         {
@@ -74,10 +91,10 @@ public sealed class PriorityMarkColourTests
             var mine = expected[priority];
             mark.TryGetValue(mine, out var drawn);
             _output.WriteLine(
-                $"{theme} priority {priority}: #{mine:X6} x{drawn} (picture: {png})");
+                $"{theme} {whose} priority {priority}: #{mine:X6} x{drawn} (picture: {png})");
             Assert.True(
                 drawn >= Enough,
-                $"the {theme} mark for priority {priority} should be drawn in #{mine:X6}, and only "
+                $"the {theme} {whose} mark for priority {priority} should be drawn in #{mine:X6}, and only "
                 + $"{drawn} pixels of it are. The band holds: "
                 + string.Join(", ", mark.OrderByDescending(e => e.Value).Take(6)
                     .Select(e => $"#{e.Key:X6} x{e.Value}"))
@@ -94,7 +111,7 @@ public sealed class PriorityMarkColourTests
                 mark.TryGetValue(expected[other], out var intruder);
                 Assert.True(
                     intruder < Enough,
-                    $"the {theme} mark for priority {priority} is drawing priority {other}'s "
+                    $"the {theme} {whose} mark for priority {priority} is drawing priority {other}'s "
                     + $"#{expected[other]:X6} as well ({intruder} pixels). The picture is at {png}.");
             }
         }
