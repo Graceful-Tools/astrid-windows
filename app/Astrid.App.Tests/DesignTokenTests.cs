@@ -217,6 +217,54 @@ public sealed class DesignTokenTests
     }
 
     /// <summary>
+    /// A trade-off grid's five ratings are the tokens' palette, in order, with the tokens' ink
+    /// (task <c>cca2483d</c>).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>palette/tradeoff</c> and <c>palette/tradeoff-text</c> are arrays, worst to best, so the
+    /// order is part of what is being checked: swapping two fills would still be five valid
+    /// colours and would quietly invert what a grid says.
+    /// </para>
+    /// <para>
+    /// These brushes sit outside the theme dictionaries, like the accent and for a stronger
+    /// reason: they are the Google Docs ratings palette rather than Astrid's, and web draws the
+    /// same five in both themes. A grid is read by comparing one cell against another, and the
+    /// comparison has to survive one reader on a dark machine and another on a light one
+    /// discussing the same decision.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void The_tradeoff_palette_matches_the_tokens_task_cca2483d()
+    {
+        var app = XDocument.Load(Path.Combine(LocalisationTests.AppDirectory(), "App.xaml")).Root!;
+        var brushes = app.Descendants(Ui + "SolidColorBrush")
+            .Where(brush => ((string?)brush.Attribute(Xaml + "Key"))?.StartsWith("AstridTradeoff",
+                StringComparison.Ordinal) == true)
+            .ToDictionary(
+                brush => (string)brush.Attribute(Xaml + "Key")!,
+                brush => ((string)brush.Attribute("Color")!).ToUpperInvariant());
+
+        string[] names = ["VeryPoor", "Poor", "Mixed", "Good", "VeryGood"];
+        var palette = Tokens().GetProperty("palette");
+        var fills = palette.GetProperty("tradeoff").EnumerateArray().ToArray();
+        var inks = palette.GetProperty("tradeoff-text").EnumerateArray().ToArray();
+
+        Assert.Equal(names.Length, fills.Length);
+        Assert.Equal(names.Length, inks.Length);
+        Assert.Equal(names.Length * 2, brushes.Count);
+
+        for (var i = 0; i < names.Length; i++)
+        {
+            var fill = $"AstridTradeoff{names[i]}";
+            Assert.True(brushes.ContainsKey(fill), $"App.xaml has no {fill}");
+            Assert.True(brushes.ContainsKey(fill + "Ink"), $"App.xaml has no {fill}Ink");
+            Assert.Equal(fills[i].GetString()!.ToUpperInvariant(), brushes[fill]);
+            Assert.Equal(inks[i].GetString()!.ToUpperInvariant(), brushes[fill + "Ink"]);
+        }
+    }
+
+    /// <summary>
     /// The accent fill is the same in every theme (DS26), so it is stated once outside the theme
     /// dictionaries — and it is the fill, not the old blue and not the ink.
     /// </summary>

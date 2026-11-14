@@ -105,6 +105,19 @@ than fixed. D7 (an unknown due-date filter hides undated tasks), D8 (the two App
 the assignee picker differently) and D9 (auto-link duplicates a list Apple cannot get to the
 server) are the ones that touch this app today.
 
+**A trade-off grid's row numbers and column letters are produced here, not sent.** The core's
+`tradeoffGrid` block carries neither — its own comment says so — because both come from a row's or
+a column's position rather than from anything the writer typed, and the core drops the writer's own
+marker ("A." of "A. Lisbon") on the way. Every client therefore produces them itself, so this is
+the design rather than a divergence, and there is nothing to record in astrid-core's CONTRACTS.md.
+What *is* worth knowing is where the Windows copy lives and what it is a copy of:
+`TradeoffGridLabels.ColumnLetter` is a faithful port of `astrid_rules::decisions::column_letter`,
+pinned by `A_criterion_is_lettered_by_position_task_cca2483d` on the cases that function is
+specified by. It is a port rather than a call because `column_letter` is a plain public Rust
+function and not a `Rule` variant, and this repository has no binding to the stateless rules door
+at all — `Commands.cs` has no rules call. If that door is ever bound here, this is one of the first
+things that should go through it (task `cca2483d`).
+
 Two items in the task-detail overflow menu are this client's own, and are kept on purpose
 (task ffcc6abf, AWTD-1181, where Jon chose web's menu). They are shell shape rather than a rule, so
 they are recorded here and not in the core's CONTRACTS.md: **Copy link**, because a window has no

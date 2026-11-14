@@ -1945,9 +1945,134 @@ public sealed record MarkdownBlock
     /// <summary>A table's column alignments: <c>left</c>, <c>center</c>, <c>right</c> or <c>none</c>.</summary>
     [JsonPropertyName("alignments")] public IReadOnlyList<string> Alignments { get; init; } = [];
 
+    /// <summary>
+    /// A table's column headings, or a trade-off grid's: the option column's heading first, then
+    /// one per criterion.
+    /// </summary>
     [JsonPropertyName("header")] public IReadOnlyList<IReadOnlyList<MarkdownInline>> Header { get; init; } = [];
 
-    [JsonPropertyName("rows")] public IReadOnlyList<IReadOnlyList<IReadOnlyList<MarkdownInline>>> Rows { get; init; } = [];
+    /// <summary>
+    /// A table's rows, or a trade-off grid's options — the core sends both under this one key, in
+    /// two shapes. See <see cref="MarkdownRow"/>.
+    /// </summary>
+    [JsonPropertyName("rows")] public IReadOnlyList<MarkdownRow> Rows { get; init; } = [];
+
+    /// <summary>
+    /// A trade-off grid's key: the label keys it shows, worst to best, each rating it uses once
+    /// (task <c>cca2483d</c>). Empty for every other kind of block.
+    /// </summary>
+    [JsonPropertyName("key")] public IReadOnlyList<string> Key { get; init; } = [];
+}
+
+/// <summary>
+/// One row of a table, or one option of a trade-off grid (task <c>cca2483d</c>).
+/// </summary>
+/// <remarks>
+/// <para>
+/// The core sends both under the block's <c>rows</c> key, in two shapes: a table's row is an
+/// array of cells, and a grid's row is an object carrying the option's <c>name</c> and its
+/// <c>cells</c>. One key cannot be two properties, so one type reads both and
+/// <see cref="MarkdownRowConverter"/> tells them apart by the token it finds.
+/// </para>
+/// <para>
+/// A table row's cells have no rating, so the drawing code can treat every row the same way and
+/// ask about <see cref="MarkdownCell.Rating"/> only where a rating is possible.
+/// </para>
+/// </remarks>
+[JsonConverter(typeof(MarkdownRowConverter))]
+public sealed record MarkdownRow
+{
+    /// <summary>The option's name, for a trade-off grid. Null for a plain table row.</summary>
+    /// <remarks>
+    /// The writer's own marker — the "A." of "A. Lisbon" — has already been dropped by the core,
+    /// because the number a row is drawn with comes from its position rather than from what the
+    /// writer typed.
+    /// </remarks>
+    public IReadOnlyList<MarkdownInline>? Name { get; init; }
+
+    /// <summary>The row's cells, left to right, the option column excluded.</summary>
+    public IReadOnlyList<MarkdownCell> Cells { get; init; } = [];
+}
+
+/// <summary>One cell of a table or a trade-off grid (task <c>cca2483d</c>).</summary>
+public sealed record MarkdownCell
+{
+    /// <summary>
+    /// <c>veryPoor</c>, <c>poor</c>, <c>mixed</c>, <c>good</c> or <c>veryGood</c>; null for a cell
+    /// with no rating, and for every cell of a plain table.
+    /// </summary>
+    /// <remarks>
+    /// Null means the option has nothing recorded against this criterion, which is not the same as
+    /// a rated cell whose reason happens to be empty — so the two are drawn differently.
+    /// </remarks>
+    [JsonPropertyName("rating")] public string? Rating { get; init; }
+
+    /// <summary>The cell's text. A cell with only a rating already carries its word here.</summary>
+    [JsonPropertyName("inlines")] public IReadOnlyList<MarkdownInline> Inlines { get; init; } = [];
+}
+
+/// <summary>
+/// Reads a <see cref="MarkdownRow"/> from either of the two shapes the <c>rows</c> key carries
+/// (task <c>cca2483d</c>).
+/// </summary>
+/// <remarks>
+/// An array is a plain table's row, each element being one cell's inlines; an object is a grid's
+/// option. Anything else is a shape this client does not know, and is read as an empty row rather
+/// than thrown on — a block kind added to the core later should cost the paragraph around it
+/// nothing, which is exactly the failure this task was filed for.
+/// </remarks>
+public sealed class MarkdownRowConverter : JsonConverter<MarkdownRow>
+{
+    public override MarkdownRow Read(ref Utf8JsonReader reader, Type typeToConvert,
+        JsonSerializerOptions options)
+    {
+        using var document = JsonDocument.ParseValue(ref reader);
+        var root = document.RootElement;
+
+        if (root.ValueKind == JsonValueKind.Array)
+        {
+            var tableCells = root
+                .EnumerateArray()
+                .Select(cell => new MarkdownCell
+                {
+                    Inlines = cell.Deserialize<IReadOnlyList<MarkdownInline>>(options) ?? [],
+                })
+                .ToList();
+            return new MarkdownRow { Cells = tableCells };
+        }
+
+        if (root.ValueKind != JsonValueKind.Object)
+        {
+            return new MarkdownRow();
+        }
+
+        return new MarkdownRow
+        {
+            Name = root.TryGetProperty("name", out var name)
+                ? name.Deserialize<IReadOnlyList<MarkdownInline>>(options)
+                : null,
+            Cells = root.TryGetProperty("cells", out var cells)
+                ? cells.Deserialize<IReadOnlyList<MarkdownCell>>(options) ?? []
+                : [],
+        };
+    }
+
+    /// <summary>
+    /// Written in the grid's shape, which is the only one anything here writes: these models are
+    /// read from the core, and a round trip is a test asking whether what it read survives.
+    /// </summary>
+    public override void Write(Utf8JsonWriter writer, MarkdownRow value, JsonSerializerOptions options)
+    {
+        writer.WriteStartObject();
+        if (value.Name is not null)
+        {
+            writer.WritePropertyName("name");
+            JsonSerializer.Serialize(writer, value.Name, options);
+        }
+        writer.WritePropertyName("cells");
+        JsonSerializer.Serialize(writer, value.Cells, options);
+        writer.WriteEndObject();
+    }
 }
 
 /// <summary>One item of a rendered list.</summary>

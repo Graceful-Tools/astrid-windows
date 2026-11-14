@@ -2290,4 +2290,19 @@
   <data name="comments_heading_none" xml:space="preserve">
     <value>Comments (0)</value>
   </data>
+  <data name="tradeoff_very_poor" xml:space="preserve">
+    <value>Very poor</value>
+  </data>
+  <data name="tradeoff_poor" xml:space="preserve">
+    <value>Poor</value>
+  </data>
+  <data name="tradeoff_mixed" xml:space="preserve">
+    <value>Mixed</value>
+  </data>
+  <data name="tradeoff_good" xml:space="preserve">
+    <value>Good</value>
+  </data>
+  <data name="tradeoff_very_good" xml:space="preserve">
+    <value>Very good</value>
+  </data>
 </root>
