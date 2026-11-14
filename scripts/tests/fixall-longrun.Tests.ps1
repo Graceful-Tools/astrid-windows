@@ -353,25 +353,32 @@ Invoke-Case 'the run side contract is written down, including what it costs' {
     Assert-Match 'the scheduler deadline and its cost are stated' 'ExecutionTimeLimit' $doc
 }
 
-Invoke-Case 'and /fixall itself is asked, once somebody can write that file' {
-    # NOT a failure while it is missing, deliberately: `.claude/` is outside what a scheduled run
-    # may write, so the session that built this could record the contract but not install it. The
-    # loop is still a strict improvement without it - a tick whose queue is nothing BUT deferred
-    # work now never starts a session at all - so this reports rather than blocks, and board task
-    # d6a3cc66 carries the one-paragraph edit.
+Invoke-Case 'and /fixall itself is asked (task d6a3cc66)' {
+    # This used to report a TODO rather than fail, because `.claude/` is outside what a SCHEDULED
+    # run may write: the session that built the loop could record the contract in
+    # docs/AUTOMATION.md but not install it in the command the run actually reads. An interactive
+    # session wrote it on 2026-11-13, so the case asserts now.
+    #
+    # Why it has to be asserted somewhere: the loop already handles the easy half - a tick whose
+    # queue holds NOTHING but deferred work never starts a session at all, because astrid-web
+    # removes deferred tasks before the verdict and the preflight exits 3. What is left is the
+    # MIXED queue, one deferred LONG-RUN task above several workable ones, where the run sees the
+    # flagged task at the head of its own queue and takes it under a 75-minute watchdog. Only the
+    # run can prevent that, and only if this file tells it to.
     if (-not (Test-Path $CommandPath)) {
+        # A checkout without `.claude/` is a worktree or an export, not a broken repository.
         Write-Host '    (.claude/commands/fixall.md is not in this checkout)' -ForegroundColor Yellow
         Assert-Equal 'nothing to assert' '' ''
         return
     }
     $doc = Get-Content -Path $CommandPath -Raw
-    $told = ($doc -match 'ASTRID_FIXALL_NEXT_TASK') -and ($doc -match 'ASTRID_FIXALL_DEFER_TASKS')
-    if (-not $told) {
-        Write-Host '    TODO .claude/commands/fixall.md does not yet mention ASTRID_FIXALL_NEXT_TASK /' -ForegroundColor Yellow
-        Write-Host '         ASTRID_FIXALL_DEFER_TASKS, so a run can still take a deferred task.' -ForegroundColor Yellow
-        Write-Host '         docs/AUTOMATION.md -> "A task that will not fit one tick" has the text.' -ForegroundColor Yellow
-    }
-    Assert-Equal 'the file at least still parses as a /fixall command doc' $true ($doc -match '(?m)^## ')
+    Assert-Match 'the run is told to take ASTRID_FIXALL_NEXT_TASK first' 'ASTRID_FIXALL_NEXT_TASK' $doc
+    Assert-Match 'the run is told not to take ASTRID_FIXALL_DEFER_TASKS' 'ASTRID_FIXALL_DEFER_TASKS' $doc
+    # The two things a run gets wrong if it is told the names but not the rule: it takes the
+    # deferred task anyway, or it leaves a comment every half hour saying it did not.
+    Assert-Match 'and that a deferred task is left in Ready' 'Ready' $doc
+    Assert-Match 'and left WITHOUT a comment' 'without comment' $doc
+    Assert-Equal 'the file still parses as a /fixall command doc' $true ($doc -match '(?m)^## ')
 }
 
 Write-Host ''
