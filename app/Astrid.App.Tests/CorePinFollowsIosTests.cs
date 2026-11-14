@@ -38,6 +38,7 @@ public sealed class CorePinFollowsIosTests
 {
     /// <summary>Keys the pinned core no longer sends. A word for one is a word nobody can reach.</summary>
     /// <remarks>
+    /// <para>
     /// <c>repeat.daily</c> and its four siblings were here until task b63d8679, on the belief that
     /// D49 retired them with the rest. D49 renamed the repeat <em>picker</em>'s keys; the repeat
     /// <em>filter</em> group still asks for <c>repeat.daily</c>, which is why this shell drew that
@@ -45,6 +46,16 @@ public sealed class CorePinFollowsIosTests
     /// That cannot happen quietly again: a key listed here that the core still emits is required to
     /// have a word by <c>copy_catalog_contract.rs</c> and required not to by this test, so the two
     /// gates disagree out loud rather than agreeing on a wrong answer.
+    /// </para>
+    /// <para>
+    /// <strong>The five join this list with the next pin bump past core <c>ba154ed</c>.</strong>
+    /// D60 was resolved toward D49 (task <c>b0b5f3cc</c>): from that revision the repeat filter asks
+    /// for <c>repeating.daily</c> too, so <c>repeat.daily</c> … <c>repeat.custom</c> stop being
+    /// emitted and their words — in <c>Strings.cs</c> and in both <c>.resw</c> — become unreachable.
+    /// They are deliberately NOT here yet: the pinned core still sends them, so listing them now
+    /// would fail this test against a core that is right, and deleting the words now would redraw
+    /// the key on screen. Pin and words move together or not at all.
+    /// </para>
     /// </remarks>
     private static readonly string[] RetiredKeys =
     [
