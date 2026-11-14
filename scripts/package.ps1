@@ -60,6 +60,10 @@ Set-Location $repoRoot
 # terminating error even on a zero exit, so a tool that merely warns would fail the build.
 . (Join-Path $PSScriptRoot 'lib\invoke-build-tool.ps1')
 
+# MSBuild's `-p:` escaping, so a brand value with a comma in it survives the command line
+# (task 13c6af65).
+. (Join-Path $PSScriptRoot 'lib\msbuild-property.ps1')
+
 # Which brand this package is. Everything a partner can change comes from here, and with no -Brand
 # every value is today's Astrid one.
 . (Join-Path $PSScriptRoot 'lib\brand-profile.ps1')
@@ -119,7 +123,11 @@ foreach ($architecture in $Architectures) {
 
     # Self-contained, so the package carries its own runtime: a person installing from the Store
     # should not then be told to install .NET.
-    # The brand values the RUNNING app needs, as build properties: the manifest is read by Windows,
+    # The brand values the RUNNING app needs, as build properties, every one of them through
+    # Format-MsBuildProperty: MSBuild splits `-p:` on commas and semicolons, so a brand value
+    # carrying either ends the value early and the rest is read as another switch. Not hypothetical
+    # - `AuthProviders` is `passkey,google` and it broke every build for a day (task 13c6af65).
+    # The manifest is read by Windows,
     # not by the app, so a package with a partner's manifest over a default build would show the
     # partner's name in Start and then sign in to astrid.cc. ASTRID_SERVER_URL still overrides the
     # baked-in server at runtime - see ServerSelection - which is what makes a partner build
@@ -127,13 +135,13 @@ foreach ($architecture in $Architectures) {
     Invoke-BuildTool "publish failed for $rid" {
         dotnet publish (Join-Path $repoRoot 'app/Astrid.App/Astrid.App.csproj') `
             -c $Configuration -r $rid --self-contained true -p:AstridPackaged=true `
-            "-p:AstridDefaultServerUrl=$($brandProfile.ServerUrl)" `
-            "-p:AstridUrlScheme=$($brandProfile.Scheme)" `
-            "-p:AstridBrandShortName=$($brandProfile.ShortName)" `
-            "-p:AstridBrandInboundTaskEmail=$($brandProfile.InboundTaskEmail)" `
-            "-p:AstridBrandAgentName=$($brandProfile.AgentName)" `
-            "-p:AstridBrandWordmark=$($brandProfile.Wordmark)" `
-            "-p:AstridBrandAuthProviders=$($brandProfile.AuthProviders)" `
+            (Format-MsBuildProperty 'AstridDefaultServerUrl' $brandProfile.ServerUrl) `
+            (Format-MsBuildProperty 'AstridUrlScheme' $brandProfile.Scheme) `
+            (Format-MsBuildProperty 'AstridBrandShortName' $brandProfile.ShortName) `
+            (Format-MsBuildProperty 'AstridBrandInboundTaskEmail' $brandProfile.InboundTaskEmail) `
+            (Format-MsBuildProperty 'AstridBrandAgentName' $brandProfile.AgentName) `
+            (Format-MsBuildProperty 'AstridBrandWordmark' $brandProfile.Wordmark) `
+            (Format-MsBuildProperty 'AstridBrandAuthProviders' $brandProfile.AuthProviders) `
             -o $publish
     }
 
