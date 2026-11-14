@@ -101,6 +101,13 @@ public sealed class PlainSquareMarkTests
 
         Assert.Contains("PriorityPalette.Key", source);
         Assert.DoesNotContain("Transparent", source);
+
+        // ...and the property's default is not a priority. A dependency property calls its changed
+        // handler only when the value CHANGES, so a default of 0 leaves every unprioritised row
+        // unpainted — the binding sets the number the element already holds. That half of this bug
+        // survived the XAML fix and a green gate, and only the rendered pixel found it.
+        Assert.Contains("new PropertyMetadata(Unset, OnChanged)", source);
+        Assert.DoesNotContain("new PropertyMetadata(0, OnChanged)", source);
     }
 
     private static double Number(string? value)

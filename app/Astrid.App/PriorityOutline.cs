@@ -46,9 +46,23 @@ public static class PriorityOutline
     public static void SetPriority(DependencyObject element, int value) =>
         element.SetValue(PriorityProperty, value);
 
+    /// <summary>
+    /// The value an element carries before anything binds one — deliberately not a priority.
+    /// </summary>
+    /// <remarks>
+    /// A dependency property only calls its changed handler when the value *changes*, so a default
+    /// of 0 means a row whose priority is 0 is never painted at all: the binding sets the number it
+    /// already holds. That is most of this bug and none of it was visible in the XAML — the square
+    /// was correct and simply never asked for a brush, which left <c>BorderBrush</c> null and the
+    /// glyph on whatever it inherited. Caught by <c>PriorityMarkColourTests</c>, on screen, after
+    /// the gate was green. <c>PriorityPalette.Key</c> clamps anything out of range to
+    /// <c>priority-none</c>, so the sentinel paints the same grey a real 0 does.
+    /// </remarks>
+    private const int Unset = -1;
+
     public static readonly DependencyProperty PriorityProperty =
         DependencyProperty.RegisterAttached(
-            "Priority", typeof(int), typeof(PriorityOutline), new PropertyMetadata(0, OnChanged));
+            "Priority", typeof(int), typeof(PriorityOutline), new PropertyMetadata(Unset, OnChanged));
 
     /// <summary>Whether this element's theme changes are already being listened to.</summary>
     private static readonly DependencyProperty ListeningProperty =
