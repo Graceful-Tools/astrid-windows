@@ -69,18 +69,27 @@ public static class TradeoffGridLabels
     /// The resource key for a rating's word, or null for a rating this client does not know.
     /// </summary>
     /// <remarks>
-    /// Web spells these <c>tasks.tradeoffRatings.&lt;rating&gt;</c>; the <c>.resw</c> convention
-    /// here is flat and underscored, so <c>veryGood</c> becomes <c>tradeoff_very_good</c>. The
-    /// mapping is stated rather than computed, so a rating added to the core shows up as a missing
-    /// case rather than as a key that quietly does not resolve.
+    /// <para>
+    /// These are the core's own keys — <c>astrid_rules::decisions</c>'s <c>RATING_KEY_PREFIX</c>
+    /// and <c>RATING_LABEL_KEYS</c>, which <c>astrid_core::copy_keys()</c> names — so they are
+    /// spelt the way the registry spells them and <c>Strings.Get</c> does the flatten to
+    /// <c>tasks_tradeoffRatings_veryGood</c>, as it does for every other core key. This shell used
+    /// to invent its own name here (<c>tradeoff_very_good</c>), which held the right word under a
+    /// spelling no other client could have guessed; task b63d8679 aligned it, and
+    /// <c>copy_catalog_contract.rs</c> now fails if it drifts back.
+    /// </para>
+    /// <para>
+    /// The mapping is stated rather than computed, so a rating added to the core shows up as a
+    /// missing case rather than as a key that quietly does not resolve.
+    /// </para>
     /// </remarks>
     public static string? RatingLabelKey(string? rating) => rating switch
     {
-        "veryPoor" => "tradeoff_very_poor",
-        "poor" => "tradeoff_poor",
-        "mixed" => "tradeoff_mixed",
-        "good" => "tradeoff_good",
-        "veryGood" => "tradeoff_very_good",
+        "veryPoor" => "tasks.tradeoffRatings.veryPoor",
+        "poor" => "tasks.tradeoffRatings.poor",
+        "mixed" => "tasks.tradeoffRatings.mixed",
+        "good" => "tasks.tradeoffRatings.good",
+        "veryGood" => "tasks.tradeoffRatings.veryGood",
         _ => null,
     };
 

@@ -519,6 +519,21 @@
   <data name="filter_repeat_never" xml:space="preserve">
     <value>Wiederholt sich nicht</value>
   </data>
+  <data name="repeat_daily" xml:space="preserve">
+    <value>Täglich</value>
+  </data>
+  <data name="repeat_weekly" xml:space="preserve">
+    <value>Wöchentlich</value>
+  </data>
+  <data name="repeat_monthly" xml:space="preserve">
+    <value>Monatlich</value>
+  </data>
+  <data name="repeat_yearly" xml:space="preserve">
+    <value>Jährlich</value>
+  </data>
+  <data name="repeat_custom" xml:space="preserve">
+    <value>Benutzerdefiniert</value>
+  </data>
   <data name="filter_assigned_by" xml:space="preserve">
     <value>Zugewiesen von</value>
   </data>
@@ -2289,19 +2304,19 @@
   <data name="comments_heading_none" xml:space="preserve">
     <value>Kommentare (0)</value>
   </data>
-  <data name="tradeoff_very_poor" xml:space="preserve">
+  <data name="tasks_tradeoffRatings_veryPoor" xml:space="preserve">
     <value>Sehr schlecht</value>
   </data>
-  <data name="tradeoff_poor" xml:space="preserve">
+  <data name="tasks_tradeoffRatings_poor" xml:space="preserve">
     <value>Schlecht</value>
   </data>
-  <data name="tradeoff_mixed" xml:space="preserve">
+  <data name="tasks_tradeoffRatings_mixed" xml:space="preserve">
     <value>Gemischt</value>
   </data>
-  <data name="tradeoff_good" xml:space="preserve">
+  <data name="tasks_tradeoffRatings_good" xml:space="preserve">
     <value>Gut</value>
   </data>
-  <data name="tradeoff_very_good" xml:space="preserve">
+  <data name="tasks_tradeoffRatings_veryGood" xml:space="preserve">
     <value>Sehr gut</value>
   </data>
 </root>
