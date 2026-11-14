@@ -113,7 +113,7 @@ coverage for nothing.
 ## A colour can be checked here, and nowhere else
 
 `PriorityMarkColourTests` reads the row mark's colour out of the rendered window, at each of the
-four priorities, in light and in dark (task 82e4ad32). It is the only test in the repo that looks at
+four priorities, in light and in dark (task 82e4ad32). It was the first test in the repo to look at
 a pixel, and it exists because the question it answers cannot be asked anywhere else: the mark's
 colour is resolved at run time by `ThemeBrushes.For` against the theme the *element* is wearing, and
 the appearance is applied to ShellPage's root long after the marks are built.
@@ -140,6 +140,16 @@ Two things make it work, and both are worth knowing before writing another one:
 Every failure writes the window out as `priority-marks-<theme>.png` beside the test binary and names
 the path in the message. For a colour that is the whole diagnosis: "wrong where" is the only
 question, and only the picture answers it.
+
+`PaletteSelectionTests` is the second, and it asks a different kind of question: not *what colour
+came out* but *what shape the highlight is* (task b37d76c3). The command palette selected through
+WinUI's own `ListViewItemPresenter` — the row filled, where the sidebar and the settings cards
+outline — and a one-attribute template swap is precisely the change the rest of the gate cannot see.
+It asserts both halves of an outline, because they differ in two places: the border is drawn, and
+the inside of the row is left as the card it sits on. Run against the old XAML it reported
+`#F6F6F6 x66194` filling the light row and `#2C3643 x66191` the dark one, which is the bug stated as
+a number. Its pictures are `palette-selected-<theme>.png`, written on every run rather than only on
+failure, because the point of a by-eye check is that somebody can look.
 
 **This suite does not need the app packaged.** It launches `Astrid.App.exe` straight out of
 `app/Astrid.App/bin/…/win-arm64/` with `ASTRID_DATA_DIR` pointed at a temp folder — no MSIX, no
