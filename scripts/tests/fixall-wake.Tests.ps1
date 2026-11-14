@@ -526,14 +526,25 @@ Invoke-Case 'the scheduler deadline is derived from the watchdog, not hardcoded 
         Where-Object { $_.Extent.Text -match 'New-ScheduledTaskSettingsSet' } | Select-Object -First 1
     Assert-True 'the settings set is still built' ($null -ne $limit)
     if (-not $limit) { return }
-    Assert-Match 'and its deadline is computed from the watchdog' 'ExecutionTimeLimit[\s\S]{0,80}Watchdog' $limit.Extent.Text
+    # The deadline is still derived from the watchdog; it is derived in scripts/lib/fixall-schedule.ps1
+    # now rather than inline, because the LOOP has to be able to compute the same number to notice
+    # that the registered entry no longer matches it (task 18ba8c2e). So this looks for the one
+    # expression that feeds the limit, and then for the watchdog going into it.
+    Assert-Match 'the limit comes from the shared computation' 'ExecutionTimeLimit \(New-TimeSpan -Minutes \$DeadlineMinutes\)' $limit.Extent.Text
+    $deadline = @($InstallAst.FindAll({ param($n) $n -is [System.Management.Automation.Language.CommandAst] }, $true)) |
+        Where-Object { $_.Extent.Text -match 'Get-FixallScheduleDeadlineMinutes' } | Select-Object -First 1
+    Assert-True 'and that computation is made' ($null -ne $deadline)
+    if ($deadline) { Assert-Match 'from the watchdog' 'WatchdogMinutes \$WatchdogMinutes' $deadline.Extent.Text }
 
     # ONE validated watchdog, FORWARDED. Two independently-defaulted numbers is how these drifted
     # apart in the first place.
     $action = @($InstallAst.FindAll({ param($n) $n -is [System.Management.Automation.Language.CommandAst] }, $true)) |
         Where-Object { $_.Extent.Text -match 'New-ScheduledTaskAction' } | Select-Object -First 1
     Assert-True 'the action is still built' ($null -ne $action)
-    if ($action) { Assert-Match 'and passes the watchdog to the loop explicitly' '-MaxMinutes' $action.Extent.Text }
+    # Likewise: the argument string is built by Get-FixallScheduleArgument, which is where the
+    # `-MaxMinutes` now lives - and which is the same function the loop's drift check parses the
+    # registered argument against.
+    if ($action) { Assert-Match 'and passes the watchdog to the loop explicitly' 'Get-FixallScheduleArgument[\s\S]{0,80}WatchdogMinutes \$WatchdogMinutes' $action.Extent.Text }
 
     $param = @($InstallAst.FindAll({ param($n) $n -is [System.Management.Automation.Language.ParameterAst] }, $true)) |
         Where-Object { $_.Name.VariablePath.UserPath -eq 'WatchdogMinutes' } | Select-Object -First 1

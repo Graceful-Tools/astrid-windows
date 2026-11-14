@@ -332,9 +332,15 @@ Invoke-Case 'the scheduler deadline allows for a long run' {
     # ExecutionTimeLimit turns an 8-hour tick into a hard kill with no RESULT line, no saved work
     # and a task left in Doing.
     $installText = Get-Content -Path $InstallPath -Raw
+    # The max() moved into scripts/lib/fixall-schedule.ps1 under task 18ba8c2e, because the LOOP has
+    # to compute the same number to notice that the registered entry no longer matches it. The
+    # behaviour asserted here is unchanged: the ceiling is still part of the deadline.
     Assert-Match 'the limit is no longer watchdog + recovery alone' `
-        'ExecutionTimeLimit \(New-TimeSpan -Minutes \(\[Math\]::Max\(' $installText
+        'Get-FixallScheduleDeadlineMinutes[\s\S]{0,160}LongRunMinutes \$LongRunMinutes' $installText
     Assert-Match 'a long-run ceiling is part of the computation' 'LongRunMinutes' $installText
+    Assert-Match 'and the ceiling is a maximum, not an addition' `
+        '\[Math\]::Max\(\$WatchdogMinutes, \$LongRunMinutes\) \+ \$RecoveryMinutes' `
+        (Get-Content -Path (Join-Path $RepoRoot 'scripts\lib\fixall-schedule.ps1') -Raw)
     $itokens = $null
     $ierrors = $null
     $null = [System.Management.Automation.Language.Parser]::ParseFile($InstallPath, [ref]$itokens, [ref]$ierrors)

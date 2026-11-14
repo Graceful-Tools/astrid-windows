@@ -143,6 +143,10 @@ if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Forc
 # Whether there is room to build at all. Task 4d9d42e6: the 2026-11-13 05:10 tick spent itself
 # reaching an `os error 112` with 31 MB free. The library's header has the incident and the marks.
 . (Join-Path $PSScriptRoot 'lib\fixall-disk.ps1')
+# Whether the scheduled entry this tick is running under is still the one this checkout installs.
+# Task 18ba8c2e: a scheduled task is registered, not read from the repo, so scope item 3's corrected
+# deadline sat in the repo for seventeen days with no effect and nothing said so.
+. (Join-Path $PSScriptRoot 'lib\fixall-schedule.ps1')
 
 # WHERE THE STATE A LATER TICK READS LIVES. Under %LOCALAPPDATA%, beside the log, and NOT in %TEMP%:
 # the wake journal, the task record and the claims record are each read by a LATER tick - that is
@@ -461,6 +465,25 @@ try {
     }
     if ($diskVerdict.Reason) {
         Say "  WARNING: $($diskVerdict.Reason)"
+    }
+
+    # ── Is this tick running under the entry this checkout installs? ──────────────────────────
+    # A SCHEDULED TASK IS REGISTERED, NOT READ FROM THE REPO. Scope item 3 of task 18ba8c2e fixed a
+    # deadline that killed every long tick twenty minutes before its own watchdog, and the fix then
+    # sat in this repo for seventeen days doing nothing at all, because re-running the installer is
+    # a separate act nobody was reminded to perform. On 2026-11-14 the entry still read PT55M with
+    # no -MaxMinutes while the installer computed 490. One line a tick is the reminder.
+    #
+    # A WARNING AND NEVER A STOP: the tick runs perfectly well, it is just bounded wrongly, and a
+    # guard that stopped here would turn a cosmetic gap into a machine that went quiet. And it is
+    # here, with the other preamble warnings, rather than beside the run - an idle tick that prints
+    # nothing else should still print this, since the ticks a bad deadline ruins are the long ones
+    # that have not happened yet.
+    $scheduleDrift = Get-ScheduleDriftVerdict `
+        -Registration (Read-FixallScheduleRegistration) `
+        -LoopScript (Join-Path $PSScriptRoot 'fixall-loop.ps1')
+    if ($scheduleDrift.Reason) {
+        Say "  WARNING: $($scheduleDrift.Reason)"
     }
 
     # ── The sweep: clear up after a run this script never watched exit ────────────────────────

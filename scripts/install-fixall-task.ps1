@@ -101,6 +101,10 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
+# The deadline arithmetic and the argument string are NOT written here. They are the two things the
+# loop has to be able to check this registration against, and two independently written copies is
+# precisely how 55 and 75 drifted apart. See scripts/lib/fixall-schedule.ps1.
+. (Join-Path $PSScriptRoot 'lib\fixall-schedule.ps1')
 $LoopScript = Join-Path $RepoRoot 'scripts\fixall-loop.ps1'
 $LogFile = Join-Path $env:LOCALAPPDATA 'Astrid\logs\fixall-windows.log'
 
@@ -119,6 +123,14 @@ if ($Status) {
     Write-Host "Runs:        $(($existing.Actions | ForEach-Object { $_.Execute + ' ' + $_.Arguments }) -join '; ')"
     Write-Host "Last run:    $($info.LastRunTime)  (result $($info.LastTaskResult))"
     Write-Host "Next run:    $($info.NextRunTime)"
+    # The question -Status is actually asked: is the thing on this machine the thing in this
+    # checkout? It was not, for seventeen days, and nothing said so (task 18ba8c2e).
+    $drift = Get-ScheduleDriftVerdict -Registration (Read-FixallScheduleRegistration -TaskName $TaskName) `
+        -LoopScript $LoopScript -WatchdogMinutes $WatchdogMinutes `
+        -DeadlineMinutes (Get-FixallScheduleDeadlineMinutes -WatchdogMinutes $WatchdogMinutes `
+            -RecoveryMinutes $RecoveryMinutes -LongRunMinutes $LongRunMinutes)
+    if ($drift.Reason) { Write-Host "STALE:       $($drift.Reason)" -ForegroundColor Yellow }
+    else { Write-Host 'Matches:     yes - the registration is what this checkout would install' }
     Write-Host "Log:         $LogFile"
     if (Test-Path $LogFile) {
         Write-Host '--- last 15 log lines ---'
@@ -144,9 +156,13 @@ if ($RunNow) {
 # ── Install ───────────────────────────────────────────────────────────────────────────────────
 # The watchdog is FORWARDED, never left to the loop's own default: the deadline below is computed
 # from this number, and a deadline derived from one number while the loop obeys another is the
-# drift task 18ba8c2e fixed.
+# drift task 18ba8c2e fixed. Both strings come from the shared library, which is also what each
+# tick compares the registered entry against.
+$DeadlineMinutes = Get-FixallScheduleDeadlineMinutes -WatchdogMinutes $WatchdogMinutes `
+    -RecoveryMinutes $RecoveryMinutes -LongRunMinutes $LongRunMinutes
+
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' `
-    -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$LoopScript`" -MaxMinutes $WatchdogMinutes" `
+    -Argument (Get-FixallScheduleArgument -LoopScript $LoopScript -WatchdogMinutes $WatchdogMinutes) `
     -WorkingDirectory $RepoRoot
 
 # One trigger, repeating every 30 minutes forever, rather than two daily triggers: the same two
@@ -159,7 +175,7 @@ $settings = New-ScheduledTaskSettingsSet `
     -DontStopIfGoingOnBatteries `
     -StartWhenAvailable `
     -MultipleInstances IgnoreNew `
-    -ExecutionTimeLimit (New-TimeSpan -Minutes ([Math]::Max($WatchdogMinutes, $LongRunMinutes) + $RecoveryMinutes)) `
+    -ExecutionTimeLimit (New-TimeSpan -Minutes $DeadlineMinutes) `
     -RestartCount 0
 
 $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" `
@@ -174,7 +190,7 @@ $info = Get-ScheduledTaskInfo -TaskName $TaskName
 Write-Host "Registered '$TaskName' for $env:USERNAME."
 Write-Host "  runs:     powershell -NoProfile -ExecutionPolicy Bypass -File $LoopScript -MaxMinutes $WatchdogMinutes"
 Write-Host "  schedule: :10 and :40, every hour"
-Write-Host "  watchdog: ${WatchdogMinutes}m, with the scheduler stopping it at $([Math]::Max($WatchdogMinutes, $LongRunMinutes) + $RecoveryMinutes)m (${RecoveryMinutes}m to recover)"
+Write-Host "  watchdog: ${WatchdogMinutes}m, with the scheduler stopping it at ${DeadlineMinutes}m (${RecoveryMinutes}m to recover)"
 Write-Host "  long run: up to ${LongRunMinutes}m for a task flagged LONG-RUN, inside its window - the loop sizes each tick"
 Write-Host "  next run: $($info.NextRunTime)"
 Write-Host "  log:      $LogFile"

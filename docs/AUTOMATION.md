@@ -393,6 +393,24 @@ it had taken. Two independently-defaulted numbers is how they drifted apart, so 
 the deadline is computed from, plus `-RecoveryMinutes` of headroom for the loop to clean up after
 its own watchdog fires. Both are `ValidateRange`d, because neither failure is visible from outside.
 
+#### The registration drifts from the repo, and each tick says so
+
+Fixing that arithmetic changed nothing on this machine for seventeen days, because **a scheduled
+task is registered, not read from the repo**: the installer has to be re-run before an edit to it
+reaches anything. On 2026-11-14 the entry still read `PT55M` with no `-MaxMinutes` at all, while the
+installer in the same checkout would by then compute `max(75, 480) + 10 = 490` — `0216d83c` having
+meanwhile landed LONG-RUN support, which gave the gap teeth it did not have when it was written: a
+tick legitimately granted eight hours, stopped at fifty-five minutes.
+
+So `scripts/lib/fixall-schedule.ps1` is now the one place the deadline and the loop's argument
+string are computed — the installer builds both from it rather than inline — and it can read the
+registered entry back. Each tick compares the two and prints one line when they disagree, naming
+the deadline, the `-MaxMinutes` the loop is actually handed, the checkout the entry starts, and the
+command that fixes all three. `install-fixall-task.ps1 -Status` answers the same question on
+demand. It is a **warning and never a stop**: the tick runs fine, it is only bounded wrongly, and a
+guard that stopped on it would turn a cosmetic gap into a machine that went quiet. An unreadable or
+absent registration — a loop started by hand with `-Force` — says nothing at all.
+
 The GitHub paths use GitHub-hosted `windows-latest`, the same as `ci.yml`. The iOS loops use
 self-hosted runners because Xcode has to be there.
 
