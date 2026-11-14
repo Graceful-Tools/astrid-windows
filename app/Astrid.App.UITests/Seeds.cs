@@ -78,6 +78,77 @@ internal static class Seeds
         transaction.Commit();
     }
 
+    internal const string PriorityListName = "Priorities";
+
+    /// <summary>The four titles, indexed by the priority each one carries.</summary>
+    internal static readonly string[] PriorityTitles =
+    [
+        "Unmarked errand",
+        "Low errand",
+        "Medium errand",
+        "High errand",
+    ];
+
+    private const string OwnerId = "u-smoke";
+
+    /// <summary>
+    /// A list with one task at each of the four priorities, in a chosen appearance (task 82e4ad32).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The tasks belong to the signed-in user, which is what makes each row's mark the checkbox —
+    /// <c>LeadingControl::for_task</c> gives an unassigned task the square instead, and the square
+    /// deliberately draws nothing at all at priority 0, so three quarters of the thing under test
+    /// would be invisible.
+    /// </para>
+    /// <para>
+    /// Who is signed in is <c>account.current-user</c> in the cache's metadata, which is where
+    /// <c>AccountService</c> reads it from; the credential file the launcher writes only carries a
+    /// cookie, so without this row the app is signed in as nobody. The appearance is
+    /// <c>theme.mode</c> in the same table — a per-machine setting the core keeps, not a shell one.
+    /// </para>
+    /// <para>
+    /// Named rather than numbered, because the test finds each row by the title a screen reader
+    /// would read and then looks to its left for the mark. The order they draw in does not matter
+    /// for that, so nothing here arranges them.
+    /// </para>
+    /// </remarks>
+    internal static Action<string> ListWithEveryPriority(string theme) => cachePath =>
+    {
+        using var connection = new SqliteConnection($"Data Source={cachePath}");
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        Execute(connection,
+            "INSERT OR REPLACE INTO metadata (key, value) VALUES ('account.current-user', $json)",
+            ("$json", $$"""{"id":"{{OwnerId}}","name":"Smoke Tester","email":"smoke@example.com"}"""));
+        Execute(connection,
+            "INSERT OR REPLACE INTO metadata (key, value) VALUES ('theme.mode', $theme)",
+            ("$theme", theme));
+
+        Execute(connection,
+            "INSERT OR REPLACE INTO lists (id, name, json) VALUES ('l3', $name, $json)",
+            ("$name", PriorityListName),
+            ("$json", $$"""{"id":"l3","name":"{{PriorityListName}}"}"""));
+        for (var priority = 0; priority < PriorityTitles.Length; priority++)
+        {
+            var id = $"p{priority}";
+            var title = PriorityTitles[priority];
+            Execute(connection,
+                "INSERT OR REPLACE INTO tasks (id, title, json) VALUES ($id, $title, $json)",
+                ("$id", id),
+                ("$title", title),
+                ("$json", $$"""
+                    {"id":"{{id}}","title":"{{title}}","priority":{{priority}},"assigneeId":"{{OwnerId}}","assignee":{"id":"{{OwnerId}}","name":"Smoke Tester"},"lists":[{"id":"l3","name":"{{PriorityListName}}"}]}
+                    """));
+            Execute(connection,
+                "INSERT OR REPLACE INTO task_lists_membership (task_id, list_id) VALUES ($id, 'l3')",
+                ("$id", id));
+        }
+
+        transaction.Commit();
+    };
+
     private static void Execute(SqliteConnection connection, string sql, params (string Name, string Value)[] parameters)
     {
         using var command = connection.CreateCommand();
