@@ -284,9 +284,18 @@ internal static class Strings
         ["filter.assignee.nobody"] = "Nobody",
         ["filter.repeat"] = "Repeat",
         ["filter.repeat.never"] = "Does not repeat",
-        // The repeat FILTER's rows. The repeat picker's are `repeating.*` — two spellings for one
-        // word, which astrid-core's `strings/README.md` keeps deliberately because both are keys it
-        // emits. Missing until task b63d8679, so this filter group drew its own keys (CONTRACTS D60).
+        // The repeat FILTER's rows, under the spelling the PINNED core still emits.
+        //
+        // These were missing until task b63d8679, so this filter group drew its own keys on screen
+        // (CONTRACTS D60). astrid-core then collapsed the two spellings onto the repeat picker's
+        // `repeating.*` (task b0b5f3cc, core `ba154ed`): the filter asks for `repeating.daily` from
+        // that revision on, and the five below become words for keys nothing sends.
+        //
+        // **They are deleted by the pin bump, not before.** Until the pin passes `ba154ed` the core
+        // still asks for `repeat.daily`, and removing these would put the key back on screen — the
+        // regression D60 was held open to avoid, which is why the two halves cannot be split. The
+        // bump moves them into `CorePinFollowsIosTests.RetiredKeys` along with their `.resw`
+        // entries in both languages, and that test then holds them gone.
         ["repeat.daily"] = "Daily",
         ["repeat.weekly"] = "Weekly",
         ["repeat.monthly"] = "Monthly",
