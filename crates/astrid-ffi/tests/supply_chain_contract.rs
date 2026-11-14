@@ -193,6 +193,173 @@ fn no_workspace_crate_takes_a_wildcard_dependency_task_e750d9c1() {
     );
 }
 
+/// Every `[workspace.dependencies]` entry is taken by a member — task `d24777f5`.
+///
+/// A workspace dependency is a template, not a dependency: cargo instantiates it only where a
+/// member writes `{ workspace = true }`, and an entry nobody writes costs nothing to compile. It
+/// is not free, though. Dependabot reads the manifest, not the graph, so it opens a PR to bump a
+/// crate this app never builds (that is PR #12), and the next person to read the file believes the
+/// entry describes a choice this repository made. Twelve of them did: the comments beside them
+/// described the HTTP stack, the SQLite build and the Markdown dialect — all real decisions, all
+/// of them astrid-core's since the extraction, none of them this workspace's any more.
+///
+/// `cargo metadata` cannot answer this on its own, because an uninstantiated workspace dependency
+/// never reaches the graph at all — which is exactly why nothing noticed. So the manifest is read
+/// for the declarations and the graph for the uses, and the gap between them is the finding.
+#[test]
+fn no_workspace_dependency_goes_uninstantiated_task_d24777f5() {
+    let manifest_path = repo_root().join("Cargo.toml");
+    let manifest = std::fs::read_to_string(&manifest_path).unwrap_or_else(|e| {
+        panic!("the workspace manifest is the subject; {manifest_path:?}: {e}")
+    });
+
+    let declared = workspace_dependency_names(&manifest);
+    assert!(
+        !declared.is_empty(),
+        "no `[workspace.dependencies]` parsed out of {manifest_path:?}, which would make this \
+         test vacuous"
+    );
+
+    // Every dependency named by a member, of any kind — a dev-dependency instantiates a workspace
+    // entry just as a normal one does, and `tokio` is taken both ways here.
+    let members = workspace_member_ids();
+    let mut used: BTreeSet<String> = BTreeSet::new();
+    for pkg in packages() {
+        if !members.contains(pkg["id"].as_str().unwrap_or_default()) {
+            continue;
+        }
+        for dep in pkg["dependencies"].as_array().into_iter().flatten() {
+            if let Some(name) = dep["name"].as_str() {
+                used.insert(name.to_string());
+            }
+        }
+    }
+
+    let unused: Vec<&String> = declared
+        .iter()
+        .filter(|name| !used.contains(*name))
+        .collect();
+    assert!(
+        unused.is_empty(),
+        "these `[workspace.dependencies]` entries are instantiated by no member, so they are \
+         documentation that Dependabot mistakes for a dependency. Delete the entry, and its \
+         comment with it — if the comment is still worth saying, it belongs wherever the choice \
+         now lives:\n  {}",
+        unused
+            .iter()
+            .map(|n| n.as_str())
+            .collect::<Vec<_>>()
+            .join("\n  ")
+    );
+}
+
+/// The dependency names declared in `[workspace.dependencies]`.
+///
+/// Hand-rolled for the same reason `string_list` above is: this file guards the dependency graph,
+/// and a `toml` dependency added to read it would be the one addition most in need of guarding.
+/// The shape read is the shape the manifest is written in — a `[workspace.dependencies]` header,
+/// then one `name = ...` per line until the next table.
+fn workspace_dependency_names(manifest: &str) -> BTreeSet<String> {
+    let table_at = match manifest.find("[workspace.dependencies]") {
+        Some(at) => at,
+        None => return BTreeSet::new(),
+    };
+    let rest = &manifest[table_at..];
+    let body = match rest[1..].find("\n[") {
+        Some(end) => &rest[..end + 1],
+        None => rest,
+    };
+    body.lines()
+        .skip(1)
+        .filter_map(|line| {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                return None;
+            }
+            // `name = ...`; a continuation line of a multi-line table value has no `=` before
+            // its first `{`, `[` or quote, and is skipped by the same test.
+            let (name, _) = line.split_once('=')?;
+            let name = name.trim();
+            (!name.is_empty()
+                && name
+                    .chars()
+                    .all(|c| c.is_alphanumeric() || c == '-' || c == '_'))
+            .then(|| name.to_string())
+        })
+        .collect()
+}
+
+/// The graph a real build of this app resolves FOR one target: default features, one platform.
+///
+/// Both narrowings matter, and for the same reason `default_metadata` below gives: the question is
+/// what this app compiles, not what it could ever compile.
+///
+/// `cargo tree`, rather than the `cargo metadata` every other test here uses, and the reason is
+/// worth writing down because the first version of this test got it wrong twice.
+///
+/// `metadata.packages` is the LOCKFILE. `--filter-platform` prunes it by platform but not by
+/// feature, so an optional dependency nobody enables is still listed — and walking out from the
+/// workspace members through `resolve.nodes` does not help either, because `cargo metadata`
+/// unifies features across dependency kinds in a way the real resolver does not. Both readings
+/// reported `windows-sys` 0.52, arriving through `ring` ← `rustls` ← an optional reqwest feature
+/// this workspace has a written reason to refuse: `ring` needs clang to assemble on
+/// aarch64-pc-windows-msvc, the architecture this is built ON, so a build that actually wanted it
+/// would not compile at all. No build of this app has ever contained that crate.
+///
+/// `cargo tree` runs the resolver that decides what rustc is invoked on, which is the only one
+/// whose answer is a fact about the binary. It is also, exactly, the command the task's acceptance
+/// names — so this test asks the question in the form the acceptance asked it, instead of
+/// reimplementing feature resolution and getting a different answer.
+fn duplicate_crates_for(triple: &str) -> String {
+    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
+    let out = Command::new(&cargo)
+        .args(["tree", "--duplicates", "--target", triple])
+        .arg("--manifest-path")
+        .arg(repo_root().join("Cargo.toml"))
+        .output()
+        .unwrap_or_else(|e| panic!("`{cargo} tree --duplicates --target {triple}` must run: {e}"));
+    assert!(
+        out.status.success(),
+        "`cargo tree --duplicates --target {triple}` failed:\n{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    String::from_utf8_lossy(&out.stdout).into_owned()
+}
+
+/// One `windows-sys` per shipped target — task `d24777f5`.
+///
+/// `windows-sys` is the Win32 ABI, and it is enormous: a second major version is a second copy of
+/// tens of thousands of generated bindings, compiled and linked into the same binary. This crate
+/// asked for 0.60 for DPAPI while tokio brought 0.61 for its IOCP reactor, so both were built,
+/// every time, on both architectures — two sets of declarations of the same operating system.
+///
+/// Asserted over both targets this app ships, so it is the gate that notices rather than someone
+/// remembering to run the command. Scoped to `windows-sys` and not to duplicates in general: a
+/// duplicate deep in someone else's tree is not this repository's to fix, and a test that failed
+/// for one would be turned off rather than acted on.
+#[test]
+fn each_shipped_target_carries_one_windows_sys_task_d24777f5() {
+    for triple in ["aarch64-pc-windows-msvc", "x86_64-pc-windows-msvc"] {
+        let duplicates = duplicate_crates_for(triple);
+        // `cargo tree -d` prints one block per duplicated crate, each headed by an unindented
+        // `name vX.Y.Z`. The reverse-dependency lines under it are indented, so a `windows-sys`
+        // that merely DEPENDS on something duplicated is not a match.
+        let offenders: Vec<&str> = duplicates
+            .lines()
+            .filter(|line| line.starts_with("windows-sys v"))
+            .collect();
+
+        assert!(
+            offenders.is_empty(),
+            "{triple} compiles {} versions of `windows-sys`:\n  {}\nThat is that many copies of \
+             the Win32 bindings in the binary. Move this crate's requirement to whichever version \
+             the rest of the graph already resolves.",
+            offenders.len(),
+            offenders.join("\n  ")
+        );
+    }
+}
+
 /// `(`, `)` and `/` are tokens in their own right; everything else splits on whitespace.
 fn tokenize(expr: &str) -> Vec<String> {
     let mut tokens = Vec::new();
