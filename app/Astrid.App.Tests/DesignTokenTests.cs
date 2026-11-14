@@ -722,18 +722,34 @@ public sealed class DesignTokenTests
                     continue;
                 }
 
-                // Not the chrome's outline, so it must say what it tints with, and the tint is the
-                // token's. A row that overrode these keys with anything else would pass the sweep
-                // above — it answered the question — while drawing a selection from nothing.
-                var kind = list.Name.LocalName;
-                var selected = (list.Element(Ui + $"{kind}.Resources")?.Elements() ?? [])
-                    .Where(entry => ((string?)entry.Attribute(Xaml + "Key"))
-                        ?.StartsWith("ListViewItemBackgroundSelected", StringComparison.Ordinal) == true)
-                    .Select(entry => (string?)entry.Attribute("ResourceKey"))
+                // Not the chrome's outline, so it must say what its Selected state draws, and
+                // both halves are the tokens': `bg-selected` is the fill and `bg-selected-border`
+                // is the line around it. A row that answered with anything else would pass the
+                // sweep above — it named a token — while drawing a selection from nothing.
+                //
+                // Read off the inline ControlTemplate's visual states rather than off
+                // `ListViewItem*` resource overrides, which is where this used to look. Those
+                // overrides went when the rows grew a template of their own (task 066ae38c):
+                // WinUI's ListViewItemPresenter offers a selected BACKGROUND and no selected
+                // BORDER, so there was no resource route to the line and `AstridBgSelectedBorder`
+                // sat declared in all three theme dictionaries, asserted against the vendored
+                // tokens by this very file, and drawn by nothing.
+                var selected = list
+                    .Descendants(Ui + "VisualState")
+                    .Where(state => (string?)state.Attribute(Xaml + "Name") == "Selected")
+                    .SelectMany(state => state.Descendants(Ui + "Setter"))
+                    .Select(setter => (
+                        Target: (string?)setter.Attribute("Target") ?? string.Empty,
+                        Value: (string?)setter.Attribute("Value") ?? string.Empty))
                     .ToArray();
 
                 Assert.NotEmpty(selected);
-                Assert.All(selected, key => Assert.Equal("AstridBgSelected", key));
+                var fill = selected.Where(setter => setter.Target.EndsWith(".Background", StringComparison.Ordinal)).ToArray();
+                var line = selected.Where(setter => setter.Target.EndsWith(".BorderBrush", StringComparison.Ordinal)).ToArray();
+                Assert.NotEmpty(fill);
+                Assert.All(fill, setter => Assert.Contains("AstridBgSelected}", setter.Value, StringComparison.Ordinal));
+                Assert.NotEmpty(line);
+                Assert.All(line, setter => Assert.Contains("AstridBgSelectedBorder}", setter.Value, StringComparison.Ordinal));
                 tinted.Add(Path.GetFileName(file));
             }
         }
