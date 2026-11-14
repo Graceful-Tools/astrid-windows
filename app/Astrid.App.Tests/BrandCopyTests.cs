@@ -124,9 +124,16 @@ public sealed class BrandCopyTests
         var packager = File.ReadAllText(
             Path.Combine(LocalisationTests.AppDirectory(), "..", "..", "scripts", "package.ps1"));
 
-        Assert.Contains("-p:AstridBrandInboundTaskEmail=", packager, StringComparison.Ordinal);
-        Assert.Contains("-p:AstridBrandAgentName=", packager, StringComparison.Ordinal);
-        Assert.Contains("-p:AstridBrandWordmark=", packager, StringComparison.Ordinal);
+        // Through `Format-MsBuildProperty`, not interpolated into a "-p:Name=$value" string
+        // (task 13c6af65): MSBuild splits `-p:` on commas and semicolons, so a brand value
+        // carrying either used to end the value early and the rest was read as another switch.
+        // `AuthProviders` is `passkey,google`, and for one day it broke every build there was.
+        Assert.Contains("Format-MsBuildProperty 'AstridBrandInboundTaskEmail'", packager,
+            StringComparison.Ordinal);
+        Assert.Contains("Format-MsBuildProperty 'AstridBrandAgentName'", packager,
+            StringComparison.Ordinal);
+        Assert.Contains("Format-MsBuildProperty 'AstridBrandWordmark'", packager,
+            StringComparison.Ordinal);
     }
 
     /// <summary>

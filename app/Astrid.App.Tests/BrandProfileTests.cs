@@ -346,9 +346,14 @@ public sealed class BrandProfileTests
     {
         var packager = File.ReadAllText(Path.Combine(RepoRoot(), "scripts", "package.ps1"));
 
-        Assert.Contains("-p:AstridDefaultServerUrl=", packager, StringComparison.Ordinal);
-        Assert.Contains("-p:AstridUrlScheme=", packager, StringComparison.Ordinal);
-        Assert.Contains("-p:AstridBrandShortName=", packager, StringComparison.Ordinal);
+        // Through `Format-MsBuildProperty` rather than interpolated (task 13c6af65) — see
+        // BrandCopyTests for why, and scripts/lib/msbuild-property.ps1 for the escaping itself.
+        Assert.Contains("Format-MsBuildProperty 'AstridDefaultServerUrl'", packager,
+            StringComparison.Ordinal);
+        Assert.Contains("Format-MsBuildProperty 'AstridUrlScheme'", packager,
+            StringComparison.Ordinal);
+        Assert.Contains("Format-MsBuildProperty 'AstridBrandShortName'", packager,
+            StringComparison.Ordinal);
         // $brandProfile, not $brand: the local cannot share the name of the [string]$Brand
         // parameter, or PowerShell's type constraint silently converts the profile to a string
         // and every read off it throws (task af2ca695).
