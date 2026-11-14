@@ -366,28 +366,28 @@
   <data name="repeat_none" xml:space="preserve">
     <value>Wiederholt sich nicht</value>
   </data>
-  <data name="repeat_every_day" xml:space="preserve">
+  <data name="repeat_every_n_days_one" xml:space="preserve">
     <value>Jeden Tag</value>
   </data>
-  <data name="repeat_every_n_days" xml:space="preserve">
+  <data name="repeat_every_n_days_other" xml:space="preserve">
     <value>Alle {0} Tage</value>
   </data>
-  <data name="repeat_every_week" xml:space="preserve">
+  <data name="repeat_every_n_weeks_one" xml:space="preserve">
     <value>Jede Woche</value>
   </data>
-  <data name="repeat_every_n_weeks" xml:space="preserve">
+  <data name="repeat_every_n_weeks_other" xml:space="preserve">
     <value>Alle {0} Wochen</value>
   </data>
-  <data name="repeat_every_month" xml:space="preserve">
+  <data name="repeat_every_n_months_one" xml:space="preserve">
     <value>Jeden Monat</value>
   </data>
-  <data name="repeat_every_n_months" xml:space="preserve">
+  <data name="repeat_every_n_months_other" xml:space="preserve">
     <value>Alle {0} Monate</value>
   </data>
-  <data name="repeat_every_year" xml:space="preserve">
+  <data name="repeat_every_n_years_one" xml:space="preserve">
     <value>Jedes Jahr</value>
   </data>
-  <data name="repeat_every_n_years" xml:space="preserve">
+  <data name="repeat_every_n_years_other" xml:space="preserve">
     <value>Alle {0} Jahre</value>
   </data>
   <data name="repeat_on_weekdays" xml:space="preserve">
@@ -518,21 +518,6 @@
   </data>
   <data name="filter_repeat_never" xml:space="preserve">
     <value>Wiederholt sich nicht</value>
-  </data>
-  <data name="repeat_daily" xml:space="preserve">
-    <value>Täglich</value>
-  </data>
-  <data name="repeat_weekly" xml:space="preserve">
-    <value>Wöchentlich</value>
-  </data>
-  <data name="repeat_monthly" xml:space="preserve">
-    <value>Monatlich</value>
-  </data>
-  <data name="repeat_yearly" xml:space="preserve">
-    <value>Jährlich</value>
-  </data>
-  <data name="repeat_custom" xml:space="preserve">
-    <value>Benutzerdefiniert</value>
   </data>
   <data name="filter_assigned_by" xml:space="preserve">
     <value>Zugewiesen von</value>
@@ -693,16 +678,7 @@
   <data name="timer_minutes" xml:space="preserve">
     <value>{0} min</value>
   </data>
-  <data name="ordinal_st" xml:space="preserve">
-    <value>{0}.</value>
-  </data>
-  <data name="ordinal_nd" xml:space="preserve">
-    <value>{0}.</value>
-  </data>
-  <data name="ordinal_rd" xml:space="preserve">
-    <value>{0}.</value>
-  </data>
-  <data name="ordinal_th" xml:space="preserve">
+  <data name="format_ordinal_other" xml:space="preserve">
     <value>{0}.</value>
   </data>
   <data name="account.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">

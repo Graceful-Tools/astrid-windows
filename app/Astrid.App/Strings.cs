@@ -209,14 +209,18 @@ internal static class Strings
         ["repeating.yearly"] = "Yearly",
         ["repeating.custom"] = "Custom…",
         ["repeat.none"] = "Does not repeat",
-        ["repeat.every_day"] = "Every day",
-        ["repeat.every_n_days"] = "Every {0} days",
-        ["repeat.every_week"] = "Every week",
-        ["repeat.every_n_weeks"] = "Every {0} weeks",
-        ["repeat.every_month"] = "Every month",
-        ["repeat.every_n_months"] = "Every {0} months",
-        ["repeat.every_year"] = "Every year",
-        ["repeat.every_n_years"] = "Every {0} years",
+        // One word per CLDR category, which `astrid_rules::plurals::category` picks between
+        // (task b656efce). The shell asked `count == 1 ? "every_day" : "every_n_days"` until
+        // then — right in English and in German, wrong in every language with more than two
+        // forms, which is what the catalog's plural keys exist to fix.
+        ["repeat.every_n_days.one"] = "Every day",
+        ["repeat.every_n_days.other"] = "Every {0} days",
+        ["repeat.every_n_weeks.one"] = "Every week",
+        ["repeat.every_n_weeks.other"] = "Every {0} weeks",
+        ["repeat.every_n_months.one"] = "Every month",
+        ["repeat.every_n_months.other"] = "Every {0} months",
+        ["repeat.every_n_years.one"] = "Every year",
+        ["repeat.every_n_years.other"] = "Every {0} years",
         ["repeat.on_weekdays"] = "on {0}",
         ["repeat.on_day_of_month"] = "on the {0}",
         ["repeat.on_nth_weekday"] = "on the {0} {1}",
@@ -289,18 +293,13 @@ internal static class Strings
         // These were missing until task b63d8679, so this filter group drew its own keys on screen
         // (CONTRACTS D60). astrid-core then collapsed the two spellings onto the repeat picker's
         // `repeating.*` (task b0b5f3cc, core `ba154ed`): the filter asks for `repeating.daily` from
-        // that revision on, and the five below become words for keys nothing sends.
+        // that revision on, so `repeat.daily` ... `repeat.custom` are words for keys nothing sends.
         //
-        // **They are deleted by the pin bump, not before.** Until the pin passes `ba154ed` the core
-        // still asks for `repeat.daily`, and removing these would put the key back on screen — the
-        // regression D60 was held open to avoid, which is why the two halves cannot be split. The
-        // bump moves them into `CorePinFollowsIosTests.RetiredKeys` along with their `.resw`
-        // entries in both languages, and that test then holds them gone.
-        ["repeat.daily"] = "Daily",
-        ["repeat.weekly"] = "Weekly",
-        ["repeat.monthly"] = "Monthly",
-        ["repeat.yearly"] = "Yearly",
-        ["repeat.custom"] = "Custom",
+        // **Deleted with the pin bump that passed `ba154ed`** (task b656efce), which is the only
+        // moment it was safe: removing them earlier would have put the raw key on screen in the
+        // filter sheet, and leaving them later is a translator's wasted hour and a reader's false
+        // clue that the shell still draws that row. `CorePinFollowsIosTests.RetiredKeys` holds
+        // them gone.
         ["filter.assigned_by"] = "Assigned by",
         ["filter.assigned_by.me"] = "Me",
         ["filter.assigned_by.someone_else"] = "Somebody else",
@@ -359,10 +358,14 @@ internal static class Strings
         ["reminder.toast_snooze"] = "Snooze {0} min",
         ["timer.hours_minutes"] = "{0}h {1}m",
         ["timer.minutes"] = "{0}m",
-        ["ordinal.st"] = "{0}st",
-        ["ordinal.nd"] = "{0}nd",
-        ["ordinal.rd"] = "{0}rd",
-        ["ordinal.th"] = "{0}th",
+        // The ORDINAL categories, not the cardinal ones: English's ordinal 1 is `one`, 2 is
+        // `two`, 3 is `few` and everything else `other`, which is the same four suffixes the
+        // shell used to pick with a `% 100` rule of its own. German has one form and says
+        // "{0}." to all of them, which is why its .resw carries only `format_ordinal_other`.
+        ["format.ordinal.one"] = "{0}st",
+        ["format.ordinal.two"] = "{0}nd",
+        ["format.ordinal.few"] = "{0}rd",
+        ["format.ordinal.other"] = "{0}th",
         ["notification.assigned"] = "Assigned to you",
         ["notification.mentioned"] = "Mentioned you",
         ["notification.replied"] = "Replied to you",
