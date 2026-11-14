@@ -115,6 +115,18 @@ const NOT_SAID: &[(&str, &str)] = &[
         "As `tasks.addNewTask`, and it interpolates a list name — `Add a task to {list}` — which \
          the resw's positional `{0}` would have to be matched to at the same time.",
     ),
+    (
+        "format.ordinal",
+        "New at the revision this repository pins — astrid-core `e2cad6a` (task `3564db06`) gave \
+         repeat summaries their plural and ordinal categories, so the catalog now offers the word \
+         for `1st`/`2nd`/`3rd`. This shell does not ask for it yet: `Converters.cs` still spells \
+         ordinals itself in its private `Ordinal(long)`, which is English-only, and feeds the \
+         result to `repeat.on_day_of_month` and two siblings. Swapping those over is its own \
+         change — tasks `d06daa76` (adopt the core's plural and ordinal categories in \
+         `Converters.cs`) and `b656efce` (delete `Ordinal()` and the four `count == 1` arms) — and \
+         doing it inside a supply-chain change would bury a user-visible localisation fix. When \
+         either lands, `the_not_said_register_is_current_task_b63d8679` forces this entry out.",
+    ),
 ];
 
 /// Every key the pinned core can hand this shell is sayable, or registered as deliberately not.
