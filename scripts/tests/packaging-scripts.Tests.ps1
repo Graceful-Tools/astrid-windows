@@ -308,6 +308,78 @@ foreach ($relative in $Targets.Keys) {
     }
 }
 
+Invoke-Case 'every brand value reaching -p: is escaped for MSBuild (task 13c6af65)' {
+    # THE BUG. `package.ps1` interpolated each brand value straight into a "-p:Name=$value"
+    # string. On 2026-11-13 `AuthProviders` became `passkey,google`, and MSBuild splits `-p:` on
+    # commas and semicolons, so it read `passkey` as the value and then tried to parse `google` as
+    # a switch:
+    #
+    #     MSBUILD : error MSB1006: Property is not valid.
+    #     Switch: google
+    #
+    # No MSIX could be built at all, for any brand or architecture, until this was fixed. The gate
+    # never saw it because `npm run predeploy` does not run `package.ps1` - the same blind spot
+    # that hid six days of broken packaging on 2026-10-25.
+    #
+    # Asserted off the source rather than by running a publish, like everything else in this file:
+    # reaching the real failure costs a four-minute build. What regressed is how a value is handed
+    # over, and that is visible in the text.
+    $package = Get-Content -Path (Join-Path $RepoRoot 'scripts\package.ps1') -Raw
+
+    # No "-p:...=$(...)" interpolation left. This is the shape that was wrong, and a new brand
+    # value added by copying the line above it would be wrong the same way.
+    $raw = [regex]::Matches($package, '"-p:[A-Za-z0-9_]+=\$')
+    Assert-Equal 'no brand value is interpolated straight into a -p: string' 0 $raw.Count
+
+    # Every brand field the running app is told about goes through the helper.
+    foreach ($property in @(
+            'AstridDefaultServerUrl', 'AstridUrlScheme', 'AstridBrandShortName',
+            'AstridBrandInboundTaskEmail', 'AstridBrandAgentName', 'AstridBrandWordmark',
+            'AstridBrandAuthProviders')) {
+        Assert-Match "$property is formatted by Format-MsBuildProperty" `
+            ("Format-MsBuildProperty '" + $property + "'") $package
+    }
+
+    Assert-Match 'the escaping helper is dot-sourced' 'msbuild-property\.ps1' $package
+}
+
+Invoke-Case 'the escaping survives everything a partner can type (task 13c6af65)' {
+    . (Join-Path $RepoRoot 'scripts\lib\msbuild-property.ps1')
+
+    # The value that actually broke the build.
+    Assert-Equal 'a comma is escaped' '-p:AstridBrandAuthProviders=passkey%2Cgoogle' `
+        (Format-MsBuildProperty 'AstridBrandAuthProviders' 'passkey,google')
+
+    # A semicolon ends a -p: value exactly as a comma does.
+    Assert-Equal 'a semicolon is escaped' '-p:X=a%3Bb' (Format-MsBuildProperty 'X' 'a;b')
+
+    # `%` is MSBuild's own escape character and MUST go first, or a value that already contains
+    # `%2C` would come out the other side as a comma - the bug this fixes, reintroduced by the fix.
+    Assert-Equal 'a literal %2C stays literal' '-p:X=%252C' (Format-MsBuildProperty 'X' '%2C')
+    Assert-Equal 'a percent is escaped before anything else' '-p:X=100%25%2C200' `
+        (Format-MsBuildProperty 'X' '100%,200')
+
+    # MSBuild would otherwise evaluate these inside a property value.
+    Assert-Equal 'a property reference is not evaluated' '-p:X=%24(Foo)' `
+        (Format-MsBuildProperty 'X' '$(Foo)')
+    Assert-Equal 'an item reference is not evaluated' '-p:X=%40(Bar)' `
+        (Format-MsBuildProperty 'X' '@(Bar)')
+
+    # An ordinary wordmark is untouched: escaping must not change what a build has always produced.
+    Assert-Equal 'a plain value passes through unchanged' '-p:AstridBrandWordmark=astrid' `
+        (Format-MsBuildProperty 'AstridBrandWordmark' 'astrid')
+
+    # A profile that left a field out gives an empty property, which is what the old interpolation
+    # did and what the csproj defaults expect.
+    Assert-Equal 'an absent value is an empty property' '-p:X=' (Format-MsBuildProperty 'X' $null)
+    Assert-Equal 'an empty value is an empty property' '-p:X=' (Format-MsBuildProperty 'X' '')
+
+    # A property NAME needing an escape is a mistake, not something to encode around.
+    $threw = $false
+    try { Format-MsBuildProperty 'Not A Name' 'x' } catch { $threw = $true }
+    Assert-True 'a malformed property name throws rather than being escaped' $threw
+}
+
 Write-Host ''
 if ($script:Checks -lt 25) {
     Write-Host "FAIL: only $($script:Checks) assertion(s) ran - this file is meant to make more" -ForegroundColor Red
