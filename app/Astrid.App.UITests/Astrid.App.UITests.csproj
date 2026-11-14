@@ -29,6 +29,12 @@
     <!-- To seed the cache with what a fresh, offline app cannot make for itself: a list with a board. -->
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <!--
+      To write a failing capture out as a PNG. The assertions read the raw buffer; this is only so
+      that a failure can be looked at rather than guessed at, which for a colour is the difference
+      between a diagnosis and a theory. Same version as Astrid.App.Tests uses.
+    -->
+    <PackageReference Include="System.Drawing.Common" Version="9.0.0" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
   </ItemGroup>

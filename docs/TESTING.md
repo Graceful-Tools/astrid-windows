@@ -110,6 +110,42 @@ nicety there, and the seven tests that do not need a mouse still pass on a locke
 that split — a hard `Activate()` in a test that does not need the pointer would throw away
 coverage for nothing.
 
+## A colour can be checked here, and nowhere else
+
+`PriorityMarkColourTests` reads the row mark's colour out of the rendered window, at each of the
+four priorities, in light and in dark (task 82e4ad32). It is the only test in the repo that looks at
+a pixel, and it exists because the question it answers cannot be asked anywhere else: the mark's
+colour is resolved at run time by `ThemeBrushes.For` against the theme the *element* is wearing, and
+the appearance is applied to ShellPage's root long after the marks are built.
+`Application.Current.Resources[key]` would answer from the light dictionary however dark the window
+is — a mistake that every XAML-reading test passes and only a rendered pixel catches.
+
+So the chain is held in three links, each by the test that can see it: astrid-core's tokens →
+`App.xaml` (`DesignTokenTests`, `PriorityPaletteTests`) → the screen (here). This test takes its
+expectations out of `App.xaml` rather than restating the hexes, so it asserts only its own link.
+
+Two things make it work, and both are worth knowing before writing another one:
+
+- **`Capture` does not grab the screen.** `PrintWindow` with `PW_RENDERFULLCONTENT` asks the window
+  to draw itself into a bitmap, so it does not need the app in front, or unoccluded — unlike the
+  mouse-driven tests above, which is why this one passes on a machine where those cannot run. A
+  capture that comes back a single flat colour is the signature of a session that is not rendering
+  at all, and the test says so rather than reporting a wrong colour.
+- **The seed signs a user in.** `LeadingControl::for_task` gives an *unassigned* task the square
+  rather than the checkbox, and the square deliberately draws nothing at priority 0 — so without
+  `account.current-user` in the cache's metadata, three quarters of what is under test is invisible.
+  `theme.mode` in the same table chooses the appearance, which is a per-machine setting the core
+  keeps.
+
+Every failure writes the window out as `priority-marks-<theme>.png` beside the test binary and names
+the path in the message. For a colour that is the whole diagnosis: "wrong where" is the only
+question, and only the picture answers it.
+
+**This suite does not need the app packaged.** It launches `Astrid.App.exe` straight out of
+`app/Astrid.App/bin/…/win-arm64/` with `ASTRID_DATA_DIR` pointed at a temp folder — no MSIX, no
+certificate, no `Add-AppxPackage`. `/astridwin` is the route for *installing* the app, which is a
+different need from looking at it, and three `/fixall` runs were parked on the wrong one.
+
 ## Running them
 
 ```powershell
