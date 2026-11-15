@@ -328,21 +328,114 @@
                                     web's. The header keeps row 0 and this keeps row 2, so the
                                     cards scroll between them rather than carrying either away.
 
-                                    What a card typed here is made of is the core's: the column
-                                    decides the lists, the role, and whether Done means it is
-                                    already done. This sends a title.
+                                    What a card typed here is made of is mostly the core's: the
+                                    column decides the lists, the role, and whether Done means it
+                                    is already done. What the reader decides is the priority and
+                                    the assignee, through the picker beside the box - the same two
+                                    the list's own field offers (task 71ad20a0).
+
+                                    NOT smart parsing, deliberately (Jon, 2026-11-14): the column
+                                    already decides the list and completion, so a date or a #list
+                                    tag read out of the sentence would be fighting it.
                                 -->
                                 <Border Grid.Row="2"
                                         Padding="8"
                                         BorderThickness="0,1,0,0"
                                         BorderBrush="{ThemeResource AstridBorder}">
-                                    <TextBox x:Uid="add_card_to_column"
-                                             PlaceholderText="Add task"
-                                             AutomationProperties.Name="Add task"
-                                             Text="{x:Bind Draft, Mode=TwoWay}"
-                                             Background="{ThemeResource AstridSurface}"
-                                             FontSize="12"
-                                             KeyDown="OnAddCardKeyDown" />
+                                    <Grid ColumnSpacing="6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <!--
+                                            The preview. It is the core's answer to "what would a
+                                            card born here look like", asked again after every
+                                            pick, so the mark shows the card it is about to make
+                                            rather than the pick in isolation.
+                                        -->
+                                        <Button x:Uid="add_card_settings" Grid.Column="0"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                Padding="0"
+                                                Width="28" Height="28"
+                                                VerticalAlignment="Center"
+                                                Tag="{x:Bind Id}"
+                                                Loaded="OnColumnAddSettingsLoaded"
+                                                Click="OnColumnAddSettingsOpened"
+                                                AutomationProperties.Name="Card settings">
+                                            <Grid Width="28" Height="28">
+                                                <local:PriorityMark Priority="{x:Bind QuickAddPriority, Mode=OneWay}"
+                                                                    Width="28" Height="28"
+                                                                    Visibility="{x:Bind QuickAddIsCheckbox, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                                <Border Width="22" Height="22"
+                                                        CornerRadius="{ThemeResource AstridRadiusSmall}"
+                                                        BorderThickness="2"
+                                                        local:PriorityOutline.Priority="{x:Bind QuickAddPriority, Mode=OneWay}"
+                                                        Visibility="{x:Bind QuickAddIsSquare, Mode=OneWay, Converter={StaticResource Visible}}">
+                                                    <TextBlock Text="{x:Bind QuickAddMark, Mode=OneWay}"
+                                                               FontSize="11" FontWeight="SemiBold"
+                                                               local:PriorityOutline.Priority="{x:Bind QuickAddPriority, Mode=OneWay}"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                            </Grid>
+                                            <Button.Flyout>
+                                                <!--
+                                                    Named so a pick can dismiss it: a Button inside
+                                                    a Flyout does not close it the way a
+                                                    MenuFlyoutItem closes a MenuFlyout (task
+                                                    a7748274, the same trap the list's field hit).
+                                                -->
+                                                <Flyout x:Name="ColumnAddSettingsFlyout">
+                                                    <StackPanel Spacing="10" MinWidth="220">
+                                                        <StackPanel x:Uid="add_card_priority" Orientation="Horizontal" Spacing="6"
+                                                                    AutomationProperties.Name="Priority">
+                                                            <Button x:Uid="add_card_priority_none" Tag="0" Content="&#x25CB;"
+                                                                    Style="{StaticResource PriorityChoice}"
+                                                                    AutomationProperties.Name="No priority"
+                                                                    Click="OnColumnPriorityPicked" />
+                                                            <Button x:Uid="add_card_priority_low" Tag="1" Content="!"
+                                                                    Style="{StaticResource PriorityChoice}"
+                                                                    AutomationProperties.Name="Low"
+                                                                    Click="OnColumnPriorityPicked" />
+                                                            <Button x:Uid="add_card_priority_medium" Tag="2" Content="!!"
+                                                                    Style="{StaticResource PriorityChoice}"
+                                                                    AutomationProperties.Name="Medium"
+                                                                    Click="OnColumnPriorityPicked" />
+                                                            <Button x:Uid="add_card_priority_high" Tag="3" Content="!!!"
+                                                                    Style="{StaticResource PriorityChoice}"
+                                                                    AutomationProperties.Name="High"
+                                                                    Click="OnColumnPriorityPicked" />
+                                                        </StackPanel>
+                                                        <ItemsControl ItemsSource="{x:Bind QuickAddAssignees, Mode=OneWay}">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate x:DataType="bindings:AssigneeOption">
+                                                                    <Button HorizontalAlignment="Stretch"
+                                                                            HorizontalContentAlignment="Left"
+                                                                            Tag="{x:Bind UserId}"
+                                                                            Click="OnColumnAssigneeChosen">
+                                                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                            <TextBlock Text="{x:Bind Glyph}"
+                                                                                       Width="24" TextAlignment="Center" />
+                                                                            <TextBlock Text="{x:Bind TitleKey, Converter={StaticResource PickTitle}}" />
+                                                                        </StackPanel>
+                                                                    </Button>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </StackPanel>
+                                                </Flyout>
+                                            </Button.Flyout>
+                                        </Button>
+
+                                        <TextBox x:Uid="add_card_to_column" Grid.Column="1"
+                                                 PlaceholderText="Add task"
+                                                 AutomationProperties.Name="Add task"
+                                                 Text="{x:Bind Draft, Mode=TwoWay}"
+                                                 Background="{ThemeResource AstridSurface}"
+                                                 FontSize="12"
+                                                 KeyDown="OnAddCardKeyDown" />
+                                    </Grid>
                                 </Border>
                             </Grid>
                         </Border>

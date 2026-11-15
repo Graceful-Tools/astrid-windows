@@ -2310,4 +2310,22 @@
   <data name="tasks_tradeoffRatings_veryGood" xml:space="preserve">
     <value>Sehr gut</value>
   </data>
+  <data name="add_card_settings.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Karteneinstellungen</value>
+  </data>
+  <data name="add_card_priority.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Priorität</value>
+  </data>
+  <data name="add_card_priority_none.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Keine Priorität</value>
+  </data>
+  <data name="add_card_priority_low.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Niedrig</value>
+  </data>
+  <data name="add_card_priority_medium.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Mittel</value>
+  </data>
+  <data name="add_card_priority_high.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Hoch</value>
+  </data>
 </root>

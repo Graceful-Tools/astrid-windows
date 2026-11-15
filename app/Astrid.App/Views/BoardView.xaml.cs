@@ -216,4 +216,60 @@ public sealed partial class BoardView : UserControl
         }
         menu.ShowAt(card, args.GetPosition(card));
     }
+
+    // ── The column add field's pickers (task 71ad20a0) ──────────────────────────────────────
+    //
+    // The flyout lives inside the column DataTemplate, so there is no named field for it: every
+    // column has its own instance. Which column a pick belongs to, and which flyout to dismiss,
+    // are both taken from the settings button that opened it.
+
+    private Microsoft.UI.Xaml.Controls.Primitives.FlyoutBase? _openColumnFlyout;
+    private BoardColumnView? _openColumn;
+
+    /// <summary>
+    /// Ask the core what a card born in this column would look like, before anything is picked.
+    /// </summary>
+    /// <remarks>
+    /// So the mark is right the first time the column is drawn rather than only after a pick. The
+    /// column's own defaults — the list's priority and assignee — are an answer, not an absence.
+    /// </remarks>
+    private async void OnColumnAddSettingsLoaded(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.DataContext is BoardColumnView column)
+        {
+            await column.LoadQuickAddDefaultsAsync();
+        }
+    }
+
+    /// <summary>Remember whose pickers these are, and which flyout a pick should close.</summary>
+    private void OnColumnAddSettingsOpened(object sender, RoutedEventArgs args)
+    {
+        if (sender is Button { DataContext: BoardColumnView column } button)
+        {
+            _openColumn = column;
+            _openColumnFlyout = button.Flyout;
+        }
+    }
+
+    /// <summary>The priority the next card in this column is born with.</summary>
+    private async void OnColumnPriorityPicked(object sender, RoutedEventArgs args)
+    {
+        _openColumnFlyout?.Hide();
+        if (_openColumn is { } column
+            && sender is FrameworkElement { Tag: string tag }
+            && int.TryParse(tag, out var priority))
+        {
+            await column.PickQuickAddPriorityAsync(priority);
+        }
+    }
+
+    /// <summary>Who it goes to. A null tag is the unassigned row.</summary>
+    private async void OnColumnAssigneeChosen(object sender, RoutedEventArgs args)
+    {
+        _openColumnFlyout?.Hide();
+        if (_openColumn is { } column && sender is FrameworkElement element)
+        {
+            await column.PickQuickAddAssigneeAsync(element.Tag as string);
+        }
+    }
 }

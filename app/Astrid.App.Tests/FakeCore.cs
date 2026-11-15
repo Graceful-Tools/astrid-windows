@@ -216,3 +216,29 @@ internal sealed class FakeCore : IAstridCore
         })
         .ToList();
 }
+
+/// <summary>
+/// What the core answers when asked what quick-add would make.
+/// </summary>
+/// <remarks>
+/// Shared because two fields ask the question: a list's own quick-add (task 8aa5732c) and the
+/// field at the bottom of a board column (task 71ad20a0). They ask it identically — same command,
+/// same three leading states — so a second copy of this fixture would be two descriptions of one
+/// contract, free to drift apart.
+/// </remarks>
+internal static class QuickAdd
+{
+    internal static object Defaults(string leading, int priority = 0, string? assigneeId = null) =>
+        new
+        {
+            priority,
+            assigneeId,
+            leading = new { kind = leading, userId = assigneeId },
+            options = new object[]
+            {
+                new { userId = (string?)null, initials = "", isCurrentUser = false, isAgent = false },
+                new { userId = "me", name = "Jon", initials = "J", isCurrentUser = true, isAgent = false },
+                new { userId = "dana", name = "Dana", initials = "D", isCurrentUser = false, isAgent = false },
+            },
+        };
+}
