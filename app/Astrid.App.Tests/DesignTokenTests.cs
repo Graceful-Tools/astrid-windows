@@ -412,6 +412,131 @@ public sealed class DesignTokenTests
         Assert.Equal(stamp.Groups["hash"].Value, hashed);
     }
 
+    /// <summary>The generated Windows token dictionary, vendored beside the art at the same revision.</summary>
+    internal static string TokenDictionaryPath() =>
+        Path.Combine(RepoRoot(), "design", "AstridTokens.xaml");
+
+    /// <summary>
+    /// The generated dictionary's own <c>body-sha256</c> header is the hash of everything below it
+    /// (task fdd8ef7f).
+    /// </summary>
+    /// <remarks>
+    /// The same gate the art has, for the same reason, and folding <c>\r\n</c> to <c>\n</c> the same
+    /// way astrid-core does when it stamps. This file is more exposed than the art, not less: it is
+    /// a table of sixty-three colours in three themes, where a single retyped hex would look exactly
+    /// like the generator's own output.
+    /// </remarks>
+    [Fact]
+    public void The_vendored_token_dictionary_matches_its_declared_hash_task_fdd8ef7f()
+    {
+        var text = File.ReadAllText(TokenDictionaryPath()).Replace("\r\n", "\n");
+        var stamp = Regex.Match(
+            text, @"^<!-- body-sha256: (?<hash>[0-9a-f]{64}) -->\n", RegexOptions.Multiline);
+        Assert.True(stamp.Success, "the vendored token dictionary carries no body-sha256 header");
+
+        var body = text[(stamp.Index + stamp.Length)..];
+        var hashed = Convert
+            .ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(body)))
+            .ToLowerInvariant();
+
+        Assert.Equal(stamp.Groups["hash"].Value, hashed);
+    }
+
+    /// <summary>
+    /// The name the generated dictionary gives each brush <c>App.xaml</c> writes by hand.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Only the names differ, and only for five of the twenty-two. Two are DS9, where this shell's
+    /// "surface" is a different token in each theme — <c>bg-hover</c> on light, <c>bg-secondary</c>
+    /// on dark — so the generator, which names a brush after one token, cannot spell it
+    /// <c>AstridSurface</c>. Three are WinUI's own accent-button brushes, which are overridden here
+    /// rather than derived (DS26) and are therefore named by WinUI, not by the register.
+    /// </para>
+    /// <para>
+    /// This map is the specification for the emitter's missing <c>XAML_ALIASES</c> entries, which is
+    /// why it is a table and not five <c>if</c>s: when astrid-core emits these names itself, every
+    /// row here becomes an identity and the table goes away with the hand-written brushes.
+    /// </para>
+    /// </remarks>
+    private static readonly Dictionary<string, (string Light, string Dark)> GeneratedNames = new()
+    {
+        ["AstridSurface"] = ("AstridBgHover", "AstridBgSecondary"),
+        ["AstridSurfaceHover"] = ("AstridBgTertiary", "AstridBgTertiary"),
+        ["AccentFillColorDefaultBrush"] = ("AstridAccent", "AstridAccent"),
+        ["AccentFillColorSecondaryBrush"] = ("AstridAccentHover", "AstridAccentHover"),
+        ["TextOnAccentFillColorPrimaryBrush"] = ("AstridAccentText", "AstridAccentText"),
+    };
+
+    /// <summary>Every <c>SolidColorBrush</c> in one of the generated dictionary's themes.</summary>
+    internal static Dictionary<string, string> GeneratedBrushes(string dictionary)
+    {
+        var generated = XDocument.Load(TokenDictionaryPath()).Root!;
+        var themed = generated.Descendants(Ui + "ResourceDictionary.ThemeDictionaries").Single();
+        var wanted = themed.Elements(Ui + "ResourceDictionary")
+            .Single(entry => (string?)entry.Attribute(Xaml + "Key") == dictionary);
+        return wanted.Elements(Ui + "SolidColorBrush")
+            .ToDictionary(
+                brush => (string)brush.Attribute(Xaml + "Key")!,
+                brush => ((string)brush.Attribute("Color")!).ToUpperInvariant());
+    }
+
+    /// <summary>
+    /// Every brush <c>App.xaml</c> hand-writes is the value astrid-core generates for it
+    /// (task fdd8ef7f).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The other assertions in this file read <c>tokens.resolved.json</c>, which is data: they say a
+    /// brush equals the token this test file claims it is drawn from, so the claim and the check
+    /// share an author. This reads <c>design/AstridTokens.xaml</c>, which is astrid-core's own
+    /// rendering of those tokens into this shell's brush names — so it compares what the shell
+    /// paints to what the register says the shell should paint, with nothing of ours in between.
+    /// </para>
+    /// <para>
+    /// It is driven from <c>App.xaml</c>'s keys rather than the generated file's, deliberately. The
+    /// generated dictionary carries sixty-three brushes and the shell uses twenty-two; the ones it
+    /// does not use are not a failure. A brush it *does* use that the register does not know about
+    /// would be — so an unmapped key fails here rather than being skipped.
+    /// </para>
+    /// <para>
+    /// This is the gate that makes the hand-written brushes safe to keep until they can be deleted.
+    /// Adoption — merging the generated dictionary and removing them — needs three things from
+    /// astrid-core that it does not emit yet: a <c>Default</c> theme dictionary (WinUI resolves
+    /// <c>Default</c>, not <c>Light</c>, when the system reports no preference, and
+    /// <c>ThemeBrushes.Resolve</c> asks for it by name), the two DS9 aliases above, and the WinUI
+    /// accent-button names. Until then the brushes stay and this compares them.
+    /// </para>
+    /// </remarks>
+    [Theory]
+    [InlineData("Default", "Light")]
+    [InlineData("Light", "Light")]
+    [InlineData("Dark", "Dark")]
+    public void Every_themed_brush_is_the_generated_value_task_fdd8ef7f(
+        string dictionary, string generatedTheme)
+    {
+        var written = ThemeBrushes(dictionary);
+        var generated = GeneratedBrushes(generatedTheme);
+
+        Assert.NotEmpty(written);
+        foreach (var (brush, colour) in written)
+        {
+            var name = GeneratedNames.TryGetValue(brush, out var alias)
+                ? generatedTheme == "Dark" ? alias.Dark : alias.Light
+                : brush;
+
+            Assert.True(
+                generated.ContainsKey(name),
+                $"App.xaml's {brush} has no counterpart in the generated dictionary: it looked for "
+                    + $"{name} in the {generatedTheme} theme. Either astrid-core's design register "
+                    + "does not carry this brush, or GeneratedNames needs a row for it.");
+            Assert.True(
+                generated[name] == colour,
+                $"App.xaml's {brush} is {colour} in the {dictionary} dictionary, but astrid-core "
+                    + $"generates {generated[name]} for {name} in the {generatedTheme} theme.");
+        }
+    }
+
     /// <summary>
     /// The one colour in the art that is not <c>currentColor</c> is the shared token (task 82e4ad32).
     /// </summary>
