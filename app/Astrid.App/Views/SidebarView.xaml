@@ -222,6 +222,8 @@
                            Foreground="{ThemeResource AstridTextPrimary}"
                            Visibility="{x:Bind Shell.Sidebar.Favorites.Count, Mode=OneWay, Converter={StaticResource Visible}}" />
                 <ListView x:Name="FavoritesList"
+                          CanDragItems="True"
+                          DragItemsStarting="OnListDragStarting"
                           ItemsSource="{x:Bind Shell.Sidebar.Favorites, Mode=OneWay}"
                           SelectionChanged="OnListSelected"
                           ItemContainerStyle="{StaticResource SidebarRowStyle}"
@@ -235,6 +237,8 @@
                            Opacity="0.5"
                            Foreground="{ThemeResource AstridTextPrimary}" />
                 <ListView x:Name="ListsList"
+                          CanDragItems="True"
+                          DragItemsStarting="OnListDragStarting"
                           ItemsSource="{x:Bind Shell.Sidebar.Lists, Mode=OneWay}"
                           SelectionChanged="OnListSelected"
                           ItemContainerStyle="{StaticResource SidebarRowStyle}"

@@ -56,6 +56,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private bool _isStreamDown;
     private bool _disposed;
     private bool _isBoardView;
+    private bool _isProjectBoardView;
     private string? _listImageSource;
     private bool _isChatOpen;
     private bool _isSidebarOpen;
@@ -93,6 +94,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         SignIn = new SignInViewModel(core);
         Detail = new TaskDetailViewModel(core);
         Board = new BoardViewModel(core);
+        ProjectBoard = new ProjectBoardViewModel(core);
         ListSettings = new ListSettingsViewModel(core);
         Insights = new ListInsightsViewModel(core);
         Chat = new ChatViewModel(core);
@@ -110,6 +112,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             if (IsBoardView)
             {
                 await Board.RefreshAsync();
+            }
+            if (IsProjectBoardView)
+            {
+                await ProjectBoard.RefreshAsync();
             }
             if (Detail.IsOpen)
             {
@@ -198,6 +204,12 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// <summary>The board the open list belongs to, when it belongs to one.</summary>
     public BoardViewModel Board { get; }
 
+    /// <summary>
+    /// The project's whole board: every chosen list a row, the project's statuses the columns
+    /// (task f8b844dd).
+    /// </summary>
+    public ProjectBoardViewModel ProjectBoard { get; }
+
     /// <summary>The open list's settings and members, loaded when they are asked for.</summary>
     public ListSettingsViewModel ListSettings { get; }
 
@@ -253,6 +265,18 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// The project the open list belongs to, or null when it belongs to none (task f8b844dd).
+    /// </summary>
+    /// <remarks>
+    /// Read off the sidebar's own summary of the open list, for the reason
+    /// <see cref="OpenListHasBoard"/> is — it is the same fact, and asking the core for the board
+    /// would be a round trip to learn something already on screen. It is what the project board is
+    /// opened with: that board is a project's, not a list's.
+    /// </remarks>
+    public string? OpenListProjectId => Sidebar.Favorites.Concat(Sidebar.Lists)
+        .FirstOrDefault(list => list.Id == Tasks.ListId)?.ProjectId;
+
+    /// <summary>
     /// Whether the open list belongs to a project board at all — astrid-web's
     /// <c>hasProjectBoard</c> (task a66f0a16).
     /// </summary>
@@ -277,6 +301,17 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// </remarks>
     public bool ShowsBoardToggle => ProjectModeEnabled && OpenListHasBoard;
 
+    /// <summary>
+    /// Whether the header offers the project's whole board — every chosen list as a row
+    /// (task f8b844dd).
+    /// </summary>
+    /// <remarks>
+    /// The same two gates as <see cref="ShowsBoardToggle"/>, because it is the same project: a
+    /// list that has a board has a project, and a project board is that project seen whole rather
+    /// than through one of its lists.
+    /// </remarks>
+    public bool ShowsProjectBoardToggle => ProjectModeEnabled && OpenListHasBoard;
+
     /// <summary>Whether Google Tasks linking is offered (the <c>google_tasks</c> flag).</summary>
     public bool GoogleTasksEnabled
     {
@@ -299,6 +334,11 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         if (!ProjectModeEnabled && IsBoardView)
         {
             await ShowBoardAsync(false, cancellationToken);
+        }
+        // The project board is behind the same flag, so it leaves the same way (task f8b844dd).
+        if (!ProjectModeEnabled && IsProjectBoardView)
+        {
+            await ShowProjectBoardAsync(false, cancellationToken);
         }
     }
 
@@ -588,10 +628,44 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             {
                 Raise(nameof(ShowsNoBoardNotice));
                 Raise(nameof(ShowsEmptyList));
+                Raise(nameof(ShowsListRows));
                 RaiseDetailPlacement();
             }
         }
     }
+
+    /// <summary>
+    /// Whether the project's whole board is on screen instead of the list (task f8b844dd).
+    /// </summary>
+    /// <remarks>
+    /// A third state of one view rather than a second flag that can agree with
+    /// <see cref="IsBoardView"/>: a list, its own board, and its project's board are three ways of
+    /// looking at the same work, and exactly one of them is drawn. <see cref="ShowProjectBoardAsync"/>
+    /// is what keeps them exclusive.
+    /// </remarks>
+    public bool IsProjectBoardView
+    {
+        get => _isProjectBoardView;
+        private set
+        {
+            if (Set(ref _isProjectBoardView, value))
+            {
+                Raise(nameof(ShowsEmptyList));
+                Raise(nameof(ShowsListRows));
+                RaiseDetailPlacement();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Whether the list's own rows are what is drawn — neither board is.
+    /// </summary>
+    /// <remarks>
+    /// One property rather than a negation of two in the markup, because there are two of them
+    /// now and a third view added later would otherwise have to be remembered at every binding
+    /// site. The quick-add field and the rows both hang off this.
+    /// </remarks>
+    public bool ShowsListRows => !IsBoardView && !IsProjectBoardView;
 
     /// <summary>
     /// Whether to say that this list has no board.
@@ -609,6 +683,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     {
         Raise(nameof(OpenListHasBoard));
         Raise(nameof(ShowsBoardToggle));
+        Raise(nameof(OpenListProjectId));
+        Raise(nameof(ShowsProjectBoardToggle));
     }
 
     /// <summary>
@@ -631,6 +707,22 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private void OnOpenListChanged()
     {
         RaiseBoardAvailability();
+        if (IsProjectBoardView)
+        {
+            // The project board follows the open list for the reason the board does, and for one
+            // more: a list in ANOTHER project is another board entirely, so leaving it on screen
+            // would be a board whose rows belong to a project nobody has open. A list with no
+            // project leaves it (task f8b844dd).
+            if (OpenListProjectId is { Length: > 0 })
+            {
+                _post(() => ShowProjectBoardAsync(true));
+            }
+            else
+            {
+                _ = ShowProjectBoardAsync(false);
+            }
+            return;
+        }
         if (!IsBoardView)
         {
             return;
@@ -659,6 +751,11 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// </remarks>
     public async Task ShowBoardAsync(bool board, CancellationToken cancellationToken = default)
     {
+        if (board && IsProjectBoardView)
+        {
+            // The three views are exclusive, and this one wins because it was just asked for.
+            IsProjectBoardView = false;
+        }
         IsBoardView = board;
         if (board)
         {
@@ -684,6 +781,40 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// Whether the open task is drawn inside its card on the board, as astrid-web's board draws
     /// it (task 91a25b8a).
     /// </summary>
+    /// <summary>
+    /// Swap between the list and its project's whole board (task f8b844dd).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Opened with the PROJECT's id, not the list's: a project board is several lists' cards under
+    /// one project's columns, so the list that happens to be open is only how the reader got here.
+    /// A list with no project has no project board, and the toggle that would reach it is not
+    /// drawn.
+    /// </para>
+    /// <para>
+    /// An open task stays in the side pane rather than being drawn inside its card. The single-list
+    /// board opens a card in place because astrid-web's does; a swimlane is the wrong shape for it
+    /// — the detail would be as tall as the row and push every other row off the screen — so the
+    /// pane keeps the task on screen without moving the board.
+    /// </para>
+    /// </remarks>
+    public async Task ShowProjectBoardAsync(bool board,
+        CancellationToken cancellationToken = default)
+    {
+        if (board && IsBoardView)
+        {
+            // Exclusive, as in ShowBoardAsync, and the card opened in place goes with the view.
+            Board.Collapse();
+            IsBoardView = false;
+        }
+        IsProjectBoardView = board;
+        if (board && OpenListProjectId is { Length: > 0 } projectId)
+        {
+            await ProjectBoard.LoadAsync(projectId, cancellationToken);
+        }
+        RaiseDetailPlacement();
+    }
+
     public bool ShowsDetailInline => IsBoardView && Detail.IsOpen && Board.ExpandedTaskId is not null;
 
     /// <summary>Whether the open task is drawn in the side pane beside the list.</summary>
@@ -731,7 +862,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// Whether the list has nothing in it to show — the web's empty state, with the character
     /// and a word of encouragement. Off the board only: the board has its own.
     /// </summary>
-    public bool ShowsEmptyList => !IsBoardView && Tasks.IsEmpty;
+    public bool ShowsEmptyList => ShowsListRows && Tasks.IsEmpty;
 
     // ── Full screen (task 1927c2e7) ──────────────────────────────────────────────────────────
     //
@@ -1406,10 +1537,22 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         StreamEdge = 1 << 9,
 
         /// <summary>
+        /// The project board's swimlanes (task f8b844dd).
+        /// </summary>
+        /// <remarks>
+        /// Its own flag rather than <see cref="Board"/>'s, which was the first thing tried and is
+        /// wrong: <c>TouchesList</c> answers true for an EMPTY list id — "could not say" is not
+        /// "did not" — and <c>Board.ListId</c> is empty until the single-list board has been
+        /// opened. Sharing the flag therefore made every task change anywhere redraw the project
+        /// board, on exactly the machines that had never opened the other one.
+        /// </remarks>
+        ProjectBoard = 1 << 10,
+
+        /// <summary>
         /// Everything on screen, for a change that brought work in without saying — or without
         /// being able to say — exactly what moved.
         /// </summary>
-        CatchUp = Sidebar | Tasks | Board | Detail | Outbox,
+        CatchUp = Sidebar | Tasks | Board | ProjectBoard | Detail | Outbox,
     }
 
     /// <summary>
@@ -1491,6 +1634,12 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 return Pending.Outbox
                     | (notification.TouchesList(Tasks.ListId) ? Pending.Tasks : Pending.None)
                     | (notification.TouchesList(Board.ListId) ? Pending.Board : Pending.None)
+                    // The project board has several lists on screen rather than one, so a change
+                    // in any of its rows is a change on screen — and a board with no rows drawn
+                    // asks for nothing (task f8b844dd).
+                    | (ProjectBoard.Rows.Any(row => notification.TouchesList(row.ListId))
+                        ? Pending.ProjectBoard
+                        : Pending.None)
                     | (notification.Touches(Detail.TaskId) ? Pending.Detail : Pending.None);
             case "comments":
                 // Stricter than `task` on purpose: a comment change that names no task says
@@ -1576,6 +1725,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         if (pending.HasFlag(Pending.Board) && IsBoardView)
         {
             await Board.RefreshAsync();
+        }
+        if (pending.HasFlag(Pending.ProjectBoard) && IsProjectBoardView)
+        {
+            await ProjectBoard.RefreshAsync();
         }
         if (pending.HasFlag(Pending.Detail) && Detail.IsOpen)
         {

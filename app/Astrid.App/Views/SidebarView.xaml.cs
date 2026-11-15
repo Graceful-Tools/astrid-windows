@@ -147,6 +147,34 @@ public sealed partial class SidebarView : UserControl
         }
     }
 
+    /// <summary>
+    /// A list dragged out of the sidebar, which is one of the three ways a project board's rows
+    /// are chosen (task f8b844dd).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// It travels under a private clipboard format rather than as text — see
+    /// <see cref="ListDrag"/>. Every drop target in the app that takes text reads it as a task id,
+    /// including the sidebar row directly under the pointer as the drag begins, so a list sent as
+    /// text would be accepted as a task nothing can find.
+    /// </para>
+    /// <para>
+    /// A saved filter is not offered: it is a question rather than a place, the core does not
+    /// offer it as a row candidate, and a drag that can only end in a refusal is worse than one
+    /// that never starts.
+    /// </para>
+    /// </remarks>
+    private void OnListDragStarting(object sender, DragItemsStartingEventArgs args)
+    {
+        if (args.Items.FirstOrDefault() is not ListSummary { IsVirtual: not true } list
+            || string.IsNullOrEmpty(list.Id))
+        {
+            args.Cancel = true;
+            return;
+        }
+        ListDrag.Set(args.Data, list.Id);
+    }
+
     private async void OnListSelected(object sender, SelectionChangedEventArgs args)
     {
         if (sender is not ListView view || view.SelectedItem is not ListSummary selected)

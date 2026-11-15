@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:bindings="using:Astrid.Core.Bindings"
     xmlns:local="using:Astrid.App"
+    xmlns:views="using:Astrid.App.Views"
     xmlns:viewmodels="using:Astrid.App.ViewModels">
 
     <!--
@@ -343,4 +344,144 @@
     <DataTemplate x:Key="DefaultChoiceTemplate" x:DataType="viewmodels:DefaultChoice">
         <TextBlock Text="{x:Bind Converter={StaticResource ChoiceLabel}}" />
     </DataTemplate>
+
+    <!--
+        The project board's swimlane chrome (task f8b844dd).
+
+        Written HERE rather than on the view, because this file and App.xaml are where a size, a
+        radius and a colour are supposed to be written down (task d7e381a7): a swimlane board is a
+        dozen cells of repeating chrome, and spelling each one out in the view would be thirty-odd
+        hand-typed numbers for the next change to retype. The radii come off the scale
+        (task 77d17dc8) rather than being chosen per element.
+    -->
+    <Style x:Key="SwimlaneCardStyle" TargetType="views:BoardCard">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="Margin" Value="0,0,0,6" />
+        <Setter Property="Padding" Value="8,6" />
+        <Setter Property="CornerRadius" Value="{StaticResource AstridRadiusMedium}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="{ThemeResource AstridBorder}" />
+        <Setter Property="Background" Value="{ThemeResource AstridSurface}" />
+    </Style>
+    <!-- A two-column grid with the gap the mark and the words want, on a card and on a row head. -->
+    <Style x:Key="SwimlaneGridStyle" TargetType="Grid">
+        <Setter Property="ColumnSpacing" Value="8" />
+    </Style>
+    <!-- Somebody else's mark on a swimlane card: the square, and the initials in it. -->
+    <Style x:Key="SwimlaneMarkSquareStyle" TargetType="Border">
+        <Setter Property="Width" Value="20" />
+        <Setter Property="Height" Value="20" />
+        <Setter Property="CornerRadius" Value="{StaticResource AstridRadiusSmall}" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <Style x:Key="SwimlaneMarkTextStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style x:Key="SwimlaneCardTitleStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="MaxLines" Value="3" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        <Setter Property="Foreground" Value="{ThemeResource AstridTextPrimary}" />
+    </Style>
+    <!--
+        One cell: a row's cards in one of the project's columns. Its width is the column's width,
+        and the header strip above uses the same one, which is what keeps the two in line.
+    -->
+    <Style x:Key="SwimlaneCellStyle" TargetType="Border">
+        <Setter Property="Width" Value="264" />
+        <Setter Property="MinHeight" Value="64" />
+        <Setter Property="Padding" Value="6" />
+        <Setter Property="CornerRadius" Value="{StaticResource AstridRadiusSmall}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="{ThemeResource AstridBorder}" />
+        <Setter Property="Background" Value="{ThemeResource AstridSurfaceHover}" />
+    </Style>
+    <Style x:Key="SwimlaneColumnHeadStyle" TargetType="Border">
+        <Setter Property="Width" Value="264" />
+        <Setter Property="Padding" Value="8,4" />
+    </Style>
+    <Style x:Key="SwimlaneColumnNameStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        <Setter Property="Foreground" Value="{ThemeResource AstridTextSecondary}" />
+    </Style>
+    <!-- A strip of cells, or of column names: one gap, shared so the two stay in line. -->
+    <Style x:Key="SwimlaneStripStyle" TargetType="StackPanel">
+        <Setter Property="Orientation" Value="Horizontal" />
+        <Setter Property="Spacing" Value="8" />
+    </Style>
+    <Style x:Key="SwimlaneRowStyle" TargetType="StackPanel">
+        <Setter Property="Margin" Value="0,0,0,8" />
+        <Setter Property="Spacing" Value="4" />
+    </Style>
+    <!-- The list's colour on its row head, as the sidebar draws it: 12px, which the radius rounds. -->
+    <Style x:Key="SwimlaneRowDotStyle" TargetType="Border">
+        <Setter Property="Width" Value="12" />
+        <Setter Property="Height" Value="12" />
+        <Setter Property="CornerRadius" Value="{StaticResource AstridRadiusSmall}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style x:Key="SwimlaneRowNameStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        <Setter Property="Foreground" Value="{ThemeResource AstridTextPrimary}" />
+    </Style>
+    <Style x:Key="SwimlaneRowRemoveStyle" TargetType="Button">
+        <Setter Property="FontFamily" Value="{ThemeResource SymbolThemeFontFamily}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Padding" Value="6,2" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <!-- The board's own chrome: its toolbar, its surface, and the line a failure is drawn on. -->
+    <Style x:Key="BoardToolbarStyle" TargetType="Grid">
+        <Setter Property="Margin" Value="12,4,12,8" />
+        <Setter Property="ColumnSpacing" Value="8" />
+    </Style>
+    <Style x:Key="BoardHintStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        <Setter Property="Foreground" Value="{ThemeResource AstridTextMuted}" />
+    </Style>
+    <Style x:Key="BoardSurfaceStyle" TargetType="ScrollViewer">
+        <Setter Property="Margin" Value="12,0,12,8" />
+    </Style>
+    <Style x:Key="BoardStackStyle" TargetType="StackPanel">
+        <Setter Property="Spacing" Value="8" />
+    </Style>
+    <!--
+        The two empty boards, which are not the same board: nothing saved means the project's own
+        lists, and an empty saved set is a board cleared on purpose. Same chrome, different words.
+    -->
+    <Style x:Key="BoardNoticeStyle" TargetType="StackPanel">
+        <Setter Property="Margin" Value="0,24,0,0" />
+        <Setter Property="Spacing" Value="4" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style x:Key="BoardNoticeTitleStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{ThemeResource AstridTextSecondary}" />
+    </Style>
+    <Style x:Key="BoardNoticeBodyStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="MaxWidth" Value="320" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="Foreground" Value="{ThemeResource AstridTextMuted}" />
+    </Style>
+    <Style x:Key="BoardErrorTextStyle" TargetType="TextBlock">
+        <Setter Property="Margin" Value="20,4,20,12" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="Foreground" Value="{ThemeResource SystemFillColorCriticalBrush}" />
+    </Style>
 </ResourceDictionary>

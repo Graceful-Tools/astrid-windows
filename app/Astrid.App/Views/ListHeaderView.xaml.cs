@@ -124,6 +124,19 @@ public sealed partial class ListHeaderView : UserControl
         await Shell.ShowBoardAsync(BoardToggle.IsChecked == true);
     }
 
+    /// <summary>
+    /// The project's whole board (task f8b844dd).
+    /// </summary>
+    /// <remarks>
+    /// Both toggles bind <c>IsChecked</c> to the shell, which keeps the three views exclusive, so
+    /// neither handler has to put the other one back: turning this on turns that off in the view
+    /// model and the binding follows.
+    /// </remarks>
+    private async void OnToggleProjectBoard(object sender, RoutedEventArgs args)
+    {
+        await Shell.ShowProjectBoardAsync(ProjectBoardToggle.IsChecked == true);
+    }
+
     // The bell's three handlers were here. They are SidebarView's since task 96759883, with the
     // bell itself.
 }

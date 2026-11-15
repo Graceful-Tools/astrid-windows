@@ -2328,4 +2328,37 @@
   <data name="add_card_priority_high.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Hoch</value>
   </data>
+  <data name="project_board_toggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Projekt-Board</value>
+  </data>
+  <data name="project_board_toggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Projekt-Board</value>
+  </data>
+  <data name="add_board_row.Content" xml:space="preserve">
+    <value>Liste hinzufügen</value>
+  </data>
+  <data name="add_board_row.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Liste hinzufügen</value>
+  </data>
+  <data name="project_board_hint.Text" xml:space="preserve">
+    <value>Ziehe eine Liste aus der Seitenleiste, um eine Zeile hinzuzufügen</value>
+  </data>
+  <data name="remove_board_row.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Diese Zeile entfernen</value>
+  </data>
+  <data name="remove_board_row.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Diese Zeile entfernen</value>
+  </data>
+  <data name="project_board_no_rows.Text" xml:space="preserve">
+    <value>Dieses Projekt hat noch keine Listen</value>
+  </data>
+  <data name="project_board_no_rows_hint.Text" xml:space="preserve">
+    <value>Eine Liste in diesem Projekt wird zu einer Zeile auf dessen Board.</value>
+  </data>
+  <data name="project_board_emptied.Text" xml:space="preserve">
+    <value>Dieses Board hat keine Zeilen</value>
+  </data>
+  <data name="project_board_emptied_hint.Text" xml:space="preserve">
+    <value>Füge eine Liste hinzu, um eine Zeile zurückzubringen. Es wurde nichts gelöscht.</value>
+  </data>
 </root>

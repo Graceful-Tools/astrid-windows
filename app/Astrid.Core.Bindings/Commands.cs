@@ -620,6 +620,54 @@ public static class Commands
     public static object Board(string listId, int? limit = null) =>
         new BoardRequest("board", listId, limit);
 
+    /// <summary>
+    /// Which lists this person's multi-list board for a project draws as rows, and which could be
+    /// added (task f8b844dd; core AWTD-1676, web AWTD-1660).
+    /// </summary>
+    /// <remarks>
+    /// The answer carries both <c>savedListIds</c> — what the server holds, null for nothing saved
+    /// — and <c>rowListIds</c>, the rows to draw. They are not the same question: nothing saved
+    /// means the project's own lists, and an empty list means a board somebody emptied on purpose.
+    /// See <see cref="ProjectBoardRowsAnswer"/>.
+    /// </remarks>
+    public static object ProjectBoardRows(string projectId) =>
+        new ProjectRowsRequest("projectBoardRows", projectId, null, null, null);
+
+    /// <summary>
+    /// Save which lists are rows: the whole ordered set, or one added, or one removed.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Exactly one of the three, which is why they are separate parameters and not one. The core
+    /// does the arithmetic against the rows it last drew, so adding a row does not mean reading
+    /// the set, appending to it and writing it back from here — a race the web does not have
+    /// either.
+    /// </para>
+    /// <para>
+    /// An empty <paramref name="listIds"/> is sent as <c>[]</c> rather than omitted, because that
+    /// is the write that empties a board on purpose. The serializer drops nulls, so the two other
+    /// parameters disappear when they are not the one being used.
+    /// </para>
+    /// </remarks>
+    public static object SaveProjectBoardRows(string projectId,
+        IReadOnlyList<string>? listIds = null, string? addListId = null,
+        string? removeListId = null) =>
+        new ProjectRowsRequest("saveProjectBoardRows",
+            projectId, listIds, addListId, removeListId);
+
+    /// <summary>
+    /// One row of a project's multi-list board: that list's cards under the PROJECT's columns.
+    /// </summary>
+    /// <remarks>
+    /// Answers in <see cref="Board"/>'s shape, so a row draws with the column views and the card
+    /// converters the single-list board already has. Which column a card is in is the core's
+    /// decision against the project's columns — a role this project has no column for is the
+    /// Inbox, and a row list with no board of its own still draws its cards.
+    /// </remarks>
+    public static object ProjectBoardRow(string projectId, string listId, int? limit = null,
+        bool? idsOnly = null) =>
+        new ProjectRowRequest("projectBoardRow", projectId, listId, limit, idsOnly);
+
     /// <summary>Move a card to a column.</summary>
     /// <param name="wait">
     /// The wait condition, when the column is Waiting and the user has answered for one. Omitted
@@ -1527,4 +1575,26 @@ public static class Commands
     private sealed record SearchRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("query")] string Query);
+
+    /// <summary>
+    /// The read and the write of a project board's rows (task f8b844dd), which answer alike.
+    /// </summary>
+    /// <remarks>
+    /// One record for both because the nulls are what distinguish them: the read sends the project
+    /// id alone, and a write adds exactly one of the three. The serializer drops nulls, so a read
+    /// built here is <c>{ kind, projectId }</c> and nothing more.
+    /// </remarks>
+    private sealed record ProjectRowsRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("projectId")] string ProjectId,
+        [property: JsonPropertyName("listIds")] IReadOnlyList<string>? ListIds,
+        [property: JsonPropertyName("addListId")] string? AddListId,
+        [property: JsonPropertyName("removeListId")] string? RemoveListId);
+
+    private sealed record ProjectRowRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("projectId")] string ProjectId,
+        [property: JsonPropertyName("listId")] string ListId,
+        [property: JsonPropertyName("limit")] int? Limit,
+        [property: JsonPropertyName("idsOnly")] bool? IdsOnly);
 }
