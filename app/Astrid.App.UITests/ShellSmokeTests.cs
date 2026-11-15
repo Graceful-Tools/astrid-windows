@@ -31,6 +31,15 @@ public sealed class ShellSmokeTests
     public ShellSmokeTests(Xunit.Abstractions.ITestOutputHelper output) => _output = output;
 
     /// <summary>
+    /// Why the shell's picker is an accepted answer, and how to get a single claimant back.
+    /// </summary>
+    private const string PickerIsAccepted =
+        "the shell's picker, which is accepted: a packaged Astrid and a dev build claim astrid:// "
+        + "through mechanisms that cannot see each other, so a machine with both has two claimants "
+        + "and no recorded default (task 02a8b67e, decided 2026-11-14). Uninstall the test package "
+        + "with Remove-AppxPackage to get a single claimant back.";
+
+    /// <summary>
     /// What the shell resolves <c>astrid://</c> to, without starting anything.
     /// </summary>
     /// <remarks>
@@ -41,24 +50,34 @@ public sealed class ShellSmokeTests
     /// just rewritten, and only a probe that starts nothing can see it (task 02a8b67e).
     /// </para>
     /// <para>
+    /// The picker is one of the two accepted answers — see the remarks on the other test for the
+    /// decision — so what is left to assert is that *something* claims the scheme, and that a
+    /// claimant which is not the picker is a file that still exists. A registration left behind by
+    /// a build that has since been deleted is the shape of the 2026-09-13 failure, and is still a
+    /// failure.
+    /// </para>
+    /// <para>
     /// It reports the command as well as asserting on it, because "which of the claimants won" is
     /// the question every failure in this area has turned out to be, and it is invisible in a
     /// passing run otherwise.
     /// </para>
     /// </remarks>
     [Fact]
-    public void The_scheme_resolves_to_an_app_before_anything_is_launched()
+    public void The_scheme_resolves_before_anything_is_launched()
     {
         var command = RegisteredProtocolCommand();
         _output.WriteLine($"astrid:// resolves to: {command ?? "(nothing)"}");
 
         Assert.False(string.IsNullOrWhiteSpace(command), "astrid:// resolves to nothing");
-        Assert.False(
-            string.Equals(
-                Path.GetFileName(FirstQuoted(command!)),
-                "OpenWith.exe",
-                System.StringComparison.OrdinalIgnoreCase),
-            $"astrid:// resolves to the shell's picker, not to an app: {command}");
+
+        if (IsShellPicker(command!))
+        {
+            _output.WriteLine($"That is {PickerIsAccepted}");
+            return;
+        }
+
+        var executable = FirstQuoted(command!);
+        Assert.True(File.Exists(executable), $"astrid:// points at a missing file: {executable}");
     }
 
     /// <summary>
@@ -95,25 +114,43 @@ public sealed class ShellSmokeTests
         // the sign-in it was carrying is lost.
         Assert.Contains("%1", command!, System.StringComparison.Ordinal);
 
-        var executable = FirstQuoted(command!);
-
         // Several claimants and no default recorded, which is what a packaged build installed
         // beside an unpackaged one produces: the shell hands the URL to its picker instead of to
-        // an app, and whatever is chosen there becomes the default (task 02a8b67e). Every
-        // assertion around this one passes for the picker — it is a real executable of the host's
-        // architecture and its command carries the URL — so it has to be named to be caught. The
-        // rule itself is stated and tested as ProtocolRegistrations.IsShellPicker, in the standard
-        // gate; this project takes no project references, because it tests the built app rather
-        // than the source, so the check is spelt out here against the command already parsed.
-        Assert.False(
-            string.Equals(
-                Path.GetFileName(executable), "OpenWith.exe", System.StringComparison.OrdinalIgnoreCase),
-            $"astrid:// resolves to the shell's picker, not to an app: {command}");
+        // an app, and whatever is chosen there becomes the default. That is accepted as of
+        // 2026-11-14 (task 02a8b67e): a user has one Astrid, from the Store, so one claimant and
+        // no dialog, and it is only developer machines that meet the prompt. The alternative —
+        // having the unpackaged build stand aside while a packaged Astrid is installed — would
+        // mean packaging a build to test its sign-in, which costs more than the prompt does.
+        // So the picker is reported rather than failed, and the assertions below are about a
+        // claimant that really is an app: they say nothing either way about the picker, which is
+        // a real executable of the host's architecture whose command carries the URL.
+        if (IsShellPicker(command!))
+        {
+            _output.WriteLine($"astrid:// resolves to {PickerIsAccepted}");
+            return;
+        }
+
+        var executable = FirstQuoted(command!);
         Assert.True(File.Exists(executable), $"astrid:// points at a missing file: {executable}");
         Assert.Equal(
             System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture,
             ArchitectureOf(executable));
     }
+
+    /// <summary>
+    /// Whether the shell answered with its "How do you want to open this?" picker rather than with
+    /// an app.
+    /// </summary>
+    /// <remarks>
+    /// The rule itself is stated and tested as <c>ProtocolRegistrations.IsShellPicker</c>, which
+    /// runs in the standard gate. This project takes no project references, because it tests the
+    /// built app rather than the source, so it is spelt out again here.
+    /// </remarks>
+    private static bool IsShellPicker(string command) =>
+        string.Equals(
+            Path.GetFileName(FirstQuoted(command)),
+            "OpenWith.exe",
+            System.StringComparison.OrdinalIgnoreCase);
 
     /// <summary>The command Windows will actually run for <c>astrid://</c>.</summary>
     /// <remarks>
