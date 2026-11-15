@@ -273,11 +273,16 @@ public sealed class ShellSmokeTests
             app.Sees("Buy oat milk"),
             $"the new task never appeared; saw: {string.Join(", ", app.Names())}");
 
-        // The mark is a button carrying the checkbox image, not a CheckBox: it draws the state the
-        // core reported and asks for the opposite, because a repeating task rolls forward rather
-        // than finishing and a two-state control cannot say that. It is named for the task it
-        // finishes, which is what a screen reader reads.
-        app.Invoke("Complete Buy oat milk");
+        // Quick add leaves the task UNASSIGNED, and since task 3c0dfb73 an unassigned row's mark
+        // opens the picker rather than completing: a row nobody owns asks whose it is first
+        // (AITD-382, astrid-core CONTRACTS D62). So the accessibility name is "Options for …"
+        // rather than "Complete …", and finishing it takes the two steps a person now takes.
+        //
+        // This test used to invoke "Complete Buy oat milk" directly. That stopped existing when
+        // the picker landed, and nothing caught it: the UI suite is `predeploy:full`, not
+        // `predeploy`, so the gate on that change was green with this test broken.
+        app.Invoke("Options for Buy oat milk");
+        app.Invoke("Complete");
 
         // The list hides finished tasks after a moment; what matters is that nothing fell over.
         Assert.False(File.Exists(app.CrashLogPath), Crash(app));
