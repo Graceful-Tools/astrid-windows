@@ -96,6 +96,12 @@ public sealed class ProtocolRegistrationsTests
     /// and the App SDK — and neither can see the other, so side by side is the ordinary way to
     /// arrive at two claimants and no default.
     /// </para>
+    /// <para>
+    /// Which is why the picker is accepted rather than fixed, as of 2026-11-14: only a developer
+    /// machine has both builds, and the alternative is packaging a build to test its sign-in. This
+    /// test asserts that the condition is still *recognised* — the UI suite reports it by name — not
+    /// that it is a fault.
+    /// </para>
     /// </remarks>
     [Theory]
     [InlineData(@"C:\WINDOWS\system32\OpenWith.exe ""%1""")]
