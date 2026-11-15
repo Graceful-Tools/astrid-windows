@@ -152,7 +152,7 @@ fn only_a_tag_push_moves_the_core_pointer() {
 #[test]
 fn the_core_pointer_moves_after_the_release_publishes() {
     let publish = RELEASE_YML
-        .find("uses: softprops/action-gh-release@v2")
+        .find("uses: softprops/action-gh-release@")
         .expect("release.yml publishes the release");
     let pointer = RELEASE_YML
         .find("- name: Move astrid-core's windows-prod to the released pin")
