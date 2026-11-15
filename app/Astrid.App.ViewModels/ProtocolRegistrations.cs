@@ -75,6 +75,39 @@ public static class ProtocolRegistrations
         return executable.Length > 0 ? executable : null;
     }
 
+    /// <summary>
+    /// Whether a resolved open command is the shell's "How do you want to open this?" picker
+    /// rather than an app.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Windows answers <c>OpenWith.exe</c> when several apps claim a scheme and no default has been
+    /// recorded. That is not a registration failure — every claimant's command is intact — so it
+    /// cannot be found by inspecting the registrations; only what the shell resolves shows it. And
+    /// it is not caught by asking whether the resolved command looks runnable, because the picker
+    /// is a real executable of the host's own architecture and its command carries the URL.
+    /// </para>
+    /// <para>
+    /// Matched on the executable's file name, so it holds for either command shape and whatever
+    /// spelling or casing of the System32 path the shell hands back. The name must match exactly:
+    /// an app of one's own called <c>MyOpenWith.exe</c> is a claimant, not the picker.
+    /// </para>
+    /// <para>
+    /// Naming it is not the same as rejecting it. Since 2026-11-14 (task 02a8b67e) the picker is an
+    /// accepted resolution: a packaged Astrid and a dev build claim the scheme through mechanisms
+    /// that cannot see each other, so any machine with both has two claimants and no default, while
+    /// a user has one Astrid and no dialog. Callers use this to say which answer they got, not to
+    /// fail on it.
+    /// </para>
+    /// </remarks>
+    public static bool IsShellPicker(string? command)
+    {
+        var executable = ExecutableOf(command);
+        return executable is not null
+            && string.Equals(
+                Path.GetFileName(executable), "OpenWith.exe", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string Normalise(string path)
     {
         try

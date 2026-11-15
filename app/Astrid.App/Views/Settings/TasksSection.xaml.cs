@@ -44,7 +44,8 @@ public sealed partial class TasksSection : UserControl
         // The page's words, from the strings table (task c0f3db19).
         EmailToTaskToggle.Header = Strings.Get("smart.email_to_task");
         EmailToTaskHint.Text = Strings.Get("smart.email_to_task_hint");
-        EmailToTaskAddress.Text = Strings.Get("smart.email_address");
+        // The address comes from the build's brand, not from the strings table (task 8d241526).
+        EmailToTaskAddress.Text = BrandCopy.InboundTaskEmail;
         DueOffsetBox.Header = Strings.Get("smart.default_due_date");
         DueOffsetHint.Text = Strings.Get("smart.default_due_date_hint");
         DueTimeBox.Header = Strings.Get("smart.default_due_time");

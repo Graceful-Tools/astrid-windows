@@ -26,7 +26,7 @@ milestones; this tracks the *product*.
 | Completion, including repeat rollover | ✅ | ✅ | One path, `TaskService::complete` |
 | Due dates and quick picks | ✅ | ✅ | Instants computed in the core, not in XAML |
 | Reminders | ✅ | ✅ | Windows adds a banner with Complete and Snooze |
-| Repeat editor, presets and custom | ✅ | ✅ | The summary is one function on both |
+| Repeat editor, presets and custom | ✅ | ✅ | The summary is one function on both. The custom sheet also **authors** a monthly rule — a date, or a weekday and which week of the month, "last" included (`weekOfMonth: -1`, web's `LAST_WEEK_OF_MONTH`) — so a rule this client renders is one it can also change (task 914fc180) |
 | Assignee picker | ✅ | ✅ | Windows offers agents; the Mac's picker predates them (CONTRACTS D8) |
 | Comments | ✅ | ✅ | Replies nest under their parent; your own can be edited and deleted; all of it offline through the Outbox. `@person`, `#list` and `!task` autocomplete in the box, inserting the form the server resolves; comment text renders through the same markdown as a description, so a mention is a pill |
 | Search | ✅ | ✅ | Over the cache on both — there is no server search |
@@ -38,12 +38,12 @@ milestones; this tracks the *product*.
 | Keyboard scheme | ✅ | ✅ | The same table, from one fixture |
 | Offline-first with an Outbox | ✅ | ✅ | |
 | Sign-in through the browser | ✅ | ✅ | |
-| Localisation | ✅ (12 languages) | ✅ (English) | Windows has the mechanism and one language |
+| Localisation | ✅ (12 languages) | ✅ (English, German) | Windows ships en-US and de-DE (since a8eb5ad, 2026-09-12); a language is a folder. The other ten are AWTD2-173 |
 | Themes | ✅ | ✅ | Ocean, light, dark and auto — the same four the Apple clients store, chosen per machine. Appearance also carries the account's task-detail layout (list / project), which rows and the detail draw with at once; smart task creation on/off; and where subtasks appear — indented in lists, or inside the parent only |
 | Task settings | ✅ | ✅ | The web's Tasks page: Email-to-Task on/off and address, default due date and time for emailed tasks — stored on the server through `/api/v1/users/me/smart-tasks`, shaped and validated in the core |
 | Attachments | ✅ | ✅ | Open, attach from disk, paste from the clipboard; drawn in the comment they arrived on. A picture draws as a thumbnail from bytes already on this machine — the Outbox's own copy for one just posted — rather than being fetched back (AITD-308). Queued offline, with the bytes copied so the original can move away |
 | Timer on a task | ✅ | ✅ | Windows keeps a running timer across a restart; the Mac's is in memory |
-| Account screen and reminder settings | ✅ | ✅ | Push, email, default offset, digest, quiet hours. The Account page carries the web's sections: profile photo and display name, email verification with resend, account information, and account deletion behind the typed phrase the server requires. Passkeys are listed, renamed and revoked over the web's `/api/v1/users/me/passkeys`; adding one is the browser's WebAuthn ceremony |
+| Account screen and reminder settings | ✅ | ✅ | Push, email, default offset, digest, quiet hours. The Account page carries the web's sections: profile photo and display name, email verification with resend, account information, and account deletion behind the typed phrase the server requires. The email address can be changed here (task e61a3e60): the screen keeps showing the old one and says a confirmation went out, because the server swaps on the link. Passkeys are listed, renamed and revoked over the web's `/api/v1/users/me/passkeys`, and Windows Hello adds one here between the core's two commands |
 | Global quick-add hotkey | ✅ | ✅ | Ctrl+Shift+A by default; see the rebindable row below |
 | Command palette | ✅ | ✅ | Ctrl+K, with the Mac's own fuzzy ranking |
 | First-run tour | ✅ | ✅ | The three things nobody can discover by looking |
@@ -62,7 +62,7 @@ milestones; this tracks the *product*.
 | Label lists | ❌ | ✅ | `listType: "label"` draws as a tag on the rows that carry it and is never a sidebar entry (the web's list flavours) |
 | Copy a task | ❌ | ✅ | Into a list, with or without its comments, from the task menu — the web's Copy |
 | Natural-language quick-add | ✅ | ✅ | "Call mum tomorrow urgent #health", "Standup weekly mon and wed" — the web's parser, in twelve languages, locked by `smart.json` (CONTRACTS D11, closed; D12 and D13 for what differs) |
-| Feature flags | ✅ | ✅ | The board and Google list linking follow `project_mode` and `google_tasks` from `/api/v1/features` |
+| Feature flags | ✅ | ✅ | The board and Google list linking follow `project_mode` and `google_tasks` from `/api/v1/features`. The board toggle needs both: the flag, and a list that actually belongs to a board — the sidebar's own `projectId`, the field web gates on (task a66f0a16) |
 | Global quick-add hotkey | ✅ | ✅ | Ctrl+Shift+A, and now rebindable from Appearance; the core judges the chord |
 | The leading control's three states | ✅ | ✅ | Your checkbox, someone else's initial in a priority square, the localised unassigned mark (PRODUCT_CONTRACT §4) |
 
@@ -105,6 +105,19 @@ than fixed. D7 (an unknown due-date filter hides undated tasks), D8 (the two App
 the assignee picker differently) and D9 (auto-link duplicates a list Apple cannot get to the
 server) are the ones that touch this app today.
 
+**A trade-off grid's row numbers and column letters are produced here, not sent.** The core's
+`tradeoffGrid` block carries neither — its own comment says so — because both come from a row's or
+a column's position rather than from anything the writer typed, and the core drops the writer's own
+marker ("A." of "A. Lisbon") on the way. Every client therefore produces them itself, so this is
+the design rather than a divergence, and there is nothing to record in astrid-core's CONTRACTS.md.
+What *is* worth knowing is where the Windows copy lives and what it is a copy of:
+`TradeoffGridLabels.ColumnLetter` is a faithful port of `astrid_rules::decisions::column_letter`,
+pinned by `A_criterion_is_lettered_by_position_task_cca2483d` on the cases that function is
+specified by. It is a port rather than a call because `column_letter` is a plain public Rust
+function and not a `Rule` variant, and this repository has no binding to the stateless rules door
+at all — `Commands.cs` has no rules call. If that door is ever bound here, this is one of the first
+things that should go through it (task `cca2483d`).
+
 Two items in the task-detail overflow menu are this client's own, and are kept on purpose
 (task ffcc6abf, AWTD-1181, where Jon chose web's menu). They are shell shape rather than a rule, so
 they are recorded here and not in the core's CONTRACTS.md: **Copy link**, because a window has no
@@ -112,3 +125,25 @@ address bar and the menu is the only place a URL can come from; and **Close**, b
 a pane with something to shut, where web's routed page has nothing. Everything web's
 `TaskActionMenu` offers is there, in web's order, each of the two extras after the group it belongs
 to — pinned by `WebUxParityTests`.
+
+**A row's leading mark never draws the assignee's photo.** Where web puts a teammate's picture at
+the start of their task, this shell puts the first letter of their name in a priority-coloured
+square — `UserSummary.Image` arrives on every row and no view asks for it. Found while porting
+astrid-web's `3aa45e73` (task fa63a5dd), which made the repeat arrows the border of that mark: on
+web the arrows frame a photo, here they frame a letter. Deliberately left as it is, because fetching
+and caching a remote avatar per row is a wider change than the one that found it; the frame itself
+needs nothing from the photo and is drawn the same either way.
+
+**Four theme brushes follow astrid-web rather than the shared tokens.** Since task `b4807cb5` the
+brushes in `App.xaml` are compared to a vendored copy of astrid-core's design tokens
+(`design/tokens.resolved.json` at `design/REVISION`) by `DesignTokenTests`. `AstridBorder`,
+`AstridBorderHover` and Light's `AstridBgSelected` / `AstridBgSelectedBorder` are listed there as
+named exceptions: they match web's `styles/themes/*.css` to the byte and the tokens differ, so the
+drift is web-to-token and web's to resolve when it vendors. astrid-core's register names Light's two
+selection tints among the values DS26 leaves alone.
+
+**The priority colours follow the checkbox art, not the tokens** (astrid-core's register, DS21,
+accepted by Jon on 2026-11-10). `PriorityPalette` is sampled from `Assets/Checkboxes/check_box_*.png`
+and pinned to those files, because a swatch that disagrees with the mark beside it on the same row
+is the bug task `204c9d98` fixed. So low priority stays `#328ACC` here while the token is the darker
+accent `#2563EB`. Changing it means re-drawing the art, which is a design job and not a code one.

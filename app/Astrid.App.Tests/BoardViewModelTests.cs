@@ -125,6 +125,33 @@ public sealed class BoardViewModelTests
     }
 
     /// <summary>
+    /// A card's mark completes the task, the way a row's does (task 6979e694).
+    /// </summary>
+    /// <remarks>
+    /// Always the complete command, never an update carrying <c>completed</c>: a repeating task
+    /// rolls forward rather than finishing, and only that path does it. The board reloads
+    /// afterwards for the same reason a move does — a rolled-forward task is a different card now,
+    /// and only the core knows what it looks like.
+    /// </remarks>
+    [Fact]
+    public async Task A_cards_mark_completes_the_task_task_6979e694()
+    {
+        var core = new FakeCore()
+            .AnswerOk("board", Board(Column("ready", "Ready", "status", "Write it down")))
+            .AnswerOk("completeTask")
+            .AnswerOk("board", Board(Column("ready", "Ready", "status")));
+        var view = new BoardViewModel(core);
+        await view.LoadAsync("l1");
+
+        Assert.True(await view.SetCompletedAsync("ready-0", completed: true));
+
+        var sent = core.Sent.First(json => json.Contains("completeTask"));
+        Assert.Contains("\"taskId\":\"ready-0\"", sent);
+        Assert.Contains("\"completed\":true", sent);
+        Assert.Equal(["board", "completeTask", "board"], core.SentKinds());
+    }
+
+    /// <summary>
     /// Offline is not an error. The move is in the Outbox, the cache already shows it, and a red
     /// message here is how a working offline app comes to look broken.
     /// </summary>
@@ -309,8 +336,37 @@ public sealed class BoardExpansionTests
 
     private static object Board(params object[] columns) => new { projectId = "p1", columns };
 
+    /// <summary>
+    /// The expanded card is REPLACED by its detail, not followed by it (task 6df01318).
+    /// </summary>
+    /// <remarks>
+    /// The slot used to be added after the card, so the column drew the collapsed card — mark,
+    /// identifier, title, due — and then the detail pane carrying the same task underneath it. Jon
+    /// saw one task twice. The web board has always replaced the card: <c>renderCard</c> in
+    /// <c>project-status-board.tsx</c> returns the inline detail INSTEAD of the <c>task-card</c>
+    /// div when the card is expanded. The slot still sits where the card was, so the detail opens
+    /// in place and the cards around it do not move.
+    /// </remarks>
     [Fact]
-    public async Task Expanding_a_card_puts_the_detail_slot_right_after_it_task_91a25b8a()
+    public async Task Expanding_a_card_replaces_it_rather_than_drawing_it_twice_task_6df01318()
+    {
+        var core = new FakeCore().AnswerOk("board", Board(Column("ready", "t1", "t2", "t3")));
+        var view = new BoardViewModel(core);
+        await view.LoadAsync("l1");
+
+        view.Expand("t2");
+
+        var items = view.Columns[0].Items;
+        Assert.Equal(3, items.Count);
+        Assert.DoesNotContain(items, item => item is TaskRow row && row.Id == "t2");
+        Assert.Equal("t2", Assert.IsType<InlineDetailSlot>(items[1]).TaskId);
+        // The cards either side keep their places, so the detail opens where the card was.
+        Assert.Equal("t1", Assert.IsType<TaskRow>(items[0]).Id);
+        Assert.Equal("t3", Assert.IsType<TaskRow>(items[2]).Id);
+    }
+
+    [Fact]
+    public async Task Expanding_a_card_puts_the_detail_slot_where_that_card_was_task_91a25b8a()
     {
         var core = new FakeCore().AnswerOk("board", Board(Column("ready", "t1", "t2", "t3")));
         var view = new BoardViewModel(core);
@@ -320,9 +376,7 @@ public sealed class BoardExpansionTests
 
         Assert.Equal("t2", view.ExpandedTaskId);
         var items = view.Columns[0].Items;
-        Assert.Equal(4, items.Count);
-        Assert.Equal("t2", Assert.IsType<TaskRow>(items[1]).Id);
-        Assert.Equal("t2", Assert.IsType<InlineDetailSlot>(items[2]).TaskId);
+        Assert.Equal("t2", Assert.IsType<InlineDetailSlot>(items[1]).TaskId);
         Assert.True(view.Columns[0].HoldsExpandedCard);
         // The cards themselves are untouched: the slot is a place, not a card.
         Assert.Equal(3, view.Columns[0].Cards.Count);
@@ -363,7 +417,7 @@ public sealed class BoardExpansionTests
         Assert.Equal("t2", view.ExpandedTaskId);
         Assert.False(view.Columns[0].HoldsExpandedCard);
         Assert.True(view.Columns[1].HoldsExpandedCard);
-        Assert.Equal("t2", Assert.IsType<InlineDetailSlot>(view.Columns[1].Items[1]).TaskId);
+        Assert.Equal("t2", Assert.IsType<InlineDetailSlot>(view.Columns[1].Items[0]).TaskId);
     }
 
     /// <summary>A card that is no longer on the board has nothing to expand, as on the web.</summary>

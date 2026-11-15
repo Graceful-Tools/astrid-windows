@@ -1,0 +1,664 @@
+using System.Diagnostics;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Xml.Linq;
+using Astrid.App.ViewModels;
+using Astrid.Core.Bindings;
+using Xunit;
+
+namespace Astrid.App.Tests;
+
+/// <summary>
+/// What a partner has to be able to change to produce a branded Windows build (task ac40a6ee).
+/// </summary>
+/// <remarks>
+/// <para>
+/// Windows was the closest native app to white-label-ready and still could not ship a partner
+/// build: the display name, the publisher, the <c>astrid://</c> scheme and the tiles were written
+/// into <c>packaging/AppxManifest.xml</c> by hand, and the server could only be chosen at runtime
+/// through <c>ASTRID_SERVER_URL</c> — there was no way to bake a partner's own into the package.
+/// </para>
+/// <para>
+/// So the manifest holds placeholders and <c>scripts/package.ps1</c> fills them from a brand
+/// profile, the same <c>*.brand.json</c> shape astrid-web and the Apple apps read. The assertions
+/// below are in two halves: that nothing brandable is a literal any more, and — the half that
+/// matters more — that with **no** profile the values are byte for byte what they were, because
+/// hosted Astrid must not change.
+/// </para>
+/// <para>
+/// The PowerShell half is exercised by running it, not by reading it. A loader whose defaults are
+/// asserted by scanning its source passes while returning something else entirely, and "the output
+/// is identical when no brand is set" is exactly the claim that cannot be checked that way.
+/// </para>
+/// </remarks>
+public sealed class BrandProfileTests
+{
+    /// <summary>Today's Astrid values, which a build with no brand profile must still produce.</summary>
+    private static readonly (string Key, string Value)[] AstridDefaults =
+    [
+        ("DisplayName", "Astrid Tasks"),
+        ("PublisherDisplayName", "Graceful Tools LLC"),
+        ("Description", "Tasks, shared with the people you share them with."),
+        ("ShortName", "Astrid"),
+        ("Scheme", "astrid"),
+        ("SchemeDisplayName", "Astrid"),
+        ("ServerUrl", "https://astrid.cc"),
+        // The words, added by task 8d241526 — held to the same "hosted Astrid is unchanged" rule.
+        ("InboundTaskEmail", "remindme@astrid.cc"),
+        ("AgentName", "Astrid"),
+        ("Wordmark", "astrid"),
+        // The stem every file the build WRITES is named after, added by task 5bf1f1dc.
+        ("FileStem", "Astrid"),
+        // The ways in, added by task 28348df8 — the two astrid.cc actually offers, which is what
+        // the sign-in card has always said.
+        ("AuthProviders", "passkey,google"),
+        // The Store listing's three, added by task AWTD-1636 — as the listing has always said
+        // them. scripts/tests/store-listing.Tests.ps1 holds the filled listing itself to a hash.
+        ("SupportEmail", "support@astrid.cc"),
+        ("PrivacyUrl", "https://www.astrid.cc/privacy"),
+        ("OperatorName", "Graceful Tools LLC"),
+    ];
+
+    /// <summary>
+    /// Nothing brandable is a literal in the manifest any more.
+    /// </summary>
+    /// <remarks>
+    /// Read from the parsed XML rather than the file's text, so the explanatory comments — which
+    /// name Astrid and Graceful Tools, and should — are not mistaken for shipped values. Every
+    /// brandable attribute and element is a <c>{PLACEHOLDER}</c>; the asset paths and the Windows
+    /// App SDK dependency are not brandable and are left alone.
+    /// </remarks>
+    [Fact]
+    public void The_manifest_states_no_brand_value_as_a_literal_task_ac40a6ee()
+    {
+        var manifest = XDocument.Load(ManifestPath());
+        var values = new List<(string Where, string Value)>();
+        foreach (var element in manifest.Descendants())
+        {
+            foreach (var attribute in element.Attributes())
+            {
+                values.Add(($"{element.Name.LocalName}/@{attribute.Name.LocalName}", attribute.Value));
+            }
+            var text = string.Concat(element.Nodes().OfType<XText>().Select(node => node.Value)).Trim();
+            values.Add((element.Name.LocalName, text));
+        }
+
+        var leaks = values
+            .Where(pair => pair.Value.Contains("Astrid", StringComparison.OrdinalIgnoreCase)
+                || pair.Value.Contains("Graceful Tools", StringComparison.OrdinalIgnoreCase))
+            // The executable, the Application id and the asset file names are the app's own
+            // identity inside the package, not anything a reader sees. Renaming them would change
+            // the AUMID for no gain.
+            .Where(pair => !pair.Where.EndsWith("/@Executable", StringComparison.Ordinal)
+                && !pair.Where.EndsWith("/@Id", StringComparison.Ordinal))
+            .Select(pair => $"{pair.Where} = {pair.Value}")
+            .ToList();
+
+        Assert.True(leaks.Count == 0,
+            "AppxManifest.xml still states brand values a partner cannot change:\n  "
+            + string.Join("\n  ", leaks));
+    }
+
+    /// <summary>
+    /// Every placeholder the manifest carries is one <c>package.ps1</c> actually fills.
+    /// </summary>
+    /// <remarks>
+    /// A placeholder nobody substitutes ships as itself, and Windows only objects at install time —
+    /// <c>{SCHEME}</c> as a protocol name is a package that installs and then never receives the
+    /// sign-in callback. Scanned both ways round, so an abandoned substitution is caught too.
+    /// </remarks>
+    [Fact]
+    public void Every_manifest_placeholder_is_substituted_by_the_packager_task_ac40a6ee()
+    {
+        var manifest = File.ReadAllText(ManifestPath());
+        var packager = File.ReadAllText(Path.Combine(RepoRoot(), "scripts", "package.ps1"));
+
+        var placeholders = Regex.Matches(manifest, @"\{[A-Z_]+\}")
+            .Select(match => match.Value).ToHashSet(StringComparer.Ordinal);
+        Assert.True(placeholders.Count >= 6, $"found only {placeholders.Count} placeholders; the scan has stopped working");
+
+        var unfilled = placeholders
+            .Where(placeholder => !packager.Contains($"'{placeholder}'", StringComparison.Ordinal))
+            .ToList();
+        Assert.True(unfilled.Count == 0,
+            "the manifest carries placeholders package.ps1 does not fill:\n  " + string.Join("\n  ", unfilled));
+
+        var substituted = Regex.Matches(packager, @"Replace\('(\{[A-Z_]+\})'")
+            .Select(match => match.Groups[1].Value).ToHashSet(StringComparer.Ordinal);
+        var orphaned = substituted.Where(name => !placeholders.Contains(name)).ToList();
+        Assert.True(orphaned.Count == 0,
+            "package.ps1 substitutes placeholders the manifest no longer has:\n  " + string.Join("\n  ", orphaned));
+    }
+
+    /// <summary>
+    /// With no brand profile, the loader returns exactly today's Astrid values.
+    /// </summary>
+    /// <remarks>
+    /// The whole point of the change: a hosted Astrid build has to come out of this byte for byte
+    /// as it did before there was a brand profile at all.
+    /// </remarks>
+    [Fact]
+    public void No_brand_profile_means_todays_astrid_values_task_ac40a6ee()
+    {
+        var profile = LoadProfile(brand: null);
+
+        foreach (var (key, value) in AstridDefaults)
+        {
+            Assert.Equal(value, profile[key]);
+        }
+        Assert.Equal(Path.Combine(RepoRoot(), "packaging", "Assets"),
+            Path.GetFullPath(profile["AssetsDirectory"]!));
+    }
+
+    /// <summary>
+    /// The astrid profile, named explicitly, is the same thing as naming nothing.
+    /// </summary>
+    /// <remarks>
+    /// astrid-web keeps <c>astrid.brand.json</c> for this reason — it proves the refactor did not
+    /// change today's behaviour — and the assertion only holds if the mapping from a profile's
+    /// variables onto the manifest's values is the identity for Astrid's own values.
+    /// </remarks>
+    [Fact]
+    public void The_astrid_profile_matches_the_unbranded_default_task_ac40a6ee()
+    {
+        var unbranded = LoadProfile(brand: null);
+        var astrid = LoadProfile(brand: "astrid");
+
+        foreach (var (key, _) in AstridDefaults)
+        {
+            Assert.Equal(unbranded[key], astrid[key]);
+        }
+    }
+
+    /// <summary>
+    /// A partner profile moves every one of them, and leaves no Astrid value behind.
+    /// </summary>
+    /// <remarks>
+    /// The same test astrid-web's <c>acme.brand.json</c> exists for: a profile that merely compiles
+    /// is not a white-labelled build. Any value the loader forgets to map falls back to Astrid's,
+    /// which is the failure this catches — a partner shipping "Astrid Tasks" in their Start menu.
+    /// </remarks>
+    [Fact]
+    public void A_partner_profile_moves_every_brand_value_task_ac40a6ee()
+    {
+        var profile = LoadProfile(brand: "acme");
+
+        Assert.Equal("Acme Tasks", profile["DisplayName"]);
+        Assert.Equal("Acme Corporation", profile["PublisherDisplayName"]);
+        Assert.Equal("Acme", profile["ShortName"]);
+        Assert.Equal("acmetasks", profile["Scheme"]);
+        Assert.Equal("https://tasks.acme.example", profile["ServerUrl"]);
+
+        var astridLeaks = profile
+            .Where(pair => pair.Value is not null && pair.Key != "AssetsDirectory"
+                && (pair.Value.Contains("Astrid", StringComparison.OrdinalIgnoreCase)
+                    || pair.Value.Contains("Graceful Tools", StringComparison.OrdinalIgnoreCase)))
+            .Select(pair => $"{pair.Key} = {pair.Value}")
+            .ToList();
+        Assert.True(astridLeaks.Count == 0,
+            "the acme profile still carries Astrid's values:\n  " + string.Join("\n  ", astridLeaks));
+    }
+
+    /// <summary>
+    /// The app's own defaults come from the build, not from a literal in the source.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>ServerSelection.DefaultOrigin</c> was a <c>const</c>, so <c>ASTRID_SERVER_URL</c> was the
+    /// only way to reach a partner's server and every start of a partner build without it went to
+    /// astrid.cc. The default now comes from assembly metadata the build writes, and the
+    /// environment variable still overrides it — which is the documented order.
+    /// </para>
+    /// <para>
+    /// Asserted as Astrid's values because that is what this repo's own build produces; a partner
+    /// build's are asserted by the loader tests above and by the package layout.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void The_shell_reads_its_brand_defaults_from_the_build_task_ac40a6ee()
+    {
+        Assert.Equal("https://astrid.cc", BrandDefaults.ServerOrigin);
+        Assert.Equal("astrid", BrandDefaults.UrlScheme);
+        Assert.Equal("Astrid", BrandDefaults.ShortName);
+        Assert.Equal(BrandDefaults.ServerOrigin, ServerSelection.DefaultOrigin);
+    }
+
+    /// <summary>
+    /// The core is started with the brand's scheme, so its own callback check follows the build.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The last half of the white-label sign-in. <c>SignInCallback</c> has read the configured
+    /// scheme since <c>ac40a6ee</c>, but the core compared the callback against its own
+    /// <c>URL_SCHEME</c> constant — so a brand build whose manifest and registry registration use
+    /// its own scheme got as far as <c>AuthService::complete</c> and was answered
+    /// <c>CallbackOnAnotherScheme</c>, losing the sign-in with no error a user could act on. That
+    /// is what task 8cbed184 was filed about.
+    /// </para>
+    /// <para>
+    /// astrid-core <c>31882e0</c> (AWTD2-95) gave <c>Config</c> an optional <c>urlScheme</c>, and
+    /// this is the shell sending it. Absence still means <c>astrid</c>, so the key is omitted
+    /// rather than sent empty when there is nothing to say — a client that sends no scheme is
+    /// today's client.
+    /// </para>
+    /// <para>
+    /// Asserted on the config the shell builds rather than through a running core: the key IS the
+    /// contract, and a core without the field would ignore it in silence, since serde skips
+    /// unknown keys. There is nothing observable at the boundary to assert instead.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void The_core_is_started_with_the_brands_url_scheme_task_8cbed184()
+    {
+        var astrid = AstridClient.BuildStartConfig(":memory:", BrandDefaults.ServerOrigin, BrandDefaults.UrlScheme);
+        Assert.Contains("\"urlScheme\":\"astrid\"", astrid, StringComparison.Ordinal);
+
+        var partner = AstridClient.BuildStartConfig(":memory:", "https://acme.example", "acme");
+        Assert.Contains("\"urlScheme\":\"acme\"", partner, StringComparison.Ordinal);
+
+        var unsaid = AstridClient.BuildStartConfig(":memory:", BrandDefaults.ServerOrigin, null);
+        Assert.DoesNotContain("urlScheme", unsaid, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A callback on the configured scheme is found; one on another scheme is not.
+    /// </summary>
+    /// <remarks>
+    /// <c>SignInCallback</c> held <c>"astrid://"</c> as a constant, so a partner build registering
+    /// its own scheme would have dropped every sign-in it was handed. It reads the configured
+    /// scheme now, and since task 8cbed184 the core is started with that same scheme, so both
+    /// ends of the comparison follow the build.
+    /// </remarks>
+    [Fact]
+    public void The_callback_parser_follows_the_configured_scheme_task_ac40a6ee()
+    {
+        var callback = $"{BrandDefaults.UrlScheme}://auth/callback?code=abc&state=xyz";
+
+        Assert.Equal(callback, SignInCallback.FromLaunchArguments(callback));
+        Assert.Null(SignInCallback.FromLaunchArguments("someoneelse://auth/callback?code=abc"));
+    }
+
+    /// <summary>
+    /// Nothing in the shell writes the scheme or the server as a literal any more.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The registration in <c>Program.cs</c> is the one that matters: it writes the scheme into
+    /// HKCU for an unpackaged build, and a literal there would register <c>astrid://</c> for a
+    /// partner's app however the manifest was built. Scanned as source because the registry calls
+    /// cannot be exercised without touching the machine's own registration.
+    /// </para>
+    /// <para>
+    /// <c>ServerSelection</c> is not scanned, and its <c>astrid.db</c> is deliberate: the cache
+    /// file name is a path on disk, not anything a reader sees, and renaming it per brand would
+    /// strand the cache of every install that already exists. A partner's build writes
+    /// <c>astrid-&lt;their host&gt;.db</c> for the same reason it always did — one file per server.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void The_shell_names_no_scheme_literal_task_ac40a6ee()
+    {
+        var offenders = new[]
+            {
+                Path.Combine("Astrid.App", "Program.cs"),
+                Path.Combine("Astrid.App.ViewModels", "SignInCallback.cs"),
+            }
+            .SelectMany(relative =>
+            {
+                var source = File.ReadAllText(Path.Combine(RepoRoot(), "app", relative));
+                // Lines that are not comments: the XML doc comments on these types explain the
+                // scheme and the server by name, and should keep doing so.
+                var code = string.Join('\n', source.Split('\n')
+                    .Where(line => !line.TrimStart().StartsWith("//", StringComparison.Ordinal)));
+                // A literal that IS the scheme, or that spells out a URL on it. "Astrid.Main" —
+                // the single-instance key — is neither; it is brandable for a different reason and
+                // is asserted where it is defined.
+                return Regex.Matches(code, @"""[^""\n]*""")
+                    .Select(match => match.Value)
+                    .Where(literal => literal.Equals("\"astrid\"", StringComparison.OrdinalIgnoreCase)
+                        || literal.Contains("astrid://", StringComparison.OrdinalIgnoreCase)
+                        || literal.Contains("astrid.cc", StringComparison.OrdinalIgnoreCase))
+                    .Select(literal => $"{relative}: {literal}");
+            })
+            .ToList();
+
+        Assert.True(offenders.Count == 0,
+            "the shell still writes the scheme or the server as a literal:\n  "
+            + string.Join("\n  ", offenders));
+
+        // The single-instance key, which is per USER rather than per app for an unpackaged build:
+        // two brands sharing it means one answers the other's sign-in callback.
+        var program = File.ReadAllText(Path.Combine(RepoRoot(), "app", "Astrid.App", "Program.cs"));
+        Assert.Contains("BrandDefaults.ShortName}.Main", program, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The packager hands the brand's scheme and server to the build, and its assets to the layout.
+    /// </summary>
+    /// <remarks>
+    /// Without the two build properties the package carries a partner's manifest over Astrid's
+    /// binaries — the Start menu says the partner's name and the first launch signs in to
+    /// astrid.cc. Read as source: the assertion is about what the publish is invoked with, and
+    /// running a publish per architecture to find out is a twenty-minute test.
+    /// </remarks>
+    [Fact]
+    public void The_packager_builds_with_the_brands_server_scheme_and_assets_task_ac40a6ee()
+    {
+        var packager = File.ReadAllText(Path.Combine(RepoRoot(), "scripts", "package.ps1"));
+
+        // Through `Format-MsBuildProperty` rather than interpolated (task 13c6af65) — see
+        // BrandCopyTests for why, and scripts/lib/msbuild-property.ps1 for the escaping itself.
+        Assert.Contains("Format-MsBuildProperty 'AstridDefaultServerUrl'", packager,
+            StringComparison.Ordinal);
+        Assert.Contains("Format-MsBuildProperty 'AstridUrlScheme'", packager,
+            StringComparison.Ordinal);
+        Assert.Contains("Format-MsBuildProperty 'AstridBrandShortName'", packager,
+            StringComparison.Ordinal);
+        // $brandProfile, not $brand: the local cannot share the name of the [string]$Brand
+        // parameter, or PowerShell's type constraint silently converts the profile to a string
+        // and every read off it throws (task af2ca695).
+        Assert.Contains("$brandProfile.AssetsDirectory", packager, StringComparison.Ordinal);
+        // The literal path is what it falls back to, inside the loader — not what the packager
+        // copies, or a brand's own tiles would never reach the package.
+        Assert.DoesNotContain("'packaging/Assets/*'", packager, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The packaging scripts parse.
+    /// </summary>
+    /// <remarks>
+    /// Nothing else in the gate reads them: <c>package.ps1</c> is run by hand before a Store
+    /// upload, so a syntax error in it waits there until the day someone needs it. Parsed rather
+    /// than run — running it is a twenty-minute publish per architecture — which is enough to catch
+    /// the failure this file is prone to: it is saved UTF-8 with a byte order mark, and PowerShell
+    /// 5.1 reads one without as the system codepage and makes a parse error of every non-ASCII
+    /// character, naming a line nowhere near the real one.
+    /// </remarks>
+    [Fact]
+    public void The_packaging_scripts_parse_task_ac40a6ee()
+    {
+        foreach (var script in new[]
+                 {
+                     "package.ps1", "store-listing.ps1",
+                     Path.Combine("lib", "brand-profile.ps1"), Path.Combine("lib", "store-listing.ps1"),
+                 })
+        {
+            var path = Path.Combine(RepoRoot(), "scripts", script).Replace("'", "''");
+            var errors = PowerShell(
+                "$errors = $null; " +
+                $"[System.Management.Automation.Language.Parser]::ParseFile('{path}', [ref]$null, [ref]$errors)" +
+                " | Out-Null; " +
+                "if ($errors) { $errors | ForEach-Object { $_.ToString() } }");
+
+            Assert.True(errors.Trim().Length == 0, $"scripts/{script} does not parse:\n{errors}");
+        }
+    }
+
+    /// <summary>
+    /// The icon generator writes its whole set under an output root it is given.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The step that blocked every other partner step: <c>make-icons.ps1</c> wrote only into this
+    /// repo's own three folders, so a partner's assets directory stayed empty — and the brand
+    /// loader throws on an assets directory that does not exist, which is <c>-Brand acme</c>
+    /// failing before it builds anything. A partner could not generate the tiles without editing
+    /// the script.
+    /// </para>
+    /// <para>
+    /// Run, not read. "It writes the files somewhere else now" is exactly the claim a source scan
+    /// cannot make, and the three output folders are reached through two different variables. Run
+    /// against a tile already in the repo rather than the 4096px master in the sibling astrid-web
+    /// checkout, which CI does not have: the generator does not care what size the master is, and
+    /// a 150px one keeps the test at a second or two.
+    /// </para>
+    /// <para>
+    /// Also asserts the repo's own assets are untouched. An <c>-OutDir</c> that generated into both
+    /// places would pass every "the partner's folder is populated" assertion while rewriting the
+    /// tiles under version control on every partner build.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void Make_icons_writes_its_whole_set_under_the_output_root_task_5bf1f1dc()
+    {
+        var master = Path.Combine(RepoRoot(), "packaging", "Assets", "Square150x150Logo.png");
+        Assert.True(File.Exists(master), $"the master this test resamples has moved: {master}");
+
+        var repoTiles = Path.Combine(RepoRoot(), "packaging", "Assets");
+        var before = new DirectoryInfo(repoTiles).GetFiles()
+            .ToDictionary(file => file.Name, file => file.LastWriteTimeUtc, StringComparer.Ordinal);
+
+        var outDir = Path.Combine(Path.GetTempPath(), $"astrid-icons-{Guid.NewGuid():N}");
+        try
+        {
+            var script = Path.Combine(RepoRoot(), "scripts", "make-icons.ps1").Replace("'", "''");
+            PowerShell($"& '{script}' -Master '{master.Replace("'", "''")}' " +
+                $"-OutDir '{outDir.Replace("'", "''")}'");
+
+            // One file from each of the three outputs, which are reached through separate paths.
+            Assert.True(File.Exists(Path.Combine(outDir, "packaging", "Assets", "Square150x150Logo.png")),
+                "the package tiles did not reach the output root");
+            Assert.True(File.Exists(Path.Combine(outDir, "packaging", "Assets", "SplashScreen.png")),
+                "the splash screen did not reach the output root");
+            Assert.True(File.Exists(Path.Combine(outDir, "app", "Astrid.App", "Assets", "Astrid.ico")),
+                "the executable's icon did not reach the output root");
+            Assert.NotEmpty(Directory.GetFiles(Path.Combine(outDir, "packaging", "listing"), "store-logo-*.png"));
+
+            var rewritten = new DirectoryInfo(repoTiles).GetFiles()
+                .Where(file => !before.TryGetValue(file.Name, out var written)
+                    || written != file.LastWriteTimeUtc)
+                .Select(file => file.Name)
+                .ToList();
+            Assert.True(rewritten.Count == 0,
+                "-OutDir still rewrote the repo's own assets:\n  " + string.Join("\n  ", rewritten));
+        }
+        finally
+        {
+            if (Directory.Exists(outDir)) Directory.Delete(outDir, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// The files the build writes are named after the brand, not after Astrid.
+    /// </summary>
+    /// <remarks>
+    /// A partner's upload arrived at Partner Center as <c>Astrid-1.2.3.msixupload</c> and their
+    /// users' exports as <c>astrid-export-2026-11-12.json</c> — the one brand value that survived
+    /// the manifest work, because it is in a file name rather than in the manifest. The stem is
+    /// resolved once in the loader so the sanitising has a single tested home, and the app reads
+    /// its own from the build properties it already gets.
+    /// </remarks>
+    [Fact]
+    public void The_files_the_build_writes_are_named_after_the_brand_task_5bf1f1dc()
+    {
+        var packager = File.ReadAllText(Path.Combine(RepoRoot(), "scripts", "package.ps1"));
+        Assert.Contains("$brandProfile.FileStem", packager, StringComparison.Ordinal);
+
+        // The three dist names. Matched on the literal stem rather than on "Astrid" anywhere, so
+        // the comments that explain what a .msixupload is are left alone.
+        var literals = Regex.Matches(packager, @"""Astrid-\$Version[^""]*""")
+            .Select(match => match.Value)
+            .ToList();
+        Assert.True(literals.Count == 0,
+            "package.ps1 still names its output after Astrid:\n  " + string.Join("\n  ", literals));
+
+        var dataSection = File.ReadAllText(
+            Path.Combine(RepoRoot(), "app", "Astrid.App", "Views", "Settings", "DataSection.xaml.cs"));
+        Assert.DoesNotContain("astrid-export-", dataSection, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// A partner's stem is theirs, and is usable as a file name.
+    /// </summary>
+    /// <remarks>
+    /// The default is asserted with the rest of <see cref="AstridDefaults"/> — hosted Astrid still
+    /// writes <c>Astrid-&lt;version&gt;-arm64.msix</c>. What is asserted here is the half that
+    /// cannot be: that a brand name with a space in it, which <c>DisplayName</c> is free to have,
+    /// does not reach a path as one.
+    /// </remarks>
+    [Fact]
+    public void A_partner_file_stem_is_theirs_and_is_a_usable_file_name_task_5bf1f1dc()
+    {
+        var stem = LoadProfile(brand: "acme")["FileStem"];
+
+        Assert.Equal("Acme", stem);
+        Assert.Equal(-1, stem!.IndexOfAny(Path.GetInvalidFileNameChars()));
+        Assert.DoesNotContain(" ", stem, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The window wears the icon this build carries, rather than the framework's default.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The executable's icon is branded — <c>&lt;ApplicationIcon&gt;</c> compiles it in, and
+    /// <c>make-icons.ps1 -OutDir</c> writes a partner's own to the path it is taken from — but a
+    /// WinUI window does not inherit it. Nothing called <c>AppWindow.SetIcon</c>, so the title
+    /// bar's corner and the Alt-Tab card showed the default square in every build, partner or not
+    /// (task 28348df8).
+    /// </para>
+    /// <para>
+    /// Two halves, because either alone is a window with no icon: the call, and the <c>.ico</c>
+    /// reaching the output folder, since <c>&lt;ApplicationIcon&gt;</c> embeds the file without
+    /// copying it and <c>SetIcon</c> wants a path. Read as source — a <c>Window</c> cannot be
+    /// built in a test host, and "the title bar's icon changed" is not a thing xUnit can see.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void The_window_wears_the_builds_own_icon_task_28348df8()
+    {
+        var app = File.ReadAllText(Path.Combine(RepoRoot(), "app", "Astrid.App", "App.xaml.cs"));
+        Assert.Contains("SetIcon(Brand.IconPath)", app, StringComparison.Ordinal);
+
+        var project = XDocument.Load(Path.Combine(RepoRoot(), "app", "Astrid.App", "Astrid.App.csproj"));
+        var icon = project.Descendants("ApplicationIcon").Single().Value;
+        var copied = project.Descendants("Content")
+            .Select(content => content.Attribute("Include")?.Value ?? string.Empty)
+            .Any(include => include.Equals(icon, StringComparison.OrdinalIgnoreCase));
+        Assert.True(copied,
+            $"<ApplicationIcon>{icon}</ApplicationIcon> is embedded in the executable but never "
+            + "copied beside it, so AppWindow.SetIcon has no file to load");
+
+        Assert.True(File.Exists(Path.Combine(RepoRoot(), "app", "Astrid.App", icon.Replace('\\', Path.DirectorySeparatorChar))),
+            $"the icon the window is given has moved: {icon}");
+    }
+
+    /// <summary>
+    /// The sign-in card offers the methods this brand has, in the brand's own order.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The card promised "Passkeys, Google and magic links" as a literal, so a partner whose
+    /// deployment signs people in with GitHub and single sign-on advertised two methods they do not
+    /// have and hid the two they do — and GitHub and SSO are reached only by listing them, so this
+    /// is the ordinary partner rather than an exotic one (task 28348df8).
+    /// </para>
+    /// <para>
+    /// The composition is asserted through <see cref="AuthMethods"/> rather than through the
+    /// window: the words are the translator's and arrive from <c>Resources.resw</c>, and what is
+    /// worth pinning is that today's sentence still comes out of today's methods — hosted Astrid
+    /// unchanged, which is this file's standing rule.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void The_sign_in_card_offers_the_brands_own_methods_task_28348df8()
+    {
+        Assert.Equal(["passkey", "google"], BrandDefaults.AuthProviders);
+        Assert.Equal("Passkeys, Google and magic links",
+            AuthMethods.List(["passkeys", "Google", "magic links"], ", ", "{0} and {1}"));
+
+        // A partner's list, in the partner's order, with the one they turned off left out.
+        var acme = LoadProfile(brand: "acme")["AuthProviders"];
+        Assert.Equal("sso,github,passkey", acme);
+        Assert.Equal(["sso", "github", "passkey"], AuthMethods.Parse(acme, ["passkey", "google"]));
+
+        // A typo costs the method, not the sentence; and a list of nothing but typos falls back
+        // rather than promising no way in at all.
+        Assert.Equal(["google"], AuthMethods.Parse("goolge, google, google", ["passkey"]));
+        Assert.Equal(["passkey"], AuthMethods.Parse("  ", ["passkey"]));
+
+        // Nothing in the window states the methods any more: the literal that was there is gone
+        // from the XAML and from both languages' resources.
+        var overlay = File.ReadAllText(
+            Path.Combine(RepoRoot(), "app", "Astrid.App", "Views", "SignInOverlay.xaml"));
+        Assert.Contains("BrandCopy.SignInMethods", overlay, StringComparison.Ordinal);
+        Assert.DoesNotContain("magic links", overlay, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// The Store listing is a template a brand profile fills, and hosted Astrid's comes out of it
+    /// byte for byte.
+    /// </summary>
+    /// <remarks>
+    /// The assertions live in <c>scripts/tests/store-listing.Tests.ps1</c>, which
+    /// <c>predeploy</c> runs as a script test; this runs the same file so CI, which does not run
+    /// the script tests, holds the hosted listing to its hash too. A partner having a template must
+    /// not change what hosted Astrid pastes into Partner Center.
+    /// </remarks>
+    [Fact]
+    public void The_store_listing_is_a_template_that_leaves_hosted_astrid_unchanged_task_AWTD_1636()
+    {
+        var test = Path.Combine(RepoRoot(), "scripts", "tests", "store-listing.Tests.ps1").Replace("'", "''");
+
+        // PowerShell() fails the test on a non-zero exit, which is how the script reports a failure.
+        PowerShell($"& '{test}'; exit $LASTEXITCODE");
+    }
+
+    /// <summary>The profile <c>Get-AstridBrandProfile</c> returns, as a dictionary.</summary>
+    /// <remarks>
+    /// Run through <c>powershell.exe</c> — Windows PowerShell 5.1, the same host
+    /// <c>package.ps1</c> is run under — rather than reimplemented here. A second implementation
+    /// of the mapping would be a second thing to keep in step, and the one the tests agreed with
+    /// would not be the one that builds the package.
+    /// </remarks>
+    internal static Dictionary<string, string?> LoadProfile(string? brand)
+    {
+        var root = RepoRoot().Replace("'", "''");
+        var loader = Path.Combine(RepoRoot(), "scripts", "lib", "brand-profile.ps1").Replace("'", "''");
+        var argument = brand is null ? string.Empty : $" -Brand '{brand.Replace("'", "''")}'";
+        var json = PowerShell(
+            $". '{loader}'; Get-AstridBrandProfile -RepoRoot '{root}'{argument} " +
+            "| ConvertTo-Json -Compress -Depth 3");
+
+        using var document = JsonDocument.Parse(json);
+        return document.RootElement.EnumerateObject()
+            .ToDictionary(
+                property => property.Name,
+                property => property.Value.ValueKind == JsonValueKind.Null
+                    ? null
+                    : property.Value.GetString(),
+                StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// What <paramref name="script"/> wrote to stdout, under Windows PowerShell 5.1.
+    /// </summary>
+    /// <remarks>
+    /// <c>powershell.exe</c>, not <c>pwsh</c>: 5.1 is the host the packaging scripts are run under
+    /// and the one whose quirks they are written for, and the two disagree about enough — strict
+    /// mode, default encodings, <c>ConvertTo-Json</c>'s depth — to make the other a different
+    /// test.
+    /// </remarks>
+    private static string PowerShell(string script)
+    {
+        var process = Process.Start(new ProcessStartInfo("powershell.exe")
+        {
+            ArgumentList = { "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script },
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        })!;
+        var output = process.StandardOutput.ReadToEnd();
+        var errors = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        Assert.True(process.ExitCode == 0, $"powershell failed:\n{script}\n{errors}\n{output}");
+        return output;
+    }
+
+    private static string ManifestPath() => Path.Combine(RepoRoot(), "packaging", "AppxManifest.xml");
+
+    /// <summary>The repo root, from the test assembly's own location.</summary>
+    private static string RepoRoot() =>
+        Path.GetFullPath(Path.Combine(LocalisationTests.AppDirectory(), "..", ".."));
+}

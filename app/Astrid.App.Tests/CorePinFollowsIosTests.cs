@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using Astrid.Core.Bindings;
 using Xunit;
 
 namespace Astrid.App.Tests;
@@ -22,65 +23,55 @@ namespace Astrid.App.Tests;
 /// its source is not here to scan, and the bindings contract next door makes the same trade for
 /// the same reason.
 /// </para>
+/// <para>
+/// <strong>One of those lists is gone (task b63d8679.)</strong> There used to be fourteen keys
+/// copied out here under the heading "every key the pinned core sends has a word", and astrid-core's
+/// <c>copy.rs</c> names this file by name as the hand copy its string catalog replaces. The core
+/// now publishes the whole set — <c>astrid_core::copy_keys()</c>, computed from the very tables the
+/// pickers read — so that question is asked of all 106 of them in
+/// <c>crates/astrid-ffi/tests/copy_catalog_contract.rs</c>, in Rust, where the pinned crate is
+/// actually linked. What stays here is what a Rust test cannot see: the retired keys, and the arms
+/// of a WinUI converter's <c>switch</c>.
+/// </para>
 /// </remarks>
 public sealed class CorePinFollowsIosTests
 {
-    /// <summary>The repeat presets, as iOS spells them (D49).</summary>
-    private static readonly string[] RepeatPresetKeys =
-    [
-        "repeating.one_time_only", "repeating.daily", "repeating.weekly", "repeating.monthly",
-        "repeating.yearly", "repeating.custom",
-    ];
-
-    /// <summary>The completion filter's rows, which gained two and lost one.</summary>
-    private static readonly string[] CompletionFilterKeys =
-    [
-        "filter.completion.recent", "filter.completion.all", "filter.completion.completed",
-        "filter.completion.incomplete",
-    ];
-
-    /// <summary>The priority filter's rows, which the core names per level.</summary>
-    private static readonly string[] PriorityFilterKeys =
-    [
-        "lists.highest_priority", "lists.high_priority", "lists.medium_priority",
-        "lists.low_priority",
-    ];
-
     /// <summary>Keys the pinned core no longer sends. A word for one is a word nobody can reach.</summary>
+    /// <remarks>
+    /// <para>
+    /// <c>repeat.daily</c> and its four siblings were here until task b63d8679, on the belief that
+    /// D49 retired them with the rest. D49 renamed the repeat <em>picker</em>'s keys; the repeat
+    /// <em>filter</em> group still asks for <c>repeat.daily</c>, which is why this shell drew that
+    /// key as text in the filter sheet (CONTRACTS D60) while a test asserted it must have no word.
+    /// That cannot happen quietly again: a key listed here that the core still emits is required to
+    /// have a word by <c>copy_catalog_contract.rs</c> and required not to by this test, so the two
+    /// gates disagree out loud rather than agreeing on a wrong answer.
+    /// </para>
+    /// <para>
+    /// <strong>The five join this list with the next pin bump past core <c>ba154ed</c>.</strong>
+    /// D60 was resolved toward D49 (task <c>b0b5f3cc</c>): from that revision the repeat filter asks
+    /// for <c>repeating.daily</c> too, so <c>repeat.daily</c> … <c>repeat.custom</c> stop being
+    /// emitted and their words — in <c>Strings.cs</c> and in both <c>.resw</c> — become unreachable.
+    /// They are deliberately NOT here yet: the pinned core still sends them, so listing them now
+    /// would fail this test against a core that is right, and deleting the words now would redraw
+    /// the key on screen. Pin and words move together or not at all.
+    /// </para>
+    /// </remarks>
     private static readonly string[] RetiredKeys =
     [
-        "filter.completion.hide",
-        "repeat.never", "repeat.daily", "repeat.weekly", "repeat.monthly", "repeat.yearly",
-        "repeat.custom",
+        "filter.completion.hide", "repeat.never",
+        // The five joined the list with the pin bump past core `ba154ed` (task b656efce), which
+        // is the moment the paragraph above said they would: from that revision the repeat FILTER
+        // asks for `repeating.daily` too, so these stop being emitted and their words -- in
+        // `Strings.cs` and in both `.resw` -- became unreachable.
+        "repeat.daily", "repeat.weekly", "repeat.monthly", "repeat.yearly", "repeat.custom",
+        // The shell's own ordinal suffixes and the singular halves of the four repeat cadences.
+        // Both were replaced by the catalog's plural keys, whose word the core now picks between
+        // by CLDR category (`format.ordinal.*`, `repeat.every_n_days.*` and its three siblings).
+        // They were never core keys, so nothing but this list holds them gone.
+        "ordinal.st", "ordinal.nd", "ordinal.rd", "ordinal.th",
+        "repeat.every_day", "repeat.every_week", "repeat.every_month", "repeat.every_year",
     ];
-
-    /// <summary>
-    /// Every key the pinned core sends has a word, in the resources and in the fallback table.
-    /// </summary>
-    /// <remarks>
-    /// Both, because they fail differently: a missing resource is a key on screen in a packaged
-    /// build, and a missing fallback is a key on screen in an unpackaged one. A key with neither
-    /// comes back as itself — <c>Strings.Get</c> says so — so "repeating.daily" is what the reader
-    /// sees.
-    /// </remarks>
-    [Fact]
-    public void Every_key_the_pinned_core_sends_has_a_word_task_6ee938cc()
-    {
-        var app = LocalisationTests.AppDirectory();
-        var resources = ResourceNames(app);
-        var fallback = FallbackKeys(app);
-
-        var missing = RepeatPresetKeys.Concat(CompletionFilterKeys).Concat(PriorityFilterKeys)
-            .SelectMany(key => new[]
-                {
-                    resources.Contains(Flatten(key)) ? null : $"{key} — no resource",
-                    fallback.Contains(key) ? null : $"{key} — no fallback",
-                }.OfType<string>())
-            .ToList();
-
-        Assert.True(missing.Count == 0,
-            "the pinned core sends keys this shell has no word for:\n  " + string.Join("\n  ", missing));
-    }
 
     /// <summary>
     /// And the keys it stopped sending are gone from both, rather than left behind.
@@ -115,7 +106,7 @@ public sealed class CorePinFollowsIosTests
     /// <c>RepeatSummaryConverter.Say</c> ends in <c>_ => string.Empty</c>, so an unknown key is not
     /// an exception but a silence — and a summary of nothing but silences renders as "Does not
     /// repeat" on a task that repeats daily. The switch is read out of the source because the
-    /// converter is a WinUI type and this project is deliberately plain <c>net9.0</c>.
+    /// converter is a WinUI type and this project is deliberately plain <c>net10.0</c>.
     /// </remarks>
     [Fact]
     public void The_repeat_summary_knows_every_part_the_pinned_core_sends_task_6ee938cc()
@@ -127,8 +118,8 @@ public sealed class CorePinFollowsIosTests
             "repeating.daily", "repeating.weekly", "repeating.monthly", "repeating.yearly",
             "repeat.from_due_date", "repeat.every_n_days", "repeat.every_n_weeks",
             "repeat.every_n_months", "repeat.every_n_years", "repeat.on_weekdays",
-            "repeat.on_day_of_month", "repeat.on_nth_weekday", "repeat.on_month_and_day",
-            "repeat.ends_after", "repeat.ends_on",
+            "repeat.on_day_of_month", "repeat.on_nth_weekday", "repeat.on_last_weekday",
+            "repeat.on_month_and_day", "repeat.ends_after", "repeat.ends_on",
         ];
 
         var unhandled = summaryKeys
@@ -141,22 +132,68 @@ public sealed class CorePinFollowsIosTests
     }
 
     /// <summary>
-    /// A list's default-repeat picker offers the same keys the core's preset list does.
+    /// "The last Thursday of the month" reads as words, not as a silence (task e4f160cc).
     /// </summary>
     /// <remarks>
-    /// That picker is the shell's own — the core has no command for a list's defaults — so it
-    /// builds its labels from the repeat values. It still has to build the keys the resources
-    /// carry, and after D49 those are <c>repeating.*</c>, with "never" spelt
-    /// <c>repeating.one_time_only</c>.
+    /// <para>
+    /// A monthly repeat on <c>weekOfMonth: -1</c> — iCalendar's <c>BYDAY=-1MO</c>, which web settled
+    /// on in AWTD-1295 — does not come back as <c>repeat.on_nth_weekday</c> with a count of −1,
+    /// because "the −1th Thursday" is not a sentence. The core gives it its own key with no count,
+    /// so the shell owes it a separate word and a separate arm.
+    /// </para>
+    /// <para>
+    /// Asserted on its own rather than only by adding a string to the lists above, because the three
+    /// failures differ: no resource is the key on screen in a packaged build, no fallback is the key
+    /// on screen in an unpackaged one, and no arm in <c>RepeatSummaryConverter.Say</c> is worse than
+    /// either — the switch ends in <c>_ => string.Empty</c>, so the part vanishes and a task that
+    /// repeats monthly reads "Does not repeat".
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void The_last_weekday_of_the_month_has_a_word_and_an_arm_task_e4f160cc()
+    {
+        var app = LocalisationTests.AppDirectory();
+        const string key = "repeat.on_last_weekday";
+
+        Assert.Contains(Flatten(key), ResourceNames(app));
+        Assert.Contains(key, FallbackKeys(app));
+        Assert.Contains($"\"{key}\"", RepeatSummarySwitch(app), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A list's default-repeat picker offers the same keys the core's preset list does, and the
+    /// shell has a resource for each of them.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This used to read the view model's own source text for the key it built, because that
+    /// picker was the shell's own. It is the core's since task 92830d81
+    /// (<c>astrid_rules::rows::list_default_picks</c>), so the keys are asked for rather than
+    /// grepped — the hand copy the cross-client review named. After D49 they are
+    /// <c>repeating.*</c>, with "never" spelt <c>repeating.one_time_only</c>.
+    /// </para>
+    /// <para>
+    /// Asking the door also catches the half a source grep never could: a key the core emits that
+    /// this shell has no resource for, which draws as the key itself.
+    /// </para>
     /// </remarks>
     [Fact]
     public void The_list_default_repeat_picker_uses_the_cores_preset_keys_task_6ee938cc()
     {
-        var source = File.ReadAllText(Path.Combine(
-            LocalisationTests.AppDirectory(), "..", "Astrid.App.ViewModels", "ListSettingsViewModel.cs"));
+        var picks = AstridClient.ListDefaultPicks(new ListDefaults());
+        var keys = picks.Repeating.Select(pick => pick.Key).ToList();
 
-        Assert.DoesNotContain("$\"repeat.{value}\"", source, StringComparison.Ordinal);
-        Assert.Contains("repeating.one_time_only", source, StringComparison.Ordinal);
+        Assert.Contains("repeating.one_time_only", keys);
+        Assert.DoesNotContain(keys, key => key?.StartsWith("repeat.", StringComparison.Ordinal) == true);
+
+        var resources = ResourceNames(LocalisationTests.AppDirectory());
+        foreach (var key in picks.Priority.Concat(picks.Repeating).Concat(picks.DueDate)
+                     .Concat(picks.DueTime)
+                     .Select(pick => pick.Key)
+                     .Where(key => key is not null))
+        {
+            Assert.Contains(Flatten(key!), resources);
+        }
     }
 
     /// <summary>

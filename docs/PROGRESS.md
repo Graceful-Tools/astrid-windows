@@ -112,8 +112,8 @@ against the web, from a read of the source rather than of the docs, with what ha
 - A row flips on the click and flips back only if the core refuses (`TaskListViewModel`).
 - `app/dispatch.rs` is a directory, one file per domain; every literal in `ShellPage.xaml`
   carries an `x:Uid` with a resource behind it, and two tests keep it so.
-- **The notification inbox** (`/api/v1/notifications`): a bell in the header with the unread
-  count from the cache, refreshed on every sync pass, mark-read and mark-all-read.
+- **The notification inbox** (`/api/v1/notifications`): a bell in the sidebar's header row with
+  the unread count from the cache, refreshed on every sync pass, mark-read and mark-all-read.
 - **The search grammar** (`assignee:me priority:high due:week is:open status:ready list:Work
   label:bug AST-142`), ported from `lib/search-query-parser.ts` and locked by
   astrid-core's `contracts/fixtures/search.json`; applied over the cache, which holds every task including

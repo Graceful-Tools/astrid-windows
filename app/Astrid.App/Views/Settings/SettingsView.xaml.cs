@@ -39,6 +39,7 @@ public sealed partial class SettingsView : UserControl
             ["Integrations"] = ("settings.integrations", "settings.integrations_line", "", "#10B981"),
             ["Data"] = ("settings.data", "settings.data_line", "", "#059669"),
             ["Help"] = ("help.title", "settings.help_line", "", "#06B6D4"),
+            ["Feedback"] = ("feedback.title", "settings.feedback_line", "", "#F43F5E"),
             ["Privacy"] = ("privacy.title", "settings.privacy_line", "", "#6B7280"),
             ["Terms"] = ("terms.title", "settings.terms_line", "", "#6B7280"),
         };
@@ -50,6 +51,7 @@ public sealed partial class SettingsView : UserControl
         TasksNavLabel.Text = Strings.Get("smart.title");
         ContactsNavLabel.Text = Strings.Get("contacts.title");
         HelpNavLabel.Text = Strings.Get("help.title");
+        FeedbackNavLabel.Text = Strings.Get("feedback.title");
         PrivacyNavLabel.Text = Strings.Get("privacy.title");
         TermsNavLabel.Text = Strings.Get("terms.title");
         AccountCardLine.Text = Strings.Get(Pages["Account"].LineKey);
@@ -62,6 +64,7 @@ public sealed partial class SettingsView : UserControl
         IntegrationsCardLine.Text = Strings.Get(Pages["Integrations"].LineKey);
         DataCardLine.Text = Strings.Get(Pages["Data"].LineKey);
         HelpCardLine.Text = Strings.Get(Pages["Help"].LineKey);
+        FeedbackCardLine.Text = Strings.Get(Pages["Feedback"].LineKey);
         PrivacyCardLine.Text = Strings.Get(Pages["Privacy"].LineKey);
         TermsCardLine.Text = Strings.Get(Pages["Terms"].LineKey);
     }
@@ -121,6 +124,7 @@ public sealed partial class SettingsView : UserControl
                 Shell.Settings.Agents.LoadAgentsAsync(),
                 Shell.Settings.Agents.LoadAstridModelAsync(),
                 Shell.Settings.Integrations.LoadGoogleSyncModeAsync(),
+                Shell.Settings.Integrations.LoadExternalAccountsAsync(),
                 Shell.Settings.Agents.LoadWebhookAsync());
             await Shell.LoadSettingsAsync();
             await others;
@@ -147,6 +151,7 @@ public sealed partial class SettingsView : UserControl
     {
         Shell.Settings.Connections.ForgetMintedCredentials();
         Shell.Settings.Agents.ForgetWebhookCredentials();
+        Shell.Settings.Agents.ForgetCopilotToken();
     }
 
     /// <summary>The bar's arrow: back to the list, exactly as it was.</summary>
@@ -158,8 +163,32 @@ public sealed partial class SettingsView : UserControl
         {
             return;
         }
-        // Three entries are doors, not pages: the web's own Help, Privacy and Terms open in the
+        // Four entries are doors, not pages: the web's own Help, Privacy and Terms open in the
         // browser, so there is one copy of each (task 438494c7). The page on the right stays.
+        //
+        // Report an Issue is the fourth, and the only one this file does not know the address of
+        // (task 68771137): which list a deployment files feedback into is the core's answer, so
+        // the view model is asked. That is a round trip, which is why it is awaited separately
+        // rather than inlined into the table above.
+        //
+        // Since task 6fc92134 the answer is a decision rather than an address, because there are
+        // two kinds of door: the feedback list on a screen of its own when the core says this
+        // reader may file in it, and the browser otherwise. Which of the two is not decided here
+        // — the branch below carries out an answer, it does not work one out.
+        if (section == "Feedback")
+        {
+            var destination = await Shell.Settings.FeedbackDestinationAsync(App.ServerOrigin);
+            if (destination.ListId is { Length: > 0 } listId
+                && await Shell.ShowPublicListAsync(listId))
+            {
+                return;
+            }
+            // Either the core sent us to the web, or the list would not open after all. A row is
+            // a door, and the web is always a door.
+            await Windows.System.Launcher.LaunchUriAsync(
+                new Uri(destination.WebUrl ?? $"{App.ServerOrigin.TrimEnd('/')}/help"));
+            return;
+        }
         var door = section switch
         {
             "Help" => $"{App.ServerOrigin}/help",

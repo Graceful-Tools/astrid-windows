@@ -217,6 +217,61 @@ other executable's claim (and deletes what the App SDK's unregister leaves dangl
 registering this one. The smoke test asks the shell (`AssocQueryString`) what it will run instead
 of reconstructing it from registry keys, which is how six claimants went unnoticed.
 
+**2026-10-18, task 02a8b67e: a packaged build installed beside a dev build brings the picker back,
+and "whichever ran last wins" cannot clear it.** This is the case 64c02099 could not exercise,
+because no packaged build had ever been installed here. Measured on this machine with the signed
+`0.1.2.0` bundle installed:
+
+| When | `AssocQueryString(astrid, open)` |
+|---|---|
+| Packaged build installed, nothing launched | `C:\WINDOWS\system32\OpenWith.exe "%1"` |
+| After an unpackaged Debug build runs and re-registers | `C:\WINDOWS\system32\OpenWith.exe "%1"` |
+
+So the picker is not left-over dirt this time, it is structural. The two claims are made by
+different mechanisms that cannot see each other — `uap:Protocol` in `AppxManifest.xml` for the
+packaged build, the App SDK for the unpackaged one — and `RemoveStaleProtocolRegistrations` only
+unregisters *other unpackaged* executables. One unpackaged claim plus the packaged claim is still
+two claimants with no default, which is still the dialog. Running a dev build therefore does **not**
+win the scheme back, which is what "whichever ran last wins" would lead you to expect.
+
+**What this costs.** On a machine with both, sign-in from *either* build stops at "How do you want
+to open this?", and whichever is picked there becomes the default — the 64c02099 failure mode,
+reachable now by design rather than by accident. A user is unaffected: they have one Astrid, from
+the Store, so one claimant and no dialog. It is developer machines that break, and this one is
+broken right now.
+
+**The smoke test could not see any of it, which was the first thing fixed.** `OpenWith.exe` is a
+real executable of the host's own architecture and its command carries `%1`, so every assertion
+`The_sign_in_callback_reaches_an_app_that_can_start` makes passed while the shell was showing a
+picker — including on 2026-09-13, which its own remarks describe. The picker is now named and
+rejected: `ProtocolRegistrations.IsShellPicker`, unit-tested in the standard gate, plus a UI probe
+(`The_scheme_resolves_to_an_app_before_anything_is_launched`) that reads the association *without*
+starting anything, since the older test launches the app first and so can only ever report the
+state after a dev build has just re-registered.
+
+**Decided 2026-11-14 (Jon): accept the picker.** The option the task reserved was for the
+unpackaged build to stand aside while a packaged Astrid is installed — not for the packaged one to
+fight back, and no HKCU writes on the packaged path. It was not taken. A user has one Astrid, from
+the Store, so one claimant and no dialog; only a developer machine with both builds meets the
+prompt, and standing aside would mean packaging a build to test its sign-in, which costs more than
+one extra click does. **The packaged build does not own `astrid://`, and neither build was
+changed.**
+
+What changed is the two UI assertions, which were red on any machine with both builds installed and
+would have stayed red forever: they now accept *a claimant or the picker*, and report which one
+answered. `ProtocolRegistrations.IsShellPicker` stays exactly as it is, in the standard gate — the
+picker still has to be recognised to be reported, and the 2026-09-13 failure it was written for is
+still the one case where "a real executable with `%1`" is not enough. What the probes still fail on
+is a scheme that resolves to nothing, and a claimant that points at a file some deleted build left
+behind.
+
+**To get a single claimant back on a dev machine,** uninstall the test package
+(`Remove-AppxPackage`); the unpackaged build's own claim is then the only one and the shell stops
+asking. That is the interim answer for anyone who wants to exercise the sign-in hand-off end to end
+here, and it is also the reason steps 1–3 of the task (sign in from each build and confirm the
+callback arrives) were never run: they need real credentials and a browser, so they are a human's
+to do, against whichever single claimant is left installed.
+
 ### Settled — the credential at rest, 2026-09-07
 
 The fallback, on purpose. `PasswordVault` is a WinRT API with apartment sensitivity, called from

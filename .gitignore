@@ -46,3 +46,10 @@ Thumbs.db
 # skips while the working tree is dirty. (scripts/fixall-loop.ps1 keeps its own log
 # under %LOCALAPPDATA%\Astrid\logs, outside the repo.)
 *.log
+
+# Crash dumps from the msys tools Git Bash brings. `grep.exe.stackdump` was committed
+# in f19023a, alongside a change about the Account page, and stayed — a dump lands in
+# whatever directory the tool died in, which is the repository root, and it reads like
+# a file somebody meant to add. Ignored so the next one is invisible instead (task
+# d24777f5).
+*.stackdump

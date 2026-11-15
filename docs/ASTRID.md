@@ -47,8 +47,9 @@ regression on another platform.
 10. **Reuse before you write.** Permission helpers, i18n resources and the shared row view-model
     already exist; never inline a role comparison or a user-facing string literal. User-facing
     copy lives in `app/Astrid.App/Strings/<lang>/Resources.resw` and is read through
-    `Strings.Get`. About half the shell's strings still bypass that (see `docs/PROGRESS.md`,
-    "Release readiness"); do not add to them, and take a few out when passing.
+    `Strings.Get`. Every literal in the window's XAML carries an `x:Uid` with a resource behind it,
+    and `LocalisationTests` keeps it so and holds every language folder to the English key set
+    (see `docs/PROGRESS.md`); a new string goes in the resw files, never inline.
 
 ---
 

@@ -16,7 +16,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>Astrid.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -60,31 +60,66 @@
       waiting with.
     -->
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <!--
+      Compile the IL ahead of time in the published build (task d24777f5).
+
+      Only `dotnet publish -r <rid>` can do this, which is exactly what scripts/package.ps1 runs
+      per architecture, so it costs a developer's inner loop nothing: `dotnet build` and F5 are
+      untouched. What it buys is the first screen. Without it the JIT compiles the startup path —
+      the generated XAML, the view models, the bindings — while the user is looking at the window,
+      and on an ARM64 machine that is the slowest work the app ever does.
+
+      ReadyToRun is a cache, never a replacement: the IL ships beside the native code and the
+      runtime falls back to it whenever the precompiled form does not apply. So nothing here can
+      change behaviour, only the package's size, which is the trade being made.
+
+      NOT PublishTrimmed, deliberately, though the same review asked for both. WinUI resolves XAML
+      types by name at run time — a page is found through its generated type name, bindings through
+      reflection over the view model — and the trimmer cannot see any of that. It would be a
+      packaging flag whose failure mode is a blank page in a signed build that every test here
+      passes, since the tests drive the unpackaged build and never publish. Worth doing one day
+      behind the UI smoke suite running against a trimmed publish; not worth doing blind.
+    -->
+    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
   </ItemGroup>
 
   <!--
-    The checkbox marks, copied from astrid-web's public/icons.
+    The shared checkbox art, vendored at design/AstridCheckbox.xaml.
 
-    The same PNGs the web draws, so a priority reads identically on both. Drawing an equivalent in
-    XAML was the alternative and it is the wrong one: the mark carries priority, repetition and
-    completion in one image, and a hand-drawn copy would drift from the web the first time either
-    changed.
+    Linked rather than copied, so there is one file in the repo and `DesignTokenTests` gates the
+    same bytes the shell compiles: the vendored copy carries a `body-sha256` of its own body, and a
+    second copy here could drift from it silently. astrid-core generates it from the source the web
+    and the Apple clients draw, and it strokes from `{TemplateBinding Foreground}` so a priority
+    token can colour it (task 82e4ad32, DS21).
+
+    It replaced the sixteen PNGs that used to live beside it, which baked priority, repetition and
+    completion into one picture — and four colours in with them. Those files are no longer
+    referenced; removing them needs an approval this loop does not have, so they are left in place.
   -->
   <ItemGroup>
-    <Content Include="Assets\Checkboxes\*.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <Page Include="..\..\design\AstridCheckbox.xaml" Link="Assets\Design\AstridCheckbox.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!--
       The mark the window draws — title bar, sign-in, the empty list, a reminder — at the web's
       two sizes (BRAND.icon 512, BRAND.iconSmall 96). Written by scripts/make-icons.ps1 from the
       same master as the taskbar icon and the Store tiles.
     -->
     <Content Include="Assets\Astrid-*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <!--
+      And the .ico beside them. It is already compiled into the executable by <ApplicationIcon>
+      above, which is what Explorer and the taskbar read — but AppWindow.SetIcon, which is the only
+      thing that reaches the title bar and Alt-Tab, wants a file (task 28348df8).
+    -->
+    <Content Include="Assets\Astrid.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

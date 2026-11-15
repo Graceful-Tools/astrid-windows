@@ -11,12 +11,46 @@
     astrid-core, and asking again would be asking twice.
   -->
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
+
+  <!--
+    The brand this build is for, as assembly metadata BrandDefaults reads back.
+
+    Set by `scripts/package.ps1` from a brand profile and passed to `dotnet publish` of the app
+    project, from where MSBuild carries a global property down into every project reference — so
+    these land here without the app project restating them.
+
+    THE DEFAULTS ARE ASTRID'S, and an ordinary `dotnet build` of this repo is an Astrid build. The
+    values live on THIS project rather than on the shell's: BrandDefaults reads its own assembly,
+    because under the test runner the entry assembly is the test host and these would be invisible.
+  -->
+  <PropertyGroup>
+    <AstridDefaultServerUrl Condition="'$(AstridDefaultServerUrl)' == ''">https://astrid.cc</AstridDefaultServerUrl>
+    <AstridUrlScheme Condition="'$(AstridUrlScheme)' == ''">astrid</AstridUrlScheme>
+    <AstridBrandShortName Condition="'$(AstridBrandShortName)' == ''">Astrid</AstridBrandShortName>
+    <!--
+      The words, as opposed to the identity (task 8d241526). Each is left EMPTY by default rather
+      than restating Astrid's: BrandDefaults derives the inbound address from the server and the
+      agent's name and handle from the short name, so a value here is an override and an absent one
+      is the derivation. Spelling them out would be a second place for a partner's build to go
+      half-branded.
+    -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="AstridDefaultServerUrl" Value="$(AstridDefaultServerUrl)" />
+    <AssemblyMetadata Include="AstridUrlScheme" Value="$(AstridUrlScheme)" />
+    <AssemblyMetadata Include="AstridBrandShortName" Value="$(AstridBrandShortName)" />
+    <AssemblyMetadata Include="AstridBrandInboundTaskEmail" Value="$(AstridBrandInboundTaskEmail)" />
+    <AssemblyMetadata Include="AstridBrandAgentName" Value="$(AstridBrandAgentName)" />
+    <AssemblyMetadata Include="AstridBrandWordmark" Value="$(AstridBrandWordmark)" />
+    <AssemblyMetadata Include="AstridBrandAuthProviders" Value="$(AstridBrandAuthProviders)" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Astrid.Core.Bindings\Astrid.Core.Bindings.csproj" />

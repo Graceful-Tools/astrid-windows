@@ -41,16 +41,54 @@
     Version="{VERSION}"
     ProcessorArchitecture="{ARCHITECTURE}" />
 
+  <!--
+    Brand values, substituted by scripts/package.ps1 from a brand profile — Astrid's own unless
+    `-Brand` names another (scripts/lib/brand-profile.ps1). Placeholders rather than literals
+    because a partner cannot edit a file this repo owns: "Astrid Tasks" and "Graceful Tools LLC"
+    written here were two of the four things that stopped Windows producing a branded build at all.
+
+    PublisherDisplayName must match the Partner Center account's publisher display name exactly, so
+    it moves with the Identity above rather than independently of it.
+  -->
   <Properties>
-    <DisplayName>Astrid Tasks</DisplayName>
-    <PublisherDisplayName>Graceful Tools LLC</PublisherDisplayName>
-    <Description>Tasks, shared with the people you share them with.</Description>
+    <DisplayName>{DISPLAY_NAME}</DisplayName>
+    <PublisherDisplayName>{PUBLISHER_DISPLAY_NAME}</PublisherDisplayName>
+    <Description>{DESCRIPTION}</Description>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
   <Dependencies>
     <!-- Windows 10 1809 is what the app targets; earlier builds have no Windows App SDK. -->
     <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+    <!--
+      The Windows App SDK runtime, which the app is FRAMEWORK-DEPENDENT on.
+
+      `package.ps1` publishes self-contained, and that is the .NET runtime only.
+      WinUI and everything under `Microsoft.Windows.*` still come from this framework package, so
+      without this line a package installs perfectly and then dies on its first Windows App SDK
+      call: `AppInstance.GetCurrent()` in Program.cs throws REGDB_E_CLASSNOTREG, "class not
+      registered", because inside a package WinRT activation resolves only through the declared
+      dependencies. No PackageDependency had ever been here, so no MSIX this repo built had ever
+      started — installing was as far as it had been tested.
+
+      BOTH HALVES COME FROM THE SDK ITSELF, and neither is guessable from its version string.
+      The restored Microsoft.WindowsAppSDK.Runtime package ships WindowsAppSDK-VersionInfo.json,
+      which states the framework package family name and the runtime version; scripts/tests/
+      packaging-manifest.Tests.ps1 reads that file and holds this element to it.
+
+      THE NAME IS NOT major.minor ANY MORE. Through 1.x the framework package carried both
+      (`Microsoft.WindowsAppRuntime.1.7`). From 2.0 it carries the MAJOR alone -
+      `Microsoft.WindowsAppRuntime.2` serves every 2.x runtime - so a 2.5 package that asked for
+      `Microsoft.WindowsAppRuntime.2.5` would be asking for something that does not exist, and
+      would fail at install rather than at the first WinRT call. MinVersion is what picks the
+      servicing level within that family.
+
+      The alternative is `-p:WindowsAppSDKSelfContained=true`, which copies these binaries into
+      the package instead - bigger, and not what the Store build should be.
+    -->
+    <PackageDependency Name="Microsoft.WindowsAppRuntime.2"
+                       MinVersion="2.5.1.0"
+                       Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" />
   </Dependencies>
 
   <Resources>
@@ -72,13 +110,13 @@
         colour of ours that would fight it.
       -->
       <uap:VisualElements
-        DisplayName="Astrid Tasks"
-        Description="Tasks, shared with the people you share them with."
+        DisplayName="{DISPLAY_NAME}"
+        Description="{DESCRIPTION}"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
         <uap:DefaultTile
-          ShortName="Astrid"
+          ShortName="{SHORT_NAME}"
           Square71x71Logo="Assets\Square71x71Logo.png"
           Square310x310Logo="Assets\Square310x310Logo.png"
           Wide310x150Logo="Assets\Wide310x150Logo.png" />
@@ -95,9 +133,9 @@
             The display name is an element rather than an attribute: the uap schema puts it inside
             Protocol, and makeappx rejects the attribute form outright.
           -->
-          <uap:Protocol Name="astrid">
+          <uap:Protocol Name="{SCHEME}">
             <uap:Logo>Assets\Square44x44Logo.png</uap:Logo>
-            <uap:DisplayName>Astrid</uap:DisplayName>
+            <uap:DisplayName>{SCHEME_DISPLAY_NAME}</uap:DisplayName>
           </uap:Protocol>
         </uap:Extension>
       </Extensions>

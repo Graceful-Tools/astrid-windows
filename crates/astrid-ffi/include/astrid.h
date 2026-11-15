@@ -1,9 +1,11 @@
 /*
  * astrid.h — the whole boundary between the WinUI shell and the Rust core.
  *
- * Seven functions and one callback type. Everything the app can do goes through astrid_call as a
+ * Eight functions and one callback type. Everything the app can DO goes through astrid_call as a
  * JSON command, so adding a feature means adding a Command variant in astrid-core rather than a
- * symbol here, a DllImport in C# and a marshalling rule for whatever it returns.
+ * symbol here, a DllImport in C# and a marshalling rule for whatever it returns. The eighth,
+ * astrid_rule, is the exception that rule earns: the core's pure half waits on nothing, so asking
+ * it a question needs neither a handle nor the runtime.
  *
  * Hand-written rather than generated, because it is short enough to read in one sitting and a
  * generated header is one more thing to keep in step. A test in src/lib.rs checks that every
@@ -43,17 +45,40 @@ typedef struct AstridApp AstridApp;
 typedef void (*AstridCallback)(void *user_data, const char *json);
 
 /*
- * The version of the core this library was built from.
+ * This library's version and the revision of the core inside it: "0.1.0 (core a8591a93c022)".
+ *
+ * Both, because a crash report needs the second one — almost every line in the process is the
+ * core's, and the shell takes it by a pin.
  *
  * The returned pointer is static: do not free it.
  */
 const char *astrid_version(void);
 
 /*
+ * Answer one pure rule: JSON in, JSON out. No handle, no runtime, no callback.
+ *
+ * The stateless half of the core — repeating rollover, permissions, filters, smart parsing, the
+ * row projections — waits on nothing, so it needs none of astrid_start's machinery. The request is
+ * tagged by "kind" and the answer is the same {"ok":...} envelope astrid_call returns. Never NULL:
+ * a request that cannot be read answers a refusal envelope. The returned string is yours to free
+ * with astrid_free_string.
+ */
+char *astrid_rule(const char *request_json);
+
+/*
  * Start the client.
  *
- * `config_json` is {"cachePath": "...", "baseUrl": "..."} — baseUrl is optional and defaults to
- * production. Returns NULL on failure, writing the reason to *error_out (which you then free with
+ * `config_json` is {"cachePath": "...", "baseUrl": "...", "urlScheme": "..."}. baseUrl is NOT
+ * optional: a caller that leaves it out used to get Astrid's own server, which is the one answer a
+ * white-label build must never give — its sync, Outbox and live stream would go to astrid.cc while
+ * everything the shell asks for went to the partner (task 7e68a733). EVERY build now refuses such
+ * a start with CONFIG_BASE_URL_REQUIRED at the head of the error, not only one built with the
+ * `require-base-url` feature: astrid-core 39c8f3f (AWTD-1627) deleted DEFAULT_BASE_URL outright,
+ * so no client binary holds Astrid's address to fall back to. Absent and null both count as
+ * missing.
+ * urlScheme stays optional and defaults to `astrid`.
+ *
+ * Returns NULL on failure, writing the reason to *error_out (which you then free with
  * astrid_free_string). error_out may be NULL if you do not want the reason.
  */
 AstridApp *astrid_start(const char *config_json, char **error_out);

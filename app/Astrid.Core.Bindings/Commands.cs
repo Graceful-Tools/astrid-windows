@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Astrid.Core.Bindings;
@@ -23,6 +24,41 @@ public static class Commands
     public static object Lists() => new KindOnly("lists");
 
     public static object List(string listId) => new WithListId("list", listId);
+
+    /// <summary>
+    /// The number beside each list in the sidebar, as iOS's <c>ListTaskCount</c> draws it
+    /// (AATD-39): a list's <em>open</em> tasks, a saved filter what its filters keep, a public
+    /// list the server's count, and My Tasks the open tasks assigned to the reader.
+    /// </summary>
+    /// <param name="lists">
+    /// The lists exactly as <see cref="Lists"/> answered them, passed through rather than rebuilt
+    /// from <see cref="ListSummary"/>. What a list counts depends on fields the sidebar never
+    /// draws — its privacy, and its saved filters — so a shell that reassembled the payload would
+    /// be deciding what counts.
+    /// </param>
+    /// <param name="myTasksId">
+    /// My Tasks' id. It has no row on the server, so nothing in the lists identifies it, and
+    /// without it My Tasks is the one entry the core cannot count.
+    /// </param>
+    /// <remarks>
+    /// Answers an object of list id to count. <c>listCounts</c> is the older, narrower command
+    /// this supersedes: it answers only what a saved filter keeps.
+    /// </remarks>
+    public static object ListBadges(JsonElement lists, string? myTasksId) =>
+        new ListBadgesRequest("listBadges", lists, myTasksId);
+
+    /// <summary>
+    /// The sidebar, whole (task e22621e2): My Tasks, the favourites and the rest of the places,
+    /// each in the order it is drawn and carrying the number <see cref="ListBadges"/> would give
+    /// it. Answers <see cref="SidebarSections"/>.
+    /// </summary>
+    /// <remarks>
+    /// This replaces <c>lists</c> + <c>myTasksList</c> + <c>listBadges</c> and the filter and two
+    /// sorts the shell ran over them. Not a saving of three calls so much as of three opinions:
+    /// which lists are somewhere to go, and in what order, is one product answer, and Android's
+    /// copy of it had already drifted into offering GitHub milestones as lists.
+    /// </remarks>
+    public static object Sidebar() => new KindOnly("sidebar");
 
     /// <summary>
     /// The rows to draw for a list — filtered, sorted, subtask-spliced and projected by the core.
@@ -110,6 +146,35 @@ public static class Commands
         new DayRequest("dueDateOnDay", taskId, day);
 
     /// <summary>
+    /// What a chosen time of day means for this task, as an instant (AATD-25).
+    /// </summary>
+    /// <remarks>
+    /// Asked for the same reasons <see cref="DueDateOnDay"/> is, plus one of its own: a clock hands
+    /// back an hour with no day attached, and which day it belongs on depends on the task — an
+    /// all-day task's calendar date, a timed one's local day, or today when there is no date at
+    /// all. The answer always says <c>isAllDay: false</c>, because a time of day is what makes a
+    /// task timed. The same anchor the quick time picks use, so "14:30" and "Afternoon" land on the
+    /// same date.
+    /// </remarks>
+    public static object DueDateAtTime(string taskId, int hour, int minute) =>
+        new TimeRequest("dueDateAtTime", taskId, hour, minute);
+
+    /// <summary>
+    /// Taking the time off a task: all-day, on the day it was already showing (task 0616f2d1).
+    /// </summary>
+    /// <remarks>
+    /// The inverse of <see cref="DueDateAtTime"/>, and asked rather than computed for a reason
+    /// sharper than the others: the write that looks obvious here — the instant the task already
+    /// has, with <c>isAllDay: true</c> — moves the date. Nothing normalises that pair on either
+    /// side of the wire, and an all-day date means its UTC day, so a task due 20:00 in California
+    /// would read back as tomorrow. The answer is the task's local day at UTC midnight, in the
+    /// same shape a quick pick comes in; a task with no date has no day to keep and answers a null
+    /// date. See <c>astrid_core</c>'s <c>docs/CONTRACTS.md</c> D58.
+    /// </remarks>
+    public static object DueDateAllDay(string taskId) =>
+        new WithTaskId("dueDateAllDay", taskId);
+
+    /// <summary>
     /// Who a task can be assigned to, in the order the picker shows them.
     /// </summary>
     /// <remarks>
@@ -167,6 +232,13 @@ public static class Commands
     public static object DeleteCustomAgent(string agentId) =>
         new AgentIdRequest("deleteCustomAgent", agentId);
 
+    /// <summary>
+    /// Set a registered agent's photo, or clear it back to the default by passing null. A URL,
+    /// not an upload. The answer says which image the server settled on (task 959b24b5).
+    /// </summary>
+    public static object SetCustomAgentPhoto(string agentId, string? image) =>
+        new AgentPhotoRequest("setCustomAgentPhoto", agentId, image);
+
     // ── Connections ──────────────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -211,6 +283,19 @@ public static class Commands
     public static object MintTransportCredentials(string preset, string agent) =>
         new PresetRequest("mintTransportCredentials", preset, agent);
 
+    /// <summary>
+    /// A user-level access token, for a cloud agent that has to act as this account.
+    /// </summary>
+    /// <remarks>
+    /// Answers with the token in the one form it will ever be readable, so the caller shows it at
+    /// once and stores nothing. It is listed and revoked afterwards as an access token, through
+    /// <see cref="Connections"/> and <see cref="RevokeConnection"/>.
+    /// <paramref name="expiresInDays"/> is 1-365; null asks for a token that does not expire.
+    /// </remarks>
+    public static object MintAccessToken(IReadOnlyList<string> permissions,
+        int? expiresInDays = null, string? description = null, string? agent = null) =>
+        new AccessTokenRequest("mintAccessToken", permissions, expiresInDays, description, agent);
+
     /// <summary>Start connecting Copilot. Answers with the URL a browser should open.</summary>
     public static object ConnectCopilot() => new KindOnly("connectCopilot");
 
@@ -242,6 +327,24 @@ public static class Commands
     public static object ExternalSync(string listId) =>
         new WithListId("externalSync", listId);
 
+    /// <summary>
+    /// The account's side of external sync: per provider, whether it is connected, which account
+    /// it is connected as, and every list it has linked — both ends of each named.
+    /// </summary>
+    /// <remarks>
+    /// Account-wide where <see cref="ExternalSync"/> is one list's, because that is the shape of
+    /// the Integrations page: a section per provider, headed "Connected as …" over its links.
+    /// </remarks>
+    public static object ExternalAccounts() => new KindOnly("externalAccounts");
+
+    /// <summary>Google's "New List": make a list on Google and bind it to an Astrid list.</summary>
+    /// <remarks>
+    /// One command because it is one gesture. The core also owns the half-done state — a list made
+    /// on Google that could not be bound is adopted by the next attempt rather than duplicated.
+    /// </remarks>
+    public static object CreateAndLinkGoogleList(string listId, string name) =>
+        new ListNamedRequest("createAndLinkGoogleList", listId, name);
+
     /// <summary>The URL to open in a browser to connect a provider.</summary>
     public static object ConnectProvider(string provider) =>
         new ProviderRequest("connectProvider", provider);
@@ -261,6 +364,13 @@ public static class Commands
 
     /// <summary>Choose a look. Per installation, not per account.</summary>
     public static object SetTheme(string theme) => new ThemeRequest("setTheme", theme);
+
+    /// <summary>How much of a title a row shows, the ones it could, and the line count (DS19).</summary>
+    public static object TitleDisplay() => new KindOnly("titleDisplay");
+
+    /// <summary>Choose how much of a title a row shows. Per installation, like the look.</summary>
+    public static object SetTitleDisplay(string display) =>
+        new TitleDisplayRequest("setTitleDisplay", display);
 
     /// <summary>The My Tasks entry for the sidebar: the view the app opens on.</summary>
     public static object MyTasksList() => new KindOnly("myTasksList");
@@ -337,6 +447,13 @@ public static class Commands
     /// <summary>Send the verification email again.</summary>
     public static object ResendVerification() => new KindOnly("resendVerification");
 
+    /// <summary>
+    /// Change the signed-in user's email address (task 4c285039). The address changes only when
+    /// the link in the mail is followed, so the answer says verification was asked for — the
+    /// account screen keeps showing the old address until the server says otherwise.
+    /// </summary>
+    public static object ChangeEmail(string email) => new EmailRequest("changeEmail", email);
+
     /// <summary>The contacts this account imported for collaborator suggestions (task 438494c7).</summary>
     public static object Contacts() => new KindOnly("contacts");
 
@@ -352,6 +469,24 @@ public static class Commands
 
     /// <summary>Revoke a passkey.</summary>
     public static object RevokePasskey(string id) => new WithId("revokePasskey", id);
+
+    /// <summary>
+    /// Begin registering a passkey (task 4c285039). Answers the server's registration options and
+    /// a <c>sessionId</c>: the options go to Windows Hello unchanged, and the session id comes
+    /// back to <see cref="RegisterPasskey"/>. The two calls are one ceremony.
+    /// </summary>
+    public static object PasskeyRegistrationOptions() => new KindOnly("passkeyRegistrationOptions");
+
+    /// <summary>
+    /// Finish registering a passkey (task 4c285039) with what Windows Hello signed.
+    /// <paramref name="attestation"/> is the platform's registration response, passed through
+    /// whole — its shape is the WebAuthn spec's, and neither this shell nor the core reads it.
+    /// </summary>
+    public static object RegisterPasskey(
+        IReadOnlyDictionary<string, object?> attestation,
+        string sessionId,
+        string? name) =>
+        new RegisterPasskeyRequest("registerPasskey", sessionId, attestation, name);
 
     /// <summary>
     /// Delete the account for good. The core refuses anything but the exact phrase, as the server
@@ -486,8 +621,15 @@ public static class Commands
         new BoardRequest("board", listId, limit);
 
     /// <summary>Move a card to a column.</summary>
-    public static object MoveTaskToColumn(string taskId, string columnId, string listId) =>
-        new MoveRequest("moveTaskToColumn", taskId, columnId, listId);
+    /// <param name="wait">
+    /// The wait condition, when the column is Waiting and the user has answered for one. Omitted
+    /// otherwise — and a first attempt is always omitted, because the condition is only asked for
+    /// once the core says it is needed (<see cref="WaitCondition"/>).
+    /// </param>
+    public static object MoveTaskToColumn(string taskId, string columnId, string listId,
+        WaitCondition? wait = null) =>
+        new MoveRequest("moveTaskToColumn", taskId, columnId, listId,
+            wait?.DueDateTime, wait?.IsAllDay, wait?.WaitOnTaskId, wait?.KeepAssigneeOrNull);
 
     /// <summary>
     /// When to be reminded about one task, and the instant each choice means.
@@ -614,8 +756,13 @@ public static class Commands
     /// card created bare and moved afterwards is the Mac's AITD-328, where the role was lost in
     /// between and every card typed into a column turned up in the Inbox.
     /// </remarks>
-    public static object AddBoardCard(string listId, string columnId, string title) =>
-        new AddBoardCardRequest("addBoardCard", listId, columnId, title);
+    /// <param name="wait">
+    /// The wait condition, for a card typed straight into Waiting — see <see cref="WaitCondition"/>.
+    /// </param>
+    public static object AddBoardCard(string listId, string columnId, string title,
+        WaitCondition? wait = null) =>
+        new AddBoardCardRequest("addBoardCard", listId, columnId, title,
+            wait?.DueDateTime, wait?.IsAllDay, wait?.WaitOnTaskId, wait?.KeepAssigneeOrNull);
 
     /// <summary>
     /// Edit a task. <paramref name="changes"/> carries only what changed; a property present and
@@ -646,8 +793,13 @@ public static class Commands
     public static object TaskStatusOptions(string taskId) => new WithTaskId("taskStatusOptions", taskId);
 
     /// <summary>Put a task in a column from its menu: the same move a dragged card makes.</summary>
-    public static object SetTaskStatus(string taskId, string columnId) =>
-        new StatusRequest("setTaskStatus", taskId, columnId);
+    /// <param name="wait">
+    /// The wait condition — the same rule as a dragged card, because it is the same move
+    /// (<see cref="WaitCondition"/>).
+    /// </param>
+    public static object SetTaskStatus(string taskId, string columnId, WaitCondition? wait = null) =>
+        new StatusRequest("setTaskStatus", taskId, columnId,
+            wait?.DueDateTime, wait?.IsAllDay, wait?.WaitOnTaskId, wait?.KeepAssigneeOrNull);
 
     /// <summary>Mint a link to the task other people can open. Online-only, like the web's.</summary>
     public static object ShareTask(string taskId) => new WithTaskId("shareTask", taskId);
@@ -686,8 +838,26 @@ public static class Commands
     /// <summary>The agents and repositories a list's coding-agent settings can be set to (task f44b4a0c).</summary>
     public static object ListAgentOptions(string listId) => new WithListId("listAgentOptions", listId);
 
-    public static object SetTaskStatusRole(string taskId, string? statusRole) =>
-        new StatusRoleRequest("setTaskStatusRole", taskId, statusRole);
+    /// <summary>
+    /// What a list has been doing over the last <paramref name="days"/> (task 48c624ad).
+    /// </summary>
+    /// <remarks>
+    /// <paramref name="timeZone"/> is an IANA zone and should be this machine's, so that the
+    /// days bucket like the reader's own calendar rather than UTC's — an evening west of
+    /// Greenwich otherwise lands on the following day. The core normalises an unoffered window,
+    /// so a stale picker cannot send one the server refuses.
+    /// </remarks>
+    public static object ListInsights(string listId, int days, string timeZone) =>
+        new InsightsRequest("listInsights", listId, days, timeZone);
+
+    /// <param name="wait">
+    /// The wait condition, when <paramref name="statusRole"/> is the waiting role — see
+    /// <see cref="WaitCondition"/>.
+    /// </param>
+    public static object SetTaskStatusRole(string taskId, string? statusRole,
+        WaitCondition? wait = null) =>
+        new StatusRoleRequest("setTaskStatusRole", taskId, statusRole,
+            wait?.DueDateTime, wait?.IsAllDay, wait?.WaitOnTaskId, wait?.KeepAssigneeOrNull);
 
     public static object CreateList(string name, string? color = null) =>
         new CreateListRequest("createList", name, color);
@@ -709,6 +879,29 @@ public static class Commands
 
     /// <summary>Copy a public list, with its tasks, into this account. The server makes the copy.</summary>
     public static object CopyList(string listId) => new WithListId("copyList", listId);
+
+    /// <summary>
+    /// Open <em>one</em> public list by its id, for somebody who is not a member of it (core task
+    /// c5f7d870, bound for task 6fc92134). Answers the list and what this reader may do in it.
+    /// </summary>
+    /// <remarks>
+    /// Online-only, and deliberately <em>not cached</em> — opening somebody else's list is not
+    /// joining it, so the list does not appear in <see cref="Lists"/> or in the sidebar and the
+    /// caller must hold what it was handed. That is why this is not <see cref="CopyList"/>: filing
+    /// a bug must not leave the Bugs &amp; Feedback list in somebody's sidebar.
+    /// </remarks>
+    public static object PublicList(string listId) => new WithListId("publicList", listId);
+
+    /// <summary>
+    /// A public list's rows, fetched from the server rather than the cache, with this account's own
+    /// unsent ones for it (AATD-46; bound for task 6fc92134).
+    /// </summary>
+    /// <param name="list">
+    /// The list as <see cref="PublicList"/> answered it. Required in practice: the core does not
+    /// cache a public list, so without it the rows are projected against a synthesised empty one.
+    /// </param>
+    public static object FeaturedRows(string listId, JsonElement list) =>
+        new FeaturedRowsRequest("featuredRows", listId, list);
 
     public static object SetListFavorite(string listId, bool favorite) =>
         new FavoriteRequest("setListFavorite", listId, favorite);
@@ -780,6 +973,19 @@ public static class Commands
 
     public static object RefreshCapabilities() => new KindOnly("refreshCapabilities");
 
+    /// <summary>
+    /// The public list this deployment's Report an Issue opens, or null when it names none —
+    /// then the shell opens the web instead (task a4352b30).
+    /// </summary>
+    /// <remarks>
+    /// Brand config, from the cached capabilities, because a feedback list id is a row in the
+    /// deployment's own database: a value built into the client is right only for whichever server
+    /// it was built against. iOS had Astrid's own production id compiled in, which sent a
+    /// white-label build's users to Astrid's feedback list. So the shell carries no id of its own
+    /// and asks for this one.
+    /// </remarks>
+    public static object FeedbackListId() => new KindOnly("feedbackListId");
+
     /// <summary>This user's feature flags, from the cache. Null for a flag the server has not been asked about.</summary>
     public static object Features() => new KindOnly("features");
 
@@ -848,6 +1054,11 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("listId")] string ListId);
 
+    private sealed record ListBadgesRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("lists")] JsonElement Lists,
+        [property: JsonPropertyName("myTasksId")] string? MyTasksId);
+
     private sealed record QuickAddDefaultsRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("listId")] string? ListId,
@@ -914,7 +1125,11 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("listId")] string ListId,
         [property: JsonPropertyName("columnId")] string ColumnId,
-        [property: JsonPropertyName("title")] string Title);
+        [property: JsonPropertyName("title")] string Title,
+        [property: JsonPropertyName("dueDateTime")] string? DueDateTime,
+        [property: JsonPropertyName("isAllDay")] bool? IsAllDay,
+        [property: JsonPropertyName("waitOnTaskId")] string? WaitOnTaskId,
+        [property: JsonPropertyName("keepAssignee")] bool? KeepAssignee);
 
     private sealed record UpdateRequest(
         [property: JsonPropertyName("kind")] string Kind,
@@ -957,12 +1172,21 @@ public static class Commands
     private sealed record StatusRoleRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
-        [property: JsonPropertyName("statusRole")] string? StatusRole);
+        [property: JsonPropertyName("statusRole")] string? StatusRole,
+        [property: JsonPropertyName("dueDateTime")] string? DueDateTime,
+        [property: JsonPropertyName("isAllDay")] bool? IsAllDay,
+        [property: JsonPropertyName("waitOnTaskId")] string? WaitOnTaskId,
+        [property: JsonPropertyName("keepAssignee")] bool? KeepAssignee);
 
     private sealed record CreateListRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("name")] string Name,
         [property: JsonPropertyName("color")] string? Color);
+
+    private sealed record ListNamedRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("listId")] string ListId,
+        [property: JsonPropertyName("name")] string Name);
 
     private sealed record FavoriteRequest(
         [property: JsonPropertyName("kind")] string Kind,
@@ -1003,6 +1227,10 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("theme")] string Theme);
 
+    private sealed record TitleDisplayRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("display")] string Display);
+
     private sealed record PasteRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("files")] IReadOnlyList<string> Files,
@@ -1032,11 +1260,25 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("agentId")] string? AgentId);
 
+    private sealed record AgentPhotoRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("agentId")] string AgentId,
+        // Written even when null: the route only acts on an `image` key that is present, and the
+        // core clears a photo by sending null rather than by leaving it out.
+        [property: JsonPropertyName("image")] string? Image);
+
     /// <summary>A calendar day, as <c>YYYY-MM-DD</c>.</summary>
     private sealed record DayRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("day")] string Day);
+
+    /// <summary>A time of day on a 24-hour clock, with no date attached.</summary>
+    private sealed record TimeRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("taskId")] string TaskId,
+        [property: JsonPropertyName("hour")] int Hour,
+        [property: JsonPropertyName("minute")] int Minute);
 
     /// <summary>A pair is addressed by its public half — the route matches nothing else.</summary>
     private sealed record ClientIdRequest(
@@ -1067,6 +1309,13 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("preset")] string Preset,
         [property: JsonPropertyName("agent")] string Agent);
+
+    private sealed record AccessTokenRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("permissions")] IReadOnlyList<string> Permissions,
+        [property: JsonPropertyName("expiresInDays")] int? ExpiresInDays,
+        [property: JsonPropertyName("description")] string? Description,
+        [property: JsonPropertyName("agent")] string? Agent);
 
     private sealed record AgentModeRequest(
         [property: JsonPropertyName("kind")] string Kind,
@@ -1116,10 +1365,21 @@ public static class Commands
         [property: JsonPropertyName("format")] string Format,
         [property: JsonPropertyName("path")] string Path);
 
+    private sealed record FeaturedRowsRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("listId")] string ListId,
+        [property: JsonPropertyName("list")] JsonElement List);
+
     private sealed record ListImageRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("listId")] string ListId,
         [property: JsonPropertyName("path")] string Path);
+
+    private sealed record InsightsRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("listId")] string ListId,
+        [property: JsonPropertyName("days")] int Days,
+        [property: JsonPropertyName("timeZone")] string TimeZone);
 
     private sealed record ProfileRequest(
         [property: JsonPropertyName("kind")] string Kind,
@@ -1177,7 +1437,11 @@ public static class Commands
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
         [property: JsonPropertyName("columnId")] string ColumnId,
-        [property: JsonPropertyName("listId")] string ListId);
+        [property: JsonPropertyName("listId")] string ListId,
+        [property: JsonPropertyName("dueDateTime")] string? DueDateTime,
+        [property: JsonPropertyName("isAllDay")] bool? IsAllDay,
+        [property: JsonPropertyName("waitOnTaskId")] string? WaitOnTaskId,
+        [property: JsonPropertyName("keepAssignee")] bool? KeepAssignee);
 
     private sealed record WithId(
         [property: JsonPropertyName("kind")] string Kind,
@@ -1188,6 +1452,16 @@ public static class Commands
         [property: JsonPropertyName("id")] string Id,
         [property: JsonPropertyName("name")] string Name);
 
+    private sealed record EmailRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("email")] string Email);
+
+    private sealed record RegisterPasskeyRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("sessionId")] string SessionId,
+        [property: JsonPropertyName("attestation")] IReadOnlyDictionary<string, object?> Attestation,
+        [property: JsonPropertyName("name")] string? Name);
+
     private sealed record ClosedReasonRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
@@ -1196,7 +1470,11 @@ public static class Commands
     private sealed record StatusRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("taskId")] string TaskId,
-        [property: JsonPropertyName("columnId")] string ColumnId);
+        [property: JsonPropertyName("columnId")] string ColumnId,
+        [property: JsonPropertyName("dueDateTime")] string? DueDateTime,
+        [property: JsonPropertyName("isAllDay")] bool? IsAllDay,
+        [property: JsonPropertyName("waitOnTaskId")] string? WaitOnTaskId,
+        [property: JsonPropertyName("keepAssignee")] bool? KeepAssignee);
 
     private sealed record SnoozeRequest(
         [property: JsonPropertyName("kind")] string Kind,

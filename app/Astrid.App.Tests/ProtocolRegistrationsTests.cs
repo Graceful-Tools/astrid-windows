@@ -11,7 +11,7 @@ namespace Astrid.App.Tests;
 /// </summary>
 public sealed class ProtocolRegistrationsTests
 {
-    private const string Mine = @"C:\src\astrid-windows\app\Astrid.App\bin\Debug\net9.0-windows10.0.19041.0\win-arm64\Astrid.App.exe";
+    private const string Mine = @"C:\src\astrid-windows\app\Astrid.App\bin\Debug\net10.0-windows10.0.19041.0\win-arm64\Astrid.App.exe";
 
     [Fact]
     public void Other_builds_are_stale_and_this_one_is_not()
@@ -20,14 +20,14 @@ public sealed class ProtocolRegistrationsTests
         {
             new Registration("App.1", $"\"{Mine}\" \"----ms-protocol:%1\""),
             new Registration("App.2", @"C:\src\astrid-windows\dist\portable\win-arm64\Astrid.App.exe ""----ms-protocol:%1"""),
-            new Registration("App.3", @"""C:\src\astrid-windows\app\Astrid.App\bin\Release\net9.0-windows10.0.19041.0\win-arm64\Astrid.App.exe"" ""----ms-protocol:%1"""),
+            new Registration("App.3", @"""C:\src\astrid-windows\app\Astrid.App\bin\Release\net10.0-windows10.0.19041.0\win-arm64\Astrid.App.exe"" ""----ms-protocol:%1"""),
         };
 
         Assert.Equal(
             new[]
             {
                 @"C:\src\astrid-windows\dist\portable\win-arm64\Astrid.App.exe",
-                @"C:\src\astrid-windows\app\Astrid.App\bin\Release\net9.0-windows10.0.19041.0\win-arm64\Astrid.App.exe",
+                @"C:\src\astrid-windows\app\Astrid.App\bin\Release\net10.0-windows10.0.19041.0\win-arm64\Astrid.App.exe",
             },
             StaleExecutables(registrations, Mine));
     }
@@ -75,5 +75,54 @@ public sealed class ProtocolRegistrationsTests
     public void No_executable_in_nothing(string? command)
     {
         Assert.Null(ExecutableOf(command));
+    }
+
+    /// <summary>
+    /// The shell's "How do you want to open this?" picker is not a claimant — regression for task
+    /// 02a8b67e.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is the symptom task 64c02099 actually saw: with several apps claiming <c>astrid://</c>
+    /// and no default recorded, the shell answers <c>OpenWith.exe</c>, and the first pick made in
+    /// that dialog becomes the default — which is how a build that could not finish the sign-in
+    /// came to own the callback.
+    /// </para>
+    /// <para>
+    /// The smoke test that exists to catch it could not: <c>OpenWith.exe</c> is a real executable
+    /// of the host's own architecture and its open command carries <c>%1</c>, so every assertion
+    /// made about the resolved command passed while the shell was showing a picker. A packaged
+    /// build and an unpackaged one claim the scheme by different mechanisms — <c>uap:Protocol</c>
+    /// and the App SDK — and neither can see the other, so side by side is the ordinary way to
+    /// arrive at two claimants and no default.
+    /// </para>
+    /// <para>
+    /// Which is why the picker is accepted rather than fixed, as of 2026-11-14: only a developer
+    /// machine has both builds, and the alternative is packaging a build to test its sign-in. This
+    /// test asserts that the condition is still *recognised* — the UI suite reports it by name — not
+    /// that it is a fault.
+    /// </para>
+    /// </remarks>
+    [Theory]
+    [InlineData(@"C:\WINDOWS\system32\OpenWith.exe ""%1""")]
+    [InlineData(@"""C:\WINDOWS\system32\OpenWith.exe"" ""%1""")]
+    [InlineData(@"""c:\windows\system32\openwith.exe"" ""%1""")]
+    [InlineData(@"C:\WINDOWS\system32\OpenWith.exe")]
+    public void The_shell_picker_is_not_a_claimant(string command)
+    {
+        Assert.True(IsShellPicker(command), $"the picker went unnoticed: {command}");
+    }
+
+    /// <summary>A real build, and an app merely named like the picker, are claimants.</summary>
+    [Theory]
+    [InlineData(@"""C:\src\astrid-windows\app\Astrid.App\bin\Debug\win-arm64\Astrid.App.exe"" ""----ms-protocol:%1""")]
+    [InlineData(@"C:\src\astrid-windows\dist\portable\win-arm64\Astrid.App.exe ""----ms-protocol:%1""")]
+    [InlineData(@"""C:\apps\MyOpenWith.exe"" ""%1""")]
+    [InlineData(@"""C:\apps\OpenWithHelper.exe"" ""%1""")]
+    [InlineData(null)]
+    [InlineData("")]
+    public void An_app_is_not_the_picker(string? command)
+    {
+        Assert.False(IsShellPicker(command), $"a claimant was mistaken for the picker: {command}");
     }
 }

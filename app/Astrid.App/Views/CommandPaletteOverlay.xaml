@@ -57,8 +57,23 @@
                              TextChanged="OnPaletteChanged"
                              KeyDown="OnPaletteKeyDown" />
                 </Grid>
+                <!--
+                    The highlighted row is outlined, like every other selectable surface in the
+                    shell (astrid-core DS5, task b37d76c3).
+
+                    It was a bare ListView, so it drew WinUI's own ListViewItemPresenter: a grey
+                    fill with the accent indicator bar down the left. Astrid blue rather than the
+                    machine's — App.xaml pins SystemAccentColor to the brand — but a fill and a bar
+                    where the sidebar, which 787c7aa5 moved first, and the settings cards, which
+                    follow it through SettingsCardStyle's BasedOn, both draw the outline.
+
+                    SidebarRowStyle rather than a style of its own: the question "what does a
+                    selected row look like" has one answer, and the palette is a list of rows in a
+                    narrow column exactly as the sidebar is.
+                -->
                 <ListView x:Name="PaletteList"
                           Grid.Row="1"
+                          ItemContainerStyle="{StaticResource SidebarRowStyle}"
                           SelectionMode="Single"
                           IsItemClickEnabled="True"
                           ItemClick="OnPaletteRowChosen"

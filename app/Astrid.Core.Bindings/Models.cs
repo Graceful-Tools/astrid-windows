@@ -48,8 +48,20 @@ public sealed record TaskRow
 
     [JsonPropertyName("leading")] public LeadingControl Leading { get; init; } = new();
 
-    /// <summary>What clicking the leading control does: <c>complete</c> or <c>openPicker</c>.</summary>
+    /// <summary>What clicking the leading control does: <c>complete</c>, <c>copy</c> or
+    /// <c>openPicker</c>.</summary>
     [JsonPropertyName("action")] public string Action { get; init; } = "complete";
+
+    /// <summary>
+    /// Whether the picker <see cref="OpensPicker"/> opens offers the board column as well as who
+    /// and priority (task 3c0dfb73).
+    /// </summary>
+    /// <remarks>
+    /// <c>astrid_rules::rows::LeadingControl::picker_shows_project_state</c>, carried per row. Read,
+    /// never computed: the rule weighs the surface, the display mode and whose task it is, and only
+    /// the last of those is on the row at all.
+    /// </remarks>
+    [JsonPropertyName("pickerShowsProjectState")] public bool PickerShowsProjectState { get; init; }
 
     /// <summary>How far to indent, from the subtask chain.</summary>
     [JsonPropertyName("depth")] public int Depth { get; init; }
@@ -84,8 +96,28 @@ public sealed record TaskRow
     /// </summary>
     public bool IsCopyOnly => Action == "copy";
 
-    /// <summary>What the mark does, for the accessibility tree: complete, or copy.</summary>
-    public string LeadingActionName => IsCopyOnly ? $"Copy {Title}" : CompleteActionName;
+    /// <summary>
+    /// The mark opens the picker rather than finishing the task (task 3c0dfb73): somebody else's
+    /// task on any surface, any card on a board, and a row nobody owns.
+    /// </summary>
+    /// <remarks>
+    /// The third of the core's three answers, and the one the shell ignored until this task — so a
+    /// click finished a task the core had said to ask about, with no way back but hunting it down
+    /// in the Done column.
+    /// </remarks>
+    public bool OpensPicker => Action == "openPicker";
+
+    /// <summary>What the mark does, for the accessibility tree: complete, copy, or open options.</summary>
+    /// <remarks>
+    /// A screen reader was told "Complete" for a control that opens a picker, which is the same
+    /// trapdoor as the click, only harder to notice.
+    /// </remarks>
+    public string LeadingActionName => Action switch
+    {
+        "copy" => $"Copy {Title}",
+        "openPicker" => $"Options for {Title}",
+        _ => CompleteActionName,
+    };
 
     public bool LeadingIsCopy => Leading.Kind == "copy";
 
@@ -98,6 +130,29 @@ public sealed record TaskRow
 
     public bool LeadingIsSquare => Leading.Kind is not "checkbox" and not "copy";
 
+    /// <summary>
+    /// A square that says nothing about repeating, because the task does not repeat.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="LeadingIsSquare"/> answers "whose task is this?" and keeps answering only that.
+    /// This and <see cref="LeadingIsRepeatSquare"/> split that one answer into the two ways it is
+    /// drawn, so a view binds to a single flag per element instead of combining two itself.
+    /// </remarks>
+    public bool LeadingIsPlainSquare => LeadingIsSquare && !IsRepeating;
+
+    /// <summary>
+    /// Somebody else's repeating task, or nobody's: the repeat arrows frame the mark
+    /// (task fa63a5dd).
+    /// </summary>
+    /// <remarks>
+    /// Your own task's mark is a single PNG that draws priority, repeating and done at once. The
+    /// other two marks are built out of controls and so had nowhere to say "repeats" — a weekly
+    /// task assigned to a teammate looked like a one-off. astrid-web closed the same gap in
+    /// <c>3aa45e73</c> by making the arrows the border of those marks; this is that decision,
+    /// made once here rather than in each view that draws a row.
+    /// </remarks>
+    public bool LeadingIsRepeatSquare => LeadingIsSquare && IsRepeating;
+
     /// <summary>What goes in the square for somebody else's task: the first letter of their name.</summary>
     public string AssigneeInitial
     {
@@ -108,29 +163,12 @@ public sealed record TaskRow
         }
     }
 
-    /// <summary>
-    /// The mark this row wears, as an image path.
-    /// </summary>
-    /// <remarks>
-    /// The same PNGs astrid-web draws (its <c>TaskCheckbox</c>), carried into this repo so a
-    /// priority reads identically on both. One image says three things at once — the colour is the
-    /// priority, the ring is whether it repeats, the tick is whether it is done — which is why this
-    /// is a file name rather than three overlaid controls.
-    ///
-    /// The priority is clamped rather than trusted: it arrives from the server, and a value this
-    /// build has not seen would otherwise ask for an image that does not exist and draw nothing at
-    /// all, losing the control a person taps to finish the task.
-    /// </remarks>
-    public string CheckboxAsset
-    {
-        get
-        {
-            var priority = Priority is >= 0 and <= 3 ? Priority : 0;
-            var repeat = IsRepeating ? "_repeat" : string.Empty;
-            var done = Completed ? "_checked" : string.Empty;
-            return $"ms-appx:///Assets/Checkboxes/check_box{repeat}{done}_{priority}.png";
-        }
-    }
+    // The mark this row wears used to be here, as one of sixteen PNG paths: `CheckboxAsset` and
+    // `RepeatFrameAsset`, picking a picture that said priority, repeating and done at once. Task
+    // 82e4ad32 replaced it with the shared `currentColor` art, composed by the shell's
+    // `PriorityMark` from `Priority`, `IsRepeating` and `Completed` — the three facts the file name
+    // encoded — so that a priority token can colour it. Nothing is computed here any more; the
+    // properties the control binds to were always on this record.
 
     /// <summary>
     /// Whether there is a second line to draw at all.
@@ -336,6 +374,32 @@ public sealed record RowWindow
     [JsonPropertyName("sortBy")] public string? SortBy { get; init; }
 }
 
+/// <summary>
+/// The sidebar, whole: the core's answer to <c>sidebar</c> (task e22621e2).
+/// </summary>
+/// <remarks>
+/// The sections arrive filtered to the places — no board columns, no labels, no GitHub milestones
+/// or iterations — in the order they are drawn, each entry's <see cref="ListSummary.TaskCount"/>
+/// already the sidebar's number rather than the server's lifetime total. So the shell binds this
+/// and sorts nothing: which places, in what order, is a product decision shared with web, iOS and
+/// Android, and three shells answering it in three languages is how Android came to offer a
+/// milestone as somewhere to file a task.
+/// </remarks>
+public sealed record SidebarSections
+{
+    /// <summary>
+    /// My Tasks: what you are holding, wherever it lives. Above the favourites, because it is the
+    /// view the app opens on rather than one of the lists.
+    /// </summary>
+    [JsonPropertyName("myTasks")] public ListSummary? MyTasks { get; init; }
+
+    /// <summary>Favourites, in the order the user arranged them.</summary>
+    [JsonPropertyName("favorites")] public IReadOnlyList<ListSummary> Favorites { get; init; } = [];
+
+    /// <summary>Everything else that can hold a task.</summary>
+    [JsonPropertyName("lists")] public IReadOnlyList<ListSummary> Lists { get; init; } = [];
+}
+
 /// <summary>A list, as the sidebar needs it.</summary>
 public sealed record ListSummary
 {
@@ -363,6 +427,12 @@ public sealed record ListSummary
 
     [JsonPropertyName("coverImageUrl")] public string? CoverImageUrl { get; init; }
 
+    /// <summary>
+    /// Whose it is, on the responses that carry it — a public list opened by its id does (task
+    /// 6fc92134). Null on the sidebar's own lists, which are this account's.
+    /// </summary>
+    [JsonPropertyName("owner")] public UserSummary? Owner { get; init; }
+
     /// <summary>Whether there is a picture to ask the core for; the web resolves <c>imageUrl || coverImageUrl</c>.</summary>
     public bool HasImage => !string.IsNullOrEmpty(ImageUrl) || !string.IsNullOrEmpty(CoverImageUrl);
 
@@ -378,8 +448,18 @@ public sealed record ListSummary
     /// </summary>
     public bool IsLabelList => ListType == "label";
 
-    /// <summary>Somewhere a person can go and file a task: not a column, not a label.</summary>
-    public bool IsDomainList => !IsStatusList && !IsLabelList;
+    /// <summary>
+    /// Somewhere a person can go and file a task: not a column, and not a tag.
+    /// </summary>
+    /// <remarks>
+    /// A GitHub milestone and a GitHub project iteration are tags too — of which a task has at
+    /// most one, and which GitHub owns (core's <c>is_tag_list</c>, AITD-506). Reading them as
+    /// places offered them as drop targets and as lists to link a Google list to; Android's copy
+    /// of this predicate had the same gap, which is the bug task e22621e2 ends. The sidebar no
+    /// longer asks this at all — it binds the core's <c>sidebar</c> answer.
+    /// </remarks>
+    public bool IsDomainList => !IsStatusList && !IsLabelList
+        && ListType != "milestone" && ListType != "iteration";
 
     /// <summary>
     /// Somewhere a dragged row can be dropped (task 27cae198): a real list. A virtual list is a
@@ -779,6 +859,26 @@ public sealed record MintedClient
     [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
 }
 
+/// <summary>
+/// A user-level access token the server has just made, in the one form it will ever be readable.
+/// </summary>
+/// <remarks>
+/// Never written to disk, for the same reason as <see cref="MintedClient"/>: the account cannot
+/// rotate a token it does not know is there. Shown once, then listed and revoked as an access
+/// token through the connections panel.
+/// </remarks>
+public sealed record MintedAccessToken
+{
+    [JsonPropertyName("token")] public string Token { get; init; } = string.Empty;
+
+    [JsonPropertyName("permissions")] public IReadOnlyList<string> Permissions { get; init; } = [];
+
+    /// <summary>Null for a token that does not expire.</summary>
+    [JsonPropertyName("expiresAt")] public string? ExpiresAt { get; init; }
+
+    [JsonPropertyName("description")] public string? Description { get; init; }
+}
+
 /// <summary>Where an account's own agent is told about work.</summary>
 public sealed record WebhookSettings
 {
@@ -926,6 +1026,119 @@ public sealed record ProfileStats
     [JsonPropertyName("supported")] public int Supported { get; init; }
 }
 
+// ── What a list has been doing (task 48c624ad; web AWTD-1329, AWTD-1333) ─────────────────────
+//
+// Every number here is the server's. The history they are computed from — task events,
+// completions, lane moves — lives only there, so these records decode an answer and nothing
+// more. A null median means there was nothing to take a median of, which is why `MedianMs` is
+// nullable rather than 0: an instantaneous completion and no completion at all are not the
+// same reading.
+
+/// <summary>Which window the answer covers, as the server resolved it.</summary>
+public sealed record InsightWindow
+{
+    [JsonPropertyName("days")] public int Days { get; init; }
+
+    [JsonPropertyName("timeZone")] public string TimeZone { get; init; } = "UTC";
+
+    /// <summary>The first day counted, <c>YYYY-MM-DD</c> in <see cref="TimeZone"/>.</summary>
+    [JsonPropertyName("start")] public string Start { get; init; } = string.Empty;
+
+    [JsonPropertyName("end")] public string End { get; init; } = string.Empty;
+}
+
+/// <summary>One day of the activity chart.</summary>
+public sealed record InsightDay
+{
+    [JsonPropertyName("date")] public string Date { get; init; } = string.Empty;
+
+    [JsonPropertyName("created")] public int Created { get; init; }
+
+    [JsonPropertyName("completed")] public int Completed { get; init; }
+}
+
+/// <summary>How many tasks the window saw, in total.</summary>
+public sealed record InsightTotals
+{
+    [JsonPropertyName("created")] public int Created { get; init; }
+
+    [JsonPropertyName("completed")] public int Completed { get; init; }
+}
+
+/// <summary>A median stay, and how many measurements it is a median of.</summary>
+public sealed record InsightDuration
+{
+    /// <summary>Null when there was nothing to measure — shown as an em dash, never as zero.</summary>
+    [JsonPropertyName("medianMs")] public long? MedianMs { get; init; }
+
+    [JsonPropertyName("sampleSize")] public int SampleSize { get; init; }
+}
+
+/// <summary>How long cards stay in one board column.</summary>
+public sealed record InsightLane
+{
+    [JsonPropertyName("role")] public string Role { get; init; } = string.Empty;
+
+    /// <summary>The column's own name, already in the list's language — not a resource key.</summary>
+    [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
+
+    [JsonPropertyName("medianMs")] public long? MedianMs { get; init; }
+
+    [JsonPropertyName("sampleSize")] public int SampleSize { get; init; }
+}
+
+/// <summary>
+/// One person's work on this list in this window: the three profile metrics the ranking uses
+/// (AWTD-1333), then the activity that breaks their ties.
+/// </summary>
+public sealed record InsightContributor
+{
+    [JsonPropertyName("userId")] public string UserId { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")] public string? Name { get; init; }
+
+    [JsonPropertyName("image")] public string? Image { get; init; }
+
+    [JsonPropertyName("isAIAgent")] public bool IsAIAgent { get; init; }
+
+    /// <summary>Completions credited to the task's assignee.</summary>
+    [JsonPropertyName("completed")] public int Completed { get; init; }
+
+    /// <summary>Completions of tasks they created, where somebody else was the assignee.</summary>
+    [JsonPropertyName("inspired")] public int Inspired { get; init; }
+
+    /// <summary>Comments on tasks somebody else created.</summary>
+    [JsonPropertyName("supported")] public int Supported { get; init; }
+
+    [JsonPropertyName("created")] public int Created { get; init; }
+
+    [JsonPropertyName("edited")] public int Edited { get; init; }
+
+    [JsonPropertyName("commented")] public int Commented { get; init; }
+
+    /// <summary>Completed + inspired + supported: what the ranking is on.</summary>
+    [JsonPropertyName("total")] public int Total { get; init; }
+}
+
+/// <summary>What one list has been doing, as <c>GET /api/v1/lists/:id/insights</c> answered.</summary>
+public sealed record ListInsights
+{
+    [JsonPropertyName("window")] public InsightWindow Window { get; init; } = new();
+
+    /// <summary>One entry per day of the window, oldest first.</summary>
+    [JsonPropertyName("series")] public IReadOnlyList<InsightDay> Series { get; init; } = [];
+
+    [JsonPropertyName("totals")] public InsightTotals Totals { get; init; } = new();
+
+    [JsonPropertyName("createToComplete")] public InsightDuration CreateToComplete { get; init; } = new();
+
+    /// <summary>Null for a list that is not a board — which is not the same as a board with no columns.</summary>
+    [JsonPropertyName("lanes")] public IReadOnlyList<InsightLane>? Lanes { get; init; }
+
+    /// <summary>The top ten, already ranked by the server.</summary>
+    [JsonPropertyName("contributors")] public IReadOnlyList<InsightContributor> Contributors { get; init; } = [];
+}
+
 /// <summary>One choice for the default reminder offset.</summary>
 public sealed record ReminderOffset
 {
@@ -1002,6 +1215,55 @@ public sealed record PasskeySummary
     [JsonPropertyName("isSynced")] public bool IsSynced { get; init; }
 
     public string Label => string.IsNullOrWhiteSpace(Name) ? "Passkey" : Name;
+}
+
+/// <summary>
+/// One list mirrored to one container on the other side, as the Integrations page lists it
+/// (task e32f1322).
+/// </summary>
+/// <remarks>
+/// Both ends are named by the core, so nothing here has to resolve an opaque Google tasklist id.
+/// </remarks>
+public sealed record ExternalAccountLink
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("listId")] public string ListId { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The Astrid list's name, absent when the link names a list this device has not cached yet.
+    /// </summary>
+    [JsonPropertyName("listName")] public string? ListName { get; init; }
+
+    [JsonPropertyName("containerId")] public string ContainerId { get; init; } = string.Empty;
+
+    [JsonPropertyName("containerName")] public string? ContainerName { get; init; }
+
+    /// <summary>
+    /// The Astrid side's name for the row. The id when the name has not arrived — a link shown by
+    /// id is a link you can still see, which is the point of the core answering it either way.
+    /// </summary>
+    public string ListLabel => string.IsNullOrWhiteSpace(ListName) ? ListId : ListName;
+
+    /// <summary>The other side's name for the row, by the same rule.</summary>
+    public string ContainerLabel =>
+        string.IsNullOrWhiteSpace(ContainerName) ? ContainerId : ContainerName;
+}
+
+/// <summary>
+/// One provider's side of the account, as the Integrations page draws it (task e32f1322).
+/// </summary>
+public sealed record ExternalAccountProvider
+{
+    /// <summary><c>google_tasks</c> or <c>git_hub</c> — the core's own name for it.</summary>
+    [JsonPropertyName("provider")] public string Provider { get; init; } = string.Empty;
+
+    [JsonPropertyName("connected")] public bool Connected { get; init; }
+
+    /// <summary>The Google email or GitHub login, when the server knows one.</summary>
+    [JsonPropertyName("connectedAs")] public string? ConnectedAs { get; init; }
+
+    [JsonPropertyName("links")] public IReadOnlyList<ExternalAccountLink> Links { get; init; } = [];
 }
 
 /// <summary>One imported contact, as the Contacts page lists it (task 438494c7).</summary>
@@ -1237,6 +1499,9 @@ public sealed record ListSettings
     /// <summary>What a task added to this list starts as (task c4102c67).</summary>
     [JsonPropertyName("defaults")] public ListDefaults Defaults { get; init; } = new();
 
+    /// <summary>What this list permits, which decides which of the defaults above it is offered (task 897e25c5).</summary>
+    [JsonPropertyName("supports")] public ListSupports Supports { get; init; } = new();
+
     [JsonPropertyName("canManageMembers")] public bool CanManageMembers { get; init; }
 
     [JsonPropertyName("canManageList")] public bool CanManageList { get; init; }
@@ -1251,6 +1516,32 @@ public sealed record ListSettings
     [JsonPropertyName("currentUserId")] public string? CurrentUserId { get; init; }
 
     [JsonPropertyName("members")] public IReadOnlyList<ListMember> Members { get; init; } = [];
+}
+
+/// <summary>
+/// What a list permits, as the core answers it on both the task detail and the list settings
+/// (task 897e25c5, astrid-web's GITHUB_PROJECTS_WHITELABEL §11.2).
+/// </summary>
+/// <remarks>
+/// Every default here is the CLASSIC value, which is what makes a missing block safe: a core older
+/// than these keys, or one that could not resolve a task's list, leaves every control exactly
+/// where it was. The one key that defaults false is multiple assignees, because a classic list
+/// holds at most one.
+/// </remarks>
+public sealed record ListSupports
+{
+    [JsonPropertyName("priority")] public bool Priority { get; init; } = true;
+
+    [JsonPropertyName("dueDate")] public bool DueDate { get; init; } = true;
+
+    [JsonPropertyName("comments")] public bool Comments { get; init; } = true;
+
+    [JsonPropertyName("privateTasks")] public bool PrivateTasks { get; init; } = true;
+
+    [JsonPropertyName("multipleAssignees")] public bool MultipleAssignees { get; init; }
+
+    /// <summary><c>delete</c>, or <c>remove_from_list</c> where the item comes off a project and the issue stays.</summary>
+    [JsonPropertyName("deleteTask")] public string DeleteTask { get; init; } = "delete";
 }
 
 /// <summary>What a list's coding-agent settings can be set to (task f44b4a0c).</summary>
@@ -1373,6 +1664,48 @@ public sealed record ListDefaults
 
     /// <summary><c>HH:MM</c>, or null for all day.</summary>
     [JsonPropertyName("dueTime")] public string? DueTime { get; init; }
+}
+
+/// <summary>
+/// One row of one picker in a list's defaults editor (task 92830d81).
+/// </summary>
+public sealed record DefaultPick
+{
+    /// <summary>
+    /// What choosing this stores. Null is a real choice rather than an absence: no priority is
+    /// <c>"0"</c>, but all day is the <em>lack</em> of a time.
+    /// </summary>
+    [JsonPropertyName("value")] public string? Value { get; init; }
+
+    /// <summary>
+    /// The resource key for its label, or null when the value is its own label — an hour, which
+    /// only the reader's clock can spell, so the shell formats it.
+    /// </summary>
+    [JsonPropertyName("key")] public string? Key { get; init; }
+
+    [JsonPropertyName("isSelected")] public bool IsSelected { get; init; }
+}
+
+/// <summary>
+/// What a list's defaults editor may offer, with the list's own defaults ticked — the core's
+/// <c>listDefaultPicks</c> rule (task 92830d81).
+/// </summary>
+/// <remarks>
+/// These four tables used to be written here, under a comment saying the core had no command for
+/// them, while iOS and Android held their own copies. The rule is
+/// <c>astrid_rules::rows::list_default_picks</c> and the fixture is
+/// <c>contracts/fixtures/list-default-picks.json</c>.
+/// </remarks>
+public sealed record ListDefaultPicks
+{
+    [JsonPropertyName("priority")] public IReadOnlyList<DefaultPick> Priority { get; init; } = [];
+
+    [JsonPropertyName("repeating")] public IReadOnlyList<DefaultPick> Repeating { get; init; } = [];
+
+    [JsonPropertyName("dueDate")] public IReadOnlyList<DefaultPick> DueDate { get; init; } = [];
+
+    /// <summary>All day first, then the hours offered, in clock order.</summary>
+    [JsonPropertyName("dueTime")] public IReadOnlyList<DefaultPick> DueTime { get; init; } = [];
 }
 
 /// <summary>One column of a project board, and the cards in it.</summary>
@@ -1558,6 +1891,19 @@ public sealed record OutboxStats
     /// <summary>Writes the server refused for good. Retried with <c>retryDeadLetters</c>.</summary>
     [JsonPropertyName("failed")] public int Failed { get; init; }
 
+    /// <summary>
+    /// How many of <see cref="Failed"/> a <c>retryDeadLetters</c> would actually give another go
+    /// (task 22e9bc7b).
+    /// </summary>
+    /// <remarks>
+    /// Fewer than <see cref="Failed"/>, and sometimes zero while it is not: the core never replays
+    /// a refused <c>deleteTask</c>, <c>deleteList</c> or <c>deleteComment</c> — a replayed delete
+    /// removes what the person has since gone back to — nor anything refused more than a week ago,
+    /// because a replayed full-field edit overwrites what changed elsewhere since. This is the
+    /// number to put a retry beside; <see cref="Failed"/> is the number that were refused at all.
+    /// </remarks>
+    [JsonPropertyName("retryable")] public int Retryable { get; init; }
+
     [JsonPropertyName("hasUnsentWork")] public bool HasUnsentWork { get; init; }
 
     /// <summary>The five most recently refused, newest first.</summary>
@@ -1631,9 +1977,134 @@ public sealed record MarkdownBlock
     /// <summary>A table's column alignments: <c>left</c>, <c>center</c>, <c>right</c> or <c>none</c>.</summary>
     [JsonPropertyName("alignments")] public IReadOnlyList<string> Alignments { get; init; } = [];
 
+    /// <summary>
+    /// A table's column headings, or a trade-off grid's: the option column's heading first, then
+    /// one per criterion.
+    /// </summary>
     [JsonPropertyName("header")] public IReadOnlyList<IReadOnlyList<MarkdownInline>> Header { get; init; } = [];
 
-    [JsonPropertyName("rows")] public IReadOnlyList<IReadOnlyList<IReadOnlyList<MarkdownInline>>> Rows { get; init; } = [];
+    /// <summary>
+    /// A table's rows, or a trade-off grid's options — the core sends both under this one key, in
+    /// two shapes. See <see cref="MarkdownRow"/>.
+    /// </summary>
+    [JsonPropertyName("rows")] public IReadOnlyList<MarkdownRow> Rows { get; init; } = [];
+
+    /// <summary>
+    /// A trade-off grid's key: the label keys it shows, worst to best, each rating it uses once
+    /// (task <c>cca2483d</c>). Empty for every other kind of block.
+    /// </summary>
+    [JsonPropertyName("key")] public IReadOnlyList<string> Key { get; init; } = [];
+}
+
+/// <summary>
+/// One row of a table, or one option of a trade-off grid (task <c>cca2483d</c>).
+/// </summary>
+/// <remarks>
+/// <para>
+/// The core sends both under the block's <c>rows</c> key, in two shapes: a table's row is an
+/// array of cells, and a grid's row is an object carrying the option's <c>name</c> and its
+/// <c>cells</c>. One key cannot be two properties, so one type reads both and
+/// <see cref="MarkdownRowConverter"/> tells them apart by the token it finds.
+/// </para>
+/// <para>
+/// A table row's cells have no rating, so the drawing code can treat every row the same way and
+/// ask about <see cref="MarkdownCell.Rating"/> only where a rating is possible.
+/// </para>
+/// </remarks>
+[JsonConverter(typeof(MarkdownRowConverter))]
+public sealed record MarkdownRow
+{
+    /// <summary>The option's name, for a trade-off grid. Null for a plain table row.</summary>
+    /// <remarks>
+    /// The writer's own marker — the "A." of "A. Lisbon" — has already been dropped by the core,
+    /// because the number a row is drawn with comes from its position rather than from what the
+    /// writer typed.
+    /// </remarks>
+    public IReadOnlyList<MarkdownInline>? Name { get; init; }
+
+    /// <summary>The row's cells, left to right, the option column excluded.</summary>
+    public IReadOnlyList<MarkdownCell> Cells { get; init; } = [];
+}
+
+/// <summary>One cell of a table or a trade-off grid (task <c>cca2483d</c>).</summary>
+public sealed record MarkdownCell
+{
+    /// <summary>
+    /// <c>veryPoor</c>, <c>poor</c>, <c>mixed</c>, <c>good</c> or <c>veryGood</c>; null for a cell
+    /// with no rating, and for every cell of a plain table.
+    /// </summary>
+    /// <remarks>
+    /// Null means the option has nothing recorded against this criterion, which is not the same as
+    /// a rated cell whose reason happens to be empty — so the two are drawn differently.
+    /// </remarks>
+    [JsonPropertyName("rating")] public string? Rating { get; init; }
+
+    /// <summary>The cell's text. A cell with only a rating already carries its word here.</summary>
+    [JsonPropertyName("inlines")] public IReadOnlyList<MarkdownInline> Inlines { get; init; } = [];
+}
+
+/// <summary>
+/// Reads a <see cref="MarkdownRow"/> from either of the two shapes the <c>rows</c> key carries
+/// (task <c>cca2483d</c>).
+/// </summary>
+/// <remarks>
+/// An array is a plain table's row, each element being one cell's inlines; an object is a grid's
+/// option. Anything else is a shape this client does not know, and is read as an empty row rather
+/// than thrown on — a block kind added to the core later should cost the paragraph around it
+/// nothing, which is exactly the failure this task was filed for.
+/// </remarks>
+public sealed class MarkdownRowConverter : JsonConverter<MarkdownRow>
+{
+    public override MarkdownRow Read(ref Utf8JsonReader reader, Type typeToConvert,
+        JsonSerializerOptions options)
+    {
+        using var document = JsonDocument.ParseValue(ref reader);
+        var root = document.RootElement;
+
+        if (root.ValueKind == JsonValueKind.Array)
+        {
+            var tableCells = root
+                .EnumerateArray()
+                .Select(cell => new MarkdownCell
+                {
+                    Inlines = cell.Deserialize<IReadOnlyList<MarkdownInline>>(options) ?? [],
+                })
+                .ToList();
+            return new MarkdownRow { Cells = tableCells };
+        }
+
+        if (root.ValueKind != JsonValueKind.Object)
+        {
+            return new MarkdownRow();
+        }
+
+        return new MarkdownRow
+        {
+            Name = root.TryGetProperty("name", out var name)
+                ? name.Deserialize<IReadOnlyList<MarkdownInline>>(options)
+                : null,
+            Cells = root.TryGetProperty("cells", out var cells)
+                ? cells.Deserialize<IReadOnlyList<MarkdownCell>>(options) ?? []
+                : [],
+        };
+    }
+
+    /// <summary>
+    /// Written in the grid's shape, which is the only one anything here writes: these models are
+    /// read from the core, and a round trip is a test asking whether what it read survives.
+    /// </summary>
+    public override void Write(Utf8JsonWriter writer, MarkdownRow value, JsonSerializerOptions options)
+    {
+        writer.WriteStartObject();
+        if (value.Name is not null)
+        {
+            writer.WritePropertyName("name");
+            JsonSerializer.Serialize(writer, value.Name, options);
+        }
+        writer.WritePropertyName("cells");
+        JsonSerializer.Serialize(writer, value.Cells, options);
+        writer.WriteEndObject();
+    }
 }
 
 /// <summary>One item of a rendered list.</summary>
@@ -1689,6 +2160,23 @@ public static class ResponseReader
 
     public static T? Read<T>(this AstridResponse response) where T : class
         => response.Ok ? response.ValueAs<T>() : null;
+
+    /// <summary>
+    /// A value that is an object of numbers keyed by id — the core's counts per list.
+    /// </summary>
+    /// <remarks>
+    /// Empty for anything else, including a failure: a caller that wants to tell "nothing to
+    /// count" from "could not count" asks <see cref="AstridResponse.Ok"/> first.
+    /// </remarks>
+    public static IReadOnlyDictionary<string, int> ReadCounts(this AstridResponse response)
+    {
+        if (!response.Ok || response.Value.ValueKind != JsonValueKind.Object)
+        {
+            return new Dictionary<string, int>(StringComparer.Ordinal);
+        }
+        return response.Value.Deserialize<Dictionary<string, int>>(CommandJson.Options)
+            ?? new Dictionary<string, int>(StringComparer.Ordinal);
+    }
 }
 
 /// <summary>
@@ -1736,6 +2224,42 @@ public sealed record PublicListSummary
     public string OwnerName => Owner?.Name is { Length: > 0 } name ? name : Owner?.Email ?? string.Empty;
 
     public string CopyActionName => $"Copy {Name}";
+}
+
+/// <summary>
+/// One public list opened by its id, and what the reader may do in it (core task c5f7d870, read
+/// here for task 6fc92134).
+/// </summary>
+/// <remarks>
+/// <para>
+/// <see cref="CanAddTask"/> and <see cref="CanComment"/> are <em>read</em>, never worked out from
+/// <c>publicListType</c>: that rule lives in the core and is pinned by
+/// <c>contracts/fixtures/permissions.json</c>, and answering it in <c>app/</c> would be the one
+/// kind of logic the shell does not hold.
+/// </para>
+/// <para>
+/// <see cref="List"/> stays as JSON as well as being read into a <see cref="ListSummary"/>,
+/// because it has to go back to the core unchanged for <c>featuredRows</c> — the core has not
+/// cached this list, so the shell is the only thing holding it, and a round trip through a model
+/// that knows a dozen of its thirty fields would quietly drop the rest.
+/// </para>
+/// </remarks>
+public sealed record OpenedPublicList
+{
+    [JsonPropertyName("list")] public JsonElement List { get; init; }
+
+    /// <summary>What this reader is to the list — <c>viewer</c> for a stranger.</summary>
+    [JsonPropertyName("role")] public string? Role { get; init; }
+
+    /// <summary>Whether this reader may file a task in it. False for a <c>copy_only</c> list.</summary>
+    [JsonPropertyName("canAddTask")] public bool CanAddTask { get; init; }
+
+    [JsonPropertyName("canComment")] public bool CanComment { get; init; }
+
+    /// <summary>The list as the shell draws it. Empty if the core answered without one.</summary>
+    public ListSummary Summary => List.ValueKind == JsonValueKind.Object
+        ? List.Deserialize<ListSummary>(CommandJson.Options) ?? new ListSummary()
+        : new ListSummary();
 }
 
 /// <summary>Who a public list belongs to.</summary>

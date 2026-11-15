@@ -126,6 +126,15 @@
   <data name="account_passkeys" xml:space="preserve">
     <value>Passkeys</value>
   </data>
+  <data name="account_new_email" xml:space="preserve">
+    <value>Neue E-Mail-Adresse</value>
+  </data>
+  <data name="account_change_email" xml:space="preserve">
+    <value>E-Mail-Adresse ändern</value>
+  </data>
+  <data name="account_email_change_sent" xml:space="preserve">
+    <value>Prüfen Sie die neue Adresse auf den Bestätigungslink. Die Adresse oben ändert sich, sobald Sie ihm folgen.</value>
+  </data>
   <data name="account_delete_title" xml:space="preserve">
     <value>Konto löschen</value>
   </data>
@@ -138,6 +147,27 @@
   <data name="account_delete_button" xml:space="preserve">
     <value>Konto dauerhaft löschen</value>
   </data>
+  <data name="integrations_google" xml:space="preserve">
+    <value>Google Tasks</value>
+  </data>
+  <data name="integrations_github" xml:space="preserve">
+    <value>GitHub</value>
+  </data>
+  <data name="integrations_connected_as" xml:space="preserve">
+    <value>Verbunden als </value>
+  </data>
+  <data name="integrations_google_not_connected" xml:space="preserve">
+    <value>Kein Google-Konto verbunden.</value>
+  </data>
+  <data name="integrations_github_not_connected" xml:space="preserve">
+    <value>Kein GitHub-Konto verbunden.</value>
+  </data>
+  <data name="integrations_no_links" xml:space="preserve">
+    <value>Noch keine Listen verknüpft.</value>
+  </data>
+  <data name="integrations_new_list" xml:space="preserve">
+    <value>Neue Liste</value>
+  </data>
   <data name="smart_title" xml:space="preserve">
     <value>Aufgaben</value>
   </data>
@@ -146,9 +176,6 @@
   </data>
   <data name="smart_email_to_task_hint" xml:space="preserve">
     <value>Aufgaben erstellen, indem Sie eine E-Mail senden an</value>
-  </data>
-  <data name="smart_email_address" xml:space="preserve">
-    <value>remindme@astrid.cc</value>
   </data>
   <data name="smart_default_due_date" xml:space="preserve">
     <value>Standard-Fälligkeitsdatum</value>
@@ -249,6 +276,9 @@
   <data name="help_title" xml:space="preserve">
     <value>Hilfe &amp; Support</value>
   </data>
+  <data name="feedback_title" xml:space="preserve">
+    <value>Problem melden</value>
+  </data>
   <data name="privacy_title" xml:space="preserve">
     <value>Datenschutzerklärung</value>
   </data>
@@ -256,13 +286,22 @@
     <value>Nutzungsbedingungen</value>
   </data>
   <data name="passkeys_note" xml:space="preserve">
-    <value>Passkeys melden Sie ohne Passwort an. Hinzufügen geschieht im Browser; Umbenennen und Widerrufen hier.</value>
+    <value>Passkeys melden Sie ohne Passwort an. Windows Hello kann hier einen hinzufügen – mit Gesicht, Fingerabdruck oder PIN.</value>
+  </data>
+  <data name="passkeys_manage_on_the_web" xml:space="preserve">
+    <value>Im Web verwalten</value>
+  </data>
+  <data name="passkeys_hello_failed" xml:space="preserve">
+    <value>Windows Hello konnte keinen Passkey hinzufügen: {0}</value>
+  </data>
+  <data name="passkeys_hello_options" xml:space="preserve">
+    <value>Die Passkey-Anfrage dieses Servers konnte nicht gelesen werden: {0}</value>
   </data>
   <data name="passkeys_none" xml:space="preserve">
     <value>Noch keine Passkeys registriert.</value>
   </data>
   <data name="passkeys_add" xml:space="preserve">
-    <value>Passkey im Browser hinzufügen</value>
+    <value>Passkey hinzufügen</value>
   </data>
   <data name="passkeys_added" xml:space="preserve">
     <value>Hinzugefügt am </value>
@@ -290,6 +329,21 @@
   </data>
   <data name="assignee_unassigned" xml:space="preserve">
     <value>Nicht zugewiesen</value>
+  </data>
+  <data name="picker_priority" xml:space="preserve">
+    <value>Priorität</value>
+  </data>
+  <data name="picker_assignee" xml:space="preserve">
+    <value>Zugewiesen an</value>
+  </data>
+  <data name="picker_status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="picker_complete" xml:space="preserve">
+    <value>Erledigen</value>
+  </data>
+  <data name="picker_options_for" xml:space="preserve">
+    <value>Optionen für {0}</value>
   </data>
   <data name="user_unknown" xml:space="preserve">
     <value>Unbekannter Benutzer</value>
@@ -327,28 +381,28 @@
   <data name="repeat_none" xml:space="preserve">
     <value>Wiederholt sich nicht</value>
   </data>
-  <data name="repeat_every_day" xml:space="preserve">
+  <data name="repeat_every_n_days_one" xml:space="preserve">
     <value>Jeden Tag</value>
   </data>
-  <data name="repeat_every_n_days" xml:space="preserve">
+  <data name="repeat_every_n_days_other" xml:space="preserve">
     <value>Alle {0} Tage</value>
   </data>
-  <data name="repeat_every_week" xml:space="preserve">
+  <data name="repeat_every_n_weeks_one" xml:space="preserve">
     <value>Jede Woche</value>
   </data>
-  <data name="repeat_every_n_weeks" xml:space="preserve">
+  <data name="repeat_every_n_weeks_other" xml:space="preserve">
     <value>Alle {0} Wochen</value>
   </data>
-  <data name="repeat_every_month" xml:space="preserve">
+  <data name="repeat_every_n_months_one" xml:space="preserve">
     <value>Jeden Monat</value>
   </data>
-  <data name="repeat_every_n_months" xml:space="preserve">
+  <data name="repeat_every_n_months_other" xml:space="preserve">
     <value>Alle {0} Monate</value>
   </data>
-  <data name="repeat_every_year" xml:space="preserve">
+  <data name="repeat_every_n_years_one" xml:space="preserve">
     <value>Jedes Jahr</value>
   </data>
-  <data name="repeat_every_n_years" xml:space="preserve">
+  <data name="repeat_every_n_years_other" xml:space="preserve">
     <value>Alle {0} Jahre</value>
   </data>
   <data name="repeat_on_weekdays" xml:space="preserve">
@@ -359,6 +413,9 @@
   </data>
   <data name="repeat_on_nth_weekday" xml:space="preserve">
     <value>am {0} {1}</value>
+  </data>
+  <data name="repeat_on_last_weekday" xml:space="preserve">
+    <value>am letzten {0}</value>
   </data>
   <data name="repeat_on_month_and_day" xml:space="preserve">
     <value>am {1} {0}</value>
@@ -573,8 +630,32 @@
   <data name="dialog_close" xml:space="preserve">
     <value>Schließen</value>
   </data>
-  <data name="app_name" xml:space="preserve">
-    <value>Astrid</value>
+  <data name="dialog_cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="wait_title" xml:space="preserve">
+    <value>Worauf wird gewartet?</value>
+  </data>
+  <data name="wait_explanation" xml:space="preserve">
+    <value>„{0}“ bedeutet: Warten auf ein Datum oder auf eine andere Aufgabe. Auf eine Person zu warten ist kein Warten — schicke die Aufgabe stattdessen in deren Eingang.</value>
+  </data>
+  <data name="wait_until_label" xml:space="preserve">
+    <value>Warten bis</value>
+  </data>
+  <data name="wait_until_placeholder" xml:space="preserve">
+    <value>Datum wählen</value>
+  </data>
+  <data name="wait_on_label" xml:space="preserve">
+    <value>Warten auf</value>
+  </data>
+  <data name="wait_on_placeholder" xml:space="preserve">
+    <value>Aufgabe suchen</value>
+  </data>
+  <data name="wait_keep_assigned" xml:space="preserve">
+    <value>Zuweisung behalten</value>
+  </data>
+  <data name="wait_confirm" xml:space="preserve">
+    <value>Auf Warten setzen</value>
   </data>
   <data name="settings_account" xml:space="preserve">
     <value>Konto</value>
@@ -612,16 +693,7 @@
   <data name="timer_minutes" xml:space="preserve">
     <value>{0} min</value>
   </data>
-  <data name="ordinal_st" xml:space="preserve">
-    <value>{0}.</value>
-  </data>
-  <data name="ordinal_nd" xml:space="preserve">
-    <value>{0}.</value>
-  </data>
-  <data name="ordinal_rd" xml:space="preserve">
-    <value>{0}.</value>
-  </data>
-  <data name="ordinal_th" xml:space="preserve">
+  <data name="format_ordinal_other" xml:space="preserve">
     <value>{0}.</value>
   </data>
   <data name="account.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
@@ -678,9 +750,6 @@
   <data name="assignee_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Zugewiesen an</value>
   </data>
-  <data name="astrid.Text" xml:space="preserve">
-    <value>Astrid</value>
-  </data>
   <data name="attach_a_file.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Datei anhängen</value>
   </data>
@@ -726,6 +795,30 @@
   <data name="chat_toggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Chat</value>
   </data>
+  <data name="hide_messages.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Nachrichten ausblenden</value>
+  </data>
+  <data name="hide_messages.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Nachrichten ausblenden</value>
+  </data>
+  <data name="show_messages.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Nachrichten anzeigen</value>
+  </data>
+  <data name="show_messages.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Nachrichten anzeigen</value>
+  </data>
+  <data name="hide_sidebar.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Seitenleiste ausblenden</value>
+  </data>
+  <data name="hide_sidebar.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Seitenleiste ausblenden</value>
+  </data>
+  <data name="show_sidebar.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Seitenleiste anzeigen</value>
+  </data>
+  <data name="show_sidebar.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Seitenleiste anzeigen</value>
+  </data>
   <data name="client_id.Header" xml:space="preserve">
     <value>Client-ID</value>
   </data>
@@ -738,9 +831,6 @@
   <data name="client_secret.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Client-Secret</value>
   </data>
-  <data name="close.Text" xml:space="preserve">
-    <value>Schließen</value>
-  </data>
   <data name="coding_agent.Text" xml:space="preserve">
     <value>Code-Agent</value>
   </data>
@@ -749,9 +839,6 @@
   </data>
   <data name="comment_box.PlaceholderText" xml:space="preserve">
     <value>Kommentar hinzufügen...</value>
-  </data>
-  <data name="comments.Text" xml:space="preserve">
-    <value>Kommentare</value>
   </data>
   <data name="complete_this_task.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Diese Aufgabe erledigen</value>
@@ -791,9 +878,6 @@
   </data>
   <data name="ctrl_k_finds_a_list_a.Text" xml:space="preserve">
     <value>Strg+K findet eine Liste, eine Aufgabe oder einen Befehl.</value>
-  </data>
-  <data name="ctrl_shift_a_brings_astrid_forward.Text" xml:space="preserve">
-    <value>Strg+Umschalt+A holt Astrid von überall in den Vordergrund, bereit für eine neue Aufgabe.</value>
   </data>
   <data name="custom.Text" xml:space="preserve">
     <value>Benutzerdefiniert</value>
@@ -864,17 +948,26 @@
   <data name="display_name_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Anzeigename</value>
   </data>
+  <data name="change_email_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Neue E-Mail-Adresse</value>
+  </data>
   <data name="due_date.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Fälligkeitsdatum</value>
   </data>
   <data name="clear_due.Content" xml:space="preserve">
     <value>Kein Fälligkeitsdatum</value>
   </data>
+  <data name="clear_due_time.Content" xml:space="preserve">
+    <value>Ganztägig</value>
+  </data>
   <data name="due_day_picker.PlaceholderText" xml:space="preserve">
     <value>Datum wählen</value>
   </data>
   <data name="due_day_picker.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Datum wählen</value>
+  </data>
+  <data name="due_time_picker.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Uhrzeit wählen</value>
   </data>
   <data name="due_offset_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Standard-Fälligkeitsdatum</value>
@@ -921,8 +1014,17 @@
   <data name="filter_button_2.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Filter</value>
   </data>
+  <data name="external_link_arrow.Text" xml:space="preserve">
+    <value>→</value>
+  </data>
   <data name="google_sync_mode_box.Header" xml:space="preserve">
     <value>Google-Listen</value>
+  </data>
+  <data name="new_google_list_box.Header" xml:space="preserve">
+    <value>Google-Liste erstellen für</value>
+  </data>
+  <data name="new_google_list_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Liste, für die eine Google-Liste erstellt wird</value>
   </data>
   <data name="google_sync_mode_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Verknüpfung mit Google-Listen</value>
@@ -938,6 +1040,12 @@
   </data>
   <data name="help_nav_label.Text" xml:space="preserve">
     <value>Hilfe &amp; Support</value>
+  </data>
+  <data name="report_an_issue.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Problem melden</value>
+  </data>
+  <data name="feedback_nav_label.Text" xml:space="preserve">
+    <value>Problem melden</value>
   </data>
   <data name="header_search.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Suchen</value>
@@ -1095,9 +1203,6 @@
   <data name="palette_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Befehlspalette</value>
   </data>
-  <data name="passkeys_google_and_magic_links_all.Text" xml:space="preserve">
-    <value>Passkeys, Google und Magic Links funktionieren dort alle. Danach bleiben Sie hier angemeldet.</value>
-  </data>
   <data name="paste_a_key_then_enter.PlaceholderText" xml:space="preserve">
     <value>Schlüssel einfügen, dann Enter</value>
   </data>
@@ -1236,6 +1341,24 @@
   <data name="repeat_interval.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Alle</value>
   </data>
+  <data name="repeat_month_day.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Tag des Monats</value>
+  </data>
+  <data name="repeat_month_same_date.Content" xml:space="preserve">
+    <value>am gleichen Datum jeden Monat</value>
+  </data>
+  <data name="repeat_month_same_weekday.Content" xml:space="preserve">
+    <value>am gleichen Wochentag jeden Monat</value>
+  </data>
+  <data name="repeat_month_type.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Wiederholt sich</value>
+  </data>
+  <data name="repeat_month_week.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Woche des Monats</value>
+  </data>
+  <data name="repeat_month_weekday.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Wochentag</value>
+  </data>
   <data name="repeat_unit.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Einheit</value>
   </data>
@@ -1359,6 +1482,21 @@
   <data name="theme_box.Header" xml:space="preserve">
     <value>Design</value>
   </data>
+  <data name="title_display_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Aufgabentitel</value>
+  </data>
+  <data name="titles_setting" xml:space="preserve">
+    <value>Aufgabentitel</value>
+  </data>
+  <data name="titles_wrap" xml:space="preserve">
+    <value>Umbrechen</value>
+  </data>
+  <data name="titles_twoLines" xml:space="preserve">
+    <value>Zwei Zeilen</value>
+  </data>
+  <data name="titles_oneLine" xml:space="preserve">
+    <value>Eine Zeile</value>
+  </data>
   <data name="theme_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Erscheinungsbild</value>
   </data>
@@ -1380,9 +1518,6 @@
   <data name="timer_button.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Timer</value>
   </data>
-  <data name="turn_one_on_for_this_list.Text" xml:space="preserve">
-    <value>Schalten Sie eines für diese Liste in astrid.app ein, und seine Spalten erscheinen hier.</value>
-  </data>
   <data name="verification_state.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Verifizierungsstatus</value>
   </data>
@@ -1400,6 +1535,45 @@
   </data>
   <data name="webhook_url_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Webhook-URL</value>
+  </data>
+  <data name="week_fifth.Content" xml:space="preserve">
+    <value>fünften</value>
+  </data>
+  <data name="week_first.Content" xml:space="preserve">
+    <value>ersten</value>
+  </data>
+  <data name="week_fourth.Content" xml:space="preserve">
+    <value>vierten</value>
+  </data>
+  <data name="week_last.Content" xml:space="preserve">
+    <value>letzten</value>
+  </data>
+  <data name="week_second.Content" xml:space="preserve">
+    <value>zweiten</value>
+  </data>
+  <data name="week_third.Content" xml:space="preserve">
+    <value>dritten</value>
+  </data>
+  <data name="weekday_friday.Content" xml:space="preserve">
+    <value>Freitag</value>
+  </data>
+  <data name="weekday_monday.Content" xml:space="preserve">
+    <value>Montag</value>
+  </data>
+  <data name="weekday_saturday.Content" xml:space="preserve">
+    <value>Samstag</value>
+  </data>
+  <data name="weekday_sunday.Content" xml:space="preserve">
+    <value>Sonntag</value>
+  </data>
+  <data name="weekday_thursday.Content" xml:space="preserve">
+    <value>Donnerstag</value>
+  </data>
+  <data name="weekday_tuesday.Content" xml:space="preserve">
+    <value>Dienstag</value>
+  </data>
+  <data name="weekday_wednesday.Content" xml:space="preserve">
+    <value>Mittwoch</value>
   </data>
   <data name="weeks.Content" xml:space="preserve">
     <value>Wochen</value>
@@ -1471,7 +1645,55 @@
     <value>Schnellzugriff-Tastenkürzel</value>
   </data>
   <data name="appearance_hotkey_hint" xml:space="preserve">
-    <value>Holt Astrid von überall in den Vordergrund, bereit für eine neue Aufgabe. Strg, Alt oder Win plus ein Buchstabe oder eine Ziffer.</value>
+    <value>Holt {0} von überall in den Vordergrund, bereit für eine neue Aufgabe. Strg, Alt oder Win plus ein Buchstabe oder eine Ziffer.</value>
+  </data>
+  <data name="auth_method_apple" xml:space="preserve">
+    <value>Apple</value>
+  </data>
+  <data name="auth_method_github" xml:space="preserve">
+    <value>GitHub</value>
+  </data>
+  <data name="auth_method_google" xml:space="preserve">
+    <value>Google</value>
+  </data>
+  <data name="auth_method_magic_link" xml:space="preserve">
+    <value>Magic Links</value>
+  </data>
+  <data name="auth_method_passkey" xml:space="preserve">
+    <value>Passkeys</value>
+  </data>
+  <data name="auth_method_sso" xml:space="preserve">
+    <value>das Single Sign-on Ihrer Organisation</value>
+  </data>
+  <data name="list_conjunction" xml:space="preserve">
+    <value>{0} und {1}</value>
+  </data>
+  <data name="list_separator" xml:space="preserve">
+    <value>, </value>
+  </data>
+  <data name="brand_sign_in_methods" xml:space="preserve">
+    <value>{0} funktionieren dort alle. Danach bleiben Sie hier angemeldet.</value>
+  </data>
+  <data name="brand_board_turn_one_on" xml:space="preserve">
+    <value>Schalten Sie eines für diese Liste in {0} ein, und seine Spalten erscheinen hier.</value>
+  </data>
+  <data name="brand_connections_web_session" xml:space="preserve">
+    <value>Der Server verlangt dafür einen angemeldeten Browser. Öffnen Sie auf {0} die Einstellungen, dann Verbindungen.</value>
+  </data>
+  <data name="brand_tour_hotkey" xml:space="preserve">
+    <value>Strg+Umschalt+A holt {0} von überall in den Vordergrund, bereit für eine neue Aufgabe.</value>
+  </data>
+  <data name="brand_agent_model_heading" xml:space="preserve">
+    <value>Das Modell hinter @{0}</value>
+  </data>
+  <data name="brand_agent_model_none" xml:space="preserve">
+    <value>Fügen Sie unten einen API-Schlüssel hinzu oder registrieren Sie einen eigenen Agenten, um {0} zu betreiben.</value>
+  </data>
+  <data name="brand_agent_model_auto" xml:space="preserve">
+    <value>{0} wählen lassen</value>
+  </data>
+  <data name="brand_agent_model_hint" xml:space="preserve">
+    <value>Wählen Sie das Modell, das {0} für „Meine Aufgaben“ und Ihre privaten Listen antreibt.</value>
   </data>
   <data name="appearance_apply" xml:space="preserve">
     <value>Anwenden</value>
@@ -1530,9 +1752,6 @@
   <data name="hotkey_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Schnellzugriff-Tastenkürzel</value>
   </data>
-  <data name="hotkey_hint.Text" xml:space="preserve">
-    <value>Holt Astrid von überall in den Vordergrund, bereit für eine neue Aufgabe. Strg, Alt oder Win plus ein Buchstabe oder eine Ziffer.</value>
-  </data>
   <data name="list_image_caption.Text" xml:space="preserve">
     <value>Bild</value>
   </data>
@@ -1563,29 +1782,23 @@
   <data name="no_public_lists.Text" xml:space="preserve">
     <value>Noch nichts zum Durchsuchen.</value>
   </data>
+  <data name="public_list_close.Content" xml:space="preserve">
+    <value>Schließen</value>
+  </data>
+  <data name="public_list_report_on_web.Content" xml:space="preserve">
+    <value>Im Web melden</value>
+  </data>
+  <data name="public_list_opening.Text" xml:space="preserve">
+    <value>Liste wird geöffnet…</value>
+  </data>
   <data name="copy_this_task.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Diese Aufgabe kopieren</value>
   </data>
   <data name="copy_this_task.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>In meine Aufgaben kopieren</value>
   </data>
-  <data name="astrid_model_heading.Text" xml:space="preserve">
-    <value>Das Modell hinter @astrid</value>
-  </data>
-  <data name="astrid_model_none.Text" xml:space="preserve">
-    <value>Fügen Sie unten einen API-Schlüssel hinzu oder registrieren Sie einen eigenen Agenten, um Astrid zu betreiben.</value>
-  </data>
-  <data name="astrid_model_auto.Content" xml:space="preserve">
-    <value>Astrid wählen lassen</value>
-  </data>
-  <data name="astrid_model_auto.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
-    <value>Astrid wählen lassen</value>
-  </data>
   <data name="powered_by.Text" xml:space="preserve">
     <value>Unterstützt von </value>
-  </data>
-  <data name="astrid_model_hint.Text" xml:space="preserve">
-    <value>Wählen Sie das Modell, das Astrid für „Meine Aufgaben“ und Ihre privaten Listen antreibt.</value>
   </data>
   <data name="agent_modes.Text" xml:space="preserve">
     <value>Agenten</value>
@@ -1695,14 +1908,14 @@
   <data name="settings_help_line" xml:space="preserve">
     <value>Hilfe-Anleitungen und Kontakt zum Support</value>
   </data>
+  <data name="settings_feedback_line" xml:space="preserve">
+    <value>Sagen Sie uns, was nicht funktioniert hat oder fehlt</value>
+  </data>
   <data name="settings_privacy_line" xml:space="preserve">
     <value>Wie Ihre Daten behandelt werden</value>
   </data>
   <data name="settings_terms_line" xml:space="preserve">
     <value>Die Bedingungen, denen Sie zugestimmt haben</value>
-  </data>
-  <data name="title_mark.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
-    <value>Astrid</value>
   </data>
   <data name="rows_empty" xml:space="preserve">
     <value>Zeit, sich zu organisieren! Fügen Sie Ihre erste Aufgabe hinzu, um zu starten.</value>
@@ -1766,9 +1979,6 @@
   </data>
   <data name="connections_web_session.Title" xml:space="preserve">
     <value>Bitte im Web erledigen</value>
-  </data>
-  <data name="connections_web_session_line.Text" xml:space="preserve">
-    <value>Der Server verlangt dafür einen angemeldeten Browser. Öffnen Sie auf astrid.cc die Einstellungen, dann Verbindungen.</value>
   </data>
   <data name="acts_as.Text" xml:space="preserve">
     <value>Handelt als </value>
@@ -1964,5 +2174,140 @@
   </data>
   <data name="list_transfer_yes" xml:space="preserve">
     <value>Übertragen und verlassen</value>
+  </data>
+  <data name="list_insights.Header" xml:space="preserve">
+    <value>Einblicke</value>
+  </data>
+  <data name="insights_loading.Text" xml:space="preserve">
+    <value>Einblicke werden geladen…</value>
+  </data>
+  <data name="insights_failed.Text" xml:space="preserve">
+    <value>Einblicke konnten nicht geladen werden</value>
+  </data>
+  <data name="insights_activity.Text" xml:space="preserve">
+    <value>Aktivität</value>
+  </data>
+  <data name="insights_new.Text" xml:space="preserve">
+    <value>Neu</value>
+  </data>
+  <data name="insights_completed.Text" xml:space="preserve">
+    <value>Abgeschlossen</value>
+  </data>
+  <data name="insights_time_to_complete.Text" xml:space="preserve">
+    <value>Medianzeit bis zum Abschluss</value>
+  </data>
+  <data name="insights_time_in_lane.Text" xml:space="preserve">
+    <value>Medianzeit in jeder Spalte</value>
+  </data>
+  <data name="insights_not_enough_history.Text" xml:space="preserve">
+    <value>Noch nicht genügend Verlauf</value>
+  </data>
+  <data name="insights_lane_history_note.Text" xml:space="preserve">
+    <value>Spaltenwechsel werden ab jetzt erfasst, daher füllt sich dies, sobald Karten bewegt werden.</value>
+  </data>
+  <data name="insights_contributors.Text" xml:space="preserve">
+    <value>Top-Mitwirkende</value>
+  </data>
+  <data name="insights_no_activity.Text" xml:space="preserve">
+    <value>Keine Aktivität in diesem Zeitraum</value>
+  </data>
+  <data name="insights_agent_badge.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>KI-Agent</value>
+  </data>
+  <data name="listInsights_days7" xml:space="preserve">
+    <value>7 Tage</value>
+  </data>
+  <data name="listInsights_days30" xml:space="preserve">
+    <value>30 Tage</value>
+  </data>
+  <data name="listInsights_days90" xml:space="preserve">
+    <value>90 Tage</value>
+  </data>
+  <data name="listInsights_createdTotal" xml:space="preserve">
+    <value>{0} neu</value>
+  </data>
+  <data name="listInsights_completedTotal" xml:space="preserve">
+    <value>{0} abgeschlossen</value>
+  </data>
+  <data name="listInsights_sampleSize" xml:space="preserve">
+    <value>von {0}</value>
+  </data>
+  <data name="listInsights_profileCounts" xml:space="preserve">
+    <value>{0} erledigt · {1} inspiriert · {2} unterstützt</value>
+  </data>
+  <data name="listInsights_activityCounts" xml:space="preserve">
+    <value>{0} erstellt · {1} Bearbeitungen · {2} Kommentare</value>
+  </data>
+  <data name="listInsights_duration_minutes" xml:space="preserve">
+    <value>{0} Min.</value>
+  </data>
+  <data name="listInsights_duration_hours" xml:space="preserve">
+    <value>{0} Std.</value>
+  </data>
+  <data name="listInsights_duration_days" xml:space="preserve">
+    <value>{0} T.</value>
+  </data>
+  <data name="copilot_cloud_token_line.Text" xml:space="preserve">
+    <value>Der Cloud-Agent von Copilot benötigt ein Token, um als Ihr Konto zu handeln. Erstellen Sie hier eines; es wird nur einmal angezeigt.</value>
+  </data>
+  <data name="mint_copilot_token.Content" xml:space="preserve">
+    <value>Cloud-Agent-Token erstellen</value>
+  </data>
+  <data name="copy_the_token_now_it_is.Text" xml:space="preserve">
+    <value>Kopieren Sie das Token jetzt — es wird nicht noch einmal angezeigt.</value>
+  </data>
+  <data name="cloud_agent_token.Header" xml:space="preserve">
+    <value>Cloud-Agent-Token</value>
+  </data>
+  <data name="cloud_agent_token.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Cloud-Agent-Token</value>
+  </data>
+  <data name="copy_the_token.Content" xml:space="preserve">
+    <value>Token kopieren</value>
+  </data>
+  <data name="detail_chrome_title.Text" xml:space="preserve">
+    <value>Aufgabendetails</value>
+  </data>
+  <data name="detail_close_button.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Schließen</value>
+  </data>
+  <data name="detail_close_button.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Schließen</value>
+  </data>
+  <data name="show_system_comments.Content" xml:space="preserve">
+    <value>System anzeigen</value>
+  </data>
+  <data name="show_system_comments.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Systemkommentare anzeigen</value>
+  </data>
+  <data name="refresh_comments.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Kommentare aktualisieren</value>
+  </data>
+  <data name="refresh_comments.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Kommentare aktualisieren</value>
+  </data>
+  <data name="refresh_comments_label.Text" xml:space="preserve">
+    <value>Aktualisieren</value>
+  </data>
+  <data name="comments_heading" xml:space="preserve">
+    <value>Kommentare ({0})</value>
+  </data>
+  <data name="comments_heading_none" xml:space="preserve">
+    <value>Kommentare (0)</value>
+  </data>
+  <data name="tasks_tradeoffRatings_veryPoor" xml:space="preserve">
+    <value>Sehr schlecht</value>
+  </data>
+  <data name="tasks_tradeoffRatings_poor" xml:space="preserve">
+    <value>Schlecht</value>
+  </data>
+  <data name="tasks_tradeoffRatings_mixed" xml:space="preserve">
+    <value>Gemischt</value>
+  </data>
+  <data name="tasks_tradeoffRatings_good" xml:space="preserve">
+    <value>Gut</value>
+  </data>
+  <data name="tasks_tradeoffRatings_veryGood" xml:space="preserve">
+    <value>Sehr gut</value>
   </data>
 </root>

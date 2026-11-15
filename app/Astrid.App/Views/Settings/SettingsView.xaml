@@ -354,6 +354,30 @@
                             <FontIcon Grid.Column="2" Style="{StaticResource CardChevron}" Glyph="&#xE8A7;" />
                         </Grid>
                     </ListViewItem>
+                    <!--
+                        Report an Issue (task 68771137) is a door too, but the only one whose
+                        destination it does not know: the core answers which list this deployment
+                        files feedback into, or that it names none, and the view model turns that
+                        into the address. No list id lives in this shell — a hardcoded one is the
+                        bug task a4352b30 fixed.
+                    -->
+                    <ListViewItem x:Uid="report_an_issue" Tag="Feedback" AutomationProperties.Name="Report an issue">
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
+                                <FontIcon Glyph="&#xED15;" Style="{StaticResource CardIcon}" Foreground="#F43F5E" />
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                <TextBlock x:Uid="feedback_nav_label" x:Name="FeedbackNavLabel" Text="Report an Issue" Style="{StaticResource CardTitle}" />
+                                <TextBlock x:Name="FeedbackCardLine" Style="{StaticResource CardLine}" />
+                            </StackPanel>
+                            <FontIcon Grid.Column="2" Style="{StaticResource CardChevron}" Glyph="&#xE8A7;" />
+                        </Grid>
+                    </ListViewItem>
                     <ListViewItem x:Uid="privacy_policy" Tag="Privacy" AutomationProperties.Name="Privacy policy">
                         <Grid ColumnSpacing="12">
                             <Grid.ColumnDefinitions>

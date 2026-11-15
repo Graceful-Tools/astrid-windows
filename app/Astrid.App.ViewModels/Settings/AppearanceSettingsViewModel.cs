@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using Astrid.Core.Bindings;
 
 namespace Astrid.App.ViewModels;
@@ -14,6 +15,8 @@ public sealed class AppearanceSettingsViewModel : ObservableObject
     private readonly SettingsSession _session;
     private string _theme = "ocean";
     private bool? _themeIsDark = false;
+    private string _titleDisplay = "wrap";
+    private int _titleMaxLines;
     private Hotkey _hotkey = new();
 
     public AppearanceSettingsViewModel(SettingsSession session)
@@ -67,8 +70,53 @@ public sealed class AppearanceSettingsViewModel : ObservableObject
         private set => Set(ref _themeIsDark, value);
     }
 
+    /// <summary>
+    /// How much of a title a row shows: <c>wrap</c>, <c>twoLines</c> or <c>oneLine</c> (DS19).
+    /// </summary>
+    /// <remarks>
+    /// This machine's, like <see cref="Theme"/> and through the same door — the core's cache, never
+    /// the Outbox. See <c>astrid_core::title_display</c>.
+    /// </remarks>
+    public string TitleDisplay
+    {
+        get => _titleDisplay;
+        private set
+        {
+            Set(ref _titleDisplay, value);
+            Raise(nameof(TitleDisplayChoice));
+        }
+    }
+
+    /// <summary>
+    /// What the picker shows. The same three on every client, in the core's order, each carrying
+    /// the <c>.resw</c> key for its words — the theme's picker above shows its wire names, which is
+    /// a gap of its own rather than a pattern to copy.
+    /// </summary>
+    public ObservableCollection<DefaultChoice> TitleDisplayChoices { get; } = [];
+
+    /// <summary>The chosen entry, for the picker.</summary>
+    public DefaultChoice? TitleDisplayChoice =>
+        TitleDisplayChoices.FirstOrDefault(choice => choice.Value == TitleDisplay);
+
+    /// <summary>
+    /// How many lines a row's title may use — <c>0</c> for as many as it needs.
+    /// </summary>
+    /// <remarks>
+    /// Zero because that is what WinUI's <c>TextBlock.MaxLines</c> means by "do not limit it"; the
+    /// core says <c>null</c>, and this is the one place the two spellings meet. The row binds this
+    /// rather than matching on the names, so adding a fourth option is a core change alone.
+    /// </remarks>
+    public int TitleMaxLines
+    {
+        get => _titleMaxLines;
+        private set => Set(ref _titleMaxLines, value);
+    }
+
     /// <summary>Raised when the look changes, so the window can repaint itself.</summary>
     public event Action? ThemeChanged;
+
+    /// <summary>Raised when the title setting changes, so open lists can re-measure their rows.</summary>
+    public event Action? TitleDisplayChanged;
 
     /// <summary>Raised when the global chord changes, so the window can register the new one.</summary>
     public event Action<Hotkey>? HotkeyChanged;
@@ -155,6 +203,63 @@ public sealed class AppearanceSettingsViewModel : ObservableObject
         Apply(response);
         ThemeChanged?.Invoke();
         return true;
+    }
+
+    /// <summary>Read back how much of a title this installation shows.</summary>
+    public async Task LoadTitleDisplayAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _session.Core.CallAsync(Commands.TitleDisplay(), cancellationToken);
+        if (!response.Ok)
+        {
+            return;
+        }
+        ApplyTitleDisplay(response);
+        TitleDisplayChoices.Clear();
+        if (response.Value.TryGetProperty("choices", out var choices))
+        {
+            foreach (var choice in choices.EnumerateArray())
+            {
+                if (choice.GetString() is { } name)
+                {
+                    // The words come from the strings table, keyed by the core's name, so the
+                    // three options are translated rather than shown as wire values.
+                    TitleDisplayChoices.Add(
+                        new DefaultChoice("titleDisplay", name, $"titles.{name}", null, false));
+                }
+            }
+        }
+        TitleDisplayChanged?.Invoke();
+    }
+
+    /// <summary>Choose how much of a title a row shows.</summary>
+    public async Task<bool> SetTitleDisplayAsync(string display,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _session.Core.CallAsync(
+            Commands.SetTitleDisplay(display), cancellationToken);
+        if (!response.Ok)
+        {
+            _session.ErrorMessage = response.Error?.Message;
+            return false;
+        }
+        ApplyTitleDisplay(response);
+        TitleDisplayChanged?.Invoke();
+        return true;
+    }
+
+    private void ApplyTitleDisplay(AstridResponse response)
+    {
+        if (response.Value.TryGetProperty("titleDisplay", out var display)
+            && display.GetString() is { } name)
+        {
+            TitleDisplay = name;
+        }
+        // The core says null for "as many lines as it needs"; WinUI says 0. Translated here, once,
+        // rather than in the row — a converter per list would be the same rule in two places.
+        TitleMaxLines = response.Value.TryGetProperty("maxLines", out var lines)
+            && lines.ValueKind is System.Text.Json.JsonValueKind.Number
+            ? lines.GetInt32()
+            : 0;
     }
 
     private void Apply(AstridResponse response)

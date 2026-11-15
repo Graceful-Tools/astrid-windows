@@ -55,6 +55,9 @@ internal static partial class NativeMethods
     [LibraryImport(Library, EntryPoint = "astrid_call_blocking", StringMarshalling = StringMarshalling.Utf8)]
     internal static partial IntPtr CallBlocking(IntPtr handle, string requestJson);
 
+    [LibraryImport(Library, EntryPoint = "astrid_rule", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial IntPtr Rule(string requestJson);
+
     [LibraryImport(Library, EntryPoint = "astrid_subscribe")]
     internal static partial void Subscribe(IntPtr handle, IntPtr callback, IntPtr userData);
 

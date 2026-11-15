@@ -61,8 +61,5 @@ public sealed partial class MarkdownView : ContentControl
         Content = panel;
     }
 
-    private static Brush ThemedBrush(string key) =>
-        Application.Current.Resources.TryGetValue(key, out var brush) && brush is Brush themed
-            ? themed
-            : new SolidColorBrush(Colors.Gray);
+    private Brush ThemedBrush(string key) => ThemeBrushes.For(this, key);
 }

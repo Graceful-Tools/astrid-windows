@@ -21,7 +21,17 @@ namespace Astrid.App.Tests;
 /// </remarks>
 public sealed class NativeBoundaryTests
 {
-    private static AstridClient Start() => AstridClient.Start(":memory:");
+    /// <summary>
+    /// A core started against a server it never reaches.
+    /// </summary>
+    /// <remarks>
+    /// <c>baseUrl</c> is required (task <c>7e68a733</c>), so these tests have to name one even
+    /// though none of them makes a request — a start that says nothing used to mean "Astrid's
+    /// server", which is the default being removed. The value is deliberately not Astrid's, so a
+    /// test that did start talking to the network would fail rather than quietly reach production.
+    /// </remarks>
+    private static AstridClient Start() =>
+        AstridClient.Start(":memory:", "https://nowhere.invalid");
 
     [Fact]
     public void The_core_reports_its_version()
@@ -130,7 +140,8 @@ public sealed class NativeBoundaryTests
     public void A_cache_path_that_cannot_be_opened_reports_why()
     {
         var exception = Assert.Throws<AstridStartupException>(
-            () => AstridClient.Start(Path.Combine("Z:", "no", "such", "place", "astrid.db")));
+            () => AstridClient.Start(Path.Combine("Z:", "no", "such", "place", "astrid.db"),
+                "https://nowhere.invalid"));
         Assert.False(string.IsNullOrWhiteSpace(exception.Message));
     }
 

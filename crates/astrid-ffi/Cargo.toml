@@ -13,7 +13,20 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 # The shared core, by revision. `cargo update -p astrid-core` after changing the rev.
-astrid-core = { git = "https://github.com/Graceful-Tools/astrid-core.git", rev = "8f2799c518866fbe322bf23d476177cd598dd5a7" }
+#
+# `version` as well as `rev`, and it is not decoration: a git dependency with only a `rev` has NO
+# version requirement, cargo reports it as `*`, and `deny.toml` sets `[bans] wildcards = "deny"` —
+# so this one line is why CI's `licenses bans sources` job was red. Cargo checks it against the
+# pinned checkout's own version at build time, so a pin bump that crosses a major version fails
+# here, loudly, instead of changing what shipped with nothing recording it.
+#
+# `bundled-sqlite` is the core's default and is named here anyway (task `f1210dd8`). It compiles
+# SQLite into the binary, which this app has no alternative to — Windows ships no `libsqlite3` for
+# an MSVC link to find — while Apple turns it off to link the system copy it already has. Written
+# down because a default is someone else's decision to change, and the failure would be a link
+# error on both targets rather than anything a test could explain. `supply_chain_contract.rs`
+# asserts the resolved graph still carries it.
+astrid-core = { git = "https://github.com/Graceful-Tools/astrid-core.git", version = "0.1", rev = "b213a073c44cfefd89659ba5b928c066f51f7c90", features = ["bundled-sqlite"] }
 serde_json = { workspace = true }
 tokio = { workspace = true }
 async-trait = { workspace = true }
@@ -21,7 +34,13 @@ tracing = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 # DPAPI, for the credential at rest. See `secure_store` for why this rather than PasswordVault.
-windows-sys = { version = "0.60", features = [
+#
+# 0.61 because that is what tokio's IOCP reactor already brings into this graph, and `windows-sys`
+# is the whole generated Win32 ABI — a second major version is a second copy of it compiled and
+# linked into the same binary, on both architectures, for the same declarations of the same
+# operating system. `each_shipped_target_carries_one_windows_sys_task_d24777f5` in
+# `tests/supply_chain_contract.rs` fails if the two ever drift apart again.
+windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
     "Win32_Security_Cryptography",
     "Win32_System_Memory",
@@ -29,3 +48,23 @@ windows-sys = { version = "0.60", features = [
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+# The same core, with `schema` on, FOR THE TESTS ONLY — `bindings_contract.rs` reads the wire
+# schema out of it (task 9ef7edb4). Under resolver 2 a dev-dependency's features are not unified
+# into a normal build, so `cargo build --release` of the shipped `astrid_ffi.dll` still carries no
+# `schemars`: the derive exists to be read by a gate, and nothing at runtime asks for it.
+#
+# **Sectioned, and that is not a style choice.** The release workflow extracts this app's pin with
+# `sed -n 's/^astrid-core = .*rev = "\(…\)".*/\1/p'` over this file, and a second inline
+# `astrid-core = { … }` line would make it print TWO shas and move `windows-prod` to both —
+# `release_pointers_contract.rs` fails on exactly that. A `[dev-dependencies.astrid-core]` table
+# keeps the inline spelling unique, so the extraction is untouched.
+#
+# The `rev` is still written twice, and two revisions that can drift is the trap `CONSUMERS.md`
+# exists to close — so `bindings_contract.rs` fails when they disagree. It is NOT moved into
+# `[workspace.dependencies]` to avoid the repetition: astrid-core's `CONSUMERS.md` says this app's
+# pin is read from THIS file, and `cargo xtask check-pins` reads it from here.
+[dev-dependencies.astrid-core]
+git = "https://github.com/Graceful-Tools/astrid-core.git"
+version = "0.1"
+rev = "b213a073c44cfefd89659ba5b928c066f51f7c90"
+features = ["bundled-sqlite", "schema"]

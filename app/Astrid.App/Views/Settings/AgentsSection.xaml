@@ -21,23 +21,23 @@
                 <Image x:Uid="title_mark"
                        Source="{x:Bind local:Brand.SmallMark}"
                        Stretch="UniformToFill"
-                       AutomationProperties.Name="Astrid" />
+                       AutomationProperties.Name="{x:Bind local:BrandCopy.AppName}" />
             </Border>
-            <TextBlock x:Uid="astrid_model_heading" Text="The model behind @astrid"
+            <TextBlock Text="{x:Bind local:BrandCopy.AgentModelHeading}"
                        Style="{StaticResource DetailSection}"
                        Margin="0"
                        VerticalAlignment="Center" />
         </StackPanel>
-        <TextBlock x:Uid="astrid_model_none" Text="Add an API key or register a custom agent below to power Astrid."
+        <TextBlock Text="{x:Bind local:BrandCopy.AgentModelNone}"
                    FontSize="12"
                    TextWrapping="Wrap"
                    Foreground="{ThemeResource AstridTextMuted}"
                    Visibility="{x:Bind Shell.Settings.Agents.NoAstridModels, Mode=OneWay, Converter={StaticResource Visible}}" />
         <StackPanel Spacing="2"
                     Visibility="{x:Bind Shell.Settings.Agents.HasAstridModels, Mode=OneWay, Converter={StaticResource Visible}}">
-            <RadioButton x:Uid="astrid_model_auto" Content="Let Astrid choose"
+            <RadioButton Content="{x:Bind local:BrandCopy.AgentModelAuto}"
                          GroupName="AstridModel"
-                         AutomationProperties.Name="Let Astrid choose"
+                         AutomationProperties.Name="{x:Bind local:BrandCopy.AgentModelAuto}"
                          IsChecked="{x:Bind Shell.Settings.Agents.LetsAstridChoose, Mode=OneWay}"
                          Click="OnAstridModelChosen" />
             <ItemsControl ItemsSource="{x:Bind Shell.Settings.Agents.AstridModels, Mode=OneWay}">
@@ -59,7 +59,7 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </StackPanel>
-        <TextBlock x:Uid="astrid_model_hint" Text="Choose the model that powers Astrid for My Tasks and your private lists."
+        <TextBlock Text="{x:Bind local:BrandCopy.AgentModelHint}"
                    FontSize="11"
                    TextWrapping="Wrap"
                    Foreground="{ThemeResource AstridTextMuted}" />

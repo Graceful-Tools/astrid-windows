@@ -56,8 +56,116 @@ public sealed class AstridClient : IAstridCore, IDisposable
     /// </remarks>
     public event Action<ChangeNotification>? Changed;
 
-    /// <summary>The version of the core this build is talking to.</summary>
+    /// <summary>
+    /// This build's binding version and the revision of the core inside it —
+    /// <c>0.1.0 (core a8591a93c022)</c>.
+    /// </summary>
     public static string Version => NativeMethods.BorrowString(NativeMethods.Version());
+
+    /// <summary>
+    /// Answer one of the core's pure rules, synchronously, without a started client.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The stateless half of the core waits on nothing — repeating rollover, permissions, filters,
+    /// smart parsing, the row projections — so asking it needs no handle, no runtime and no
+    /// callback. Static for that reason: a caller that only wants arithmetic should not have to
+    /// start a client, and a disposed one is no reason to refuse the question (task ab249b76).
+    /// </para>
+    /// <para>
+    /// The request is the core's <c>Rule</c> vocabulary, tagged by <c>kind</c>; the answer is the
+    /// same <c>{"ok":…}</c> envelope a command answers with, never null and never empty.
+    /// </para>
+    /// </remarks>
+    public static string Rule(string requestJson) =>
+        NativeMethods.TakeString(NativeMethods.Rule(requestJson));
+
+    /// <summary>
+    /// What a list's defaults editor may offer, with <paramref name="defaults"/> ticked — the
+    /// core's <c>listDefaultPicks</c> rule (task 92830d81).
+    /// </summary>
+    /// <remarks>
+    /// The shell held four tables for this. Asked through the stateless door rather than through a
+    /// command because drawing a picker waits on nothing: no cache, no clock, no handle.
+    /// </remarks>
+    public static ListDefaultPicks ListDefaultPicks(ListDefaults defaults)
+    {
+        var request = JsonSerializer.Serialize(new ListDefaultPicksRequest
+        {
+            Priority = defaults.Priority,
+            Repeating = defaults.Repeating,
+            DueDate = defaults.DueDate,
+            DueTime = defaults.DueTime,
+        });
+        return AstridResponse.Parse(Rule(request)).ValueAs<ListDefaultPicks>() ?? new ListDefaultPicks();
+    }
+
+    /// <summary>
+    /// Which CLDR category <paramref name="count"/> selects in <paramref name="locale"/> — the row
+    /// a plural key's word is read from (task b656efce).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The catalog holds the words and this picks the row, which is the split astrid-core's
+    /// <c>strings/README.md</c> describes. The shell used to decide with <c>count == 1</c> and a
+    /// <c>% 100</c> suffix rule of its own: right in English, right in German, and wrong in every
+    /// language with more than two forms — which is the whole reason the catalog pluralises.
+    /// </para>
+    /// <para>
+    /// <paramref name="form"/> is not inferable from the number. English's <em>cardinal</em> 3 is
+    /// <c>other</c> ("3 weeks") while its <em>ordinal</em> 3 is <c>few</c> ("3rd"): genuinely
+    /// different CLDR rules, and the caller already knows which question it is asking.
+    /// </para>
+    /// <para>
+    /// A locale this core has never met answers <c>other</c>, the one category every language has,
+    /// so a newer Windows language setting costs a less precise word rather than an exception. A
+    /// refusal falls back the same way, because a repeat summary is not worth throwing over.
+    /// </para>
+    /// </remarks>
+    public static string PluralCategory(string locale, CountForm form, long count)
+    {
+        var request = JsonSerializer.Serialize(new PluralCategoryRequest
+        {
+            Locale = locale,
+            Form = form == CountForm.Ordinal ? "ordinal" : "cardinal",
+            Count = count,
+        });
+        var answer = AstridResponse.Parse(Rule(request));
+        return answer.Ok ? answer.ValueAs<string>() ?? "other" : "other";
+    }
+
+    private sealed record PluralCategoryRequest
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("kind")]
+        public string Kind { get; init; } = "pluralCategory";
+
+        [System.Text.Json.Serialization.JsonPropertyName("locale")]
+        public string Locale { get; init; } = "en";
+
+        [System.Text.Json.Serialization.JsonPropertyName("form")]
+        public string Form { get; init; } = "cardinal";
+
+        [System.Text.Json.Serialization.JsonPropertyName("count")]
+        public long Count { get; init; }
+    }
+
+    private sealed record ListDefaultPicksRequest
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("kind")]
+        public string Kind { get; init; } = "listDefaultPicks";
+
+        [System.Text.Json.Serialization.JsonPropertyName("priority")]
+        public int Priority { get; init; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("repeating")]
+        public string? Repeating { get; init; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("dueDate")]
+        public string? DueDate { get; init; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("dueTime")]
+        public string? DueTime { get; init; }
+    }
 
     /// <summary>
     /// Start the core against a cache at <paramref name="cachePath"/>.
@@ -67,13 +175,9 @@ public sealed class AstridClient : IAstridCore, IDisposable
     /// there is nothing the app can do without it, and a null client that fails on every later call
     /// reports the problem in the wrong place.
     /// </exception>
-    public static AstridClient Start(string cachePath, string? baseUrl = null)
+    public static AstridClient Start(string cachePath, string baseUrl, string? urlScheme = null)
     {
-        var config = JsonSerializer.Serialize(new Dictionary<string, string?>
-        {
-            ["cachePath"] = cachePath,
-            ["baseUrl"] = baseUrl,
-        }.Where(entry => entry.Value is not null).ToDictionary(entry => entry.Key, entry => entry.Value));
+        var config = BuildStartConfig(cachePath, baseUrl, urlScheme);
 
         var handle = NativeMethods.Start(config, out var error);
         if (handle == IntPtr.Zero)
@@ -85,6 +189,41 @@ public sealed class AstridClient : IAstridCore, IDisposable
         client._self = GCHandle.Alloc(client, GCHandleType.Normal);
         return client;
     }
+
+    /// <summary>
+    /// The JSON the core is started from — what the shell has to tell it before anything else.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A key the shell has nothing to say about is LEFT OUT rather than sent null or empty, because
+    /// the core's <c>Config</c> gives each one a default and absence is how a shell asks for it.
+    /// For <paramref name="urlScheme"/> that default is <c>astrid</c>, so a build that does not
+    /// name a scheme behaves exactly as every client did before the field existed.
+    /// </para>
+    /// <para>
+    /// <paramref name="baseUrl"/> is the exception, and it is required (task <c>7e68a733</c>).
+    /// The core's default for it is Astrid's own server, which is the one answer a white-label
+    /// build must never give: a partner that left it out sent its sync, its Outbox and its live
+    /// stream to astrid.cc while every call the shell made went to the partner's server. There is
+    /// deliberately no way to ask for the core's default here, and astrid-core is removing it from
+    /// its own side as well — a core built with <c>require-base-url</c> refuses a start without
+    /// one, with <c>CONFIG_BASE_URL_REQUIRED</c>. Pass
+    /// <c>ServerSelection.Origin(…)</c>, which answers the brand's origin when nothing was chosen;
+    /// never <c>ServerSelection.Parse(…)</c>, which answers null for exactly that case.
+    /// </para>
+    /// <para>
+    /// Separate from <see cref="Start"/> so the contract can be asserted without a running core:
+    /// the core ignores a key it does not know, which makes a wrong or missing one invisible at the
+    /// boundary (task 8cbed184).
+    /// </para>
+    /// </remarks>
+    public static string BuildStartConfig(string cachePath, string baseUrl, string? urlScheme) =>
+        JsonSerializer.Serialize(new Dictionary<string, string?>
+        {
+            ["cachePath"] = cachePath,
+            ["baseUrl"] = baseUrl,
+            ["urlScheme"] = urlScheme,
+        }.Where(entry => entry.Value is not null).ToDictionary(entry => entry.Key, entry => entry.Value));
 
     /// <summary>
     /// Send a command and await the answer.

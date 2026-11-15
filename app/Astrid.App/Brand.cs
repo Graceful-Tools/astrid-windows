@@ -27,6 +27,28 @@ internal static class Brand
     /// <summary>The 96px mark: the title bar, beside the agent's name.</summary>
     public static BitmapImage SmallMark { get; } = Load("Astrid-96.png");
 
-    private static BitmapImage Load(string name) =>
-        new(new Uri(Path.Combine(AppContext.BaseDirectory, "Assets", name)));
+    /// <summary>
+    /// The window's own icon: the title bar's corner, Alt-Tab, and the taskbar's preview.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>&lt;ApplicationIcon&gt;</c> brands the executable, which is what Explorer and the taskbar
+    /// read — but a WinUI window does not inherit it, so the title bar and Alt-Tab wore the
+    /// framework's default square whatever the package said (task 28348df8). <c>AppWindow.SetIcon</c>
+    /// is the only thing that moves them, and it wants a path.
+    /// </para>
+    /// <para>
+    /// The same literal name as the marks above, and deliberately: these are file names beside the
+    /// executable rather than anything a reader sees, and a partner's own icon arrives at this path
+    /// through <c>make-icons.ps1 -OutDir</c> — the same category as the manifest's
+    /// <c>Executable</c>, which <c>BrandProfileTests</c> exempts for the same reason.
+    /// </para>
+    /// </remarks>
+    public static string IconPath { get; } = Asset("Astrid.ico");
+
+    private static BitmapImage Load(string name) => new(new Uri(Asset(name)));
+
+    /// <summary>One of this build's own files, beside the executable.</summary>
+    private static string Asset(string name) =>
+        Path.Combine(AppContext.BaseDirectory, "Assets", name);
 }

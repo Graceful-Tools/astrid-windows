@@ -26,6 +26,60 @@ namespace Astrid.App.UITests;
 [Collection("ui")]
 public sealed class ShellSmokeTests
 {
+    private readonly Xunit.Abstractions.ITestOutputHelper _output;
+
+    public ShellSmokeTests(Xunit.Abstractions.ITestOutputHelper output) => _output = output;
+
+    /// <summary>
+    /// Why the shell's picker is an accepted answer, and how to get a single claimant back.
+    /// </summary>
+    private const string PickerIsAccepted =
+        "the shell's picker, which is accepted: a packaged Astrid and a dev build claim astrid:// "
+        + "through mechanisms that cannot see each other, so a machine with both has two claimants "
+        + "and no recorded default (task 02a8b67e, decided 2026-11-14). Uninstall the test package "
+        + "with Remove-AppxPackage to get a single claimant back.";
+
+    /// <summary>
+    /// What the shell resolves <c>astrid://</c> to, without starting anything.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The other test here launches the app first, and an unpackaged build registers the scheme as
+    /// it starts — so it can only ever report the association *after* a dev build has claimed it.
+    /// The state that matters for a machine with the Store build installed is the one nothing has
+    /// just rewritten, and only a probe that starts nothing can see it (task 02a8b67e).
+    /// </para>
+    /// <para>
+    /// The picker is one of the two accepted answers — see the remarks on the other test for the
+    /// decision — so what is left to assert is that *something* claims the scheme, and that a
+    /// claimant which is not the picker is a file that still exists. A registration left behind by
+    /// a build that has since been deleted is the shape of the 2026-09-13 failure, and is still a
+    /// failure.
+    /// </para>
+    /// <para>
+    /// It reports the command as well as asserting on it, because "which of the claimants won" is
+    /// the question every failure in this area has turned out to be, and it is invisible in a
+    /// passing run otherwise.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void The_scheme_resolves_before_anything_is_launched()
+    {
+        var command = RegisteredProtocolCommand();
+        _output.WriteLine($"astrid:// resolves to: {command ?? "(nothing)"}");
+
+        Assert.False(string.IsNullOrWhiteSpace(command), "astrid:// resolves to nothing");
+
+        if (IsShellPicker(command!))
+        {
+            _output.WriteLine($"That is {PickerIsAccepted}");
+            return;
+        }
+
+        var executable = FirstQuoted(command!);
+        Assert.True(File.Exists(executable), $"astrid:// points at a missing file: {executable}");
+    }
+
     /// <summary>
     /// The sign-in callback can find the app, and finds one that can start.
     /// </summary>
@@ -60,12 +114,43 @@ public sealed class ShellSmokeTests
         // the sign-in it was carrying is lost.
         Assert.Contains("%1", command!, System.StringComparison.Ordinal);
 
+        // Several claimants and no default recorded, which is what a packaged build installed
+        // beside an unpackaged one produces: the shell hands the URL to its picker instead of to
+        // an app, and whatever is chosen there becomes the default. That is accepted as of
+        // 2026-11-14 (task 02a8b67e): a user has one Astrid, from the Store, so one claimant and
+        // no dialog, and it is only developer machines that meet the prompt. The alternative —
+        // having the unpackaged build stand aside while a packaged Astrid is installed — would
+        // mean packaging a build to test its sign-in, which costs more than the prompt does.
+        // So the picker is reported rather than failed, and the assertions below are about a
+        // claimant that really is an app: they say nothing either way about the picker, which is
+        // a real executable of the host's architecture whose command carries the URL.
+        if (IsShellPicker(command!))
+        {
+            _output.WriteLine($"astrid:// resolves to {PickerIsAccepted}");
+            return;
+        }
+
         var executable = FirstQuoted(command!);
         Assert.True(File.Exists(executable), $"astrid:// points at a missing file: {executable}");
         Assert.Equal(
             System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture,
             ArchitectureOf(executable));
     }
+
+    /// <summary>
+    /// Whether the shell answered with its "How do you want to open this?" picker rather than with
+    /// an app.
+    /// </summary>
+    /// <remarks>
+    /// The rule itself is stated and tested as <c>ProtocolRegistrations.IsShellPicker</c>, which
+    /// runs in the standard gate. This project takes no project references, because it tests the
+    /// built app rather than the source, so it is spelt out again here.
+    /// </remarks>
+    private static bool IsShellPicker(string command) =>
+        string.Equals(
+            Path.GetFileName(FirstQuoted(command)),
+            "OpenWith.exe",
+            System.StringComparison.OrdinalIgnoreCase);
 
     /// <summary>The command Windows will actually run for <c>astrid://</c>.</summary>
     /// <remarks>
@@ -117,6 +202,40 @@ public sealed class ShellSmokeTests
         };
     }
 
+    /// <summary>A startup warning is not a crash: it goes to the log, not to <c>crash.log</c>.</summary>
+    /// <remarks>
+    /// Task 46c3fdfd. <c>App.Log</c> and the unhandled-exception handler shared one file called
+    /// <c>crash.log</c>, so the nine <c>Assert.False(File.Exists(CrashLogPath))</c> checks in this
+    /// file were really asking "did the app log anything at all". On a machine where another Astrid
+    /// is installed two ordinary warnings fire on every launch — the global hotkey is already held,
+    /// and a stale <c>astrid://</c> registration is tidied away — so every one of them failed,
+    /// quoting two lines that say nothing fell over. <c>predeploy:full</c> could not pass here for
+    /// any change at all.
+    /// <para>
+    /// This asserts the distinction directly rather than relying on the other nine to notice: the
+    /// app starts, writes its general log, and leaves no crash log. It is deliberately the
+    /// signed-out launch, which is the cheapest start this suite has.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void A_startup_warning_is_not_a_crash_46c3fdfd()
+    {
+        using var app = AstridApp.Launch(signedIn: false);
+
+        Assert.False(
+            File.Exists(app.CrashLogPath),
+            $"nothing crashed, so there should be no crash log. It says:\n{Tail(app.CrashLogPath)}");
+
+        // Whether a warning fires at all depends on what else is installed on this machine — a
+        // clean one logs nothing, which is correct. So the claim is the other way round: anything
+        // that WAS logged went to the general log, and a general log with content in it is
+        // therefore the proof that the two files are no longer one.
+        if (File.Exists(app.LogPath))
+        {
+            Assert.NotEmpty(File.ReadAllText(app.LogPath));
+        }
+    }
+
     /// <summary>With no session, the first thing on screen is the way to get one.</summary>
     [Fact]
     public void Signed_out_it_offers_the_browser_sign_in()
@@ -154,11 +273,16 @@ public sealed class ShellSmokeTests
             app.Sees("Buy oat milk"),
             $"the new task never appeared; saw: {string.Join(", ", app.Names())}");
 
-        // The mark is a button carrying the checkbox image, not a CheckBox: it draws the state the
-        // core reported and asks for the opposite, because a repeating task rolls forward rather
-        // than finishing and a two-state control cannot say that. It is named for the task it
-        // finishes, which is what a screen reader reads.
-        app.Invoke("Complete Buy oat milk");
+        // Quick add leaves the task UNASSIGNED, and since task 3c0dfb73 an unassigned row's mark
+        // opens the picker rather than completing: a row nobody owns asks whose it is first
+        // (AITD-382, astrid-core CONTRACTS D62). So the accessibility name is "Options for …"
+        // rather than "Complete …", and finishing it takes the two steps a person now takes.
+        //
+        // This test used to invoke "Complete Buy oat milk" directly. That stopped existing when
+        // the picker landed, and nothing caught it: the UI suite is `predeploy:full`, not
+        // `predeploy`, so the gate on that change was green with this test broken.
+        app.Invoke("Options for Buy oat milk");
+        app.Invoke("Complete");
 
         // The list hides finished tasks after a moment; what matters is that nothing fell over.
         Assert.False(File.Exists(app.CrashLogPath), Crash(app));
@@ -454,10 +578,16 @@ public sealed class ShellSmokeTests
         Thread.Sleep(500);
     }
 
+    /// <summary>
+    /// What to say when the crash log exists: the crash, and the general log for the run-up to it.
+    /// </summary>
     private static string Crash(AstridApp app) =>
         File.Exists(app.CrashLogPath)
-            ? $"the app logged a crash:\n{File.ReadAllText(app.CrashLogPath)}"
+            ? $"the app crashed:\n{Tail(app.CrashLogPath)}\n\nthe log before it:\n{Tail(app.LogPath)}"
             : string.Empty;
+
+    private static string Tail(string path) =>
+        File.Exists(path) ? File.ReadAllText(path) : "(no such file)";
 }
 
 /// <summary>

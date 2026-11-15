@@ -26,35 +26,98 @@
 
 .PARAMETER Version
     Four parts, as MSIX requires: 0.1.0.0. The last must be 0 for a Store submission.
+
+.PARAMETER Brand
+    A brand profile — a name resolved against packaging/brands/ then ../astrid-web/brands/, or a
+    path to a *.brand.json file. It sets the display name, the publisher display name, the
+    description, the URL scheme, the default server and the tile set - and the words the window
+    itself says: the product's name, the host a reader is sent to, the address a task is mailed to
+    and what the assistant is called (task 8d241526).
+
+    OMITTED MEANS HOSTED ASTRID, byte for byte as before this parameter existed. That is asserted
+    by BrandProfileTests rather than left to care: the whole point of a brand profile is that
+    Astrid's own build does not notice it.
+
+    See scripts/lib/brand-profile.ps1 for the mapping and packaging/brands/README.md for how to add
+    a partner.
+
+.EXAMPLE
+    powershell -File scripts/package.ps1 -Brand acme
 #>
 param(
     [string]$Version = '0.1.0.0',
     [string[]]$Architectures = @('x64', 'arm64'),
-    [string]$Configuration = 'Release'
+    [string]$Configuration = 'Release',
+    [string]$Brand = '',
+
+    # Compute everything and build nothing: resolve the brand, format every `-p:` argument and
+    # substitute the manifest, then stop before `dotnet publish` and emit what was computed, one
+    # object per architecture.
+    #
+    # This exists so the gate can exercise the part of packaging that has broken twice while
+    # `predeploy` stayed green (task 181fb1b5). A real package is a ~4-minute publish per
+    # architecture and cannot go in the gate; the argument construction is seconds, and it is where
+    # both failures were: a manifest error on 2026-10-25, and on 2026-11-13 an `AuthProviders`
+    # value of `passkey,google` that MSBuild split on the comma, killing every build for a day.
+    #
+    # It is NOT a substitute for running this script before promising anyone a build: it proves the
+    # command line is well-formed, not that the native tools succeed.
+    [switch]$NoPublish
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
+# Runs the native tools below so that a failure prints the tool's own diagnosis. It also contains
+# the reason this is not done inline: under the Stop above, a redirected native stderr is a
+# terminating error even on a zero exit, so a tool that merely warns would fail the build.
+. (Join-Path $PSScriptRoot 'lib\invoke-build-tool.ps1')
+
+# MSBuild's `-p:` escaping, so a brand value with a comma in it survives the command line
+# (task 13c6af65).
+. (Join-Path $PSScriptRoot 'lib\msbuild-property.ps1')
+
+# Which brand this package is. Everything a partner can change comes from here, and with no -Brand
+# every value is today's Astrid one.
+. (Join-Path $PSScriptRoot 'lib\brand-profile.ps1')
+# The Partner Center listing, filled for the same brand and written beside the upload (task
+# AWTD-1636). With no -Brand it is hosted Astrid's listing, byte for byte.
+. (Join-Path $PSScriptRoot 'lib\store-listing.ps1')
+
 if ($Version -notmatch '^\d+\.\d+\.\d+\.\d+$') {
     throw "Version must have four parts, e.g. 0.1.0.0 — MSIX will not accept anything else."
 }
 
-$makeappx = Get-ChildItem -Path "$env:USERPROFILE\.nuget\packages\microsoft.windows.sdk.buildtools" `
-    -Filter makeappx.exe -Recurse -ErrorAction SilentlyContinue |
-    Where-Object { $_.FullName -match '\\x64\\' } |
-    Select-Object -First 1
-if (-not $makeappx) {
-    throw "makeappx.exe was not found. Restore the app project first: it comes with Microsoft.Windows.SDK.BuildTools."
+# Not under -NoPublish: finding it walks the whole NuGet cache, and a dry run must stay runnable on
+# a checkout that has never restored the app project — otherwise the gate's cheap check acquires the
+# build's dependencies, which is the thing it was meant to avoid.
+$makeappx = $null
+if (-not $NoPublish) {
+    $makeappx = Get-ChildItem -Path "$env:USERPROFILE\.nuget\packages\microsoft.windows.sdk.buildtools" `
+        -Filter makeappx.exe -Recurse -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -match '\\x64\\' } |
+        Select-Object -First 1
+    if (-not $makeappx) {
+        throw "makeappx.exe was not found. Restore the app project first: it comes with Microsoft.Windows.SDK.BuildTools."
+    }
+}
+
+$brandProfile = Get-AstridBrandProfile -Brand $Brand -RepoRoot $repoRoot
+if ($Brand) {
+    Write-Host ''
+    Write-Host "[*] brand: $($brandProfile.Name) - $($brandProfile.DisplayName), $($brandProfile.Scheme)://, $($brandProfile.ServerUrl)" -ForegroundColor Cyan
 }
 
 # The identity Partner Center assigned. Substituted rather than written into the manifest, because
 # a package whose Identity differs from the reservation by one character is rejected at upload.
+#
+# A brand profile may carry its own, because the reservation belongs to the PARTNER's Partner
+# Center account: store-identity.json is this repo's, and a partner cannot edit it.
 $identityFile = Join-Path $repoRoot 'packaging/store-identity.json'
 $identity = Get-Content $identityFile -Raw | ConvertFrom-Json
-$identityName = $identity.identityName
-$identityPublisher = $identity.identityPublisher
+$identityName = if ($brandProfile.IdentityName) { $brandProfile.IdentityName } else { $identity.identityName }
+$identityPublisher = if ($brandProfile.IdentityPublisher) { $brandProfile.IdentityPublisher } else { $identity.identityPublisher }
 
 if ($identityName -like 'REPLACE*' -or $identityPublisher -like 'REPLACE*') {
     # Obviously fake, so a package built before the reservation exists cannot be mistaken for one
@@ -68,66 +131,142 @@ if ($identityName -like 'REPLACE*' -or $identityPublisher -like 'REPLACE*') {
 }
 
 $dist = Join-Path $repoRoot 'dist'
-New-Item -ItemType Directory -Force -Path $dist | Out-Null
+# A dry run writes nothing at all, so it cannot leave a dist/ behind on a clean checkout and cannot
+# be mistaken afterwards for a build that happened.
+if (-not $NoPublish) { New-Item -ItemType Directory -Force -Path $dist | Out-Null }
 $packages = @()
 
 foreach ($architecture in $Architectures) {
     $rid = "win-$architecture"
     Write-Host ""
-    Write-Host "[*] publishing $rid" -ForegroundColor Cyan
+    if ($NoPublish) {
+        Write-Host "[*] computing $rid (no publish)" -ForegroundColor Cyan
+    }
+    else {
+        Write-Host "[*] publishing $rid" -ForegroundColor Cyan
+    }
     $publish = Join-Path $repoRoot "dist\publish\$rid"
-    Remove-Item -Recurse -Force $publish -ErrorAction SilentlyContinue
+    if (-not $NoPublish) { Remove-Item -Recurse -Force $publish -ErrorAction SilentlyContinue }
 
     # Self-contained, so the package carries its own runtime: a person installing from the Store
     # should not then be told to install .NET.
-    dotnet publish (Join-Path $repoRoot 'app/Astrid.App/Astrid.App.csproj') `
-        -c $Configuration -r $rid --self-contained true -p:AstridPackaged=true -o $publish | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "publish failed for $rid" }
+    # The brand values the RUNNING app needs, as build properties, every one of them through
+    # Format-MsBuildProperty: MSBuild splits `-p:` on commas and semicolons, so a brand value
+    # carrying either ends the value early and the rest is read as another switch. Not hypothetical
+    # - `AuthProviders` is `passkey,google` and it broke every build for a day (task 13c6af65).
+    # The manifest is read by Windows,
+    # not by the app, so a package with a partner's manifest over a default build would show the
+    # partner's name in Start and then sign in to astrid.cc. ASTRID_SERVER_URL still overrides the
+    # baked-in server at runtime - see ServerSelection - which is what makes a partner build
+    # testable against a staging host.
+    # ONE argument list, built once and used by both paths. It is deliberately not spelled out
+    # twice: a dry run that constructed its own copy would drift from the real one, and then the
+    # gate would be asserting about a command line nothing ever runs — worse than not checking.
+    $publishArgs = @(
+        (Join-Path $repoRoot 'app/Astrid.App/Astrid.App.csproj')
+        '-c', $Configuration
+        '-r', $rid
+        '--self-contained', 'true'
+        '-p:AstridPackaged=true'
+        (Format-MsBuildProperty 'AstridDefaultServerUrl' $brandProfile.ServerUrl)
+        (Format-MsBuildProperty 'AstridUrlScheme' $brandProfile.Scheme)
+        (Format-MsBuildProperty 'AstridBrandShortName' $brandProfile.ShortName)
+        (Format-MsBuildProperty 'AstridBrandInboundTaskEmail' $brandProfile.InboundTaskEmail)
+        (Format-MsBuildProperty 'AstridBrandAgentName' $brandProfile.AgentName)
+        (Format-MsBuildProperty 'AstridBrandWordmark' $brandProfile.Wordmark)
+        (Format-MsBuildProperty 'AstridBrandAuthProviders' $brandProfile.AuthProviders)
+        '-o', $publish
+    )
+
+    if (-not $NoPublish) {
+        Invoke-BuildTool "publish failed for $rid" {
+            dotnet publish @publishArgs
+        }
+    }
 
     # AstridPackaged=true above leaves WindowsPackageType unset, which is how the SDK is told to
     # build for MSIX. Without it these are unpackaged binaries, and the astrid:// scheme is written
     # into HKCU at startup instead of coming from the manifest — see Program.cs.
 
-    # The manifest, with this architecture, version and identity in it.
+    # The manifest, with this architecture, version, identity and brand in it.
+    #
+    # The brand's text is XML-escaped: a partner's name can hold an ampersand ("Smith & Sons"),
+    # and makeappx rejects the whole manifest for one. The scheme is not, because the loader
+    # already refuses anything outside [a-z0-9-].
     $manifest = Get-Content (Join-Path $repoRoot 'packaging/AppxManifest.xml') -Raw
     $manifest = $manifest.Replace('{VERSION}', $Version).Replace('{ARCHITECTURE}', $architecture)
     $manifest = $manifest.Replace('{IDENTITY_NAME}', $identityName)
     $manifest = $manifest.Replace('{IDENTITY_PUBLISHER}', $identityPublisher)
-    Set-Content -Path (Join-Path $publish 'AppxManifest.xml') -Value $manifest -Encoding utf8
+    $manifest = $manifest.Replace('{DISPLAY_NAME}', [System.Security.SecurityElement]::Escape($brandProfile.DisplayName))
+    $manifest = $manifest.Replace('{PUBLISHER_DISPLAY_NAME}', [System.Security.SecurityElement]::Escape($brandProfile.PublisherDisplayName))
+    $manifest = $manifest.Replace('{DESCRIPTION}', [System.Security.SecurityElement]::Escape($brandProfile.Description))
+    $manifest = $manifest.Replace('{SHORT_NAME}', [System.Security.SecurityElement]::Escape($brandProfile.ShortName))
+    $manifest = $manifest.Replace('{SCHEME}', $brandProfile.Scheme)
+    $manifest = $manifest.Replace('{SCHEME_DISPLAY_NAME}', [System.Security.SecurityElement]::Escape($brandProfile.SchemeDisplayName))
 
-    # The Store tiles go INTO the published Assets folder, alongside the app's own.
-    #
-    # `Copy-Item -Recurse <src> <dest>` nests when <dest> already EXISTS: it copies the folder
-    # rather than its contents. The app grew an Assets folder of its own (the icons and the
-    # checkbox art), so from that day this wrote Assets\Assets\SplashScreen.png while the manifest
-    # asked for Assets\SplashScreen.png. The package still built, still bundled and still signed,
-    # and then failed at INSTALL with 0x80073CF6, "the splash screen image cannot be located" -
-    # which nobody saw, because nobody had ever installed it. Found on the first real install,
-    # 2026-09-27. Copying the CONTENTS merges the two folders, which is what was always meant.
-    $assetsDest = Join-Path $publish 'Assets'
-    New-Item -ItemType Directory -Force -Path $assetsDest | Out-Null
-    Copy-Item -Recurse -Force (Join-Path $repoRoot 'packaging/Assets/*') $assetsDest
-
-    # Every asset the manifest names has to be where it says it is. Windows only checks at install
-    # time, names one missing file, and stops - so a layout mistake costs a full build, a signature
-    # and an elevated shell to discover. Three seconds here instead.
-    # Matches both spellings the manifest uses: an attribute (Square150x150Logo="Assets\x.png")
-    # and an element (<Logo>Assets\StoreLogo.png</Logo>). StoreLogo is ONLY ever an element, so an
-    # attribute-only pattern would quietly not check it.
-    $referenced = [regex]::Matches($manifest, 'Assets\\[^"<>\s]+') |
-        ForEach-Object { $_.Value } | Sort-Object -Unique
-    $missing = @($referenced | Where-Object { -not (Test-Path (Join-Path $publish $_)) })
-    if ($missing.Count -gt 0) {
-        throw "the manifest names $($missing.Count) asset(s) the package layout does not contain:`n  " +
-            ($missing -join "`n  ")
+    # An `else` rather than an early `continue`: the two branches are genuinely alternatives, and
+    # a loop-control keyword that can cross a script boundary is worth not having when the plain
+    # structure reads the same. (The thing that actually ate this script's output when called from
+    # a function was a bare `return` at the end, not this — see the note above that if/else.)
+    if ($NoPublish) {
+        # Everything the command line and the manifest would have been, for a caller to assert on.
+        # The branch below copies assets and runs makeappx, which is the expensive half and the
+        # half that needs a published layout to exist.
+        [pscustomobject]@{
+            Architecture      = $architecture
+            Rid               = $rid
+            Brand             = $brandProfile.Name
+            FileStem          = $brandProfile.FileStem
+            Version           = $Version
+            Configuration     = $Configuration
+            IdentityName      = $identityName
+            IdentityPublisher = $identityPublisher
+            PublishArguments  = $publishArgs
+            Manifest          = $manifest
+            PackagePath       = (Join-Path $dist "$($brandProfile.FileStem)-$Version-$architecture.msix")
+        }
+        Write-Host "[=] $($publishArgs.Count) publish argument(s), manifest $($manifest.Length) chars - nothing built" -ForegroundColor DarkGray
     }
+    else {
+        Set-Content -Path (Join-Path $publish 'AppxManifest.xml') -Value $manifest -Encoding utf8
 
-    $package = Join-Path $dist "Astrid-$Version-$architecture.msix"
-    Remove-Item -Force $package -ErrorAction SilentlyContinue
-    & $makeappx.FullName pack /d $publish /p $package /o | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "makeappx pack failed for $architecture" }
-    Write-Host "[+] $package" -ForegroundColor Green
-    $packages += $package
+        # The Store tiles go INTO the published Assets folder, alongside the app's own.
+        #
+        # `Copy-Item -Recurse <src> <dest>` nests when <dest> already EXISTS: it copies the folder
+        # rather than its contents. The app grew an Assets folder of its own (the icons and the
+        # checkbox art), so from that day this wrote Assets\Assets\SplashScreen.png while the manifest
+        # asked for Assets\SplashScreen.png. The package still built, still bundled and still signed,
+        # and then failed at INSTALL with 0x80073CF6, "the splash screen image cannot be located" -
+        # which nobody saw, because nobody had ever installed it. Found on the first real install,
+        # 2026-09-27. Copying the CONTENTS merges the two folders, which is what was always meant.
+        # From the BRAND's tile set, which is packaging/Assets unless a profile names another. A
+        # partner's icons are the one thing substitution cannot do: they are files, not strings.
+        $assetsDest = Join-Path $publish 'Assets'
+        New-Item -ItemType Directory -Force -Path $assetsDest | Out-Null
+        Copy-Item -Recurse -Force (Join-Path $brandProfile.AssetsDirectory '*') $assetsDest
+
+        # Every asset the manifest names has to be where it says it is. Windows only checks at install
+        # time, names one missing file, and stops - so a layout mistake costs a full build, a signature
+        # and an elevated shell to discover. Three seconds here instead.
+        # Matches both spellings the manifest uses: an attribute (Square150x150Logo="Assets\x.png")
+        # and an element (<Logo>Assets\StoreLogo.png</Logo>). StoreLogo is ONLY ever an element, so an
+        # attribute-only pattern would quietly not check it.
+        $referenced = [regex]::Matches($manifest, 'Assets\\[^"<>\s]+') |
+            ForEach-Object { $_.Value } | Sort-Object -Unique
+        $missing = @($referenced | Where-Object { -not (Test-Path (Join-Path $publish $_)) })
+        if ($missing.Count -gt 0) {
+            throw "the manifest names $($missing.Count) asset(s) the package layout does not contain:`n  " +
+                ($missing -join "`n  ")
+        }
+
+        $package = Join-Path $dist "$($brandProfile.FileStem)-$Version-$architecture.msix"
+        Remove-Item -Force $package -ErrorAction SilentlyContinue
+        Invoke-BuildTool "makeappx pack failed for $architecture" {
+            & $makeappx.FullName pack /d $publish /p $package /o
+        }
+        Write-Host "[+] $package" -ForegroundColor Green
+        $packages += $package
+    }
 }
 
 if ($packages.Count -gt 1) {
@@ -138,17 +277,18 @@ if ($packages.Count -gt 1) {
     New-Item -ItemType Directory -Force -Path $bundleInput | Out-Null
     foreach ($package in $packages) { Copy-Item $package $bundleInput }
 
-    $bundle = Join-Path $dist "Astrid-$Version.msixbundle"
+    $bundle = Join-Path $dist "$($brandProfile.FileStem)-$Version.msixbundle"
     Remove-Item -Force $bundle -ErrorAction SilentlyContinue
-    & $makeappx.FullName bundle /d $bundleInput /p $bundle /o | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "makeappx bundle failed" }
+    Invoke-BuildTool 'makeappx bundle failed' {
+        & $makeappx.FullName bundle /d $bundleInput /p $bundle /o
+    }
     Write-Host ""
     Write-Host "[+] $bundle" -ForegroundColor Green
 
     # What Partner Center takes: a ZIP of the bundle, named .msixupload. A bare .msixbundle
     # uploads too, but the container is the documented shape and is where a symbol bundle goes
     # when there is one to ship.
-    $upload = Join-Path $dist "Astrid-$Version.msixupload"
+    $upload = Join-Path $dist "$($brandProfile.FileStem)-$Version.msixupload"
     # Compressed as .zip and renamed: Compress-Archive refuses any other extension, and the
     # container is a plain zip whatever it is called.
     $uploadZip = "$upload.zip"
@@ -156,10 +296,27 @@ if ($packages.Count -gt 1) {
     Compress-Archive -Path $bundle -DestinationPath $uploadZip -CompressionLevel Optimal
     Move-Item -Force $uploadZip $upload
     Write-Host "[+] $upload" -ForegroundColor Green
+
+    # What to paste into Partner Center for this upload, named after it. A partner's copy carries
+    # holes to fill, which it lists as warnings; hosted Astrid's has none.
+    $listing = Write-AstridStoreListing -BrandProfile $brandProfile -RepoRoot $repoRoot -OutDir $dist -Version $Version
+    Write-Host "[+] $listing" -ForegroundColor Green
 }
 
 Write-Host ""
-Write-Host "Unsigned, which is correct: the Store signs at submission." -ForegroundColor Cyan
-if ($identityPublisher -like 'CN=LOCAL BUILD*') {
-    Write-Host "LOCAL identity - fill packaging/store-identity.json before submitting." -ForegroundColor Yellow
+# NO `return` HERE, and that is load-bearing. A bare `return` at script scope DISCARDS everything
+# the script has emitted when the script is invoked from inside a function — `$r = SomeFunction`
+# where the function does `@(& package.ps1 -NoPublish)` got an empty result while the script's own
+# console output showed it had computed all of it. Run straight from a prompt the same script
+# returns its objects correctly, so this hides from exactly the test that would catch it.
+# Reproduced down to seven lines; `continue` inside the loop above is innocent, which is worth
+# saying because it looks guiltier. An if/else costs nothing and has no such edge.
+if ($NoPublish) {
+    Write-Host "Computed only (-NoPublish): no publish, no manifest written, no package." -ForegroundColor Cyan
+}
+else {
+    Write-Host "Unsigned, which is correct: the Store signs at submission." -ForegroundColor Cyan
+    if ($identityPublisher -like 'CN=LOCAL BUILD*') {
+        Write-Host "LOCAL identity - fill packaging/store-identity.json before submitting." -ForegroundColor Yellow
+    }
 }

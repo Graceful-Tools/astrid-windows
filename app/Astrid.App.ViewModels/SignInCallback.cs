@@ -20,7 +20,17 @@ namespace Astrid.App.ViewModels;
 /// </remarks>
 public static class SignInCallback
 {
-    private const string Scheme = "astrid://";
+    /// <summary>
+    /// The scheme prefix this build's callbacks arrive on: <c>astrid://</c>, or a partner's.
+    /// </summary>
+    /// <remarks>
+    /// It was a constant, so a branded build registering its own scheme would have been handed
+    /// every sign-in and dropped all of them — the URL would simply not be recognised as the one
+    /// it had asked for. See <c>BrandDefaults.UrlScheme</c>, which is set from the same brand
+    /// profile that fills the manifest's protocol declaration, so the scheme Windows registers and
+    /// the scheme this looks for cannot disagree.
+    /// </remarks>
+    private static readonly string Scheme = $"{BrandDefaults.UrlScheme}://";
 
     /// <summary>The App SDK's marker in front of a protocol URL it passes on the command line.</summary>
     private const string ProtocolMarker = "----ms-protocol:";

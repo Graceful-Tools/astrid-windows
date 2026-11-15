@@ -26,10 +26,17 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly SettingsSession _session;
     private bool _isLoading;
 
-    public SettingsViewModel(IAstridCore core)
+    /// <param name="core">The core every page sends its commands to.</param>
+    /// <param name="passkeys">
+    /// Windows Hello, for the one page that needs the platform (task e61a3e60). Optional, and a
+    /// ceremony that cannot run by default: a test gets a predictable Account page without an
+    /// authenticator, and a machine whose Hello the shell could not reach says so rather than
+    /// spending a challenge it cannot answer.
+    /// </param>
+    public SettingsViewModel(IAstridCore core, IPasskeyCeremony? passkeys = null)
     {
         _session = new SettingsSession(core);
-        Account = new AccountSettingsViewModel(_session);
+        Account = new AccountSettingsViewModel(_session, passkeys);
         Tasks = new TaskSettingsViewModel(_session);
         Contacts = new ContactsSettingsViewModel(_session);
         Reminders = new ReminderSettingsViewModel(_session);
@@ -110,4 +117,64 @@ public sealed class SettingsViewModel : ObservableObject
             IsLoading = false;
         }
     }
+
+    /// <summary>
+    /// Where <b>Report an Issue</b> goes: this deployment's own feedback list, or the web when it
+    /// names none (task 68771137).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The decision is the core's and arrives as an <c>Option&lt;String&gt;</c> —
+    /// <c>brand.feedbackListId</c> from the cached capabilities, which the core already trims and
+    /// answers as nothing when it is blank. Nothing here repeats that test, and nothing here holds
+    /// a list id: iOS's bug (task <c>a4352b30</c>) was Astrid's own production id compiled into
+    /// the client, and a "sensible fallback" in this shell would be the same bug in C#.
+    /// </para>
+    /// <para>
+    /// Since task <c>6fc92134</c> there are two kinds of door, so this answers a decision rather
+    /// than a URL. In-app needs two things to be true, and only the core can say either: the
+    /// deployment names a list, and <c>publicList</c> opens it for this reader with
+    /// <c>canAddTask</c>. A <c>copy_only</c> feedback list means a stranger may not write in it,
+    /// and landing somebody on a screen where the report cannot be filed is worse than the
+    /// browser — so that falls back, as does a list the core cannot open at all.
+    /// </para>
+    /// <para>
+    /// A core that cannot answer — a pin that predates the command, a cache never filled, no
+    /// network — is the same as a deployment naming none. The row is a door, and the web is always
+    /// a door; a row that does nothing when clicked is the worse answer.
+    /// </para>
+    /// </remarks>
+    /// <param name="serverOrigin">The deployment this window is signed in to.</param>
+    public async Task<FeedbackDestination> FeedbackDestinationAsync(
+        string serverOrigin, CancellationToken cancellationToken = default)
+    {
+        var named = await _session.Core.CallAsync(Commands.FeedbackListId(), cancellationToken);
+        var listId = named.Ok ? named.ValueAs<string>() : null;
+        var origin = serverOrigin.TrimEnd('/');
+        if (listId is null)
+        {
+            return FeedbackDestination.OnTheWeb($"{origin}/help");
+        }
+
+        var opened = await _session.Core.CallAsync(Commands.PublicList(listId), cancellationToken);
+        var canAddTask = opened.Ok && opened.Read<OpenedPublicList>()?.CanAddTask == true;
+        return canAddTask
+            ? FeedbackDestination.InApp(listId)
+            : FeedbackDestination.OnTheWeb($"{origin}/lists/{Uri.EscapeDataString(listId)}");
+    }
+}
+
+/// <summary>
+/// Where <b>Report an Issue</b> goes (task 6fc92134): the feedback list on this screen, or an
+/// address in the browser. Exactly one of the two is set.
+/// </summary>
+/// <param name="ListId">The list to open in-app, or null.</param>
+/// <param name="WebUrl">The address to hand to the browser, or null.</param>
+public sealed record FeedbackDestination(string? ListId, string? WebUrl)
+{
+    public static FeedbackDestination InApp(string listId) => new(listId, null);
+
+    public static FeedbackDestination OnTheWeb(string url) => new(null, url);
+
+    public bool IsInApp => ListId is not null;
 }

@@ -40,6 +40,17 @@ public sealed class AstridResponse
     /// </remarks>
     public bool IsStillPending => Error?.Kind == AstridFailureKind.Offline;
 
+    /// <summary>
+    /// Whether this was a move into Waiting that named no condition.
+    /// </summary>
+    /// <remarks>
+    /// <c>astrid_rules::waiting</c> R2: Waiting means waiting on a date or on a task, so a move
+    /// that names neither is refused and nothing is written. Not an error to report — the shell's
+    /// cue to ask, and send the same command again carrying the answer. Asked here rather than
+    /// compared to the literal at each call site, which is how one of them comes to spell it wrong.
+    /// </remarks>
+    public bool NeedsWaitCondition => Error?.Code == WaitCondition.NeedsConditionCode;
+
     public static AstridResponse Parse(string json)
     {
         if (string.IsNullOrEmpty(json))
@@ -75,7 +86,7 @@ public sealed class AstridResponse
     }
 
     private static AstridResponse Failed(AstridFailureKind kind, string message) =>
-        new(false, default, new AstridFailure(kind, message, null, null));
+        new(false, default, new AstridFailure(kind, message, null, null, null));
 
     /// <summary>Read the value as <typeparamref name="T"/>, or <c>null</c> if it is not there.</summary>
     public T? ValueAs<T>() where T : class =>
@@ -108,11 +119,18 @@ public enum AstridFailureKind
 }
 
 /// <summary>The failure a command reported.</summary>
+/// <param name="Code">
+/// A machine-readable reason within the kind, when the core or the server gave one —
+/// <c>WAITING_NEEDS_CONDITION</c> is the first. Null is the ordinary case: treat the failure by
+/// its <paramref name="Kind"/> and show its <paramref name="Message"/>. Never branch on the
+/// message, which is prose and is translated.
+/// </param>
 public sealed record AstridFailure(
     AstridFailureKind Kind,
     string Message,
     int? Status,
-    string? Id)
+    string? Id,
+    string? Code = null)
 {
     internal static AstridFailure Read(JsonElement element)
     {
@@ -126,7 +144,8 @@ public sealed record AstridFailure(
             ? statusElement.GetInt32()
             : (int?)null;
         var id = element.TryGetProperty("id", out var idElement) ? idElement.GetString() : null;
-        return new AstridFailure(kind, message, status, id);
+        var code = element.TryGetProperty("code", out var codeElement) ? codeElement.GetString() : null;
+        return new AstridFailure(kind, message, status, id, code);
     }
 }
 
@@ -146,8 +165,14 @@ public sealed record AstridFailure(
 /// For a <c>stream</c> change, which edge it is: the live stream connected, or dropped. Null on
 /// every other change, which says nothing about the stream — and "says nothing" is not "down".
 /// </param>
+/// <param name="ListIds">
+/// For a <c>task</c> change, the lists the task is in — and any it has just left, because a move
+/// makes both stale (task 05c95986). Empty or absent means the core could not say, which is
+/// "refresh anyway", never "no list is affected".
+/// </param>
 public sealed record ChangeNotification(
-    string Change, string? Id, IReadOnlyList<string>? TaskIds = null, bool? Live = null)
+    string Change, string? Id, IReadOnlyList<string>? TaskIds = null, bool? Live = null,
+    IReadOnlyList<string>? ListIds = null)
 {
     public static ChangeNotification Parse(string json)
     {
@@ -157,17 +182,13 @@ public sealed record ChangeNotification(
             var root = document.RootElement;
             var change = root.TryGetProperty("change", out var kind) ? kind.GetString() : null;
             var id = ReadFirst(root, "id", "taskId", "channelId");
-            var taskIds = root.TryGetProperty("taskIds", out var ids) && ids.ValueKind == JsonValueKind.Array
-                ? ids.EnumerateArray()
-                    .Where(element => element.ValueKind == JsonValueKind.String)
-                    .Select(element => element.GetString()!)
-                    .ToList()
-                : null;
+            var taskIds = Strings(root, "taskIds");
+            var listIds = Strings(root, "listIds");
             var live = root.TryGetProperty("live", out var flag)
                 && flag.ValueKind is JsonValueKind.True or JsonValueKind.False
                 ? flag.GetBoolean()
                 : (bool?)null;
-            return new ChangeNotification(change ?? "unknown", id, taskIds, live);
+            return new ChangeNotification(change ?? "unknown", id, taskIds, live, listIds);
         }
         catch (JsonException)
         {
@@ -188,6 +209,40 @@ public sealed record ChangeNotification(
         }
         return TaskIds is null || TaskIds.Count == 0 || (taskId is not null && TaskIds.Contains(taskId));
     }
+
+    /// <summary>Whether this change touches the list with <paramref name="listId"/>.</summary>
+    /// <remarks>
+    /// <para>
+    /// The same "could not say means everything" rule <see cref="Touches"/> applies: a change that
+    /// names no list is taken to touch every one of them, because the alternative leaves whatever
+    /// is on screen stale for as long as nothing else happens (task 05c95986).
+    /// </para>
+    /// <para>
+    /// A <b>virtual</b> list always matches. <c>virtual:my-tasks</c> is synthesised from across the
+    /// account and is in no task's <c>listIds</c>, so deciding by membership would freeze the one
+    /// view the app opens on.
+    /// </para>
+    /// </remarks>
+    public bool TouchesList(string? listId)
+    {
+        if (ListIds is null || ListIds.Count == 0 || string.IsNullOrEmpty(listId))
+        {
+            return true;
+        }
+        return IsVirtual(listId) || ListIds.Contains(listId);
+    }
+
+    /// <summary>A list the core assembles rather than stores, so no task names it.</summary>
+    public static bool IsVirtual(string listId) =>
+        listId.StartsWith("virtual:", StringComparison.Ordinal);
+
+    private static IReadOnlyList<string>? Strings(JsonElement root, string name) =>
+        root.TryGetProperty(name, out var ids) && ids.ValueKind == JsonValueKind.Array
+            ? ids.EnumerateArray()
+                .Where(element => element.ValueKind == JsonValueKind.String)
+                .Select(element => element.GetString()!)
+                .ToList()
+            : null;
 
     private static string? ReadFirst(JsonElement root, params string[] names)
     {

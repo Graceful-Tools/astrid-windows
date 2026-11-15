@@ -21,8 +21,8 @@
         .env.local. Nothing here duplicates "which tasks are ready": a second implementation
         drifts, and the drift is silent, because a queue that is wrong looks exactly like a quiet
         day.
-      * The board is resolved BY NAME by `ready-tasks.ts windows`, never by a hardcoded id. An id
-        is account data and a stale one fails by answering "nothing to do" (docs/AUTOMATION.md).
+      * The board is resolved BY NAME, never by a hardcoded id. An id is account data and a stale
+        one fails by answering "nothing to do" (docs/AUTOMATION.md).
 
     IT RUNS ON THE CLAUDE CODE CLI SUBSCRIPTION, NEVER THE ANTHROPIC API. `claude -p` is the whole
     runtime; no API key is read anywhere in this path, and -MaxUsd is a CLI safety bound rather
@@ -40,13 +40,16 @@
     land while somebody is already working the tree. A skip is the healthy outcome, not an error,
     so it exits 0 and says so in one line.
 
-    WHAT THIS DOES NOT DO, stated because the Mac loop does it. astrid-web's guard 3 calls
-    `agent-queue-status.ts`, which also reports `attention` - comments and chat nobody has
-    answered - and keeps a seen-file so one unanswered item wakes one run rather than every tick.
-    That script requires a LIST ID, and this board's id is deliberately nowhere in this repo, so
-    the guard here uses `ready-tasks.ts windows --json` instead: the queue and the lane sweep, both
-    resolved by name. The inbox is therefore not a reason this loop wakes. Adopt the richer
-    preflight the day it can resolve a board by name.
+    IT WAKES FOR REPLIES, not only for Ready tasks. Until task 18ba8c2e guard 3 asked
+    `ready-tasks.ts windows --json`, which answers Ready plus lane work and nothing else, so a
+    comment on a task this loop had moved to `Doing` - or on one it had finished - woke no tick,
+    ever. The header's own reason for that ("agent-queue-status.ts requires a LIST ID, and this
+    board's id is deliberately nowhere in this repo") expired with AWTD-1383: the shared preflight
+    now resolves `--board windows` by name and refuses a duplicate name rather than taking the
+    first match. So guard 3 asks it instead and gets queue + attention + lanes in one request.
+    `attention` is half of the engagement contract - the queue is what to work, attention is what
+    has been said to this agent and not answered - and a loop that reads only the first is deaf by
+    construction. The decisions live in scripts/lib/fixall-wake.ps1, where they are tested.
 
 .PARAMETER Force
     Skip the dirty-tree and branch guard. Testing only.
@@ -85,12 +88,28 @@ param(
     # each of which is finished, gated and reported. Answering RECHECK/REVIEW does not count.
     [int]$MaxTasks = $(if ($env:FIXALL_MAX_TASKS) { [int]$env:FIXALL_MAX_TASKS } else { 1 }),
 
+    # A task flagged LONG-RUN in its description asks for up to eight hours, and a tick holds the
+    # working-tree lock the whole time - so an 8-hour run is sixteen ticks in which nothing else on
+    # this board moves. It therefore only STARTS overnight; outside the window the flagged ids are
+    # deferred and the rest of the queue is worked under the ordinary bounds. The decision is
+    # astrid-web's (scripts/lib/long-run.ts); these two are what this loop does with the answer.
+    # 22-6 and 50 are astrid-web's own defaults - eight hours of work costs more than one hour's.
+    [string]$LongRunWindow = $(if ($env:FIXALL_LONG_RUN_WINDOW) { $env:FIXALL_LONG_RUN_WINDOW } else { '22-6' }),
+    [string]$LongMaxUsd = $(if ($null -ne $env:FIXALL_LONG_MAX_USD) { $env:FIXALL_LONG_MAX_USD } else { '50' }),
+
     # How long a checkout must have been untouched before this tick treats its leftovers as a dead
     # run's and commits them. THIRTY, one whole tick interval: "quiet for longer than a tick" is the
     # rule, and a long model turn or a cargo build is minutes rather than thirty. The asymmetry picks
     # the default - sweeping a live run costs work nobody can get back, waiting costs one skipped
     # tick which says why. See scripts/lib/fixall-sweep.ps1.
-    [int]$QuietMinutes = $(if ($env:FIXALL_QUIET_MINUTES) { [int]$env:FIXALL_QUIET_MINUTES } else { 30 })
+    [int]$QuietMinutes = $(if ($env:FIXALL_QUIET_MINUTES) { [int]$env:FIXALL_QUIET_MINUTES } else { 30 }),
+
+    # How long a task may sit in Doing before the start-of-tick board pass calls the claim abandoned.
+    # 180, which is astrid-web's default and well past the $MaxMinutes watchdog: a bound inside the
+    # watchdog window would release a task out from under a session still working it. The asymmetry
+    # is the opposite way round to $QuietMinutes - releasing early costs a live run its claim, while
+    # waiting costs a few hours on a task nobody is working.
+    [int]$StaleDoingMinutes = $(if ($env:FIXALL_STALE_DOING_MINUTES) { [int]$env:FIXALL_STALE_DOING_MINUTES } else { 180 })
 )
 
 # Never stop on a native command's stderr: this script decides what is fatal, and most of what it
@@ -115,6 +134,33 @@ if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Forc
 # with it - and for astrid-core, which nothing used to look at. Task 07c3b420; the library's header
 # has the incident. It dot-sources the cleanup above, so the order of these two lines is cosmetic.
 . (Join-Path $PSScriptRoot 'lib\fixall-sweep.ps1')
+# Why this tick woke, and how it acknowledges that afterwards without muting anything it never
+# looked at. Task 18ba8c2e; the library's header has the two-phase contract in full.
+. (Join-Path $PSScriptRoot 'lib\fixall-wake.ps1')
+# How long this tick may be and which task it may take, read out of the preflight above rather than
+# decided here. Task 0216d83c; the library's header says why the decision stays in astrid-web.
+. (Join-Path $PSScriptRoot 'lib\fixall-longrun.ps1')
+# Whether there is room to build at all. Task 4d9d42e6: the 2026-11-13 05:10 tick spent itself
+# reaching an `os error 112` with 31 MB free. The library's header has the incident and the marks.
+. (Join-Path $PSScriptRoot 'lib\fixall-disk.ps1')
+# Whether the scheduled entry this tick is running under is still the one this checkout installs.
+# Task 18ba8c2e: a scheduled task is registered, not read from the repo, so scope item 3's corrected
+# deadline sat in the repo for seventeen days with no effect and nothing said so.
+. (Join-Path $PSScriptRoot 'lib\fixall-schedule.ps1')
+
+# WHERE THE STATE A LATER TICK READS LIVES. Under %LOCALAPPDATA%, beside the log, and NOT in %TEMP%:
+# the wake journal, the task record and the claims record are each read by a LATER tick - that is
+# the whole point of all three - and %TEMP% is swept by Windows and by every disk-cleanup run. Per
+# board, because the keys and the claims are per board. One function answers for all of them
+# (scripts/lib/fixall-sweep.ps1), so a change of location cannot move two and leave the third.
+$StateDir = Get-FixallStateDir
+# WHICH CHECKOUT this tick is. %LOCALAPPDATA% is one directory per USER for every worktree on the
+# machine, and a pid is not unique across them, so each record carries a digest of this checkout's
+# own path and a scan takes only its own worker's. A release runs with --repo pointed HERE: another
+# worktree's record released from this one would name branches from the wrong repository.
+$WorkerScope = Get-FixallWorkerScope $RepoRoot
+$WakeJournal = Join-Path $StateDir "wake-$PID.json"
+$WakeArtifact = Join-Path $StateDir "preflight-$PID.json"
 
 # Everything this script says goes to the console AND to the log, because Task Scheduler captures
 # neither. Native command output is appended separately, where it is produced.
@@ -161,6 +207,35 @@ function Invoke-WebTool([string[]]$ScriptArgs) {
     try { & $Tsx @ScriptArgs 2>&1 } finally { Pop-Location }
 }
 
+# Phase two of waking: record the keys the preflight handed back, by how the run ended. The LIST ID
+# comes from the journal, not from a second `--board windows` resolution - a resolution that fails
+# after the run would otherwise strand keys that were already read, and an id resolved twice is an
+# id that can differ twice.
+#
+# The keys travel as a FILE because PowerShell 5.1 loses the quotes on a JSON array handed to a
+# native command, which is the whole reason `--seen-keys-file` exists (AWTD-1383). The arguments are
+# built into a variable rather than written inline so that exactly ONE command in this script is the
+# board preflight - scripts/tests/fixall-wake.Tests.ps1 finds guard 3 by looking for the script's
+# name and would otherwise find this instead.
+function Invoke-WakeKeysAck([string]$KeysFile, [bool]$Failed, [string]$ListId) {
+    if (-not $ListId) {
+        Say '  WAKE: the journal carries no board id, so the keys cannot be acknowledged'
+        return $false
+    }
+    $ackArgs = @('scripts/agent-queue-status.ts', '--agent', 'claude', '--list', $ListId,
+        '--mark-seen', '--seen-keys-file', $KeysFile)
+    if ($Failed) { $ackArgs += '--failed' }
+    Invoke-WebTool $ackArgs | ForEach-Object { Say "  $_" }
+    return ($LASTEXITCODE -eq 0)
+}
+
+# Handed to both acknowledgement passes, so a replayed journal and this tick's own are recorded by
+# the same code path.
+$WakeAck = {
+    param($KeysFile, $Failed, $ListId)
+    return (Invoke-WakeKeysAck -KeysFile $KeysFile -Failed ([bool]$Failed) -ListId ([string]$ListId))
+}
+
 # The half-sentence about leftovers that both the RESULT line and the task comment end with.
 function Format-SavedNote($Saved) {
     if ($Saved.SavedBranch -and $Saved.PushedBranch) { return "its unfinished work is saved on $($Saved.SavedBranch) (WIP, unverified)" }
@@ -184,6 +259,46 @@ function Send-DiedRunNote([string]$TaskFile, [string]$Reason, $Saved) {
     'Log: %LOCALAPPDATA%\Astrid\logs\fixall-windows.log'
     Invoke-WebTool @('scripts/add-task-comment.ts', $taskId, $note) | ForEach-Object { Say "  $_" }
     if ($LASTEXITCODE -ne 0) { Say '  (could not comment on the task it had taken)' }
+}
+
+# Put a run's abandoned Doing claims back. ONE call site for the tool, THREE callers: the after-run
+# pass over this tick's own claims, the start-of-tick pass over a dead tick's (task 1b9fed0a), and
+# the start-of-tick pass over the BOARD (task 1cc6ac2f), which is the only one of the three that can
+# reach a claim no claims file records at all - one made by an interactive session, or by a session
+# that died before a claims file was ever written.
+#
+# The board is named, never carried as an id: `--board windows` resolves it through
+# GET /api/v1/lists (AWTD-1267) and exits 1 rather than reporting an empty board when the name is
+# not found. A hardcoded id is account data, and a stale one fails by answering "nothing to do" -
+# which reads exactly like a quiet day (docs/AUTOMATION.md).
+#
+# EVERY RULE ABOUT WHAT A RELEASE DOES IS THE SCRIPT'S, not this loop's — it keeps the agent
+# assignment so the next run resumes from the branch rather than starting over, comments with the
+# branch carrying the task's id, hands the task back to its human creator in Waiting on a SECOND
+# release rather than retrying it a third time, and never touches a Doing task assigned to a person
+# (astrid-web lib/doing-release.ts). Writing any of that here would be a second implementation of
+# "release", and the drift would be silent.
+#
+# --repo is THIS repo, because that is where the task branches are: the release names the branch
+# that carries the work, and run from astrid-web it would otherwise read astrid-web's branches.
+function Invoke-DoingRelease {
+    [CmdletBinding(DefaultParameterSetName = 'Claims')]
+    param(
+        [Parameter(Mandatory = $true, ParameterSetName = 'Claims')][string]$ClaimsFile,
+        [Parameter(Mandatory = $true, ParameterSetName = 'Board')][string]$Board,
+        [Parameter(ParameterSetName = 'Board')][int]$StaleMinutes = 180
+    )
+    # Which claims to consider is the ONLY thing that differs between the passes. --agent, --repo and
+    # the output handling are shared on purpose: a second shell-out is where they drift apart.
+    $selector = if ($PSCmdlet.ParameterSetName -eq 'Board') {
+        @('--board', $Board, '--stale-minutes', [string]$StaleMinutes)
+    }
+    else {
+        @('--claims-file', $ClaimsFile)
+    }
+    Invoke-WebTool (@('scripts/release-stuck-doing.ts', '--agent', 'claude') + $selector +
+        @('--repo', $RepoRoot)) | ForEach-Object { Say "  $_" }
+    return ($LASTEXITCODE -eq 0)
 }
 
 # ── The checkouts a tick is responsible for ───────────────────────────────────────────────────
@@ -269,9 +384,31 @@ try {
     # NOT list chat, which is what astrid-web's loop posts to. That needs a board id, and this
     # board's id is deliberately nowhere in this repo (docs/AUTOMATION.md) - it is resolved by name,
     # and `ready-tasks.ts --json` does not carry it.
-    $taskFile = Join-Path $env:TEMP "astrid-fixall-windows-task-$PID.txt"
+    #
+    # DURABLE, and named for this worker as well as this pid: see $StateDir above. %TEMP% is swept by
+    # Windows housekeeping, and a task record deleted between two ticks is a run nobody ever hears
+    # died (task 18ba8c2e, scope item 2).
+    $taskFile = Get-FixallStateFile -Directory $StateDir -Kind 'task' -Scope $WorkerScope -OwnerPid $PID
     Remove-Item $taskFile -Force -ErrorAction SilentlyContinue
     $env:ASTRID_FIXALL_TASK_FILE = $taskFile
+
+    # WHICH TASKS IT CLAIMED, so the ones it leaves in Doing can be released after it — exactly,
+    # with no heuristic and no board read. `claim-fixall-task.ts` appends every Ready claim here and
+    # does nothing at all when the variable is absent, which it was until task 1b9fed0a: so this
+    # loop never recorded a claim, never released one, and a task whose run died left the queue for
+    # good. Named for this loop's pid, like the task file above, which is what lets a LATER tick tell
+    # a dead run's claims from a live one's.
+    # Named for this loop's pid, like the task record above, which is what lets a LATER tick tell a
+    # dead run's claims from a live one's - and durable for a stronger reason than the task record:
+    # a claims record is the ONLY evidence of which tasks are sitting in Doing, so %TEMP% deleting
+    # one strands them permanently, which is what `f8dfc84e` cost (task 18ba8c2e, scope item 2).
+    $claimsFile = Get-FixallStateFile -Directory $StateDir -Kind 'claims' -Scope $WorkerScope -OwnerPid $PID
+    Remove-Item $claimsFile -Force -ErrorAction SilentlyContinue
+    $env:ASTRID_FIXALL_CLAIMS_FILE = $claimsFile
+    # Whether the after-run release below got through. The `finally` deletes the claims file only
+    # then: a file whose release FAILED is the only record of which tasks are stranded, and the next
+    # tick's start-of-tick pass is what retries it.
+    $claimsReleased = $false
 
     # ── Guard 1b: stand down while someone is working ──────────────────────────────────────────
     # Guard 1 is per WORKING TREE; contention for a machine is per MACHINE. On 2026-10-11 a session
@@ -306,6 +443,49 @@ try {
         Say "  WARNING: could not read the pause state, running anyway: $yieldReason"
     }
 
+    # ── Guard 1c: is there room to build? ──────────────────────────────────────────────────────
+    # The tick of 2026-11-13 05:10 found out by failing, three quarters of the way into its first
+    # build, with `os error 112` and 31 MB free - a message that reads exactly like a broken change
+    # and costs a whole tick to produce. `astrid-windows/target` was 103 GB, `astrid-core/target`
+    # 51 GB, and nothing had ever pruned either: `npm run predeploy` builds host debug, host
+    # release, both cross targets and the shell in Release, and every pin bump leaves another
+    # `astrid-core-<hash>` tree behind it. Task 4d9d42e6.
+    #
+    # HERE, and not later, for the same reason guard 1b is here: the sweep below makes git commits
+    # in two checkouts and posts board comments, and a commit onto a full disk is how a checkout
+    # ends up with a corrupt object. And inside the try, so the `finally` still releases the
+    # working-tree lock - a stop from outside it would leak the lock and the next tick would refuse
+    # this checkout as held by a process that is gone.
+    #
+    # FAILED rather than SKIPPED: a skipped tick is indistinguishable from an empty board, and this
+    # machine would go quiet for a week with nobody knowing why.
+    $diskVerdict = Get-DiskSpaceVerdict -FreeBytes (Get-FreeSpaceBytes -Path $RepoRoot)
+    if (-not $diskVerdict.Ok) {
+        Finish "RESULT: FAILED - $($diskVerdict.Reason)"
+    }
+    if ($diskVerdict.Reason) {
+        Say "  WARNING: $($diskVerdict.Reason)"
+    }
+
+    # ── Is this tick running under the entry this checkout installs? ──────────────────────────
+    # A SCHEDULED TASK IS REGISTERED, NOT READ FROM THE REPO. Scope item 3 of task 18ba8c2e fixed a
+    # deadline that killed every long tick twenty minutes before its own watchdog, and the fix then
+    # sat in this repo for seventeen days doing nothing at all, because re-running the installer is
+    # a separate act nobody was reminded to perform. On 2026-11-14 the entry still read PT55M with
+    # no -MaxMinutes while the installer computed 490. One line a tick is the reminder.
+    #
+    # A WARNING AND NEVER A STOP: the tick runs perfectly well, it is just bounded wrongly, and a
+    # guard that stopped here would turn a cosmetic gap into a machine that went quiet. And it is
+    # here, with the other preamble warnings, rather than beside the run - an idle tick that prints
+    # nothing else should still print this, since the ticks a bad deadline ruins are the long ones
+    # that have not happened yet.
+    $scheduleDrift = Get-ScheduleDriftVerdict `
+        -Registration (Read-FixallScheduleRegistration) `
+        -LoopScript (Join-Path $PSScriptRoot 'fixall-loop.ps1')
+    if ($scheduleDrift.Reason) {
+        Say "  WARNING: $($scheduleDrift.Reason)"
+    }
+
     # ── The sweep: clear up after a run this script never watched exit ────────────────────────
     # BEFORE guard 2, because the leftovers are exactly what guard 2 trips on; a sweep after it would
     # never run. AFTER guard 1, because holding this repo's lock is what makes its leftovers ours to
@@ -313,8 +493,11 @@ try {
     # run ended - but a CTRL_C_EVENT takes this process down before it, and on 2026-09-29 that is
     # what left a core task's work stranded for four days (task 07c3b420).
     if (-not $Force) {
+        # BOTH locations: the durable one this tick writes, and %TEMP%, where every tick before the
+        # move left its records. A scan that looked only at the new place would make all of those
+        # invisible on the first tick after the change, which is the stranding they exist to prevent.
         $sweep = Invoke-StartOfTickSweep -Checkouts $Checkouts -QuietMinutes $QuietMinutes `
-            -TaskFileDirectory $env:TEMP -SelfPid $PID `
+            -TaskFileDirectory $StateDir -LegacyDirectory $env:TEMP -Scope $WorkerScope -SelfPid $PID `
             -SessionProbe { param($Path) Get-SessionHolder $Path } `
             -OnTaskNote {
             param($TaskId, $Note)
@@ -324,6 +507,45 @@ try {
             -Log { param($Line) Say $Line }
         $script:SweepNote = $sweep.Summary
     }
+
+    # ── Doing must not be a dead end ──────────────────────────────────────────────────────────
+    # The board half of the sweep above, and the other half of task 1b9fed0a. A claims file whose
+    # owning loop is GONE is a tick that was killed before its own after-run pass could run — the one
+    # case that pass structurally cannot cover, since a hard kill is what stops it. Releasing exactly
+    # those ids needs no board id, which is why it is this pass and not astrid-web's.
+    #
+    # BEFORE GUARD 3, so a task released this tick counts as work for THIS tick rather than waiting
+    # half an hour for the next one. Before guard 2 as well, deliberately: this is a board operation,
+    # not a tree one, and a dirty checkout is no reason to leave a task stranded in Doing.
+    #
+    # NOT under -not $Force either, for the same reason — -Force is about the tree guards.
+    $claimRelease = Invoke-StrandedClaimRelease -ClaimsFileDirectory $StateDir `
+        -LegacyDirectory $env:TEMP -Scope $WorkerScope -SelfPid $PID `
+        -Release { param($Path) Invoke-DoingRelease -ClaimsFile $Path } `
+        -Log { param($Line) Say $Line }
+    if ($claimRelease.Summary) {
+        if ($script:SweepNote) { $script:SweepNote += ' | ' }
+        $script:SweepNote += $claimRelease.Summary
+    }
+
+    # ── And the claims no file records at all ─────────────────────────────────────────────────
+    # The pass above is exact but can only see what a loop wrote down. Two kinds of claim are in no
+    # claims file: one made by an INTERACTIVE session, which has no loop and no file, and one made by
+    # a run that died between claiming and writing. `f8dfc84e` was the second kind - it sat in Doing
+    # from 01:25 on 2026-10-18 and a human had to release it, because every claims-file pass on every
+    # tick after it was structurally blind to it.
+    #
+    # So this pass asks the BOARD instead, and takes a staleness bound rather than a file: anything
+    # in Doing and untouched for $StaleDoingMinutes. Delegated to astrid-web for the same reason as
+    # the others, and placed here for the same two reasons - before guard 3 so a release counts as
+    # work for THIS tick, and before guard 2 because a dirty checkout is no reason to leave somebody
+    # else's task stranded.
+    #
+    # NEVER FATAL, and not guarded by -IgnoreQueue. A release that cannot reach the board leaves the
+    # task exactly where it already was, so there is nothing to abort for; ending the tick here would
+    # turn a board outage into a day of no work at all.
+    $boardRelease = Invoke-DoingRelease -Board 'windows' -StaleMinutes $StaleDoingMinutes
+    if (-not $boardRelease) { Say '  RELEASE: could not sweep Doing on the board; leaving it as it was' }
 
     # ── Guard 2: never clobber work in progress ───────────────────────────────────────────────
     # /fixstuff and an interactive session take no lock, so they are invisible to guard 1, and the
@@ -338,40 +560,88 @@ try {
         if (-not $verdict.Ok) { Finish "RESULT: SKIPPED - $($verdict.Reason)" }
     }
 
-    # ── Guard 3: is there actually any work? ──────────────────────────────────────────────────
+    # ── What a killed tick could not acknowledge ──────────────────────────────────────────────
+    # BEFORE this tick's own preflight, and that order is the point: the after-run pass below cannot
+    # cover a tick that was hard-killed, because a hard kill is what stops it. A journal whose owning
+    # process is gone is exactly that tick, and a watchdog-killed tick IS a failed run - so its keys
+    # take a strike rather than being muted, and rather than waking a session every half hour forever.
+    #
+    # A journal whose owner is still alive is somebody's live tick and is left strictly alone.
+    # NOT under -not $IgnoreQueue or -not $Force: both of those are about this tick's own work, and a
+    # dead tick's unacknowledged keys are neither.
+    $wakeReplay = Invoke-AbandonedWakeAck -JournalDirectory $StateDir -SelfPid $PID `
+        -IsAlive { param($OwnerPid) return ($null -ne (Get-Process -Id $OwnerPid -ErrorAction SilentlyContinue)) } `
+        -Ack $WakeAck -Log { param($Line) Say $Line }
+    if ($wakeReplay.Summary) {
+        if ($script:SweepNote) { $script:SweepNote += ' | ' }
+        $script:SweepNote += $wakeReplay.Summary
+    }
+
+    # ── Guard 3: is there actually any work, or anything unanswered? ──────────────────────────
     # THE expensive question, asked the cheap way. Without this a quiet tick still boots a whole
     # session - CLAUDE.md, fixall.md, the tool schemas - to ask the queue once and be told it is
     # empty. A few HTTP requests answer the same question.
     #
-    # `ready-tasks.ts windows` also SWEEPS the lanes first, so a Waiting task whose date has
-    # arrived is Ready by the time the answer is counted, and RECHECK/REVIEW items count as work.
-    # Both are things this loop must wake for.
+    # Three things count as "yes", and before task 18ba8c2e this guard could see only the first:
+    # the QUEUE (Ready, due, this mailbox, plus unassigned Ready work, which on this board is the
+    # hand-off); ATTENTION, the comments and list chat nobody has answered; and the LANES, swept
+    # first so a Waiting task whose date has arrived is Ready by the time the answer is counted and
+    # RECHECK/REVIEW items come out as work.
     #
-    # A non-zero exit means "could not tell" - network, auth - and must NOT read as empty: a queue
-    # nobody can see is a reason to run and let the agent report properly, not a reason to go quiet
-    # forever.
+    # --require-polling, because polling mode is what makes this loop the dispatcher: an agent in
+    # api/webhook/off mode is an ERROR here, not an idle queue, or this loop would race a hosted
+    # dispatcher. --no-write-seen, because phase one of waking must write nothing - a tick that is
+    # killed must not have muted what woke it.
+    $wake = $null
     if (-not $IgnoreQueue) {
-        $queueOut = Invoke-WebTool @('scripts/ready-tasks.ts', 'windows', '--json', '--harness', 'claude-code')
-        $queueStatus = $LASTEXITCODE
-        $queueJson = ($queueOut | Select-String -Pattern '^\s*\{.*"tasks"' | Select-Object -Last 1).ToString()
-        if ($queueStatus -ne 0) {
-            Say "  QUEUE: unknown - ready-tasks.ts exited $queueStatus; running anyway so the agent can report"
+        $wake = Get-WakeVerdict -ArtifactPath $WakeArtifact -Preflight {
+            param($ArtifactPath)
+            # The same call also PLANS this tick's length (task 0216d83c). The plan is applied to
+            # the queue before the verdict is taken, so a queue holding nothing but a task deferred
+            # to its window reads as idle here - which is right: there is nothing this tick may
+            # take. Passing the bounds in force is what lets astrid-web tell "flagged" from
+            # "flagged for longer than we already allow".
+            $out = Invoke-WebTool @('scripts/agent-queue-status.ts', '--agent', 'claude',
+                '--board', 'windows', '--include-unassigned', '--require-polling',
+                '--no-write-seen', '--output', $ArtifactPath,
+                '--long-run-window', $LongRunWindow,
+                '--default-minutes', [string]$MaxMinutes, '--max-tasks', [string]$MaxTasks)
+            return [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $out }
         }
-        elseif (-not $queueJson) {
-            Say '  QUEUE: unknown - no JSON verdict; running anyway so the agent can report'
+        Say "  QUEUE: $($wake.Reason)"
+        # A queue nobody can see is a reason to RUN and let the agent report, never a reason to go
+        # quiet - that confusion is how a loop spends weeks looking like a quiet board.
+        if (-not $wake.Known) { Say '  running anyway so the agent can report' }
+        if (-not $wake.Work) {
+            Finish 'RESULT: SKIPPED - nothing to do for claude (no Ready task, nothing unanswered, no lane work)'
         }
-        else {
-            $tasks = @()
-            try { $tasks = @((ConvertFrom-Json $queueJson).tasks) } catch { $tasks = @() }
-            $actions = ($tasks | ForEach-Object { $_.action }) -join ', '
-            $queueLine = '  QUEUE: ' + $tasks.Count + ' item(s)'
-            if ($actions) { $queueLine += ' - ' + $actions }
-            Say $queueLine
-            if ($tasks.Count -eq 0) {
-                Finish 'RESULT: SKIPPED - nothing to do for claude (no Ready task, no lane work)'
-            }
+        # The keys that actually woke this tick, captured VERBATIM, written down before anything
+        # that could kill the run. Never recomputed afterwards: the run will have answered things by
+        # then, and the difference is exactly the items that would be muted unseen.
+        if (Save-WakeJournal -JournalPath $WakeJournal -OwnerPid $PID -ListId $wake.ListId -WakeKeys $wake.WakeKeys) {
+            Say "  WAKE: $(@($wake.WakeKeys).Count) key(s) journalled, to be acknowledged by this run's outcome"
         }
     }
+
+    # ── Size the run (task 0216d83c) ──────────────────────────────────────────────────────────
+    # 75 minutes and $10 fit one ordinary task. A task flagged LONG-RUN asks for up to eight hours,
+    # and the preflight above has already decided whether this tick may start it. Apply that answer:
+    # the watchdog and the cap for the task it chose, and the two ids /fixall needs - it takes
+    # NEXT_TASK first and never takes a deferred one, because a deferred long task picked up under a
+    # 75-minute watchdog is exactly the kill this exists to prevent.
+    #
+    # BEFORE the run, necessarily: a watchdog resized after Start-Process is inert, and inertness
+    # here looks precisely like a working fix. A missing or malformed plan leaves both bounds alone.
+    $plan = Get-RunPlan -PreflightOutput $(if ($wake) { $wake.Output } else { @() }) `
+        -DefaultMinutes $MaxMinutes -DefaultMaxUsd $MaxUsd -LongMaxUsd $LongMaxUsd
+    foreach ($note in $plan.Notes) { Say "  RUN: $note" }
+    if ($plan.MaxMinutes -ne $MaxMinutes) {
+        Say "  LONG-RUN: watchdog ${MaxMinutes}m -> $($plan.MaxMinutes)m, cap `$$MaxUsd -> `$$($plan.MaxUsd)"
+    }
+    $MaxMinutes = $plan.MaxMinutes
+    $MaxUsd = $plan.MaxUsd
+    $env:ASTRID_FIXALL_NEXT_TASK = $plan.NextTask
+    $env:ASTRID_FIXALL_DEFER_TASKS = $plan.DeferTasks
 
     # ── Can this machine CALL the board, and PUBLISH what it finishes? ────────────────────────
     # WARNS, never skips. A missing mcp__astrid__* grant leaves the run working - it falls back to
@@ -489,6 +759,27 @@ try {
         }
     }
 
+    # ── Anything this run claimed and did not finish goes back to Ready ──────────────────────
+    # A finished task is completed, a blocked one is in Waiting: anything still in `Doing` was
+    # abandoned mid-task. AFTER the save above, which is what pushes the branch — the release
+    # comments with the branch that carries the task's id, so that branch has to exist first.
+    #
+    # AND BEFORE THE WATCHDOG BRANCH BELOW, which ends the tick: a killed run is the likeliest way a
+    # claim is abandoned, so a release placed after that Finish would never run in the case it exists
+    # for. Both failure paths below reach this line.
+    $claimsReleased = Invoke-DoingRelease -ClaimsFile $claimsFile
+
+    # ── And what woke this tick is acknowledged by how it ended ──────────────────────────────
+    # Phase two. BEFORE every Finish below, because a run that died is the case this exists for: a
+    # failed run gives each key a strike instead of muting it, so an item this run could not get to
+    # wakes the next tick and the one after, and is muted only after MAX_FAILED_ATTEMPTS.
+    #
+    # Exactly the journal's keys, which are the preflight's. A delivery that fails KEEPS the journal
+    # and says so - the next tick replays it - because a journal dropped on a failed delivery is an
+    # item muted that nobody ever saw.
+    $wakeAcked = Invoke-WakeAck -JournalPath $WakeJournal -Failed ($killed -or $status -ne 0) -Ack $WakeAck
+    if ($wakeAcked.Summary) { Say "  $($wakeAcked.Summary)" }
+
     if ($killed) {
         $reason = "killed after the ${MaxMinutes}m watchdog timeout"
         Send-DiedRunNote -TaskFile $taskFile -Reason $reason -Saved $saved
@@ -530,5 +821,13 @@ try {
 }
 finally {
     if ($taskFile) { Remove-Item $taskFile -Force -ErrorAction SilentlyContinue }
+    # The preflight artifact is this tick's alone and has been read; the JOURNAL is deliberately not
+    # touched here - if its acknowledgement did not get through, it is the next tick's retry.
+    if ($WakeArtifact) { Remove-Item $WakeArtifact -Force -ErrorAction SilentlyContinue }
+    # ONLY when the release got through. A task file is deleted either way — it has been reported on
+    # by then — but a claims file whose release failed is the only record of which tasks are sitting
+    # in Doing, and the next tick's start-of-tick pass is what retries it. Deleting it here would
+    # strand them exactly as before task 1b9fed0a.
+    if ($claimsFile -and $claimsReleased) { Remove-Item $claimsFile -Force -ErrorAction SilentlyContinue }
     & $releaseLock
 }

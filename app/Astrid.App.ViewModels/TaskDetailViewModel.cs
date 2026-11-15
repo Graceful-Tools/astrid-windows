@@ -50,10 +50,31 @@ public sealed class TaskDetailViewModel : ObservableObject
     private string _blockerSearch = string.Empty;
     private string? _blockerErrorKey;
     private string? _link;
+    // What the open task's list permits (task 897e25c5). Classic until the core says otherwise, so
+    // the pane never starts out hiding a control that works.
+    private bool _showsPriority = true;
+    private bool _showsDueDate = true;
+    private bool _showsCommentComposer = true;
+    private bool _supportsPrivateTasks = true;
+    private bool _supportsMultipleAssignees;
+    private bool _showsSystemComments;
+    private string _deleteTaskMode = ClassicDeleteTaskMode;
+
+    /// <summary>
+    /// What <c>supports.deleteTask</c> says on a classic list: the task is deleted outright.
+    /// </summary>
+    public const string ClassicDeleteTaskMode = "delete";
+
+    /// <summary>A move into Waiting that is waiting on a date or a task (task 7462618e).</summary>
+    private readonly PendingWait _pendingWait;
 
     public TaskDetailViewModel(IAstridCore core)
     {
         _core = core;
+        _pendingWait = new PendingWait(() => Raise(nameof(WaitPrompt)));
+        // Every path that fills the thread goes through Replace on Comments, so following that
+        // collection is how the filtered view stays true without each caller remembering it.
+        Comments.CollectionChanged += (_, _) => ApplyCommentFilter();
     }
 
     /// <summary>The quick date choices, with the instant each one means.</summary>
@@ -139,6 +160,44 @@ public sealed class TaskDetailViewModel : ObservableObject
     public ObservableCollection<AssigneeOption> Assignees { get; } = [];
 
     public ObservableCollection<CommentSummary> Comments { get; } = [];
+
+    /// <summary>
+    /// The thread as the pane draws it: <see cref="Comments"/> with the server's own notes left
+    /// out unless they were asked for (task <c>77d17dc8</c>).
+    /// </summary>
+    /// <remarks>
+    /// The Mac's comments toolbar offers "Show system", and Windows follows the Mac on this
+    /// pane's chrome. The filter lives here rather than in the shell because a count has to agree
+    /// with what is under it — <see cref="VisibleCommentCount"/> is of this list, not of the one
+    /// the core sent — and because a binding cannot filter. <see cref="Comments"/> stays the whole
+    /// thread: it is what a reply, an edit or a delete is resolved against.
+    /// </remarks>
+    public ObservableCollection<CommentSummary> VisibleComments { get; } = [];
+
+    /// <summary>
+    /// Whether the server's own notes are in the thread. Off by default, as on the Mac: "moved to
+    /// Doing" is bookkeeping, and a thread of it buries the conversation.
+    /// </summary>
+    public bool ShowsSystemComments
+    {
+        get => _showsSystemComments;
+        set
+        {
+            if (Set(ref _showsSystemComments, value))
+            {
+                ApplyCommentFilter();
+            }
+        }
+    }
+
+    /// <summary>How many comments the toolbar's count stands for — of the filtered thread.</summary>
+    public int VisibleCommentCount => VisibleComments.Count;
+
+    private void ApplyCommentFilter()
+    {
+        Replace(VisibleComments, Comments.Where(comment => ShowsSystemComments || !comment.IsSystem).ToList());
+        Raise(nameof(VisibleCommentCount));
+    }
 
     public ObservableCollection<SubtaskSummary> Subtasks { get; } = [];
 
@@ -358,7 +417,6 @@ public sealed class TaskDetailViewModel : ObservableObject
         private set
         {
             Set(ref _priority, value);
-            Raise(nameof(CheckboxAsset));
         }
     }
 
@@ -368,7 +426,6 @@ public sealed class TaskDetailViewModel : ObservableObject
         private set
         {
             Set(ref _completed, value);
-            Raise(nameof(CheckboxAsset));
         }
     }
 
@@ -527,6 +584,86 @@ public sealed class TaskDetailViewModel : ObservableObject
     public bool HasNoBlockers => WaitingOnChips.Count == 0;
 
     /// <summary>
+    /// Whether this task's list has a priority to set at all (task 897e25c5). A GitHub-backed
+    /// board with no Priority field mapped in its binding has none, so the row and its four
+    /// swatches are not drawn.
+    /// </summary>
+    /// <remarks>
+    /// The core's answer, read straight through — <c>taskDetail.supports.priority</c>, decided from
+    /// the task's own list. The pane holds no predicate: working it out here from a backend name
+    /// would be the fourth implementation of the rule, and the one that offers a swatch whose
+    /// write 403s. <strong>An absent key is classic</strong>, the same default the core applies, so
+    /// a list the server says nothing about keeps every control it has always had.
+    /// </remarks>
+    public bool ShowsPriority
+    {
+        get => _showsPriority;
+        private set => Set(ref _showsPriority, value);
+    }
+
+    /// <summary>
+    /// Whether this task's list has a due date to set (task 897e25c5). False on a board with no
+    /// date field mapped, which hides the date row and its pickers.
+    /// </summary>
+    public bool ShowsDueDate
+    {
+        get => _showsDueDate;
+        private set => Set(ref _showsDueDate, value);
+    }
+
+    /// <summary>
+    /// Whether tasks on this list take comments in Astrid (task 897e25c5). On a board whose
+    /// comments live on the issue the composer is not drawn — the thread that is already there is
+    /// still shown, because a comment that exists is worth reading even where a new one cannot go.
+    /// </summary>
+    public bool ShowsCommentComposer
+    {
+        get => _showsCommentComposer;
+        private set => Set(ref _showsCommentComposer, value);
+    }
+
+    /// <summary>
+    /// Whether a task's private flag means anything on this list (task 897e25c5).
+    /// </summary>
+    /// <remarks>
+    /// Nothing in this shell draws a per-task private toggle yet, so this gates no control today.
+    /// It is carried because the decision belongs in the core either way: whichever shell grows
+    /// that toggle first finds the answer already in the DTO rather than deriving it a second time.
+    /// </remarks>
+    public bool SupportsPrivateTasks
+    {
+        get => _supportsPrivateTasks;
+        private set => Set(ref _supportsPrivateTasks, value);
+    }
+
+    /// <summary>
+    /// Whether a task here may hold several assignees (task 897e25c5). This shell's assignee
+    /// picker is single-select, so like <see cref="SupportsPrivateTasks"/> this is the core's
+    /// answer held ready rather than a control being gated.
+    /// </summary>
+    public bool SupportsMultipleAssignees
+    {
+        get => _supportsMultipleAssignees;
+        private set => Set(ref _supportsMultipleAssignees, value);
+    }
+
+    /// <summary>
+    /// What destroying a task on this list does — <c>"delete"</c>, or <c>"remove_from_list"</c> on
+    /// a board whose item comes off the project while the issue stays (task 897e25c5).
+    /// </summary>
+    /// <remarks>
+    /// Task detail offers "Remove from list" per chip and no task delete, so this gates no wording
+    /// here yet. It decides both the word and what gets sent the moment one is added, which is why
+    /// a shell must never infer it: "Delete" on a GitHub board would promise something it does not
+    /// do.
+    /// </remarks>
+    public string DeleteTaskMode
+    {
+        get => _deleteTaskMode;
+        private set => Set(ref _deleteTaskMode, value);
+    }
+
+    /// <summary>
     /// The mark that NAMES the priority row — <c>!!!</c>, and the same <c>!!!</c> whatever the
     /// open task's priority is (task 439e94a4).
     /// </summary>
@@ -578,6 +715,14 @@ public sealed class TaskDetailViewModel : ObservableObject
                 await CommitAllAsync(cancellationToken);
             }
             IsEditingDescription = false;
+            // The last task's files are not this one's. The section is drawn on a non-zero count,
+            // so anything left here is on screen under the new task — and for a task created
+            // straight after an attachment, that was the first thing a reader saw (task 4f429ae8).
+            //
+            // Cleared rather than refetched on purpose: opening a task is one cache read, two
+            // reads and a thread fetch in all, and `Opening_a_task_fills_the_pane_from_one_command`
+            // pins that. Attachments stay lazy — they arrive when one is attached or downloaded.
+            Attachments.Clear();
         }
         TaskId = taskId;
         IsOpen = true;
@@ -826,6 +971,64 @@ public sealed class TaskDetailViewModel : ObservableObject
             && await SetDueDateAsync(picked.DueDateTime, IsAllDay, cancellationToken);
     }
 
+    /// <summary>
+    /// Set the due date's time of day, from a clock (task 974d37d2).
+    /// </summary>
+    /// <remarks>
+    /// Two steps, like <see cref="SetDueDayAsync"/>, because the first is again a question only the
+    /// core can answer: a clock hands back an hour and a minute with no day attached, and which day
+    /// they belong on depends on the task — an all-day task's calendar date (never the local
+    /// reading of its UTC midnight, which is the day before west of UTC), a timed one's local day,
+    /// or today when there is no date yet. A time of day is also what makes a task timed, which is
+    /// why this always writes <c>isAllDay: false</c> rather than keeping the flag the way a day
+    /// pick does.
+    /// </remarks>
+    public async Task<bool> SetDueTimeAsync(int hour, int minute,
+        CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(
+            Commands.DueDateAtTime(TaskId, hour, minute), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        var picked = response.Read<DuePick>();
+        return picked is not null
+            && await SetDueDateAsync(picked.DueDateTime, isAllDay: false, cancellationToken);
+    }
+
+    /// <summary>
+    /// Take the time off the open task, leaving it all-day on the day it was showing
+    /// (task 0616f2d1).
+    /// </summary>
+    /// <remarks>
+    /// Two steps, like <see cref="SetDueTimeAsync"/>, and here the shortcut is not merely
+    /// unavailable but wrong: writing the <c>DueDateTime</c> this view model already holds with
+    /// <c>isAllDay: true</c> moves the date, because an all-day date means its UTC day and a timed
+    /// instant west of UTC is already tomorrow's. So the day is the core's answer
+    /// (<c>dueDateAllDay</c>), written back untouched — including the null it gives for a task
+    /// that has no date to keep.
+    /// </remarks>
+    public async Task<bool> ClearDueTimeAsync(CancellationToken cancellationToken = default)
+    {
+        if (TaskId is null)
+        {
+            return false;
+        }
+        var response = await _core.CallAsync(Commands.DueDateAllDay(TaskId), cancellationToken);
+        if (!Handle(response))
+        {
+            return false;
+        }
+        var picked = response.Read<DuePick>();
+        return picked is not null
+            && await SetDueDateAsync(picked.DueDateTime, isAllDay: true, cancellationToken);
+    }
+
     /// <summary>Take the date off the open task.</summary>
     /// <remarks>
     /// The quick choices carried a "No due date" row until the core followed iOS and stopped
@@ -871,24 +1074,9 @@ public sealed class TaskDetailViewModel : ObservableObject
     /// <summary>Whether the open task repeats at all. What draws the glyph on the row.</summary>
     public bool IsRepeating => RepeatSummary.Count > 0;
 
-    /// <summary>
-    /// The mark this task wears, as an image path.
-    /// </summary>
-    /// <remarks>
-    /// The same one the row shows, so opening a task does not change how its priority reads. See
-    /// <see cref="Astrid.Core.Bindings.TaskRow.CheckboxAsset"/> for why it is one image rather than
-    /// three overlaid controls.
-    /// </remarks>
-    public string CheckboxAsset
-    {
-        get
-        {
-            var priority = Priority is >= 0 and <= 3 ? Priority : 0;
-            var repeat = IsRepeating ? "_repeat" : string.Empty;
-            var done = Completed ? "_checked" : string.Empty;
-            return $"ms-appx:///Assets/Checkboxes/check_box{repeat}{done}_{priority}.png";
-        }
-    }
+    // `CheckboxAsset` was here, picking one of sixteen PNGs from Priority, IsRepeating and
+    // Completed. The pane now binds those three to `PriorityMark`, which draws the shared art in
+    // the priority's colour (task 82e4ad32), so there is nothing left to compute or to raise.
 
     /// <summary>Fetch the files on the open task.</summary>
     public async Task LoadAttachmentsAsync(CancellationToken cancellationToken = default)
@@ -1061,7 +1249,6 @@ public sealed class TaskDetailViewModel : ObservableObject
         Replace(RepeatPresets, choices.Presets);
         Replace(RepeatSummary, choices.Summary);
         Raise(nameof(IsRepeating));
-        Raise(nameof(CheckboxAsset));
     }
 
     /// <summary>Choose one of the presets, or stop repeating.</summary>
@@ -1093,15 +1280,43 @@ public sealed class TaskDetailViewModel : ObservableObject
             ["repeatFrom"] = fromDueDate ? "DUE_DATE" : "COMPLETION_DATE",
         }, cancellationToken);
 
+    /// <summary>
+    /// The <c>weekOfMonth</c> that means "the last such weekday of the month", after iCalendar's
+    /// <c>BYDAY=-1MO</c> — web's <c>LAST_WEEK_OF_MONTH</c>.
+    /// </summary>
+    /// <remarks>
+    /// <c>5</c> is NOT the same thing: a month with four Mondays has no fifth, and a 5 walks into
+    /// the next one. Which is why the sheet offers "last" as its own row rather than a 5th.
+    /// </remarks>
+    public const int LastWeekOfMonth = -1;
+
+    /// <summary>A <c>weekOfMonth</c> a pattern may be saved with: 1–5, or the last.</summary>
+    /// <remarks>
+    /// web's <c>isValidWeekOfMonth</c> in <c>types/repeating.ts</c>. Any other value ends the
+    /// series on every client, so nothing here writes one.
+    /// </remarks>
+    private static bool IsValidWeekOfMonth(int? week) =>
+        week == LastWeekOfMonth || week is >= 1 and <= 5;
+
     /// <summary>Store a custom pattern.</summary>
     /// <remarks>
+    /// <para>
     /// The fields the pattern does not need are left out rather than sent as nulls — the server's
     /// column is free-form JSON, and a weekly pattern carrying a stale <c>monthDay</c> is a rule
     /// that means something different to whichever client reads it next.
+    /// </para>
+    /// <para>
+    /// A monthly pattern (task 914fc180) says which day of the month it means: a date, or a
+    /// weekday and which week of the month it falls in. The two are alternatives, so an incoherent
+    /// pair writes NEITHER field and the pattern stays the plain "every N months" it would
+    /// otherwise be — better than half a rule the next client reads as a third thing.
+    /// </para>
     /// </remarks>
     public Task<bool> SetCustomRepeatAsync(string unit, int interval,
         IReadOnlyList<string>? weekdays = null, string? endCondition = null,
         int? endAfterOccurrences = null, string? endUntilDate = null,
+        string? monthRepeatType = null, int? monthDay = null,
+        string? monthWeekday = null, int? weekOfMonth = null,
         CancellationToken cancellationToken = default)
     {
         var pattern = new Dictionary<string, object?>
@@ -1113,6 +1328,25 @@ public sealed class TaskDetailViewModel : ObservableObject
         if (unit == "weeks" && weekdays is { Count: > 0 })
         {
             pattern["weekdays"] = weekdays;
+        }
+        if (unit == "months")
+        {
+            if (monthRepeatType == "same_date" && monthDay is >= 1 and <= 31)
+            {
+                pattern["monthRepeatType"] = monthRepeatType;
+                pattern["monthDay"] = monthDay;
+            }
+            else if (monthRepeatType == "same_weekday"
+                     && !string.IsNullOrEmpty(monthWeekday)
+                     && IsValidWeekOfMonth(weekOfMonth))
+            {
+                pattern["monthRepeatType"] = monthRepeatType;
+                pattern["monthWeekday"] = new Dictionary<string, object?>
+                {
+                    ["weekday"] = monthWeekday,
+                    ["weekOfMonth"] = weekOfMonth,
+                };
+            }
         }
         if (endCondition is not null)
         {
@@ -1468,13 +1702,30 @@ public sealed class TaskDetailViewModel : ObservableObject
     /// Put the open task in a column. The core makes the same move a dragged card makes, so Done
     /// here means completed there too.
     /// </summary>
-    public async Task<bool> SetStatusAsync(string columnId, CancellationToken cancellationToken = default)
+    /// <param name="wait">
+    /// The wait condition, on the second attempt, once the user has answered for one. Dragging a
+    /// card to Waiting and choosing Waiting here are the same move and are refused by the same
+    /// rule, so the same ask-and-resend applies (task 7462618e).
+    /// </param>
+    public async Task<bool> SetStatusAsync(string columnId, WaitCondition? wait = null,
+        CancellationToken cancellationToken = default)
     {
         if (TaskId is null)
         {
             return false;
         }
-        var response = await _core.CallAsync(Commands.SetTaskStatus(TaskId, columnId), cancellationToken);
+        var taskId = TaskId;
+        var response = await _core.CallAsync(
+            Commands.SetTaskStatus(taskId, columnId, wait), cancellationToken);
+        if (response.NeedsWaitCondition)
+        {
+            // Not reported through Handle: nothing was written and nothing is wrong, so an error
+            // line under a question nobody has been asked yet would be the bug this task names.
+            _pendingWait.Ask(
+                new WaitPrompt(columnId, NameOf(columnId), taskId, null),
+                (condition, token) => SetStatusAsync(columnId, condition, token));
+            return false;
+        }
         if (!Handle(response))
         {
             return false;
@@ -1482,6 +1733,32 @@ public sealed class TaskDetailViewModel : ObservableObject
         await ReloadAsync(cancellationToken);
         return true;
     }
+
+    /// <summary>
+    /// The condition the shell must ask for before this task can enter Waiting, if one is
+    /// outstanding (task 7462618e).
+    /// </summary>
+    public WaitPrompt? WaitPrompt => _pendingWait.Prompt;
+
+    /// <summary>Answer an outstanding <see cref="WaitPrompt"/>, which sends the refused move again.</summary>
+    public Task<bool> ResolveWaitAsync(WaitCondition condition,
+        CancellationToken cancellationToken = default) =>
+        _pendingWait.ResolveAsync(condition, cancellationToken);
+
+    /// <summary>Drop the prompt and leave the task where it was.</summary>
+    public void CancelWaitPrompt() => _pendingWait.Cancel();
+
+    /// <summary>
+    /// A column's name as the core last gave it, for the prompt's title.
+    /// </summary>
+    /// <remarks>
+    /// From the status choices the menu was drawn from, so the prompt names the column the user
+    /// just picked rather than a hardcoded "Waiting" — this board may call it something else.
+    /// </remarks>
+    private string NameOf(string columnId) =>
+        StatusChoices.FirstOrDefault(choice => choice.Id == columnId)?.Name
+        ?? BoardStateChips.FirstOrDefault(chip => chip.Id == columnId)?.Name
+        ?? columnId;
 
     /// <summary>
     /// Mint a share link for the open task. The address, or null with the reason in
@@ -1887,6 +2164,27 @@ public sealed class TaskDetailViewModel : ObservableObject
         OffersCopyIdentifier = value.TryGetProperty("offersCopyIdentifier", out var offersCopy)
                                && offersCopy.ValueKind == JsonValueKind.True;
 
+        // What the task's list permits (task 897e25c5). Read the other way round from the flags
+        // above: absent means CLASSIC, not false, so a core older than the block — or one that
+        // could not resolve the task's list — leaves every control exactly where it was. Hiding a
+        // working picker because a field was missing is the one failure mode worth designing out.
+        var supports = value.TryGetProperty("supports", out var block)
+                       && block.ValueKind == JsonValueKind.Object
+            ? block
+            : default;
+        ShowsPriority = Supported(supports, "priority");
+        ShowsDueDate = Supported(supports, "dueDate");
+        ShowsCommentComposer = Supported(supports, "comments");
+        SupportsPrivateTasks = Supported(supports, "privateTasks");
+        SupportsMultipleAssignees = supports.ValueKind == JsonValueKind.Object
+                                    && supports.TryGetProperty("multipleAssignees", out var many)
+                                    && many.ValueKind == JsonValueKind.True;
+        DeleteTaskMode = supports.ValueKind == JsonValueKind.Object
+                         && supports.TryGetProperty("deleteTask", out var mode)
+                         && mode.ValueKind == JsonValueKind.String
+            ? mode.GetString() ?? ClassicDeleteTaskMode
+            : ClassicDeleteTaskMode;
+
         IsCanceled = value.TryGetProperty("isCanceled", out var canceled)
                      && canceled.ValueKind == JsonValueKind.True;
         IsCopyOnly = value.TryGetProperty("isCopyOnly", out var copyOnly)
@@ -1936,11 +2234,19 @@ public sealed class TaskDetailViewModel : ObservableObject
         // task repeats before anybody opens anything.
         Replace(RepeatSummary, Read<SummaryPart>(value, "repeatSummary"));
         Raise(nameof(IsRepeating));
-        Raise(nameof(CheckboxAsset));
         Timer = value.TryGetProperty("timer", out var timer)
             ? timer.Deserialize<TimerState>(CommandJson.Options) ?? new TimerState()
             : new TimerState();
     }
+
+    /// <summary>
+    /// One <c>supports</c> boolean, where <strong>absent is classic</strong> — the same
+    /// <c>unwrap_or_default</c> rule the core applies on the way in (task 897e25c5).
+    /// </summary>
+    private static bool Supported(JsonElement supports, string name) =>
+        supports.ValueKind != JsonValueKind.Object
+        || !supports.TryGetProperty(name, out var key)
+        || key.ValueKind != JsonValueKind.False;
 
     private static List<T> Read<T>(JsonElement value, string name) =>
         value.TryGetProperty(name, out var element) && element.ValueKind == JsonValueKind.Array

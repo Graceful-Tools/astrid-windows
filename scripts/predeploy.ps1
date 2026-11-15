@@ -42,7 +42,13 @@ function Invoke-Step {
 # is how three tasks were stranded on 2026-09-27 (task 6392dfdb).
 # One step per file, so a red one names which behaviour broke rather than just "script tests".
 foreach ($scriptTest in @('tests/fixall-loop-cleanup.Tests.ps1', 'tests/fixall-sweep.Tests.ps1',
-        'tests/fixall-loop-guards.Tests.ps1')) {
+        'tests/fixall-loop-guards.Tests.ps1', 'tests/fixall-session-guard.Tests.ps1',
+        'tests/fixall-wake.Tests.ps1',
+        'tests/fixall-loop-doing.Tests.ps1', 'tests/fixall-state.Tests.ps1',
+        'tests/fixall-disk.Tests.ps1', 'tests/fixall-longrun.Tests.ps1',
+        'tests/fixall-schedule.Tests.ps1',
+        'tests/packaging-manifest.Tests.ps1', 'tests/packaging-scripts.Tests.ps1',
+        'tests/store-listing.Tests.ps1')) {
     $testPath = Join-Path $PSScriptRoot $scriptTest
     Invoke-Step "script tests - $(Split-Path -Leaf $scriptTest)" {
         & powershell -NoProfile -ExecutionPolicy Bypass -File $testPath
@@ -91,7 +97,7 @@ if (Test-Path $appSolution) {
     Invoke-Step 'shell build (ARM64)' {
         dotnet build $appProject -c Release -r win-arm64 --self-contained false
     }
-    # The tests are plain net9.0 and run on the host, so they are built and run without a RID.
+    # The tests are plain net10.0 and run on the host, so they are built and run without a RID.
     # They include the C#-to-Rust boundary tests, which need the DLL the Rust steps built.
     Invoke-Step 'shell tests' { dotnet test $appSolution -c Release }
 } else {

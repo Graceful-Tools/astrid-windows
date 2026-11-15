@@ -1,0 +1,269 @@
+using Astrid.App.ViewModels;
+using Astrid.Core.Bindings;
+using Xunit;
+
+namespace Astrid.App.Tests;
+
+/// <summary>
+/// The mark does what the core said it does — all three answers, not two (task 3c0dfb73).
+/// </summary>
+/// <remarks>
+/// <para>
+/// The shell read <c>action</c> in exactly one place, <c>IsCopyOnly</c>, and completed on
+/// everything else. So a board card finished its task on the click that was meant to set its
+/// column, somebody else's task finished on a stray click with nothing on the row to say it had
+/// (AITD-375), and a row nobody owned finished instead of first asking whose it is (AITD-382).
+/// </para>
+/// <para>
+/// The assertion that matters in each case is a NEGATIVE one: no <c>completeTask</c> was sent at
+/// all. A picker that opens and also completes would pass a test that only looked at the outcome.
+/// </para>
+/// </remarks>
+public sealed class LeadingPickerTests
+{
+    private static object Row(string id, string title, string action, string leadingKind,
+        bool pickerShowsProjectState = false, bool completed = false, string? assigneeId = null) => new
+        {
+            id,
+            title,
+            completed,
+            priority = 0,
+            due = new { key = "none" },
+            isOverdue = false,
+            leading = assigneeId is null
+                ? new { kind = leadingKind, userId = (string?)null }
+                : new { kind = leadingKind, userId = (string?)assigneeId },
+            action,
+            pickerShowsProjectState,
+            depth = 0,
+            isPending = false,
+            isPrivate = false,
+            isRepeating = false,
+            hasDescription = false,
+            commentCount = 0,
+            attachmentCount = 0,
+            subtaskCount = 0,
+            listChips = Array.Empty<object>(),
+            statusRole = (string?)null,
+        };
+
+    private static object Rows(params object[] rows) =>
+        new { total = rows.Length, offset = 0, rows };
+
+    /// <summary>
+    /// An unassigned list row opens the picker and writes nothing (AITD-382).
+    /// </summary>
+    [Fact]
+    public async Task An_unassigned_row_does_not_complete_on_click_task_3c0dfb73()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Rows(Row("t0", "Prune the roses", "openPicker", "unassigned")))
+            .AnswerOk("assigneeOptions", new
+            {
+                assigneeId = (string?)null,
+                options = new[]
+                {
+                    new { userId = (string?)null, name = (string?)null, initials = "U" },
+                    new { userId = (string?)"me", name = (string?)"Jon", initials = "J" },
+                },
+            });
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Garden");
+
+        var outcome = await view.ActivateLeadingAsync("t0");
+
+        Assert.Equal(LeadingOutcome.OpenPicker, outcome);
+        Assert.DoesNotContain(core.Sent, json => json.Contains("\"kind\":\"completeTask\""));
+        Assert.Equal("t0", view.LeadingPicker.TaskId);
+        // Who it could go to, offered; the board state is not, because the core did not say so.
+        Assert.Equal(2, view.LeadingPicker.Assignees.Count);
+        Assert.False(view.LeadingPicker.ShowsProjectState);
+        Assert.Empty(view.LeadingPicker.StatusChoices);
+        Assert.DoesNotContain(core.Sent, json => json.Contains("\"kind\":\"taskStatusOptions\""));
+    }
+
+    /// <summary>
+    /// Somebody else's row opens the picker, and that picker offers the column — a task being
+    /// triaged rather than worked is exactly when its column matters.
+    /// </summary>
+    [Fact]
+    public async Task Someone_elses_row_opens_a_picker_with_the_board_state_task_3c0dfb73()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Rows(Row("t1", "Plant tulips", "openPicker", "avatar",
+                pickerShowsProjectState: true, assigneeId: "them")))
+            .AnswerOk("assigneeOptions", new
+            {
+                assigneeId = (string?)"them",
+                options = new[] { new { userId = (string?)"me", name = (string?)"Jon", initials = "J" } },
+            })
+            .AnswerOk("taskStatusOptions", new
+            {
+                columns = new[]
+                {
+                    new { id = "ready", name = "Ready", kind = "status", isCurrent = true },
+                    new { id = "doing", name = "Doing", kind = "status", isCurrent = false },
+                },
+            });
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Garden");
+
+        Assert.Equal(LeadingOutcome.OpenPicker, await view.ActivateLeadingAsync("t1"));
+
+        Assert.DoesNotContain(core.Sent, json => json.Contains("\"kind\":\"completeTask\""));
+        Assert.True(view.LeadingPicker.ShowsProjectState);
+        Assert.Equal(["Ready", "Doing"], view.LeadingPicker.StatusChoices.Select(c => c.Name));
+
+        // And a pick from it is the ordinary write, through the Outbox like every other edit.
+        core.AnswerOk("setTaskStatus").AnswerOk("rowsForList", Rows());
+        Assert.True(await view.LeadingPicker.PickStatusAsync("doing"));
+        Assert.Contains(core.Sent, json => json.Contains("\"kind\":\"setTaskStatus\"")
+                                           && json.Contains("\"columnId\":\"doing\""));
+    }
+
+    /// <summary>
+    /// A board card's mark never completes — in either display mode, even for the reader's own
+    /// task. The trapdoor tasks <c>9be8cb1b</c> and <c>f9d7ed42</c> closed on Apple.
+    /// </summary>
+    [Fact]
+    public async Task A_board_cards_mark_does_not_complete_on_click_task_3c0dfb73()
+    {
+        var core = new FakeCore()
+            .AnswerOk("board", new
+            {
+                projectId = "p1",
+                columns = new[]
+                {
+                    new
+                    {
+                        id = "ready", name = "Ready", description = "", kind = "status", total = 1,
+                        cards = new[]
+                        {
+                            Row("c0", "Water roses", "openPicker", "checkbox",
+                                pickerShowsProjectState: true, assigneeId: "me"),
+                        },
+                    },
+                },
+            })
+            .AnswerOk("assigneeOptions", new
+            {
+                assigneeId = (string?)"me",
+                options = new[] { new { userId = (string?)"me", name = (string?)"Jon", initials = "J" } },
+            })
+            .AnswerOk("taskStatusOptions", new
+            {
+                columns = new[] { new { id = "doing", name = "Doing", kind = "status", isCurrent = false } },
+            });
+        var view = new BoardViewModel(core);
+        await view.LoadAsync("l1");
+
+        Assert.Equal(LeadingOutcome.OpenPicker, await view.ActivateLeadingAsync("c0"));
+
+        Assert.DoesNotContain(core.Sent, json => json.Contains("\"kind\":\"completeTask\""));
+        Assert.Equal("c0", view.LeadingPicker.TaskId);
+        Assert.True(view.LeadingPicker.ShowsProjectState);
+    }
+
+    /// <summary>
+    /// What still completes: the reader's own task on a list row, whose control IS a checkbox.
+    /// Closing a trapdoor is not the same as nailing the door shut.
+    /// </summary>
+    [Fact]
+    public async Task My_own_list_row_still_completes_task_3c0dfb73()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Rows(Row("t2", "Water roses", "complete", "checkbox",
+                assigneeId: "me")))
+            .AnswerOk("completeTask")
+            .AnswerOk("rowsForList", Rows());
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Garden");
+
+        Assert.Equal(LeadingOutcome.Completed, await view.ActivateLeadingAsync("t2"));
+
+        Assert.Contains(core.Sent, json => json.Contains("\"kind\":\"completeTask\"")
+                                           && json.Contains("\"completed\":true"));
+        Assert.Null(view.LeadingPicker.TaskId);
+    }
+
+    /// <summary>And a copy-only row still copies (task f6bc59e8), which was the one answer read.</summary>
+    [Fact]
+    public async Task A_copy_only_row_still_copies_task_3c0dfb73()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Rows(Row("t3", "Bake bread", "copy", "copy")))
+            .AnswerOk("copyTask", new { id = "t9", title = "Bake bread" });
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("pub", "Recipes");
+
+        Assert.Equal(LeadingOutcome.Copied, await view.ActivateLeadingAsync("t3"));
+
+        Assert.Contains(core.Sent, json => json.Contains("\"kind\":\"copyTask\""));
+        Assert.DoesNotContain(core.Sent, json => json.Contains("\"kind\":\"completeTask\""));
+    }
+
+    /// <summary>
+    /// A screen reader is told what the control does, not what the other controls do.
+    /// </summary>
+    /// <remarks>
+    /// <c>AutomationProperties.Name</c> on both marks is <c>LeadingActionName</c>, and that said
+    /// "Complete Plant tulips" for a control that opens a picker — the same trapdoor as the click,
+    /// only harder to notice.
+    /// </remarks>
+    [Fact]
+    public async Task The_marks_name_stops_saying_complete_for_a_picker_task_3c0dfb73()
+    {
+        var core = new FakeCore().AnswerOk("rowsForList", Rows(
+            Row("t4", "Plant tulips", "openPicker", "avatar", assigneeId: "them"),
+            Row("t5", "Water roses", "complete", "checkbox", assigneeId: "me"),
+            Row("t6", "Bake bread", "copy", "copy")));
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Garden");
+
+        Assert.Equal("Options for Plant tulips", view.Rows[0].LeadingActionName);
+        Assert.True(view.Rows[0].OpensPicker);
+        Assert.Equal("Complete Water roses", view.Rows[1].LeadingActionName);
+        Assert.False(view.Rows[1].OpensPicker);
+        Assert.Equal("Copy Bake bread", view.Rows[2].LeadingActionName);
+    }
+
+    /// <summary>
+    /// A task on no board answers <c>taskStatusOptions</c> with a refusal, and that is not an
+    /// error to put in front of the reader: the picker simply has no state row, and who and
+    /// priority still work.
+    /// </summary>
+    [Fact]
+    public async Task A_task_on_no_board_still_gets_a_picker_task_3c0dfb73()
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Rows(Row("t7", "Plant tulips", "openPicker", "avatar",
+                pickerShowsProjectState: true, assigneeId: "them")))
+            .AnswerOk("assigneeOptions", new
+            {
+                assigneeId = (string?)"them",
+                options = new[] { new { userId = (string?)"me", name = (string?)"Jon", initials = "J" } },
+            })
+            .AnswerFailure("taskStatusOptions", AstridFailureKind.NotFound, "no board");
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Garden");
+
+        Assert.Equal(LeadingOutcome.OpenPicker, await view.ActivateLeadingAsync("t7"));
+
+        Assert.Single(view.LeadingPicker.Assignees);
+        Assert.Empty(view.LeadingPicker.StatusChoices);
+        Assert.Null(view.ErrorMessage);
+    }
+
+    /// <summary>A row that has gone writes nothing. Completing on a miss is how this began.</summary>
+    [Fact]
+    public async Task A_mark_on_a_row_that_has_gone_writes_nothing_task_3c0dfb73()
+    {
+        var core = new FakeCore().AnswerOk("rowsForList", Rows());
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Garden");
+
+        Assert.Equal(LeadingOutcome.Gone, await view.ActivateLeadingAsync("vanished"));
+
+        Assert.DoesNotContain(core.Sent, json => json.Contains("\"kind\":\"completeTask\""));
+    }
+}

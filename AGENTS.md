@@ -65,15 +65,21 @@ installs. The ARM64 MSVC component is required — `predeploy` cross-builds ARM6
 **`cargo deny check` is CI's, not `predeploy`'s.** It asks the RustSec advisory database about this
 repo's lockfile, so it needs the network and `cargo install cargo-deny --locked`; the `supply-chain`
 job in `.github/workflows/ci.yml` runs it on every push and PR and again every Monday, because an
-advisory is published between commits. astrid-core and astrid-ios carry their own copies of
-`deny.toml` over their own lockfiles. `.github/dependabot.yml` proposes the bumps.
+advisory is published between commits. `.github/dependabot.yml` proposes the bumps.
+
+**`deny.toml` here is GENERATED and must not be hand-edited** (task `32d7c04d`). astrid-core owns
+the content; `cargo xtask gen-deny` there writes `supply-chain/deny.astrid-windows.toml`, and
+`crates/astrid-ffi/tests/supply_chain_contract.rs` asserts this copy against `astrid_core::supply_chain`
+at the revision `crates/astrid-ffi/Cargo.toml` pins. A licence or ban change is made in astrid-core
+and arrives here with a pin bump: bump the pin, then copy that file over this one. astrid-ios and
+astrid-android take the same file the same way.
 
 ## Test locations
 
 | Type | Path |
 |---|---|
 | Core tests | in astrid-core, beside the code and under `crates/astrid-core/tests/` |
-| The bindings contract (`Commands.cs` against the core's command list) | `crates/astrid-ffi/tests/` |
+| The bindings contract (`Commands.cs` and `Models.cs` against the core's commands **and its wire schema**) | `crates/astrid-ffi/tests/` |
 | Shell view-model tests | `app/Astrid.App.Tests/` |
 | UI smoke tests | `app/Astrid.App.UITests/` |
 
@@ -123,6 +129,7 @@ manually triggered act, the same discipline astrid-web follows for production de
 | [docs/TESTING.md](./docs/TESTING.md) | What each test layer covers, and when the UI smoke suite runs |
 | [docs/PROGRESS.md](./docs/PROGRESS.md) | Where the milestones stand |
 | [docs/context/stack.md](./docs/context/stack.md) | Pinned tool versions, machine setup |
+| [design/README.md](./design/README.md) | The vendored design tokens: how a colour gets here, and what does not follow them |
 | astrid-core's `contracts/README.md` | How the fixtures are generated |
 | [docs/AUTOMATION.md](./docs/AUTOMATION.md) | The `fixall` / `fixstuff` loops and the secrets they need |
 | [README.md](./README.md) | Project overview |

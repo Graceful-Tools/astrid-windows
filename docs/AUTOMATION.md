@@ -66,22 +66,80 @@ all:
      state file is a worse outage than one run too many. It runs *before* the start-of-tick sweep,
      which commits and comments; standing down after those would be standing down too late. Added
      by task `38a93fca` — before it, nothing could pause this loop.
+   - **Guard 1c — is there room to build?** `Get-DiskSpaceVerdict`
+     ([`scripts/lib/fixall-disk.ps1`](../scripts/lib/fixall-disk.ps1)). The 05:10 tick of
+     2026-11-13 spent itself reaching `os error 112` three quarters of the way into its first
+     build, with **31 MB** free: `target/` was **103 GB** here and **51 GB** in astrid-core, and
+     nothing had ever pruned either — `predeploy` builds host debug, host release, both cross
+     targets and the shell in Release, and every pin bump leaves another `astrid-core-<hash>` tree
+     behind. Under **15 GB** the tick stops; under **40 GB** it runs and warns. **`FAILED`, not
+     `SKIPPED`** — a skip is indistinguishable from an empty board, and the machine would go quiet
+     for a week. A reading that could not be taken **runs the tick**, like 1b above. It sits before
+     the sweep for the same reason 1b does, and a commit onto a full disk is also how a checkout
+     gets a corrupt object. Clear it with
+     `powershell -File scripts/prune-build-caches.ps1 -Apply` — age-based, so cargo keeps what the
+     current build touches; a bare `cargo clean` would cost the next tick a cold build of the whole
+     graph. Task `4d9d42e6`.
 2. **Never clobber work in progress.** A dirty tree, or a `HEAD` that is not `main`, skips — and it
    **names which checkout** stopped the tick, because `astrid-core is dirty` is a different
    instruction to a human than `working tree is dirty`. An interactive session takes no lock, so
    this is the only thing between a tick and your uncommitted work. The
    [start-of-tick sweep](#the-start-of-tick-sweep) runs just before it, since the leftovers it
    clears are exactly what this guard trips on.
-3. **Is there any work?** `ready-tasks.ts windows --json`, which sweeps the lanes first, so a
-   Waiting task whose date arrived counts this tick. A queue that cannot be read is a reason to
-   run and let the agent report, never a reason to go quiet.
+3. **Is there any work, or anything unanswered?** `agent-queue-status.ts --board windows --agent
+   claude --include-unassigned --require-polling`, which answers three things in one request: the
+   **queue** (Ready, due, this mailbox, plus unassigned Ready work — on this board that is the
+   hand-off); **attention**, the comments and list chat nobody has answered; and the **lanes**,
+   swept first, so a Waiting task whose date arrived counts this tick. A queue that cannot be read
+   is a reason to run and let the agent report, never a reason to go quiet.
+   See [waking for replies](#waking-for-replies) for the two-phase acknowledgement this guard is
+   half of.
 
-### One task per tick, and what happens when a tick dies
+### One task per tick
 
 A tick takes **one** Ready task. `ASTRID_FIXALL_MAX_TASKS`, which the loop exports as `1`, is the
 shared contract (`astrid-web/docs/FIXALL_WORKFLOW.md` → *One task per scheduled run*): stop after
 that many, push, report, end the run. `RECHECK` / `REVIEW` do not count. An interactive `/fixall`
 leaves it unset and drives the queue to empty.
+
+### A task that will not fit one tick
+
+Some tasks cannot be finished in 75 minutes however they are split. Those carry a `LONG-RUN` line
+in their description (`astrid-web/docs/FIXALL_WORKFLOW.md` → *Tasks longer than one run*), and
+since task `0216d83c` this loop honours it. **The decision is astrid-web's** — how long the flag
+asks for, and whether the overnight window is open — in `scripts/lib/long-run.ts`, printed by the
+preflight this loop already runs. `scripts/lib/fixall-longrun.ps1` only reads the answer:
+
+| Preflight line | What the loop does with it |
+|---|---|
+| `RUN-MINUTES: <n>` | raises `-MaxMinutes` to `n` — never lowers it |
+| `RUN-LONG: 1` | raises the budget cap to `-LongMaxUsd` (`FIXALL_LONG_MAX_USD`, default `50`) |
+| `RUN-TASK: <id>` | exported as `ASTRID_FIXALL_NEXT_TASK` |
+| `RUN-DEFER: <ids>` | exported as `ASTRID_FIXALL_DEFER_TASKS` |
+| `RUN: <note>` | logged |
+
+The window is `-LongRunWindow` (`FIXALL_LONG_RUN_WINDOW`, default `22-6`), because a tick holds the
+working-tree lock for its whole length: an 8-hour run is sixteen ticks in which nothing else on
+this board moves, so a long task only *starts* overnight. Outside the window its id is deferred and
+the rest of the queue is worked under the ordinary bounds — and a queue holding **nothing but**
+deferred work reads as idle, so that tick never starts a session at all. Anything malformed leaves
+both bounds exactly alone; the asymmetry is deliberate, since a long task run under a 75-minute
+watchdog dies mid-task and a short task given eight hours merely wastes a night.
+
+**The run side owes two things**, and `.claude/commands/fixall.md` is where they are asked for:
+take `ASTRID_FIXALL_NEXT_TASK` first, and never take an id listed in `ASTRID_FIXALL_DEFER_TASKS` —
+leave those in Ready, untouched and **without comment**, since the loop's log already records the
+deferral and a comment every half hour is the churn the flag exists to stop.
+
+`install-fixall-task.ps1 -LongRunMinutes` (default `480`) is the other half, and it is not
+optional: Task Scheduler's `ExecutionTimeLimit` is fixed at registration, long before any tick
+knows which task it is taking, and a kill by the scheduler runs **none** of the recovery below. So
+the deadline is `max(watchdog, long-run ceiling) + recovery`. That weakens the outer guard against
+the launcher itself wedging — accepted, because the loop's own watchdog still kills an ordinary
+wedged run at 75 minutes, and the alternative is a tick legitimately given eight hours being killed
+at 85 with no WIP commit, no `Doing` release and no comment. `-LongRunMinutes 0` opts out.
+
+### Why the bounds are what they are, and what happens when a tick dies
 
 The cap is a count of **tasks**, not of dollars, because the agent cannot see its own remaining
 spend until it is nearly gone. On 2026-09-27 three runs in a row started a task they could not
@@ -115,11 +173,6 @@ was from `ASTRID_FIXALL_TASK_FILE`: the loop hands the run a path, and the run w
 as it takes the task. Not list chat — that needs a board id, and this board's is deliberately
 nowhere in this repo. Not the pre-run queue either, which holds candidates rather than the choice;
 a note on the wrong task is worse than none, so with no task file the loop stays quiet.
-
-> **Not yet wired on the agent side.** `.claude/commands/fixall.md` still has to tell the run to
-> write its task id to `ASTRID_FIXALL_TASK_FILE`. Until that line lands the file is never written
-> and the board comment is simply skipped — the cleanup above, which is the part that unjams the
-> loop, does not depend on it.
 
 ### The start-of-tick sweep
 
@@ -164,11 +217,37 @@ the working tree of a shared clone; `git checkout main` moves both, for every ru
 reason to skip: it is the state the sweep itself leaves behind.
 
 **A surviving task file is how a tick knows to look.** `ASTRID_FIXALL_TASK_FILE` is
-`astrid-fixall-windows-task-<pid>.txt` and the loop deletes it in its `finally`, so a file that
-outlives its pid means a run ended without writing a `RESULT:` line. The sweep reads the id, reports
-the stranded run on that task — whether or not any code was left behind, because a task in `Doing`
-with nobody on it is worth saying either way — and clears the file so no later tick re-reports it.
-Its own file and any whose pid is still running are left alone.
+`task-<worker>-<pid>.txt` and the loop deletes it in its `finally`, so a file that outlives its pid
+means a run ended without writing a `RESULT:` line. The sweep reads the id, reports the stranded run
+on that task — whether or not any code was left behind, because a task in `Doing` with nobody on it
+is worth saying either way — and clears the file so no later tick re-reports it. Its own file and
+any whose pid is still running are left alone.
+
+### Where that state lives, and why it is not in `%TEMP%`
+
+Three records are read by a **later** tick rather than by the tick that writes them: the wake
+journal, `ASTRID_FIXALL_TASK_FILE`, and `ASTRID_FIXALL_CLAIMS_FILE` — the claims record being the
+only evidence anywhere of which tasks a killed run left in `Doing`, since the queue never takes
+`Doing` on purpose. All three sit in `%LOCALAPPDATA%\Astrid\state\fixall-windows`, beside the log,
+and `Get-FixallStateDir` is the one function that says so.
+
+They were in `%TEMP%`, which is **swept by Windows** housekeeping and by every disk-cleanup run. A
+claims record deleted between two ticks strands its tasks permanently and invisibly: that is what
+`f8dfc84e` cost, sitting in `Doing` from 01:25 on 2026-10-18 until a human released it by hand.
+
+A durable directory is shared, though — one per user, for every checkout on the machine, where
+`%TEMP%` at least turned over — and a pid is not unique across checkouts. So each record's name
+carries a **worker scope**, a short digest of the checkout's own path (`Get-FixallWorkerScope`), and
+a scan takes only its own worker's records: a release runs with `--repo` pointed at the sweeping
+checkout, so another worktree's record released from this one would name branches from the wrong
+repository. Another worker sweeps its own, and nothing deletes a record it does not own.
+
+**The pre-move `%TEMP%` records are drained, not abandoned.** Both start-of-tick passes search the
+durable directory *and* `%TEMP%`, match the old `astrid-fixall-windows-{task,claims}-<pid>.txt`
+naming as well, and act on it identically. A legacy record carries no scope, so it is drained
+whatever this worker's is — which is what the behaviour was before scoping existed. Without the
+drain, the tick that moved the location would make every record written before it invisible, which
+is the stranding these records exist to prevent.
 
 Whatever the sweep did is appended to this tick's `RESULT:` line. A recovery nobody can see is as
 good as the four days of `SKIPPED - nothing to do` it exists to end.
@@ -189,13 +268,47 @@ directories too. A missing astrid-core only warns rather than failing the tick, 
 task is still workable, but the warning is loud: on 2026-09-26 all four Ready tasks turned out to
 bottom out in core rules and the run could not read one line of them.
 
-**What it does not do, unlike the Mac loop.** astrid-web's third guard calls
-`agent-queue-status.ts`, which also reports `attention` — comments and chat nobody answered — and
-keeps a seen-file so one unanswered item wakes one run rather than every tick. That script needs a
-**list id**, and this board's id is deliberately nowhere in this repo, so the guard here asks
-`ready-tasks.ts windows` instead: the queue and the lanes, both resolved by name. The inbox is
-therefore not a reason this loop wakes. Adopt the richer preflight the day it can resolve a board
-by name.
+## Waking for replies
+
+Until task `18ba8c2e` this loop could not see its inbox. Guard 3 asked `ready-tasks.ts windows
+--json`, which answers Ready plus lane work and nothing else, so a comment on a task the loop had
+moved to `Doing` — or on one it had finished — woke no tick, ever. The reason the loop's own header
+gave was true when it was written: `agent-queue-status.ts` needed a **list id**, and this board's id
+is deliberately nowhere in this repo. AWTD-1383 retired it. That script now resolves `--board
+windows` by name through `lib/board-by-name.ts`, refusing a duplicate name rather than taking the
+first match, so the richer preflight is reachable without an id.
+
+**Waking is two-phase, and both halves matter.**
+
+* **Before the run,** the preflight runs with `--no-write-seen` and writes a version-1 `--output`
+  artifact. The wake keys are taken out of that artifact **verbatim** — never recomputed when the
+  run ends, because by then the run has answered things, and the difference between the two sets is
+  exactly the items that would be muted without anyone having looked at them. An artifact of some
+  other version is refused rather than guessed at: the exit code still decides whether to run, but
+  no keys are taken from a document whose shape we do not know.
+* **After it,** `--mark-seen --seen-keys-file` records exactly those keys, with `--failed` when the
+  run died so each key takes a strike and is muted only at `MAX_FAILED_ATTEMPTS`. A file, not an
+  argument, because PowerShell 5.1 loses the quotes on a JSON array handed to a native command.
+
+Between the two is a watchdog, a budget cap and a scheduler deadline, any of which can take the tick
+down — so the keys go to a **journal** first, under `%LOCALAPPDATA%\Astrid\state\fixall-windows`
+rather than `%TEMP%`, since a journal is by definition read by a *later* tick. A tick that finds a
+journal whose owning process is gone replays it as the failed run it was; a journal whose owner is
+still alive belongs to somebody's live tick and is left strictly alone. **An acknowledgement that
+could not be delivered keeps its journal** — the next tick is the retry, and a journal dropped on a
+failed delivery is an item muted that nobody ever saw.
+
+The decisions live in `scripts/lib/fixall-wake.ps1` behind injected closures, because the loop
+itself cannot run inside the gate; `scripts/tests/fixall-wake.Tests.ps1` exercises them against
+scratch files and asserts the loop's **wiring** over the parsed AST.
+
+The task and claims records are durable and checkout-scoped as of task `18ba8c2e`; see *Where that
+state lives* above. `.claude/commands/fixall.md` now carries the ordinary instruction to claim
+atomically, corrected under task `40e9f77f` and held there by
+`scripts/tests/fixall-loop-cleanup.Tests.ps1`, which reads the command file as text and fails the
+gate if either half of the old prohibition comes back. That correction needed an interactive
+session — nothing under `.claude/` is writable from a scheduled run, which is why the paragraph
+outlived by ten days the server fix it described.
 
 ## The Copilot path is switched off
 
@@ -211,11 +324,12 @@ half hour for a path nobody is using, and the board is covered by the local Clau
 To put it back: add the four secrets **first**, then restore the `schedule:` block — the cron line
 it used is kept in a comment there, already interleaved with the other loops' clock minutes.
 
-Note that the atomic claim this path depends on cannot work for this board yet either:
-`claim-fixall-task.ts` POSTs to `astrid.cc`, whose allowlist
-(`astrid-web/lib/fixall-claim.ts`, `DEFAULT_FIXALL_CLAIM_BOARD_IDS`) names only the web and iOS
-boards, so every Windows task answers `CLAIM_CONFLICT`. Filed on the Astrid Web board as
-`db965bb1`; it needs a deploy of astrid-web, not a change here.
+The atomic claim that path depends on now works for this board: `claim-fixall-task.ts` POSTs to
+`astrid.cc`, and that allowlist (`astrid-web/lib/fixall-claim.ts`,
+`DEFAULT_FIXALL_CLAIM_BOARD_IDS`) has named the Windows board alongside web and iOS since
+2026-10-18 — task `db965bb1` on the Astrid Web board, deployed and verified. So a
+`CLAIM_CONFLICT` here now means what it means everywhere else, a peer session got there first,
+and not the old permanent refusal.
 
 ## The queue is astrid-web's, on purpose
 
@@ -268,11 +382,82 @@ because the Claude CLI reads the user's own credentials and settings. Three Task
 are load-bearing on a laptop, and each is a way the loop would otherwise go quiet while looking
 installed and healthy: `AllowStartIfOnBatteries` and `DontStopIfGoingOnBatteries` (a task without
 them does not run unplugged), `StartWhenAvailable` (a tick missed while asleep runs once on wake),
-and `MultipleInstances = IgnoreNew` with an execution limit a little above the loop's own watchdog
+and `MultipleInstances = IgnoreNew` with an execution limit **derived from** the loop's own watchdog
 (one wedged run must not stack copies, nor outlive its watchdog).
 
+That limit was a literal 55 minutes against a 75-minute watchdog until task `18ba8c2e`, so Task
+Scheduler killed every long tick twenty minutes *early* — and a scheduler kill runs none of the
+loop's recovery: no WIP commit, no `Doing` release, no wake acknowledgement, no comment on the task
+it had taken. Two independently-defaulted numbers is how they drifted apart, so there is now one:
+`install-fixall-task.ps1 -WatchdogMinutes` is forwarded to the loop as `-MaxMinutes` **and** is what
+the deadline is computed from, plus `-RecoveryMinutes` of headroom for the loop to clean up after
+its own watchdog fires. Both are `ValidateRange`d, because neither failure is visible from outside.
+
+#### The registration drifts from the repo, and each tick says so
+
+Fixing that arithmetic changed nothing on this machine for seventeen days, because **a scheduled
+task is registered, not read from the repo**: the installer has to be re-run before an edit to it
+reaches anything. On 2026-11-14 the entry still read `PT55M` with no `-MaxMinutes` at all, while the
+installer in the same checkout would by then compute `max(75, 480) + 10 = 490` — `0216d83c` having
+meanwhile landed LONG-RUN support, which gave the gap teeth it did not have when it was written: a
+tick legitimately granted eight hours, stopped at fifty-five minutes.
+
+So `scripts/lib/fixall-schedule.ps1` is now the one place the deadline and the loop's argument
+string are computed — the installer builds both from it rather than inline — and it can read the
+registered entry back. Each tick compares the two and prints one line when they disagree, naming
+the deadline, the `-MaxMinutes` the loop is actually handed, the checkout the entry starts, and the
+command that fixes all three. `install-fixall-task.ps1 -Status` answers the same question on
+demand. It is a **warning and never a stop**: the tick runs fine, it is only bounded wrongly, and a
+guard that stopped on it would turn a cosmetic gap into a machine that went quiet. An unreadable or
+absent registration — a loop started by hand with `-Force` — says nothing at all.
+
 The GitHub paths use GitHub-hosted `windows-latest`, the same as `ci.yml`. The iOS loops use
-self-hosted runners because Xcode has to be there; nothing here needs a machine of its own.
+self-hosted runners because Xcode has to be there.
+
+### The self-hosted `astrid-windows` runner
+
+**Not registered yet** (task `fa8fcd84`). Everything in `ci.yml` today runs on GitHub-hosted
+runners and is right to: fmt, clippy, the FFI tests, the ARM64 cross-build and the shell build all
+answer to a compiler, and a hosted runner has one. What a hosted runner does not have is a
+desktop session, so the UI smoke suite (`app/Astrid.App.UITests`, which drives the built app) runs
+only locally, via `npm run predeploy:full`. That is the one job the device is for.
+
+Registering it needs two things a scheduled agent run does not have — a repo-admin registration
+token and an elevated service install — so it is Jon's step, at the device:
+
+```powershell
+# 1. A registration token, valid one hour. Needs admin on Graceful-Tools/astrid-windows.
+gh api -X POST repos/Graceful-Tools/astrid-windows/actions/runners/registration-token --jq .token
+
+# 2. The ARM64 runner package. Check the current version first — the URL is not evergreen:
+#    gh api repos/actions/runner/releases/latest --jq .tag_name
+mkdir C:\actions-runner; cd C:\actions-runner
+Invoke-WebRequest -Uri https://github.com/actions/runner/releases/download/v<ver>/actions-runner-win-arm64-<ver>.zip -OutFile r.zip
+Expand-Archive r.zip -DestinationPath . ; Remove-Item r.zip
+
+# 3. Configure with THE LABEL, non-interactively.
+.\config.cmd --url https://github.com/Graceful-Tools/astrid-windows --token <token> `
+  --name jonsyoga-arm64 --labels astrid-windows --unattended --replace
+
+# 4. As a service, so a reboot brings it back. This is the elevated part.
+.\svc.ps1 install ; .\svc.ps1 start      # or: .\svc install; .\svc start
+```
+
+**ARM64, not x64** — the package is `actions-runner-win-arm64`. The runner itself would work under
+emulation, but every job it ran would then inherit an x64 shell, which is the exact trap
+[docs/context/stack.md](./context/stack.md) describes: the build would silently target the wrong
+architecture.
+
+**The runner must not get production keys.** It inherits the logged-on user's environment, which is
+the whole point of the warning in *What has to be configured* above: the device needs the agent's
+Astrid OAuth client and the harness login, and nothing else. A self-hosted runner executes whatever
+a workflow file says, so anything reachable from that user's profile is reachable from any PR that
+touches `.github/workflows`. Keep the runner's own credentials to the registration token, and keep
+the repo's fine-grained PATs in GitHub's secret store where a workflow has to ask for them by name.
+
+Only once it answers — `gh api repos/Graceful-Tools/astrid-windows/actions/runners` lists it as
+`online` — should a job be pointed at `[self-hosted, astrid-windows]`. A job written against a
+label no runner carries does not fail; it queues forever, which looks like a gate and is not one.
 
 The shell is set to `bash` once at the top of each file rather than on every step: the task tooling
 is the same bash the other two repos run, and a Windows runner defaults to PowerShell.

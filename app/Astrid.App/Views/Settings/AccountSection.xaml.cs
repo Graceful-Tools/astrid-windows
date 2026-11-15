@@ -50,10 +50,14 @@ public sealed partial class AccountSection : UserControl
         InfoCreatedLabel.Text = Strings.Get("account.created");
         InfoUpdatedLabel.Text = Strings.Get("account.last_updated");
         InfoIdLabel.Text = Strings.Get("account.account_id");
+        ChangeEmailBox.Header = Strings.Get("account.new_email");
+        ChangeEmailButton.Content = Strings.Get("account.change_email");
+        EmailChangeSentLine.Text = Strings.Get("account.email_change_sent");
         PasskeysTitle.Text = Strings.Get("account.passkeys");
         PasskeysNote.Text = Strings.Get("passkeys.note");
         PasskeysEmpty.Text = Strings.Get("passkeys.none");
-        ManagePasskeysButton.Content = Strings.Get("passkeys.add");
+        AddPasskeyButton.Content = Strings.Get("passkeys.add");
+        ManagePasskeysButton.Content = Strings.Get("passkeys.manage_on_the_web");
         DeleteTitle.Text = Strings.Get("account.delete_title");
         DeleteWarning.Text = Strings.Get("account.delete_warning");
         DeleteConfirmationBox.PlaceholderText = Strings.Get("account.type_to_confirm");
@@ -90,7 +94,21 @@ public sealed partial class AccountSection : UserControl
     private async void OnResendVerification(object sender, RoutedEventArgs args) =>
         await Shell.Settings.Account.ResendVerificationAsync();
 
-    /// <summary>Registering a passkey is the browser's WebAuthn ceremony; the list here follows.</summary>
+    /// <summary>
+    /// Ask for the address to change (task e61a3e60). The address on screen stays as it is; what
+    /// appears is that a confirmation went out.
+    /// </summary>
+    private async void OnChangeEmail(object sender, RoutedEventArgs args) =>
+        await Shell.Settings.Account.ChangeEmailAsync();
+
+    /// <summary>
+    /// Register a passkey with Windows Hello (task e61a3e60). The name is left to the server, which
+    /// names it after the authenticator it finds; renaming it is the row's own button.
+    /// </summary>
+    private async void OnAddPasskey(object sender, RoutedEventArgs args) =>
+        await Shell.Settings.Account.AddPasskeyAsync();
+
+    /// <summary>The rest of what the web's passkey screen can do still lives there.</summary>
     private async void OnManagePasskeys(object sender, RoutedEventArgs args) =>
         await Windows.System.Launcher.LaunchUriAsync(new Uri($"{App.ServerOrigin}/settings"));
 

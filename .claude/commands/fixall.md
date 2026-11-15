@@ -1,5 +1,43 @@
 Check the **Ready** list on the Astrid Windows To-do and autonomously work every task on it to completion. Designed to be safe to re-run on a schedule.
 
+## Take the working-tree lock first — before you read the queue
+
+**This is step one, ahead of the queue, the board and every other thing in this file:**
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fixall-session.ps1 acquire
+```
+
+- **Exit `0` — the tree is yours.** Carry on.
+- **Exit `2` — another live session is already running `/fixall` in this checkout. Stop, say so,
+  and do not read the queue.** Parallel runs are good; sharing a checkout is not. Start again from
+  your own worktree if you need to run anyway.
+- **Exit `1`** — the lock could not be consulted (usually no `astrid-web` beside this repo). Say
+  so and stop; do not proceed unprotected.
+
+Release it when the run ends: the same script with `release`. `status` says who holds the tree and
+whether they are still alive.
+
+**If `ASTRID_FIXALL_LOCK_HELD=1`, the scheduled loop that started you already holds the lock** —
+the helper detects this and no-ops, so just run it and carry on. Never acquire or release the lock
+by hand in that case: the loop holds it under a pid you cannot see, and releasing it mid-tick
+invites the next tick into this checkout.
+
+**Why this exists.** The lock is `astrid-web/scripts/fixall-session.ts`, the one shared
+implementation, keyed on process liveness rather than a timeout — a run may legitimately sit on a
+hard task for an hour, and a lock that expires under a working session is worse than no lock. The
+wrapper exists because calling it directly goes wrong here in two silent ways: it keys the lock on
+the **current directory's** git dir, so running it from `../astrid-web` locks the wrong repository
+while printing `Acquired`, and `$PPID` is `1` in this harness's Bash tool rather than the session,
+so the lock would name a meaningless process. **Do not pass `$PPID` on this machine.**
+
+An interactive acquire also stands down every scheduled loop on the machine until the session
+exits, which is what keeps the `:10` and `:40` ticks out of your way. A `Ready` → `Doing` claim is
+not a substitute: it claims a **task**, and says nothing about which **working tree** is being
+edited. On 2026-11-13/14 two runs here interleaved their branches and merges, and one got a green
+`predeploy` on a tree that no longer existed — `HEAD` moved under the gate while it ran, so the
+files the tests read were not the files it reported on (task `f7ee5e57`).
+
 ## Goal
 
 **Drive the Ready list to empty — and clear `RECHECK` / `REVIEW`.** This does not ask which
@@ -9,6 +47,32 @@ conditions promote back) and may print `RECHECK` (re-verify an external conditio
 or bump its date) and `REVIEW` (Waiting with no recorded condition — give it one or hand it
 back) sections: those are part of the run, not commentary. It stops on its own when all three
 are clear, so a scheduled re-run that finds nothing is a no-op, not busywork.
+
+**When `ASTRID_FIXALL_TASK_FILE` is set, write the task's id to that path as you take it** (one
+line, overwriting). It is how the loop knows which task to report on if this run dies before it
+can report for itself — there is no other way for it to tell, and a note on the wrong task is
+worse than none.
+
+**If `ASTRID_FIXALL_MAX_TASKS` is set, stop after working that many Ready tasks**, and say so.
+`scripts/fixall-loop.ps1` sets it to `1`. `RECHECK` / `REVIEW` do not count toward it.
+
+**`ASTRID_FIXALL_NEXT_TASK` and `ASTRID_FIXALL_DEFER_TASKS` are not advice.** The loop sized this
+tick's watchdog and budget for a specific task before starting you, from astrid-web's answer about
+the `LONG-RUN` flag (FIXALL_WORKFLOW.md → *Tasks longer than one run*). So:
+
+- `ASTRID_FIXALL_NEXT_TASK` — take that id FIRST, ahead of the queue's own order. The bounds you
+  are running under were chosen for it.
+- `ASTRID_FIXALL_DEFER_TASKS` — a comma-separated list of ids you must **not** take this tick, even
+  though the queue still shows them. They are flagged `LONG-RUN` and the window is shut; a tick
+  that takes one anyway is working an eight-hour task under a 75-minute watchdog, which dies
+  mid-task and runs none of the recovery. Leave them in Ready, untouched and **without comment** —
+  the loop's log already records the deferral, and a comment every half hour is the churn the flag
+  exists to stop.
+
+Both are empty when the loop had no plan, which is the ordinary case.
+
+**A branch whose tip reads `wip: … UNFINISHED, UNVERIFIED` is a resume point** — check it out and
+continue from it rather than starting over. It has passed no gate; never treat it as done.
 
 ## The workflow itself is shared
 
@@ -92,15 +156,14 @@ and stop until he has authorised — do not fall back to the database.
   service; complete a task only via `TaskService::complete_task`; next-occurrence math lives
   only in `astrid_core::repeating`; no business logic in `app/`; everything writes through the
   Outbox; no hardcoded user-facing strings — use the `.resw` resources.
-- **The atomic claim does not work for this board yet — do not read its 409 as "taken".**
-  `claim-fixall-task.ts` POSTs to `astrid.cc/api/v1/tasks/<id>/claim-fixall`, and the server's
-  allowlist (`lib/fixall-claim.ts`, `DEFAULT_FIXALL_CLAIM_BOARD_IDS`) names only the web and iOS
-  boards, so **every** Windows task answers `CLAIM_CONFLICT`, permanently. FIXALL_WORKFLOW.md says
-  to read a 409 as "another session got there first" and move on quietly, which would make this
-  loop no-op forever and look like a quiet board — it is how Windows `/fixall` spent weeks doing
-  nothing. Until the fix is deployed (filed on the Astrid Web board as `db965bb1`), take the task
-  with `npx tsx scripts/set-task-status.ts <taskId> Doing` instead and say on the task that you did
-  and why. Only one loop works this board, so nothing is racing you for it.
+- **Claim with the atomic claim, and read its 409 as "taken".** From the astrid-web checkout:
+  `npx tsx scripts/claim-fixall-task.ts <taskId> ready --agent claude`. Leave out `--agent` and
+  the task is assigned to Copilot. The server's allowlist (`lib/fixall-claim.ts`,
+  `DEFAULT_FIXALL_CLAIM_BOARD_IDS`) has named this board since 2026-10-18 (`db965bb1` on the
+  Astrid Web board), so a `CLAIM_CONFLICT` means what FIXALL_WORKFLOW.md says: a peer got there
+  first, so move on. Never take a task with `set-task-status.ts <taskId> Doing` instead. That
+  moves it without assigning it, and an unassigned task in `Doing` is invisible to both the queue
+  and `release-stuck-doing.ts`, which is how task `8d37457b` sat stranded for a full tick.
 - **A red predeploy files its own Astrid task.** If it was your own mid-refactor breakage,
   close that task with a one-line explanation rather than leaving a false alarm on the board.
 - **If a task is blocked by something outside the repo**, park it in `Waiting` with the right

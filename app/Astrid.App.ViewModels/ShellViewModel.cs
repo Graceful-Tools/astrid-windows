@@ -26,6 +26,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// <summary>The task whose row was last chosen, by tap or by moving the selection.</summary>
     private string? _lastSelectedRowId;
     private readonly Action<Func<Task>> _post;
+    /// <summary>What this screen remembers about its own furniture (task ab4cb9ee).</summary>
+    private readonly IDevicePreferences _device;
     private bool _hasUnsentWork;
     private int _refusedWrites;
     /// <summary>
@@ -56,6 +58,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private bool _isBoardView;
     private string? _listImageSource;
     private bool _isChatOpen;
+    private bool _isSidebarOpen;
     private bool _isPaletteOpen;
     private bool _isSettingsOpen;
     private bool _isTourOpen;
@@ -63,20 +66,40 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// <param name="post">
     /// Runs work on the UI thread. Given by the shell; a test passes something that runs it inline.
     /// </param>
-    public ShellViewModel(IAstridCore core, Action<Func<Task>> post)
+    /// <param name="device">
+    /// Which panes this screen was left with. Optional, and a store that remembers nothing by
+    /// default: a window that opens with both panes beside the work is the right answer when there
+    /// is nowhere to read an answer from, and a test gets a predictable window without a file.
+    /// </param>
+    /// <param name="passkeys">
+    /// Windows Hello, passed through to the Account page (task e61a3e60). Optional, and nothing
+    /// else in the window reads it.
+    /// </param>
+    public ShellViewModel(
+        IAstridCore core,
+        Action<Func<Task>> post,
+        IDevicePreferences? device = null,
+        IPasskeyCeremony? passkeys = null)
     {
         _core = core;
         _post = post;
+        _device = device ?? NoDevicePreferences.Instance;
+        // Read before anything can write: both default to open, which is how the three-column
+        // layout is meant to read and what astrid-web's two hooks default to.
+        _isSidebarOpen = _device.Flag(DevicePreferences.SidebarOpen, true);
+        _isChatOpen = _device.Flag(DevicePreferences.ChatOpen, true);
         Sidebar = new SidebarViewModel(core);
         Tasks = new TaskListViewModel(core);
         SignIn = new SignInViewModel(core);
         Detail = new TaskDetailViewModel(core);
         Board = new BoardViewModel(core);
         ListSettings = new ListSettingsViewModel(core);
+        Insights = new ListInsightsViewModel(core);
         Chat = new ChatViewModel(core);
-        Settings = new SettingsViewModel(core);
+        Settings = new SettingsViewModel(core, passkeys);
         Notifications = new NotificationsViewModel(core);
         PublicLists = new PublicListsViewModel(core);
+        PublicList = new PublicListViewModel(core);
         _core.Changed += OnChanged;
 
         // The task-detail layout decides what the leading control does on every row and in the
@@ -127,7 +150,17 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             {
                 Raise(nameof(ShowsEmptyList));
             }
+            if (args.PropertyName == nameof(TaskListViewModel.ListId))
+            {
+                OnOpenListChanged();
+            }
         };
+        // A list whose board was created or taken away elsewhere: the sidebar's next load carries
+        // the new answer, so the header follows it without being told. The raise only — leaving a
+        // board somebody is looking at is for a list CHANGE, since these collections are rebuilt
+        // several times a minute and a momentary gap is not somebody moving.
+        Sidebar.Favorites.CollectionChanged += (_, _) => RaiseBoardAvailability();
+        Sidebar.Lists.CollectionChanged += (_, _) => RaiseBoardAvailability();
         Board.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName != nameof(BoardViewModel.ExpandedTaskId))
@@ -168,6 +201,31 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// <summary>The open list's settings and members, loaded when they are asked for.</summary>
     public ListSettingsViewModel ListSettings { get; }
 
+    /// <summary>
+    /// Tasks matching <paramref name="query"/>, for a picker that needs to name one — the "waiting
+    /// on…" picker is the first (task 7462618e).
+    /// </summary>
+    /// <remarks>
+    /// What counts as a match is <c>searchTasks</c>'s, as it is for the search box; a picker with
+    /// its own idea of matching would be a second search. An empty query matches nothing, and a
+    /// failure is an empty result rather than an error line — the dialog has nowhere to put one,
+    /// and a picker that finds nothing reads the same either way.
+    /// </remarks>
+    public async Task<IReadOnlyList<TaskRow>> SearchTasksAsync(string query,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return [];
+        }
+        var response = await _core.CallAsync(
+            Commands.SearchTasks(query, limit: 20), cancellationToken);
+        return response.Ok ? response.Read<RowWindow>()?.Rows ?? [] : [];
+    }
+
+    /// <summary>What the open list has been doing lately (task 48c624ad).</summary>
+    public ListInsightsViewModel Insights { get; }
+
     /// <summary>The open list's conversation.</summary>
     public ChatViewModel Chat { get; }
 
@@ -185,8 +243,39 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public bool ProjectModeEnabled
     {
         get => _projectModeEnabled;
-        private set => Set(ref _projectModeEnabled, value);
+        private set
+        {
+            if (Set(ref _projectModeEnabled, value))
+            {
+                Raise(nameof(ShowsBoardToggle));
+            }
+        }
     }
+
+    /// <summary>
+    /// Whether the open list belongs to a project board at all — astrid-web's
+    /// <c>hasProjectBoard</c> (task a66f0a16).
+    /// </summary>
+    /// <remarks>
+    /// Read from the sidebar's own summary of the open list, which carries <c>projectId</c> for
+    /// every real list, rather than by asking the core for the board: the question has to be
+    /// answered before the header is drawn, and one more round trip per list opened would be a
+    /// toggle that appears a moment late. A list the sidebar has not loaded yet, and My Tasks —
+    /// a filter, not a list — have no board, which is the right answer for both.
+    /// </remarks>
+    public bool OpenListHasBoard =>
+        !string.IsNullOrEmpty(Sidebar.Favorites.Concat(Sidebar.Lists)
+            .FirstOrDefault(list => list.Id == Tasks.ListId)?.ProjectId);
+
+    /// <summary>
+    /// Whether the list header offers the board at all (task a66f0a16).
+    /// </summary>
+    /// <remarks>
+    /// Both gates: the account has to be offered boards, and this list has to have one.
+    /// astrid-web's header draws nothing at all in either case — a control whose only outcome is
+    /// a notice saying there is nothing to show is worse than no control.
+    /// </remarks>
+    public bool ShowsBoardToggle => ProjectModeEnabled && OpenListHasBoard;
 
     /// <summary>Whether Google Tasks linking is offered (the <c>google_tasks</c> flag).</summary>
     public bool GoogleTasksEnabled
@@ -369,6 +458,27 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         NeedsSignIn |= Settings.NeedsSignIn;
     }
 
+    /// <summary>
+    /// Whether the list sidebar is beside the work (task ab4cb9ee).
+    /// </summary>
+    /// <remarks>
+    /// Hidden, the column becomes a 48px rail holding only the button that brings it back, which
+    /// is what astrid-web's <c>sidebar-rail</c> is — the alternative, a column that vanishes
+    /// entirely, leaves the way back somewhere else on the screen from the way out.
+    /// </remarks>
+    public bool IsSidebarOpen
+    {
+        get => _isSidebarOpen;
+        private set => Set(ref _isSidebarOpen, value);
+    }
+
+    /// <summary>Show or hide the list sidebar, and remember which on this device.</summary>
+    public void ShowSidebar(bool open)
+    {
+        IsSidebarOpen = open;
+        _device.SetFlag(DevicePreferences.SidebarOpen, open);
+    }
+
     /// <summary>Whether the conversation is on screen.</summary>
     public bool IsChatOpen
     {
@@ -377,9 +487,14 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>Show or hide the conversation for the open list.</summary>
+    /// <remarks>
+    /// Remembered per device since task ab4cb9ee. It used to default to shut at every launch, so
+    /// the messages pane was something you re-opened each time rather than part of the layout.
+    /// </remarks>
     public async Task ShowChatAsync(bool open, CancellationToken cancellationToken = default)
     {
         IsChatOpen = open;
+        _device.SetFlag(DevicePreferences.ChatOpen, open);
         if (open)
         {
             await Chat.OpenAsync(Tasks.ListId, cancellationToken);
@@ -398,6 +513,23 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         // first to notice an expired session. That belongs on the sign-in screen, not in a red line
         // beside an empty member list.
         NeedsSignIn |= ListSettings.NeedsSignIn;
+    }
+
+    /// <summary>
+    /// Ask for the open list's insights (task 48c624ad).
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="LoadListSettingsAsync"/> because it is a server-computed read over
+    /// history this device does not hold: the rest of the flyout draws from the cache first and
+    /// catches up, and this has nothing to draw until the round trip answers. Asked here rather
+    /// than in the flyout's code-behind so that which list is open stays the shell's fact.
+    /// </remarks>
+    public async Task LoadListInsightsAsync(CancellationToken cancellationToken = default)
+    {
+        if (!string.IsNullOrEmpty(Tasks.ListId))
+        {
+            await Insights.LoadAsync(Tasks.ListId, cancellationToken);
+        }
     }
 
     /// <summary>
@@ -465,12 +597,57 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// Whether to say that this list has no board.
     /// </summary>
     /// <remarks>
-    /// The board toggle is offered for every list, because whether a list belongs to a board is
-    /// something only the answer to <c>board</c> tells us. Switching to it on a list that has none
-    /// left a blank white pane, which reads as a board that failed to load rather than one that
-    /// was never there.
+    /// A backstop rather than the ordinary case since task a66f0a16: the toggle is now offered
+    /// only on a list the sidebar says has a board, so the way to reach this is for the board to
+    /// have gone between that answer and the <c>board</c> one. It is still worth drawing — a blank
+    /// white pane reads as a board that failed to load rather than one that was never there.
     /// </remarks>
     public bool ShowsNoBoardNotice => IsBoardView && !Board.HasBoard;
+
+    /// <summary>The header's board toggle may have come or gone: redraw it.</summary>
+    private void RaiseBoardAvailability()
+    {
+        Raise(nameof(OpenListHasBoard));
+        Raise(nameof(ShowsBoardToggle));
+    }
+
+    /// <summary>
+    /// A different list is open: the toggle follows it, a board it does not have is left
+    /// (task a66f0a16), and a board it does have is loaded (task 7e802a6e).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// astrid-web does the same in <c>TaskManagerView</c>. Without the first half the board would
+    /// stay on screen showing its no-board notice, and the toggle that would have dismissed it is
+    /// now hidden — no way back to the list but to open the board's own list again.
+    /// </para>
+    /// <para>
+    /// Without the second half the board was only ever loaded by the toggle, so moving between two
+    /// board lists left the first one's cards on screen. Worse than stale: the board writes through
+    /// the list id it was loaded with, so a card added or moved there would have been filed into a
+    /// list nobody had open.
+    /// </para>
+    /// </remarks>
+    private void OnOpenListChanged()
+    {
+        RaiseBoardAvailability();
+        if (!IsBoardView)
+        {
+            return;
+        }
+        if (OpenListHasBoard)
+        {
+            // Posted, because loading the new board is a round trip; the same path the toggle takes,
+            // so the open task is reconciled against the new board rather than left on a card that
+            // belongs to the list just closed.
+            _post(() => ShowBoardAsync(true));
+        }
+        else
+        {
+            // Synchronous in this direction: leaving the board loads nothing.
+            _ = ShowBoardAsync(false);
+        }
+    }
 
     /// <summary>Swap between the list and its board.</summary>
     /// <remarks>
@@ -513,6 +690,44 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public bool ShowsDetailPane => Detail.IsOpen && !ShowsDetailInline;
 
     /// <summary>
+    /// Whether the detail's header draws its centred "Task Details" label (task 6df01318).
+    /// </summary>
+    /// <remarks>
+    /// The side pane's, not the card's. A label naming the pane earns its row when the pane is a
+    /// slab of window that says nothing else about itself; inside a card the reader has just
+    /// tapped it names the obvious, and it pushes the task's own title down a row so the card
+    /// reads as the same task twice. astrid-web's inline panel drops it for that reason
+    /// (task cc76307c, the compact <c>TaskHeader</c>), keeping the collapse control and the
+    /// <c>⋯</c> menu. The bar stays either way — Close and the actions live in it.
+    /// </remarks>
+    public bool ShowsDetailChromeTitle => !ShowsDetailInline;
+
+    /// <summary>
+    /// Whether the conversation has its column, or the side pane has taken its place
+    /// (task 1ffc12af).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The detail was the column <i>after</i> the chat's, so an open task left the conversation
+    /// wedged between the list and the detail — with the pane's arrow hanging off the chat pane's
+    /// edge rather than reaching the row it had measured, and the message panel's hide control
+    /// still on screen beside the open task.
+    /// </para>
+    /// <para>
+    /// Yielded rather than drawn behind: the layout comes to the same 360 either way, since an Auto
+    /// column the chat holds at 320 with the pane spanning both columns totals exactly what a
+    /// collapsed column and the pane alone do. So this is the reading of "cover" that does not
+    /// leave a composer and a hide button tab-reachable under an opaque pane — the rule
+    /// <see cref="ShowsDetailPane"/>'s own pane already follows.
+    /// </para>
+    /// <para>
+    /// The side pane only: a board card holding the detail is drawn in the list's column, so the
+    /// conversation beside it is not in anybody's way.
+    /// </para>
+    /// </remarks>
+    public bool ShowsConversation => !ShowsDetailPane;
+
+    /// <summary>
     /// Whether the list has nothing in it to show — the web's empty state, with the character
     /// and a word of encouragement. Off the board only: the board has its own.
     /// </summary>
@@ -546,6 +761,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         }
         Raise(nameof(ShowsDetailInline));
         Raise(nameof(ShowsDetailPane));
+        Raise(nameof(ShowsDetailChromeTitle));
+        Raise(nameof(ShowsConversation));
         Raise(nameof(ShowsDetailFullScreen));
         Raise(nameof(CanEnterFullScreen));
         Raise(nameof(CanExitFullScreen));
@@ -579,16 +796,27 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// How many writes the server refused for good and the Outbox is holding (task 84e077ca).
+    /// How many refused writes the Outbox is holding that a retry could still send
+    /// (task 84e077ca).
     /// </summary>
     /// <remarks>
+    /// <para>
     /// A separate fact from <see cref="HasUnsentWork"/>, not a worse version of it. The core's
     /// "still to send" answer counts what is pending or running, so a refused write leaves that
     /// set at the moment it stops being able to send itself — and before this the window drew
     /// only that answer, so the one Outbox state needing a person was the one it never mentioned.
     /// <see cref="RetryRefusedWritesAsync"/> is the way out.
+    /// </para>
+    /// <para>
+    /// <b>The core's <c>retryable</c>, not its <c>failed</c> (task 22e9bc7b).</b> A refused delete
+    /// is never replayed, and nor is anything refused more than a week ago, so <c>failed</c>
+    /// counts writes no retry can reach. Drawn beside the retry link that was a row reading
+    /// "1 refused" over a link that answered "nothing to retry" and never cleared. The number next
+    /// to a button has to be a number the button can act on, so a refused write this window cannot
+    /// offer a way out of is not announced as though it could.
+    /// </para>
     /// </remarks>
-    public int RefusedWrites
+    public int RetryableRefusedWrites
     {
         get => _refusedWrites;
         private set => Set(ref _refusedWrites, value);
@@ -619,7 +847,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// What the "Try again" link beside the refused count calls. The core revives the dead-lettered
     /// entries, drains, and answers with how many were <em>given another go</em> — not how many got
     /// through. So this does not treat the answer as success: it re-reads the Outbox straight
-    /// afterwards, and a write refused a second time leaves <see cref="RefusedWrites"/> where it
+    /// afterwards, and a write refused a second time leaves <see cref="RetryableRefusedWrites"/> where it
     /// was, with the row still saying so rather than reporting a send that did not happen.
     /// </para>
     /// <para>
@@ -823,6 +1051,39 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// <summary>The public lists anybody may browse and copy (task f6bc59e8).</summary>
     public PublicListsViewModel PublicLists { get; }
 
+    /// <summary>One public list, opened by its id and read (task 6fc92134).</summary>
+    public PublicListViewModel PublicList { get; }
+
+    /// <summary>
+    /// Whether an opened public list covers the window — Report an Issue's in-app destination.
+    /// </summary>
+    /// <remarks>
+    /// Over the window rather than in the list column, the way the settings are: it is not one of
+    /// this account's lists and the core has deliberately not cached it, so there is nothing in
+    /// the sidebar for it to be selected as. Leaving the screen is the only way out of it.
+    /// </remarks>
+    public bool IsPublicListOpen => PublicList.IsOpen;
+
+    /// <summary>
+    /// Open a public list over the window. False when it could not be read, which leaves the
+    /// screen as it was so the caller can fall back to the browser.
+    /// </summary>
+    public async Task<bool> ShowPublicListAsync(
+        string listId, CancellationToken cancellationToken = default)
+    {
+        IsPaletteOpen = false;
+        var opened = await PublicList.OpenAsync(listId, cancellationToken);
+        Raise(nameof(IsPublicListOpen));
+        return opened;
+    }
+
+    /// <summary>Put the opened public list away.</summary>
+    public void ClosePublicList()
+    {
+        PublicList.Close();
+        Raise(nameof(IsPublicListOpen));
+    }
+
     /// <summary>
     /// Copy a public list into this account and open the copy (task f6bc59e8). The sidebar
     /// reloads first so the new list is there to select.
@@ -884,6 +1145,24 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Sidebar.Selected = Sidebar.Favorites.Concat(Sidebar.Lists)
             .FirstOrDefault(list => list.Id == listId) ?? Sidebar.Selected;
         await RefreshListImageAsync(cancellationToken);
+        await FollowListIntoChatAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// A messages pane that is already on screen follows the list into it (task ab4cb9ee).
+    /// </summary>
+    /// <remarks>
+    /// The pane is remembered open now, so a launch — and every list change after it — has to load
+    /// the conversation the pane is already showing. While the pane always started shut, the toggle
+    /// was the only thing that ever needed to fetch a channel; left as it was, a remembered-open
+    /// pane would draw an empty panel until somebody closed and re-opened it.
+    /// </remarks>
+    private async Task FollowListIntoChatAsync(CancellationToken cancellationToken)
+    {
+        if (IsChatOpen && !string.IsNullOrEmpty(Tasks.ListId))
+        {
+            await Chat.OpenAsync(Tasks.ListId, cancellationToken);
+        }
     }
 
     /// <summary>
@@ -941,6 +1220,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         await Tasks.OpenAsync(selected.Id, selected.Name, cancellationToken);
         NeedsSignIn |= Tasks.NeedsSignIn;
         await RefreshListImageAsync(cancellationToken);
+        await FollowListIntoChatAsync(cancellationToken);
     }
 
     /// <summary>One sync pass: push what is queued, fetch what is new.</summary>
@@ -1007,7 +1287,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         var response = await _core.CallAsync(Commands.OutboxStats(), cancellationToken);
         var stats = response.Read<OutboxStats>();
         HasUnsentWork = stats?.HasUnsentWork ?? false;
-        RefusedWrites = stats?.Failed ?? 0;
+        RetryableRefusedWrites = stats?.Retryable ?? 0;
     }
 
     /// <summary>
@@ -1041,7 +1321,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         HasUnsentWork = false;
         // Whatever the previous session's Outbox was holding is not this window's business any
         // more, and a count left on screen behind a sign-in card belongs to somebody else.
-        RefusedWrites = 0;
+        RetryableRefusedWrites = 0;
         _lastRetryRevived = null;
         Raise(nameof(LastRetryRevived));
         Raise(nameof(ShowsRetryOutcome));
@@ -1102,12 +1382,60 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// Something changed underneath us. Refresh exactly that.
+    /// What a run of notifications has left to redraw (task 303f20c2).
     /// </summary>
     /// <remarks>
-    /// Not everything. The live stream can deliver several notifications a second while a
-    /// colleague works in the same list, and a full reload on each would make the app slower the
-    /// more people are using it.
+    /// One bit per piece of the window rather than a queue of notifications: fifty changes to the
+    /// same list are one <c>rowsForList</c>, and the only thing worth remembering about them is
+    /// that the rows are stale.
+    /// </remarks>
+    [Flags]
+    private enum Pending
+    {
+        None = 0,
+        Sidebar = 1 << 0,
+        Tasks = 1 << 1,
+        Board = 1 << 2,
+        Detail = 1 << 3,
+        Chat = 1 << 4,
+        Notifications = 1 << 5,
+        Outbox = 1 << 6,
+        Reminders = 1 << 7,
+        Sync = 1 << 8,
+        /// <summary>The live stream changed edge, so <see cref="ShowsLiveUpdatesDown"/> has moved.</summary>
+        StreamEdge = 1 << 9,
+
+        /// <summary>
+        /// Everything on screen, for a change that brought work in without saying — or without
+        /// being able to say — exactly what moved.
+        /// </summary>
+        CatchUp = Sidebar | Tasks | Board | Detail | Outbox,
+    }
+
+    /// <summary>
+    /// Guards <see cref="_pending"/> and <see cref="_drainScheduled"/>: notifications arrive on
+    /// whichever thread the core answers on, and the drain runs on the UI thread.
+    /// </summary>
+    private readonly object _pendingGate = new();
+    private Pending _pending;
+    private bool _drainScheduled;
+
+    /// <summary>
+    /// Something changed underneath us. Note what that makes stale, and redraw it once.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Not everything, and not once per notification. The live stream can deliver several a second
+    /// while a colleague works in the same list, and this used to run a full refresh for each — so
+    /// a fifty-task bulk edit cost fifty reloads of the same rows and the window got slower the
+    /// more there was to hear about (task 303f20c2).
+    /// </para>
+    /// <para>
+    /// So each notification only marks bits dirty, and one drain is posted for the run of them.
+    /// The part that depends on which task a change named is decided here, on arrival, while the
+    /// notification is still in hand; what depends on what is on screen stays in the drain, which
+    /// runs on the UI thread.
+    /// </para>
     /// </remarks>
     private void OnChanged(ChangeNotification notification)
     {
@@ -1116,105 +1444,162 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             return;
         }
 
-        _post(async () =>
+        bool schedule;
+        lock (_pendingGate)
         {
-            switch (notification.Change)
+            var wanted = WantedBy(notification);
+            if (wanted == Pending.None)
             {
-                case "task":
-                    await Tasks.RefreshAsync();
-                    if (IsBoardView)
-                    {
-                        await Board.RefreshAsync();
-                    }
-                    // Only when it is the task on screen. Reloading the detail pane for every
-                    // task somebody else touches would make the open task flicker while a
-                    // colleague works elsewhere in the same list.
-                    if (Detail.IsOpen && (notification.Id is null || notification.Id == Detail.TaskId))
-                    {
-                        await Detail.ReloadAsync();
-                    }
-                    await RefreshOutboxAsync();
-                    break;
-                case "comments":
-                    if (Detail.IsOpen && notification.Id == Detail.TaskId)
-                    {
-                        await Detail.ReloadAsync();
-                    }
-                    break;
-                case "list":
-                    await Sidebar.LoadAsync();
-                    break;
-                case "chat":
-                    if (IsChatOpen)
-                    {
-                        await Chat.RefreshAsync();
-                    }
-                    break;
-                case "remindersDue":
-                    await RaiseRemindersAsync();
-                    break;
-                case "needsSync":
-                    await SyncAsync();
-                    break;
-                case "notifications":
-                    // The timer's pass found the inbox moved and cached it; draw what it cached.
-                    await Notifications.LoadAsync();
-                    break;
-                case "synced":
-                    // A pass nobody asked for brought something in. The same refresh a sync
-                    // asked for here does afterwards — the cache moved, so the screen has to.
-                    await CatchUpAsync(notification);
-                    break;
-                case "delivered":
-                    // The Outbox settled some writes (AITD-454). It used to say so as a `synced`
-                    // naming nothing; now it names what it wrote and carries the journal's
-                    // counts. This shell ignores the counts and re-reads them, because the badge
-                    // is drawn from `outboxStats` everywhere else and two sources for one number
-                    // is how they come to disagree.
-                    await CatchUpAsync(notification);
-                    await RefreshOutboxAsync();
-                    break;
-                case "stream" when notification.Live is { } live:
-                    // The live stream went up or down, said once per edge (task ef92df55).
-                    _isStreamDown = !live;
-                    Raise(nameof(ShowsLiveUpdatesDown));
-                    if (live)
-                    {
-                        // Nothing missed while the stream was down is replayed — the core leaves
-                        // that to the next sync pass, and its sixty-second timer is a floor for
-                        // the screen, not a promise. So catch up now rather than up to a minute
-                        // late. The change names nothing, which is "could not say": everything
-                        // open is refreshed.
-                        await CatchUpAsync(notification);
-                    }
-                    break;
-                default:
-                    // A change this build does not draw anything for. The next sync carries it.
-                    break;
+                // A change this build does not draw anything for. The next sync carries it.
+                return;
             }
-        });
+            _pending |= wanted;
+            // Only one drain in flight: the rest of the run joins the one already posted.
+            schedule = !_drainScheduled;
+            _drainScheduled = true;
+        }
+
+        if (schedule)
+        {
+            _post(DrainAsync);
+        }
+    }
+
+    /// <summary>What one notification makes stale.</summary>
+    /// <remarks>
+    /// Called under <see cref="_pendingGate"/>. <c>stream</c> records the edge itself, because the
+    /// flag is the notification's whole content; saying so is <see cref="Pending.StreamEdge"/>'s
+    /// job, on the UI thread.
+    /// </remarks>
+    private Pending WantedBy(ChangeNotification notification)
+    {
+        switch (notification.Change)
+        {
+            case "task":
+                // The list and the board only when the change is in a list one of them is drawing
+                // (task 05c95986). A colleague working in a list nobody has open used to cost a
+                // full `rowsForList` of the list that is open, once per dispatcher turn; task
+                // 303f20c2 made that cheap by coalescing, and this makes it free. A change that
+                // names no list still refreshes both — "could not say" is not "did not".
+                //
+                // The detail pane only when it is the task on screen. Reloading it for every task
+                // somebody else touches would make the open task flicker while a colleague works
+                // elsewhere in the same list.
+                //
+                // The Outbox badge is unconditional: it counts this device's unsent work, which
+                // has nothing to do with which list the change landed in.
+                return Pending.Outbox
+                    | (notification.TouchesList(Tasks.ListId) ? Pending.Tasks : Pending.None)
+                    | (notification.TouchesList(Board.ListId) ? Pending.Board : Pending.None)
+                    | (notification.Touches(Detail.TaskId) ? Pending.Detail : Pending.None);
+            case "comments":
+                // Stricter than `task` on purpose: a comment change that names no task says
+                // nothing about the one that is open.
+                return notification.Id == Detail.TaskId ? Pending.Detail : Pending.None;
+            case "list":
+                return Pending.Sidebar;
+            case "chat":
+                return Pending.Chat;
+            case "remindersDue":
+                return Pending.Reminders;
+            case "needsSync":
+                return Pending.Sync;
+            case "notifications":
+                // The timer's pass found the inbox moved and cached it; draw what it cached.
+                return Pending.Notifications;
+            case "synced":
+                // A pass nobody asked for brought something in. The same refresh a sync asked for
+                // here does afterwards — the cache moved, so the screen has to.
+                return Pending.CatchUp & DetailUnless(notification);
+            case "delivered":
+                // The Outbox settled some writes (AITD-454). It used to say so as a `synced`
+                // naming nothing; now it names what it wrote and carries the journal's counts.
+                // This shell ignores the counts and re-reads them, because the badge is drawn from
+                // `outboxStats` everywhere else and two sources for one number is how they come to
+                // disagree.
+                return (Pending.CatchUp & DetailUnless(notification)) | Pending.Outbox;
+            case "stream" when notification.Live is { } live:
+                // The live stream went up or down, said once per edge (task ef92df55).
+                _isStreamDown = !live;
+                // Nothing missed while the stream was down is replayed — the core leaves that to
+                // the next sync pass, and its sixty-second timer is a floor for the screen, not a
+                // promise. So catch up now rather than up to a minute late. The change names
+                // nothing, which is "could not say": everything open is refreshed.
+                return Pending.StreamEdge | (live ? Pending.CatchUp : Pending.None);
+            default:
+                return Pending.None;
+        }
     }
 
     /// <summary>
-    /// Redraw everything on screen from the cache, for a change that brought work in without
-    /// saying — or without being able to say — exactly what moved.
+    /// <see cref="Pending.CatchUp"/> without <see cref="Pending.Detail"/> when this change does not
+    /// touch the open task — as a mask, so it can be anded into the set.
+    /// </summary>
+    private Pending DetailUnless(ChangeNotification notification) =>
+        notification.Touches(Detail.TaskId) ? ~Pending.None : ~Pending.Detail;
+
+    /// <summary>
+    /// Redraw whatever the run of notifications marked stale, once.
     /// </summary>
     /// <remarks>
-    /// Shared by <c>synced</c> and by the stream coming back up. Both mean the same thing to the
-    /// window: the cache is ahead of what is drawn, and nothing here names which rows.
+    /// The set and the scheduled flag are taken and cleared first, so a notification that arrives
+    /// while this is awaiting the core posts the next drain rather than being swallowed by this
+    /// one. That is why a burst costs at most two refreshes and never one too few.
     /// </remarks>
-    private async Task CatchUpAsync(ChangeNotification notification)
+    private async Task DrainAsync()
     {
-        await Sidebar.LoadAsync();
-        await Tasks.RefreshAsync();
-        if (IsBoardView)
+        Pending pending;
+        lock (_pendingGate)
+        {
+            pending = _pending;
+            _pending = Pending.None;
+            _drainScheduled = false;
+        }
+
+        if (_disposed || pending == Pending.None)
+        {
+            return;
+        }
+
+        if (pending.HasFlag(Pending.StreamEdge))
+        {
+            Raise(nameof(ShowsLiveUpdatesDown));
+        }
+        if (pending.HasFlag(Pending.Sidebar))
+        {
+            await Sidebar.LoadAsync();
+        }
+        if (pending.HasFlag(Pending.Tasks))
+        {
+            await Tasks.RefreshAsync();
+        }
+        if (pending.HasFlag(Pending.Board) && IsBoardView)
         {
             await Board.RefreshAsync();
         }
-        if (Detail.IsOpen && notification.Touches(Detail.TaskId))
+        if (pending.HasFlag(Pending.Detail) && Detail.IsOpen)
         {
             await Detail.ReloadAsync();
         }
-        await RefreshOutboxAsync();
+        if (pending.HasFlag(Pending.Chat) && IsChatOpen)
+        {
+            await Chat.RefreshAsync();
+        }
+        if (pending.HasFlag(Pending.Notifications))
+        {
+            await Notifications.LoadAsync();
+        }
+        if (pending.HasFlag(Pending.Outbox))
+        {
+            await RefreshOutboxAsync();
+        }
+        if (pending.HasFlag(Pending.Reminders))
+        {
+            await RaiseRemindersAsync();
+        }
+        if (pending.HasFlag(Pending.Sync))
+        {
+            await SyncAsync();
+        }
     }
 }

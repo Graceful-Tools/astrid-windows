@@ -10,18 +10,16 @@
     xmlns:viewmodels="using:Astrid.App.ViewModels">
 
     <!--
-        The row above the list: its name, the tools, the bell and the account.
+        The row above the list: its name, the tools, and what the connection is doing.
 
-        The list's settings are a flyout of their own (ListSettingsFlyout); the account's settings
-        are a screen over the window (Settings/SettingsView). This file holds the buttons that open
-        them.
+        The list's settings are a flyout of their own (ListSettingsFlyout). The account and the
+        bell were both here once and are the sidebar's now (tasks ffcc6abf and 96759883), which is
+        where astrid-web keeps them — see SidebarView.xaml.
     -->
 
     <Grid Margin="20,16,20,8" ColumnSpacing="12">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
         <!--
@@ -140,6 +138,9 @@
             <!--
                 The board and the list are two views of one list's work, not two
                 screens: the toggle swaps what is drawn and nothing else moves.
+                Drawn only on a list that HAS a board (task a66f0a16), as
+                astrid-web's header is — the account's project_mode flag alone was
+                offering it on every list, with a notice as the only outcome.
             -->
             <ToggleButton x:Uid="board_toggle" x:Name="BoardToggle"
                           VerticalAlignment="Center"
@@ -148,7 +149,7 @@
                           Content="&#xF0E2;"
                           FontFamily="{ThemeResource SymbolThemeFontFamily}"
                           IsChecked="{x:Bind Shell.IsBoardView, Mode=OneWay}"
-                          Visibility="{x:Bind Shell.ProjectModeEnabled, Mode=OneWay, Converter={StaticResource Visible}}"
+                          Visibility="{x:Bind Shell.ShowsBoardToggle, Mode=OneWay, Converter={StaticResource Visible}}"
                           Click="OnToggleBoard" />
                 <!--
                     Search collapses to its icon, which is what astrid-web does when the
@@ -222,22 +223,28 @@
                 "not synced yet": that one is about waiting, and waiting ends on its own. This one
                 does not, which is why it is the only thing in this row with something to press.
 
+                The count is the core's `retryable`, not its `failed` (task 22e9bc7b): a refused
+                delete is never replayed, so `failed` includes writes this link cannot reach, and
+                drawn here that was "1 refused" over a link answering "nothing to retry" with no
+                way for either to ever go away. The number beside a button is a number the button
+                can act on.
+
                 The count's sentence comes from a converter, not from the view model — the number
                 is the fact, the words are the translator's. It is read again straight after the
                 retry, so a write refused a second time leaves this saying so rather than the
                 outcome line claiming it was sent.
             -->
-            <TextBlock Text="{x:Bind Shell.RefusedWrites, Mode=OneWay, Converter={StaticResource RefusedWrites}}"
+            <TextBlock Text="{x:Bind Shell.RetryableRefusedWrites, Mode=OneWay, Converter={StaticResource RefusedWrites}}"
                        VerticalAlignment="Center"
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                        Style="{ThemeResource CaptionTextBlockStyle}"
-                       Visibility="{x:Bind Shell.RefusedWrites, Mode=OneWay, Converter={StaticResource Visible}}" />
+                       Visibility="{x:Bind Shell.RetryableRefusedWrites, Mode=OneWay, Converter={StaticResource Visible}}" />
             <HyperlinkButton x:Uid="retry_refused_writes"
                              Content="Try again"
                              ToolTipService.ToolTip="Send the refused writes again"
                              VerticalAlignment="Center"
                              Click="OnRetryRefusedWrites"
-                             Visibility="{x:Bind Shell.RefusedWrites, Mode=OneWay, Converter={StaticResource Visible}}" />
+                             Visibility="{x:Bind Shell.RetryableRefusedWrites, Mode=OneWay, Converter={StaticResource Visible}}" />
             <TextBlock Text="{x:Bind Shell.LastRetryRevived, Mode=OneWay, Converter={StaticResource RetryOutcome}}"
                        VerticalAlignment="Center"
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -245,93 +252,12 @@
                        Visibility="{x:Bind Shell.ShowsRetryOutcome, Mode=OneWay, Converter={StaticResource Visible}}" />
         </StackPanel>
         <!--
-            Account, Sync and Sign out, in one row.
-
-            They used to share a grid cell — two of them in column 2, one right-aligned
-            and one not — so they drew on top of each other and "Account" came out as
-            "Acco" with "Sync" over it. A row of buttons is a row, not three overlapping
-            claims on the same space.
-
-            The account is a flyout rather than a page: it is a name and some toggles,
-            and a screen you have to navigate back out of is a screen people avoid.
+            There were two more columns here, holding Account, Sync and Sign out in one row and
+            then latterly only the bell. The account button went to the foot of the sidebar
+            (task 3f5834ed, then ffcc6abf) and the bell to the sidebar's header row
+            (task 96759883), both because that is where astrid-web keeps them. Empty Auto columns
+            are not free — ColumnSpacing pays for every gap between them, drawn in or not — so
+            they went with the last control rather than being left behind as dead width.
         -->
-        <StackPanel Grid.Column="2" Grid.ColumnSpan="2"
-                    Orientation="Horizontal"
-                    Spacing="8"
-                    VerticalAlignment="Center">
-        <!--
-            The bell: what happened to work you are involved in - assigned, mentioned,
-            replied to, commented on, status changed, completed - as the web's
-            notification-bell.tsx. The badge is from the cache the moment the window
-            opens; opening the flyout asks the server.
-        -->
-        <Button x:Uid="notifications_button" x:Name="NotificationsButton"
-                AutomationProperties.Name="Notifications"
-                ToolTipService.ToolTip="Notifications">
-            <Grid>
-                <TextBlock Text="&#xEA8F;" FontFamily="{ThemeResource SymbolThemeFontFamily}" />
-                <Border Background="{ThemeResource AccentFillColorDefaultBrush}"
-                        CornerRadius="8" MinWidth="16" Height="16" Padding="4,0"
-                        HorizontalAlignment="Right" VerticalAlignment="Top"
-                        Margin="0,-8,-10,0"
-                        Visibility="{x:Bind Shell.Notifications.HasUnread, Mode=OneWay, Converter={StaticResource Visible}}">
-                    <TextBlock Text="{x:Bind Shell.Notifications.UnreadText, Mode=OneWay}"
-                               FontSize="10" FontWeight="SemiBold"
-                               Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
-                               HorizontalAlignment="Center" VerticalAlignment="Center" />
-                </Border>
-            </Grid>
-            <Button.Flyout>
-                <Flyout x:Name="NotificationsFlyout" Opening="OnNotificationsOpening" Placement="BottomEdgeAlignedRight">
-                    <StackPanel Spacing="8" Width="360">
-                        <Grid>
-                            <TextBlock x:Uid="notifications_heading" Text="Notifications"
-                                       Style="{ThemeResource BodyStrongTextBlockStyle}"
-                                       VerticalAlignment="Center" />
-                            <Button x:Uid="mark_all_read" Content="Mark all read"
-                                    AutomationProperties.Name="Mark all read"
-                                    HorizontalAlignment="Right"
-                                    Click="OnMarkAllNotificationsRead"
-                                    IsEnabled="{x:Bind Shell.Notifications.HasUnread, Mode=OneWay}" />
-                        </Grid>
-                        <TextBlock x:Uid="nothing_new" Text="Nothing new."
-                                   Foreground="{ThemeResource AstridTextMuted}"
-                                   Visibility="{x:Bind Shell.Notifications.IsEmpty, Mode=OneWay, Converter={StaticResource Visible}}" />
-                        <ListView ItemsSource="{x:Bind Shell.Notifications.Items, Mode=OneWay}"
-                                  IsItemClickEnabled="True"
-                                  SelectionMode="None"
-                                  ItemClick="OnNotificationOpened"
-                                  MaxHeight="420">
-                            <ListView.ItemTemplate>
-                                <DataTemplate x:DataType="bindings:NotificationItem">
-                                    <StackPanel Spacing="2" Margin="0,6"
-                                                Opacity="{x:Bind IsRead, Converter={StaticResource CompletedOpacity}}">
-                                        <TextBlock Text="{x:Bind LabelKey, Converter={StaticResource PickTitle}}"
-                                                   Style="{ThemeResource CaptionTextBlockStyle}"
-                                                   Foreground="{ThemeResource AstridTextSecondary}" />
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <TextBlock Text="{x:Bind TaskIdentifier}"
-                                                       Style="{ThemeResource CaptionTextBlockStyle}"
-                                                       Foreground="{ThemeResource AstridTextMuted}"
-                                                       VerticalAlignment="Center" />
-                                            <TextBlock Text="{x:Bind TaskText}"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       Foreground="{ThemeResource AstridTextPrimary}" />
-                                        </StackPanel>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-                    </StackPanel>
-                </Flyout>
-            </Button.Flyout>
-        </Button>
-        <!--
-            The account button was here, opening the settings screen (task 3f5834ed). It is the
-            foot of the sidebar now, carrying the signed-in user's photo and name, because that
-            is where astrid-web keeps it (task ffcc6abf — see SidebarView.xaml).
-        -->
-
-        </StackPanel>
     </Grid>
 </UserControl>

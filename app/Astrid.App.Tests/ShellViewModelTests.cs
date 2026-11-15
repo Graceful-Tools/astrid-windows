@@ -17,6 +17,23 @@ public sealed class ShellViewModelTests
             isFavorite = list.Favorite,
         }).ToArray();
 
+    /// <summary>
+    /// The same lists, some of which belong to a project board (task a66f0a16).
+    /// </summary>
+    /// <remarks>
+    /// <c>projectId</c> is the field the board is offered on, so a test about the board has to be
+    /// able to say which of these lists has one. Favourites are beside the point here; everything
+    /// this builds lands in the sidebar's ordinary lists.
+    /// </remarks>
+    private static object Lists(params (string Id, string Name, string? ProjectId)[] lists) =>
+        lists.Select(list => new
+        {
+            id = list.Id,
+            name = list.Name,
+            isFavorite = false,
+            projectId = list.ProjectId,
+        }).ToArray();
+
     private static object EmptyWindow() => new { total = 0, offset = 0, rows = Array.Empty<object>() };
 
     /// <summary>
@@ -27,9 +44,13 @@ public sealed class ShellViewModelTests
     /// on it, and loading a sidebar behind a sign-in screen would show the previous user's lists.
     /// </remarks>
     private static FakeCore StartedCore(params (string Id, string Name, bool Favorite)[] lists) =>
+        StartedCoreWith(Lists(lists));
+
+    /// <summary>The same, for a sidebar payload a caller has built itself.</summary>
+    private static FakeCore StartedCoreWith(object lists) =>
         new FakeCore()
             .AnswerOk("isSignedIn", new { signedIn = true, waitingForCallback = false })
-            .AnswerOk("lists", Lists(lists))
+            .AnswerOk("lists", lists)
             .AnswerOk("rowsForList", EmptyWindow())
             .AnswerOk("outboxStats", new { pending = 0, running = 0, failed = 0, hasUnsentWork = false })
             .AnswerOk("sync", new { fetched = false });
@@ -60,10 +81,12 @@ public sealed class ShellViewModelTests
     /// pass — so this is the second of those reads, and the state the window is left in. Note
     /// <c>hasUnsentWork</c> is false: the core counts a dead-lettered write in <c>failed</c> and
     /// deliberately not in the "still to send" answer, which is the whole reason it was invisible.
+    /// Both are <c>retryable</c> too — an ordinary edit and create, refused just now, which a retry
+    /// does reach (task 22e9bc7b).
     /// </remarks>
     private static FakeCore Refusing(FakeCore core) =>
         core.Answer("outboxStats",
-            "{\"ok\":true,\"value\":{\"pending\":0,\"running\":0,\"failed\":2,"
+            "{\"ok\":true,\"value\":{\"pending\":0,\"running\":0,\"failed\":2,\"retryable\":2,"
             + "\"hasUnsentWork\":false,\"deadLetters\":["
             + "{\"kind\":\"updateTask\",\"error\":\"403 forbidden\"},"
             + "{\"kind\":\"createTask\",\"error\":\"403 forbidden\"}]}}");
@@ -215,7 +238,7 @@ public sealed class ShellViewModelTests
         var moved = Assert.Single(core.Sent, json => json.Contains("\"kind\":\"setTaskLists\""));
         Assert.Contains("\"taskId\":\"t1\"", moved);
         Assert.Contains("\"listIds\":[\"l2\"]", moved);
-        Assert.Equal(["setTaskLists", "rowsForList", "lists"], core.SentKinds().Skip(sentBefore).Take(3));
+        Assert.Equal(["setTaskLists", "rowsForList", "sidebar"], core.SentKinds().Skip(sentBefore).Take(3));
 
         Assert.True(await shell.DropTaskOnListAsync("t1", "l2", add: true));
         var added = Assert.Single(core.Sent, json => json.Contains("\"kind\":\"addTaskToList\""));
@@ -329,6 +352,131 @@ public sealed class ShellViewModelTests
     }
 
     /// <summary>
+    /// The board is offered only on a list that has one (task a66f0a16).
+    /// </summary>
+    /// <remarks>
+    /// The toggle used to be drawn for every list, and switching to it on a list belonging to no
+    /// project board showed a notice saying so — a control whose only outcome is an apology.
+    /// astrid-web has never offered it: <c>ListHeaderActions</c> draws nothing when the selected
+    /// list has no <c>projectId</c>, which the sidebar already knows for every list.
+    /// </remarks>
+    [Fact]
+    public async Task The_board_is_not_offered_on_a_list_with_no_board_task_a66f0a16()
+    {
+        var core = StartedCoreWith(Lists(("l1", "Home", null)));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        Assert.True(shell.ProjectModeEnabled, "the feature is on; it is this list that has no board");
+        Assert.False(shell.OpenListHasBoard);
+        Assert.False(shell.ShowsBoardToggle);
+    }
+
+    /// <summary>And offered on one that does, which is the whole point of hiding it elsewhere.</summary>
+    [Fact]
+    public async Task The_board_is_offered_on_a_list_that_belongs_to_one_task_a66f0a16()
+    {
+        var core = StartedCoreWith(Lists(("p1", "Launch", "proj-1")));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        Assert.True(shell.OpenListHasBoard);
+        Assert.True(shell.ShowsBoardToggle);
+    }
+
+    /// <summary>
+    /// My Tasks is a filter rather than a list, so it has no board and is never offered one
+    /// (task a66f0a16). It is also the view the app opens on, which made it the first thing
+    /// anybody met the empty board pane from.
+    /// </summary>
+    [Fact]
+    public async Task My_Tasks_is_never_offered_a_board_task_a66f0a16()
+    {
+        var core = StartedCoreWith(Lists(("l1", "Home", null)))
+            .AnswerOk("myTasksList", new { id = "virtual:my-tasks", name = "My Tasks", isVirtual = true });
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        Assert.Equal("virtual:my-tasks", shell.Tasks.ListId);
+        Assert.False(shell.ShowsBoardToggle);
+    }
+
+    /// <summary>
+    /// Opening a list with no board while the board is on screen goes back to the list
+    /// (task a66f0a16) — the effect astrid-web has in <c>TaskManagerView</c>.
+    /// </summary>
+    /// <remarks>
+    /// Without it the board stays on screen with its notice, and the toggle that would have
+    /// dismissed it is now hidden: no way out but to open the board list again.
+    /// </remarks>
+    [Fact]
+    public async Task Opening_a_list_with_no_board_leaves_the_board_task_a66f0a16()
+    {
+        var core = StartedCoreWith(Lists(("p1", "Launch", "proj-1"), ("l1", "Home", null)))
+            .AnswerOk("board", BoardWith("t1"))
+            .AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("rowsForList", EmptyWindow());
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        // The sidebar is in name order, so the app opened Home: go to the board's own list first.
+        await shell.OpenListAsync("p1", "Launch");
+        await shell.ShowBoardAsync(true);
+        Assert.True(shell.IsBoardView);
+
+        await shell.OpenListAsync("l1", "Home");
+
+        Assert.False(shell.IsBoardView, "the list it moved to has no board");
+        Assert.False(shell.ShowsBoardToggle);
+        Assert.False(shell.ShowsNoBoardNotice, "and nothing is left apologising for it");
+    }
+
+    /// <summary>
+    /// Opening another list that HAS a board draws that list's cards (task 7e802a6e).
+    /// </summary>
+    /// <remarks>
+    /// The other half of the rule above. Leaving a board the new list does not have was handled;
+    /// loading the board it does have was not, so the previous list's cards stayed on screen — and
+    /// the list id the board writes through stayed the old one, which would have filed a card added
+    /// from the board into a list nobody had open.
+    /// </remarks>
+    [Fact]
+    public async Task Opening_another_board_list_reloads_the_board_task_7e802a6e()
+    {
+        var core = StartedCoreWith(Lists(("p1", "Launch", "proj-1"), ("p2", "Ship", "proj-2")))
+            .AnswerOk("board", BoardWith("t1"))
+            .AnswerOk("board", BoardWith("t2"))
+            .AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("rowsForList", EmptyWindow());
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        // The sidebar is in name order, so the app opened Launch.
+        await shell.ShowBoardAsync(true);
+        Assert.True(shell.Board.Has("t1"), "the board it started on");
+
+        await shell.OpenListAsync("p2", "Ship");
+
+        Assert.True(shell.IsBoardView, "the list it moved to has a board of its own");
+        Assert.True(shell.Board.Has("t2"), "which is the one now on screen");
+        Assert.False(shell.Board.Has("t1"), "not the one it came from");
+    }
+
+    /// <summary>
+    /// The feature flag still outranks the list: <c>project_mode</c> off hides the toggle on a
+    /// list that does have a board (task a66f0a16).
+    /// </summary>
+    [Fact]
+    public async Task The_project_mode_flag_still_hides_the_board_on_a_board_list_task_a66f0a16()
+    {
+        var core = StartedCoreWith(Lists(("p1", "Launch", "proj-1")))
+            .AnswerOk("features", new { projectMode = false });
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        Assert.True(shell.OpenListHasBoard, "the list has one");
+        Assert.False(shell.ShowsBoardToggle, "the account is not offered boards at all");
+    }
+
+    /// <summary>
     /// On the board, a tapped card opens its task IN PLACE, and tapping it again closes it
     /// (task 91a25b8a). astrid-web's board expands the card inside its column rather than opening
     /// the side panel, and a person moving between the two should find the same gesture.
@@ -350,6 +498,39 @@ public sealed class ShellViewModelTests
         Assert.Equal("t1", shell.Board.ExpandedTaskId);
         Assert.True(shell.ShowsDetailInline);
         Assert.False(shell.ShowsDetailPane, "the side pane stays shut while the card holds the detail");
+    }
+
+    /// <summary>
+    /// A card holding the detail draws no "Task Details" header; the side pane still does
+    /// (task 6df01318).
+    /// </summary>
+    /// <remarks>
+    /// The chrome bar's centred label names the pane, which is worth saying when the pane is a
+    /// slab of window beside the list and says nothing else about itself. Inside a card the reader
+    /// has just tapped, it names the obvious and pushes the task's own title a row further down —
+    /// so the card reads as the task twice over. astrid-web made the same call for its inline
+    /// panel (task cc76307c): the compact <c>TaskHeader</c> keeps the collapse control and the
+    /// <c>⋯</c> menu and drops the label. The bar itself stays, because Close and the actions
+    /// live in it.
+    /// </remarks>
+    [Fact]
+    public async Task A_card_holding_the_detail_draws_no_chrome_title_task_6df01318()
+    {
+        var core = StartedCore(("l1", "Home", false))
+            .AnswerOk("board", BoardWith("t1", "t2"))
+            .AnswerOk("taskDetail", TaskDetail("t1"))
+            .AnswerOk("taskDetail", TaskDetail("t1"));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        await shell.OpenOrCloseTaskAsync("t1");
+        Assert.True(shell.ShowsDetailChromeTitle, "the side pane keeps the label that names it");
+
+        // Showing the board moves the open task into its own card.
+        await shell.ShowBoardAsync(true);
+
+        Assert.True(shell.ShowsDetailInline);
+        Assert.False(shell.ShowsDetailChromeTitle);
     }
 
     [Fact]
@@ -523,6 +704,41 @@ public sealed class ShellViewModelTests
         Assert.False(shell.ShowsDetailInline);
     }
 
+    /// <summary>
+    /// The side pane takes the conversation's place rather than standing beyond it (task 1ffc12af).
+    /// </summary>
+    /// <remarks>
+    /// The detail used to be the column after the chat's, so an open task left the conversation
+    /// wedged between the list and the detail: the pane's arrow pointed at the chat pane instead of
+    /// at the row it had measured, and the message panel's own hide control sat beside the open
+    /// task. A card holding the detail is not the side pane, so the board keeps its conversation.
+    /// </remarks>
+    [Fact]
+    public async Task The_side_pane_takes_the_conversations_place_task_1ffc12af()
+    {
+        var core = StartedCore(("l1", "Home", false))
+            .AnswerOk("taskDetail", TaskDetail("t1"))
+            .AnswerOk("board", BoardWith("t1"));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        Assert.True(shell.ShowsConversation, "nothing open, so the conversation has its column");
+
+        await shell.OpenOrCloseTaskAsync("t1");
+        Assert.True(shell.ShowsDetailPane);
+        Assert.False(shell.ShowsConversation, "the pane is where the conversation was");
+
+        await shell.OpenOrCloseTaskAsync("t1");
+        Assert.False(shell.ShowsDetailPane);
+        Assert.True(shell.ShowsConversation, "and it comes back when the task is shut");
+
+        // A board card taking the detail is not the side pane, so nothing moves out of its way.
+        await shell.ShowBoardAsync(true);
+        await shell.ToggleCardAsync("t1");
+        Assert.True(shell.ShowsDetailInline);
+        Assert.True(shell.ShowsConversation);
+    }
+
     private static object BoardWith(params string[] cards) => new
     {
         projectId = "p1",
@@ -691,11 +907,11 @@ public sealed class ShellViewModelTests
 
         var kinds = core.SentKinds().ToList();
         Assert.Equal("isSignedIn", kinds[0]);
-        Assert.Equal("lists", kinds[1]);
-        // My Tasks sits above the lists in the sidebar, so the sidebar asks for it while it is
-        // drawing — still before anything reaches the network.
-        Assert.Equal("myTasksList", kinds[2]);
-        Assert.Equal("rowsForList", kinds[3]);
+        // One call for the whole sidebar — My Tasks, the favourites, the lists and the number
+        // beside each, all counted from the cache (task e22621e2, replacing `lists` +
+        // `myTasksList` + `listBadges`). Still before anything reaches the network.
+        Assert.Equal("sidebar", kinds[1]);
+        Assert.Equal("rowsForList", kinds[2]);
         Assert.Contains("sync", kinds);
         Assert.True(kinds.IndexOf("rowsForList") < kinds.IndexOf("sync"));
     }
@@ -760,19 +976,22 @@ public sealed class ShellViewModelTests
     }
 
     /// <summary>
-    /// A board column is a state, not a place to file a task; a label is a tag, drawn on the
-    /// tasks that carry it and never offered as somewhere to go (the web's list flavours).
+    /// A board column is a state, not a place to file a task; a label, a milestone and an
+    /// iteration are tags, drawn on the tasks that carry them and never offered as somewhere to
+    /// go. Which is which is the core's answer now — the <c>sidebar</c> command sends the places
+    /// only (task e22621e2, and `rows::sidebar`'s own tests) — so what this asserts is that the
+    /// shell draws what it was sent and nothing else.
     /// </summary>
     [Fact]
-    public async Task Board_columns_and_labels_never_appear_in_the_sidebar()
+    public async Task The_sidebar_draws_the_places_the_core_sent_and_adds_none()
     {
         var core = new FakeCore()
             .AnswerOk("isSignedIn", new { signedIn = true, waitingForCallback = false })
-            .AnswerOk("lists", new object[]
+            .AnswerOk("sidebar", new
             {
-                new { id = "l1", name = "Home" },
-                new { id = "s1", name = "Doing", listType = "status" },
-                new { id = "b1", name = "Bugs", listType = "label" },
+                myTasks = (object?)null,
+                favorites = Array.Empty<object>(),
+                lists = new object[] { new { id = "l1", name = "Home" } },
             })
             .AnswerOk("rowsForList", EmptyWindow())
             .AnswerOk("outboxStats", new { hasUnsentWork = false })
@@ -783,6 +1002,7 @@ public sealed class ShellViewModelTests
 
         Assert.Single(shell.Sidebar.Lists);
         Assert.Equal("Home", shell.Sidebar.Lists[0].Name);
+        Assert.DoesNotContain("lists", core.SentKinds());
     }
 
     /// <summary>
@@ -941,7 +1161,7 @@ public sealed class ShellViewModelTests
         await shell.StartAsync();
         await shell.OpenTaskAsync("t1");
         core.NotifyStream(live: false);
-        var listsBefore = core.SentKinds().Count(kind => kind == "lists");
+        var listsBefore = core.SentKinds().Count(kind => kind == "sidebar");
         var rowsBefore = core.SentKinds().Count(kind => kind == "rowsForList");
         var detailBefore = core.SentKinds().Count(kind => kind == "taskDetail");
 
@@ -951,7 +1171,7 @@ public sealed class ShellViewModelTests
             .AnswerOk("outboxStats", new { hasUnsentWork = false });
         core.NotifyStream(live: true);
 
-        Assert.Equal(listsBefore + 1, core.SentKinds().Count(kind => kind == "lists"));
+        Assert.Equal(listsBefore + 1, core.SentKinds().Count(kind => kind == "sidebar"));
         Assert.Equal(rowsBefore + 1, core.SentKinds().Count(kind => kind == "rowsForList"));
         // The stream names nothing it missed, so "could not say" applies and the open task reloads.
         Assert.Equal(detailBefore + 1, core.SentKinds().Count(kind => kind == "taskDetail"));
@@ -1044,9 +1264,33 @@ public sealed class ShellViewModelTests
 
         await shell.StartAsync();
 
-        Assert.Equal(2, shell.RefusedWrites);
+        Assert.Equal(2, shell.RetryableRefusedWrites);
         // Not the same fact: nothing is queued, so there is nothing to wait for — only to retry.
         Assert.False(shell.HasUnsentWork);
+    }
+
+    /// <summary>
+    /// A refused write a retry cannot reach draws no row at all (task 22e9bc7b).
+    /// </summary>
+    /// <remarks>
+    /// The core never replays a refused delete, nor anything refused more than a week ago, so its
+    /// <c>failed</c> count outlives every chance of clearing it. Drawn beside "Try again" that was
+    /// a row reading "1 refused" over a link that answered "nothing to retry", for ever. The window
+    /// draws <c>retryable</c> instead: the count the link can actually act on.
+    /// </remarks>
+    [Fact]
+    public async Task A_refused_write_no_retry_can_reach_is_not_offered_one_task_22e9bc7b()
+    {
+        var core = OnlineCore(("l1", "Home", false))
+            .Answer("outboxStats",
+                "{\"ok\":true,\"value\":{\"pending\":0,\"running\":0,\"failed\":1,\"retryable\":0,"
+                + "\"hasUnsentWork\":false,\"deadLetters\":["
+                + "{\"kind\":\"deleteTask\",\"error\":\"403 forbidden\"}]}}");
+        using var shell = new ShellViewModel(core, RunInline);
+
+        await shell.StartAsync();
+
+        Assert.Equal(0, shell.RetryableRefusedWrites);
     }
 
     /// <summary>
@@ -1062,14 +1306,14 @@ public sealed class ShellViewModelTests
 
         core.AnswerOk("retryDeadLetters", new { revived = 2 })
             // Both went through this time.
-            .AnswerOk("outboxStats", new { pending = 0, failed = 0, hasUnsentWork = false });
+            .AnswerOk("outboxStats", new { pending = 0, failed = 0, retryable = 0, hasUnsentWork = false });
         await shell.RetryRefusedWritesAsync();
 
         Assert.Contains("retryDeadLetters", core.SentKinds());
         Assert.Equal(readsBefore + 1, core.SentKinds().Count(kind => kind == "outboxStats"));
         Assert.Equal(2, shell.LastRetryRevived);
         Assert.True(shell.ShowsRetryOutcome);
-        Assert.Equal(0, shell.RefusedWrites);
+        Assert.Equal(0, shell.RetryableRefusedWrites);
     }
 
     /// <summary>
@@ -1089,10 +1333,10 @@ public sealed class ShellViewModelTests
 
         core.AnswerOk("retryDeadLetters", new { revived = 2 })
             // Revived, drained, and refused a second time: back where they started.
-            .AnswerOk("outboxStats", new { pending = 0, failed = 2, hasUnsentWork = false });
+            .AnswerOk("outboxStats", new { pending = 0, failed = 2, retryable = 2, hasUnsentWork = false });
         await shell.RetryRefusedWritesAsync();
 
-        Assert.Equal(2, shell.RefusedWrites);
+        Assert.Equal(2, shell.RetryableRefusedWrites);
         Assert.Equal(2, shell.LastRetryRevived);
     }
 
@@ -1148,12 +1392,95 @@ public sealed class ShellViewModelTests
 
         core.AnswerOk("rowsForList", EmptyWindow())
             .AnswerOk("outboxStats", new { hasUnsentWork = false });
-        var before = core.SentKinds().Count(kind => kind == "lists");
+        var before = core.SentKinds().Count(kind => kind == "sidebar");
 
         core.Notify("task", "t1");
 
-        Assert.Equal(before, core.SentKinds().Count(kind => kind == "lists"));
+        Assert.Equal(before, core.SentKinds().Count(kind => kind == "sidebar"));
         Assert.Contains("rowsForList", core.SentKinds());
+    }
+
+    /// <summary>
+    /// A colleague working in a list nobody has open costs nothing (task 05c95986).
+    /// </summary>
+    /// <remarks>
+    /// Task 303f20c2 coalesced a burst of changes into one redraw and could not do this, because
+    /// the change did not name a list. Now it does, so the read is not merely cheap but skipped.
+    /// </remarks>
+    [Fact]
+    public async Task A_task_change_in_a_list_that_is_not_open_reloads_nothing_task_05c95986()
+    {
+        var core = StartedCore(("l1", "Home", false));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        Assert.Equal("l1", shell.Tasks.ListId);
+
+        core.AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        var rowsBefore = core.SentKinds().Count(kind => kind == "rowsForList");
+
+        core.NotifyTask("t9", "l2");
+
+        Assert.Equal(rowsBefore, core.SentKinds().Count(kind => kind == "rowsForList"));
+    }
+
+    /// <summary>The same change, in the list that <i>is</i> open, still reloads it.</summary>
+    [Fact]
+    public async Task A_task_change_in_the_open_list_still_reloads_it_task_05c95986()
+    {
+        var core = StartedCore(("l1", "Home", false));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        core.AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        var rowsBefore = core.SentKinds().Count(kind => kind == "rowsForList");
+
+        core.NotifyTask("t1", "l1");
+
+        Assert.Equal(rowsBefore + 1, core.SentKinds().Count(kind => kind == "rowsForList"));
+    }
+
+    /// <summary>
+    /// A change that names no list is "could not say", which is "refresh anyway" — the rule the
+    /// open task already follows for a change that names no task (task 05c95986).
+    /// </summary>
+    [Fact]
+    public async Task A_task_change_that_names_no_list_still_reloads_task_05c95986()
+    {
+        var core = StartedCore(("l1", "Home", false));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        core.AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        var rowsBefore = core.SentKinds().Count(kind => kind == "rowsForList");
+
+        core.NotifyTask("t9");
+
+        Assert.Equal(rowsBefore + 1, core.SentKinds().Count(kind => kind == "rowsForList"));
+    }
+
+    /// <summary>
+    /// My Tasks is synthesised from across the account, so it is in no task's <c>listIds</c>.
+    /// Deciding by membership would freeze the view the app opens on (task 05c95986).
+    /// </summary>
+    [Fact]
+    public async Task A_task_change_elsewhere_still_reloads_a_virtual_list_task_05c95986()
+    {
+        var core = StartedCoreWith(Lists(("l1", "Home", null)))
+            .AnswerOk("myTasksList", new { id = "virtual:my-tasks", name = "My Tasks", isVirtual = true });
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        Assert.Equal("virtual:my-tasks", shell.Tasks.ListId);
+
+        core.AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        var rowsBefore = core.SentKinds().Count(kind => kind == "rowsForList");
+
+        core.NotifyTask("t9", "l2");
+
+        Assert.Equal(rowsBefore + 1, core.SentKinds().Count(kind => kind == "rowsForList"));
     }
 
     [Fact]
@@ -1182,7 +1509,7 @@ public sealed class ShellViewModelTests
         using var shell = new ShellViewModel(core, RunInline);
         await shell.StartAsync();
         await shell.OpenTaskAsync("t1");
-        var listsBefore = core.SentKinds().Count(kind => kind == "lists");
+        var listsBefore = core.SentKinds().Count(kind => kind == "sidebar");
         var rowsBefore = core.SentKinds().Count(kind => kind == "rowsForList");
         var detailBefore = core.SentKinds().Count(kind => kind == "taskDetail");
 
@@ -1192,7 +1519,7 @@ public sealed class ShellViewModelTests
             .AnswerOk("outboxStats", new { hasUnsentWork = false });
         core.NotifySynced("t1", "t7");
 
-        Assert.Equal(listsBefore + 1, core.SentKinds().Count(kind => kind == "lists"));
+        Assert.Equal(listsBefore + 1, core.SentKinds().Count(kind => kind == "sidebar"));
         Assert.Equal(rowsBefore + 1, core.SentKinds().Count(kind => kind == "rowsForList"));
         Assert.Equal(detailBefore + 1, core.SentKinds().Count(kind => kind == "taskDetail"));
     }
@@ -1370,5 +1697,104 @@ public sealed class ShellViewModelTests
         core.Notify("task", "t1");
 
         Assert.Equal(before, core.Sent.Count);
+    }
+
+    /// <summary>
+    /// A burst of notifications costs one refresh, not one each (task 303f20c2).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The stream can deliver dozens of notifications in a moment — a bulk edit, or a colleague
+    /// working down a list — and every one of them used to run a full <c>rowsForList</c>, plus the
+    /// board and the Outbox badge. Fifty changes meant fifty reloads of the same rows, so the
+    /// window got slower the more there was to hear about.
+    /// </para>
+    /// <para>
+    /// This one cannot use <see cref="RunInline"/>. Running posted work the instant it is posted
+    /// means each notification has finished redrawing before the next arrives, so nothing could
+    /// ever coalesce and the test would be asserting the stand-in rather than the shell. A real
+    /// <c>DispatcherQueue.TryEnqueue</c> returns at once and runs the work on a later turn, which
+    /// is what <see cref="QueueingPost"/> stands in for.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task A_burst_of_notifications_refreshes_the_list_once()
+    {
+        var core = StartedCore(("l1", "Home", false));
+        var post = new QueueingPost();
+        using var shell = new ShellViewModel(core, post.Post);
+        await shell.StartAsync();
+        post.Tick();
+        // Scripted generously: the point of the test is how many are asked for, and an
+        // unscripted answer would let a regression read as a refusal rather than as a count.
+        for (var i = 0; i < 60; i++)
+        {
+            core.AnswerOk("rowsForList", EmptyWindow())
+                .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        }
+        var before = core.SentKinds().Count(kind => kind == "rowsForList");
+
+        for (var i = 0; i < 50; i++)
+        {
+            core.Notify("task", $"t{i}");
+        }
+        post.Tick();
+
+        Assert.InRange(core.SentKinds().Count(kind => kind == "rowsForList") - before, 1, 2);
+    }
+
+    /// <summary>
+    /// Coalescing a burst does not lose what the burst said: the open task is still reloaded when
+    /// one of the changes named it, and only once (task 303f20c2).
+    /// </summary>
+    [Fact]
+    public async Task A_burst_reloads_the_open_task_once_when_a_change_named_it()
+    {
+        var core = StartedCore(("l1", "Home", false))
+            .AnswerOk("taskDetail", TaskDetail("t1"));
+        var post = new QueueingPost();
+        using var shell = new ShellViewModel(core, post.Post);
+        await shell.StartAsync();
+        await shell.OpenTaskAsync("t1");
+        post.Tick();
+        for (var i = 0; i < 60; i++)
+        {
+            core.AnswerOk("rowsForList", EmptyWindow())
+                .AnswerOk("taskDetail", TaskDetail("t1"))
+                .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        }
+        var before = core.SentKinds().Count(kind => kind == "taskDetail");
+
+        for (var i = 0; i < 50; i++)
+        {
+            core.Notify("task", i == 7 ? "t1" : $"other{i}");
+        }
+        post.Tick();
+
+        Assert.Equal(before + 1, core.SentKinds().Count(kind => kind == "taskDetail"));
+    }
+
+    /// <summary>
+    /// A post that queues work for a later turn, as a real dispatcher does (task 303f20c2).
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Tick"/> runs only the work queued when it was called, not whatever that work
+    /// queues in turn — so a test can tell "coalesced into one turn" from "drained in a loop".
+    /// </remarks>
+    private sealed class QueueingPost
+    {
+        private readonly List<Func<Task>> _queued = [];
+
+        public void Post(Func<Task> work) => _queued.Add(work);
+
+        public void Tick()
+        {
+            var turn = _queued.ToArray();
+            _queued.Clear();
+            foreach (var work in turn)
+            {
+                work().GetAwaiter().GetResult();
+            }
+        }
     }
 }

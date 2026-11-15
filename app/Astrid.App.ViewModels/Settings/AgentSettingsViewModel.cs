@@ -20,6 +20,7 @@ public sealed class AgentSettingsViewModel : ObservableObject
     private string? _newWebhookSecret;
     private string? _webhookTestResult;
     private MintedClient? _webhookCredentials;
+    private MintedAccessToken? _copilotToken;
 
     public AgentSettingsViewModel(SettingsSession session)
     {
@@ -290,6 +291,55 @@ public sealed class AgentSettingsViewModel : ObservableObject
 
     /// <summary>Forget the pair on screen. Called when the settings close.</summary>
     public void ForgetWebhookCredentials() => WebhookCredentials = null;
+
+    /// <summary>
+    /// The Copilot cloud agent's access token, the once the server shows it. In memory only,
+    /// until the screen closes.
+    /// </summary>
+    public MintedAccessToken? CopilotToken
+    {
+        get => _copilotToken;
+        private set
+        {
+            if (Set(ref _copilotToken, value))
+            {
+                Raise(nameof(HasCopilotToken));
+            }
+        }
+    }
+
+    public bool HasCopilotToken => CopilotToken is not null;
+
+    /// <summary>
+    /// Mint the token the Copilot cloud agent acts as this account with.
+    /// </summary>
+    /// <remarks>
+    /// Read and write, because an agent that cannot write cannot finish a task. No expiry, because
+    /// nothing here renews one: an expiring token would stop the agent one day with no way back
+    /// except minting another, and the token is revocable from the connections panel in the
+    /// meantime. The description is sent unlocalised on purpose — it is the label every client
+    /// shows for this credential, so a German reader and an English one should see the same row.
+    /// </remarks>
+    public async Task<bool> MintCopilotTokenAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _session.Core.CallAsync(
+            Commands.MintAccessToken(["read", "write"], description: "Copilot cloud agent",
+                agent: "copilot"),
+            cancellationToken);
+        if (!response.Ok)
+        {
+            _session.ErrorMessage = response.IsStillPending
+                ? "Minting a token needs a connection."
+                : response.Error?.Message;
+            return false;
+        }
+        CopilotToken = response.Read<MintedAccessToken>();
+        _session.ErrorMessage = null;
+        return HasCopilotToken;
+    }
+
+    /// <summary>Forget the token on screen. Called when the settings close.</summary>
+    public void ForgetCopilotToken() => CopilotToken = null;
 
     /// <summary>The agents this account has registered of its own.</summary>
     public ObservableCollection<CustomAgent> CustomAgents { get; } = [];

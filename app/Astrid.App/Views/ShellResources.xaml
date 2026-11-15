@@ -40,6 +40,14 @@
     <local:StatConverter x:Key="StatSupported" Key="stats.supported" />
     <local:LoggedTimeConverter x:Key="LoggedTime" />
     <!-- The Outbox's refused writes, and what a retry did with them (task 84e077ca). -->
+    <!--
+        "Comments (3)", and "Comments (0)" rather than nothing at zero — the Mac's toolbar says
+        its count even on an empty thread (task 77d17dc8). The zero key is a separate string
+        because a language that writes the count differently when there are none should be able
+        to; it is not "{0}" with a 0 in it by accident.
+    -->
+    <local:CountedWordsConverter x:Key="CommentsHeading" Key="comments.heading"
+                                 ZeroKey="comments.heading_none" />
     <local:CountedWordsConverter x:Key="RefusedWrites" Key="outbox.refused" />
     <local:CountedWordsConverter x:Key="RetryOutcome" Key="outbox.retry_sent"
                                  ZeroKey="outbox.retry_none" />
@@ -59,6 +67,27 @@
     <local:LeadingMarkConverter x:Key="LeadingMark" />
     <local:BubbleAlignConverter x:Key="BubbleAlign" />
     <local:BubbleBrushConverter x:Key="BubbleBrush" />
+    <!--
+        What a list has been doing (task 48c624ad). The view model carries numbers and keys, so
+        the words are here; the plot's size is stated once, on the one converter both series go
+        through, so the two lines cannot land on different scales.
+    -->
+    <local:DashedTextConverter x:Key="Dashed" />
+    <local:InsightWindowConverter x:Key="InsightWindow" />
+    <local:InsightDurationConverter x:Key="InsightMedian" />
+    <local:InsightSampleConverter x:Key="InsightSample" />
+    <local:InsightCountConverter x:Key="InsightNewTotal" Key="listInsights.createdTotal" />
+    <local:InsightCountConverter x:Key="InsightDoneTotal" Key="listInsights.completedTotal" />
+    <local:InsightCountsConverter x:Key="InsightProfileCounts" Key="listInsights.profileCounts" />
+    <local:InsightCountsConverter x:Key="InsightActivityCounts" Key="listInsights.activityCounts" />
+    <local:InsightLineConverter x:Key="InsightLine" PlotWidth="288" PlotHeight="120" />
+    <!--
+        The chart's two series, in astrid-web's own categorical order — CHART_SERIES_COLORS in
+        lib/brand/colors.ts. Not the accent: the first series would be invisible on a branded
+        surface, which is the comment that palette carries.
+    -->
+    <SolidColorBrush x:Key="InsightNewBrush" Color="#3b82f6" />
+    <SolidColorBrush x:Key="InsightDoneBrush" Color="#22c55e" />
 
     <!--
         One sidebar row, shared by My Tasks, the favourites and the lists.
@@ -110,6 +139,24 @@
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
 
+    <!--
+        The pair that closes the window's two side panels towards the work (task ab4cb9ee): the
+        sidebar's on the left, the messages pane's mirroring it on the right. One style, because
+        a mirror image that had drifted into a slightly different button would read as two
+        unrelated controls — which is the thing this task is fixing.
+    -->
+    <Style x:Key="PaneToggleButton" TargetType="Button">
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{ThemeResource AstridTextMuted}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
     <Style x:Key="DetailField" TargetType="Button">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
@@ -141,12 +188,62 @@
     <x:Double x:Key="DetailFieldIconColumn">32</x:Double>
     <x:Double x:Key="DetailFieldGap">8</x:Double>
 
+    <!--
+        The corner-radius scale (task 77d17dc8), in the Mac's values:
+        `radiusSmall/Medium/Large/XLarge` = 6/8/12/16.
+
+        Taken from the Mac deliberately, and it is the ONE axis where that is the right
+        reference. The `Astrid*` brushes above are web's, named after
+        `astrid-web/styles/themes/*.css` so a value can be checked against that file — and on
+        colour it is the Mac that drifted, so moving those toward it would be a regression.
+        Radius is different: Windows had no scale at all, so there was nothing to diverge from,
+        and web's own base radius token is 8px, the middle step here either way.
+
+        Stated here for the same reason as the two numbers above: the detail pane alone had
+        hard-coded 4, 6, 8, 10 and 12 across fourteen elements, which is how the alignment sum
+        came to be retyped eleven times before anyone wrote it down. `DesignRadiusScaleTests`
+        is this one's pin, and it asserts both halves — that the scale exists, and that the
+        pane references it rather than restating a number.
+    -->
+    <CornerRadius x:Key="AstridRadiusSmall">6</CornerRadius>
+    <CornerRadius x:Key="AstridRadiusMedium">8</CornerRadius>
+    <CornerRadius x:Key="AstridRadiusLarge">12</CornerRadius>
+    <CornerRadius x:Key="AstridRadiusXLarge">16</CornerRadius>
+
+    <!--
+        How wide a selection outline is (astrid-core DS5, task 787c7aa5).
+
+        A density lookup, not a constant: the tokens carry `size.compact.selection-outline` at 1.5
+        and `size.comfortable.selection-outline` at 2.5, and the register reads DS5 as "1.5 wide on
+        pointer layouts and 2.5 on touch". This shell is a pointer layout and has no density setting
+        of its own, so it takes the compact one — stated rather than assumed, so that the day a
+        comfortable mode arrives this is the line that changes. `DesignTokenTests` names which of the
+        two it is.
+    -->
+    <Thickness x:Key="AstridSelectionOutlineThickness">1.5</Thickness>
+
+    <!--
+        Completing a task pops its mark (astrid-core DS16, task 787c7aa5).
+
+        `state.complete-pop-scale`, on `motion.spring` — which is a named entry with its own damping
+        ratio and period rather than a duration and a curve, so it is read rather than approximated.
+        Composition's SpringVector3NaturalMotionAnimation takes exactly those two, which is why
+        `PriorityMark` can run the token's spring and not a stand-in for it.
+
+        Here rather than in the control because that keeps all four of DS5's and DS16's numbers in
+        the two files the design-metrics budget exempts, where one test compares them with the
+        vendored tokens.
+    -->
+    <x:Double x:Key="AstridCompletePopScale">1.28</x:Double>
+    <x:Double x:Key="AstridSpringDamping">0.85</x:Double>
+    <x:Double x:Key="AstridSpringMs">280</x:Double>
+
     <Style x:Key="SidebarRowStyle" TargetType="ListViewItem">
         <!--
             Keyboard focus stays visible — it has to — but as a hairline in the accent rather
             than the two-tone black rectangle WinUI draws over the row it indicates.
         -->
-        <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource AstridAccentBrush}" />
+        <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource AstridBorderFocus}" />
         <Setter Property="FocusVisualSecondaryBrush" Value="Transparent" />
         <Setter Property="FocusVisualPrimaryThickness" Value="1" />
         <Setter Property="FocusVisualMargin" Value="-1" />
@@ -156,6 +253,72 @@
         <Setter Property="CornerRadius" Value="8" />
         <Setter Property="Margin" Value="0,0,0,2" />
         <Setter Property="Background" Value="Transparent" />
+        <!--
+            The row draws its own states, which is the only way to get DS5's outline.
+
+            WinUI's ListViewItem renders through a ListViewItemPresenter, and that presenter offers
+            a selected BACKGROUND (`ListViewItemBackgroundSelected` and the pointer-over and pressed
+            variants) and no selected BORDER. So there is no theme-resource route to an outline, and
+            overriding those three brushes is exactly what the sidebar did instead: a 15% fill with
+            22% hover and pressed states, which is the thing DS5 replaced.
+
+            A Border and a ContentPresenter is the whole template. `Control.IsTemplateFocusTarget`
+            keeps the four focus-visual setters above working, and the states below are the names
+            SelectorItem goes to, so hover and pressed still read as they did — only selection
+            changes.
+        -->
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListViewItem">
+                    <Border x:Name="Row"
+                            Control.IsTemplateFocusTarget="True"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="Transparent"
+                            BorderThickness="{StaticResource AstridSelectionOutlineThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}">
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup x:Name="CommonStates">
+                                <VisualState x:Name="Normal" />
+                                <VisualState x:Name="PointerOver">
+                                    <VisualState.Setters>
+                                        <Setter Target="Row.Background" Value="{ThemeResource AstridSurfaceHover}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="Pressed">
+                                    <VisualState.Setters>
+                                        <Setter Target="Row.Background" Value="{ThemeResource AstridSurfaceHover}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="Selected">
+                                    <VisualState.Setters>
+                                        <Setter Target="Row.BorderBrush" Value="{ThemeResource AstridSelectionOutline}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="PointerOverSelected">
+                                    <VisualState.Setters>
+                                        <Setter Target="Row.Background" Value="{ThemeResource AstridSurfaceHover}" />
+                                        <Setter Target="Row.BorderBrush" Value="{ThemeResource AstridSelectionOutline}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="PressedSelected">
+                                    <VisualState.Setters>
+                                        <Setter Target="Row.Background" Value="{ThemeResource AstridSurfaceHover}" />
+                                        <Setter Target="Row.BorderBrush" Value="{ThemeResource AstridSelectionOutline}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
+                        <ContentPresenter x:Name="ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          ContentTransitions="{TemplateBinding ContentTransitions}"
+                                          Padding="{TemplateBinding Padding}"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <local:CompletedOpacityConverter x:Key="CompletedOpacity" />

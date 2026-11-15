@@ -31,6 +31,8 @@ public sealed class ListSettingsViewModel : ObservableObject
     private bool _canDeleteList;
     private bool _canLeave;
     private bool _canTransferOwnership;
+    private bool _showsDefaultPriority;
+    private bool _showsDefaultDueDate;
     private string? _transferAvailability;
     private bool _isLoading;
     private string? _errorMessage;
@@ -47,8 +49,8 @@ public sealed class ListSettingsViewModel : ObservableObject
         _core = core;
     }
 
-    /// <summary>Who the list is shared with, as the server has them.</summary>
-    public ObservableCollection<ListMember> Members { get; } = [];
+    /// <summary>Who the list is shared with, as the server has them, and what may be done to each.</summary>
+    public ObservableCollection<ListMemberRow> Members { get; } = [];
 
     public string ListId
     {
@@ -407,33 +409,34 @@ public sealed class ListSettingsViewModel : ObservableObject
     /// <summary>The list's defaults, as last loaded.</summary>
     public ListDefaults Defaults => _defaults;
 
-    private static readonly string[] Repeats = ["never", "daily", "weekly", "monthly", "yearly"];
-
-    /// <summary>The word for a repeat value, by the key the core's own preset list uses.</summary>
-    /// <remarks>
-    /// This picker is the shell's — the core has no command for a list's defaults — but it must ask
-    /// for the keys the resources carry, and those follow the core's presets (D49). "never" is the
-    /// one that is not simply the value: the core calls it <c>repeating.one_time_only</c>.
-    /// </remarks>
-    private static string RepeatKey(string value) =>
-        value == "never" ? "repeating.one_time_only" : $"repeating.{value}";
-    private static readonly (string Value, string Key)[] Whens =
-    [
-        ("none", "picker.no_due_date"),
-        ("today", "picker.today"),
-        ("tomorrow", "picker.tomorrow"),
-        ("next_week", "picker.next_week"),
-    ];
-    private static readonly string[] PriorityKeys = ["priority.none", "priority.low", "priority.medium", "priority.high"];
+    /// <summary>
+    /// One picker's rows, from the core's answer: a key becomes a key, and a value with no key is
+    /// an hour, which only the reader's clock can spell.
+    /// </summary>
+    private static List<DefaultChoice> Choices(string field, IReadOnlyList<DefaultPick> picks) =>
+        picks.Select(pick => new DefaultChoice(
+            field,
+            pick.Value,
+            pick.Key,
+            pick.Key is null && pick.Value is { } time ? TimeLabel(time) : null,
+            pick.IsSelected)).ToList();
 
     private void RefreshDefaultChoices(ListDefaults defaults, IReadOnlyList<ListMember> members)
     {
         _defaults = defaults;
 
-        Replace(DefaultPriorityChoices, PriorityKeys
-            .Select((key, level) => new DefaultChoice("priority", level.ToString(), key, null, defaults.Priority == level))
-            .ToList());
+        // What may be chosen, and which row is ticked, is the core's
+        // (astrid_rules::rows::list_default_picks, locked by contracts/fixtures/list-default-picks.json).
+        // Four tables used to live here, and iOS and Android held their own copies — task 92830d81.
+        var picks = AstridClient.ListDefaultPicks(defaults);
 
+        Replace(DefaultPriorityChoices, Choices("priority", picks.Priority));
+        Replace(DefaultRepeatChoices, Choices("repeating", picks.Repeating));
+        Replace(DefaultWhenChoices, Choices("dueDate", picks.DueDate));
+        Replace(DefaultTimeChoices, Choices("dueTime", picks.DueTime));
+
+        // The assignee default stays the shell's: it is this list's members plus two fixed
+        // choices, which is data the shell already has rather than a table it invented.
         var assignees = new List<DefaultChoice>
         {
             new("assignee", null, "defaults.task_creator", null, string.IsNullOrEmpty(defaults.AssigneeId)),
@@ -442,30 +445,6 @@ public sealed class ListSettingsViewModel : ObservableObject
         assignees.AddRange(members.Select(member =>
             new DefaultChoice("assignee", member.UserId, null, member.DisplayName, defaults.AssigneeId == member.UserId)));
         Replace(DefaultAssigneeChoices, assignees);
-
-        Replace(DefaultRepeatChoices, Repeats
-            .Select(value => new DefaultChoice("repeating", value, RepeatKey(value), null, defaults.Repeating == value))
-            .ToList());
-
-        Replace(DefaultWhenChoices, Whens
-            .Select(when => new DefaultChoice("dueDate", when.Value, when.Key, null, defaults.DueDate == when.Value))
-            .ToList());
-
-        // All day, then the hours of a working day — and the stored time itself if it is not one
-        // of them, so a 09:15 set on the web is shown rather than silently rounded.
-        var times = new List<DefaultChoice>
-        {
-            new("dueTime", null, "defaults.all_day", null, defaults.DueTime is null),
-        };
-        var hours = Enumerable.Range(6, 17).Select(hour => $"{hour:00}:00").ToList();
-        if (defaults.DueTime is { } stored && !hours.Contains(stored))
-        {
-            hours.Add(stored);
-            hours.Sort(StringComparer.Ordinal);
-        }
-        times.AddRange(hours.Select(time =>
-            new DefaultChoice("dueTime", time, null, TimeLabel(time), defaults.DueTime == time)));
-        Replace(DefaultTimeChoices, times);
 
         Raise(nameof(Defaults));
         Raise(nameof(SelectedDefaultPriority));
@@ -550,7 +529,7 @@ public sealed class ListSettingsViewModel : ObservableObject
             DueDate = choice.Field == "dueDate" ? choice.Value ?? "none" : _defaults.DueDate,
             DueTime = choice.Field == "dueTime" ? choice.Value : _defaults.DueTime,
         };
-        RefreshDefaultChoices(updated, Members.ToList());
+        RefreshDefaultChoices(updated, Members.Select(row => row.Member).ToList());
         return true;
     }
 
@@ -577,6 +556,31 @@ public sealed class ListSettingsViewModel : ObservableObject
     {
         get => _canDeleteList;
         private set => Set(ref _canDeleteList, value);
+    }
+
+    /// <summary>
+    /// Whether the "Defaults for new tasks" section offers a default PRIORITY (task 897e25c5).
+    /// </summary>
+    /// <remarks>
+    /// Two answers, both needed: the list is still the owner's to manage, and the board still has
+    /// no Priority field for a default to land in. A default for a field that does not exist is a
+    /// setting that can never apply, so it is not offered — <c>supports.priority</c> is the core's
+    /// answer, and absent means classic, so a list the server says nothing about keeps the choice.
+    /// </remarks>
+    public bool ShowsDefaultPriority
+    {
+        get => _showsDefaultPriority;
+        private set => Set(ref _showsDefaultPriority, value);
+    }
+
+    /// <summary>
+    /// Whether the defaults section offers a default When and When-time (task 897e25c5): the same
+    /// rule as <see cref="ShowsDefaultPriority"/>, on <c>supports.dueDate</c>.
+    /// </summary>
+    public bool ShowsDefaultDueDate
+    {
+        get => _showsDefaultDueDate;
+        private set => Set(ref _showsDefaultDueDate, value);
     }
 
     /// <summary>Leaving is for a list somebody else owns; an owner leaving would strand it.</summary>
@@ -789,9 +793,15 @@ public sealed class ListSettingsViewModel : ObservableObject
             CanManageMembers = settings.CanManageMembers;
             CanManageList = settings.CanManageList;
             CanDeleteList = settings.CanDeleteList;
+            // A default is offered where the list both may be managed and has the field for it to
+            // land in (task 897e25c5).
+            ShowsDefaultPriority = settings.CanManageList && settings.Supports.Priority;
+            ShowsDefaultDueDate = settings.CanManageList && settings.Supports.DueDate;
             CanLeave = settings.CanLeave;
             CanTransferOwnership = settings.CanTransferOwnership;
-            Replace(Members, settings.Members);
+            Replace(Members, settings.Members
+                .Select(member => new ListMemberRow(member, settings.CanManageMembers))
+                .ToList());
         }
     }
 
@@ -924,6 +934,25 @@ public sealed class ListSettingsViewModel : ObservableObject
 /// how it is named — by a resource key, or by a member's name.
 /// </summary>
 public sealed record DefaultChoice(string Field, string? Value, string? TitleKey, string? Text, bool IsSelected);
+
+/// <summary>
+/// One person on the list, as the flyout draws them: the member the core answered with, plus
+/// whether this account may take them off it (task 93ffa9ea).
+/// </summary>
+/// <remarks>
+/// <c>CanRemove</c> is carried, not worked out: whether a roster can be changed at all is the
+/// core's answer — the permission rules, and then whether the backend keeps its membership in
+/// Astrid at all, which a GitHub-backed board does not. A row that decided it would be the
+/// implementation that 403s.
+/// </remarks>
+public sealed record ListMemberRow(ListMember Member, bool CanRemove)
+{
+    public string UserId => Member.UserId;
+
+    public string DisplayName => Member.DisplayName;
+
+    public string RoleKey => Member.RoleKey;
+}
 
 /// <summary>One colour the list could wear, and whether it does.</summary>
 public sealed record ColorSwatch(string Hex, bool IsSelected)

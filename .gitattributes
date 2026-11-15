@@ -13,6 +13,11 @@
 *.csproj  text eol=crlf
 *.sln     text eol=crlf
 
+# The vendored design copies are hashed, not just read: `DesignTokenTests` checks the
+# `body-sha256` astrid-core stamped on the art. Git would otherwise check it out CRLF here (there
+# is no `*.xaml` rule, and `text=auto` picks the platform), and the stamp is over LF.
+design/AstridCheckbox.xaml text eol=lf
+
 *.png     binary
 *.ico     binary
 *.pfx     binary

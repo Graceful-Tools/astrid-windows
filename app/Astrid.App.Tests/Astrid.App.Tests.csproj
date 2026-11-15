@@ -3,12 +3,12 @@
   <!--
     The shell's tests.
 
-    Plain net9.0, not WinUI: everything worth testing on this side of the boundary is the bindings
+    Plain net10.0, not WinUI: everything worth testing on this side of the boundary is the bindings
     and the view models, and neither needs a window. A test project that has to start the Windows
     App SDK is one that gets skipped on the machine where it matters.
   -->
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
@@ -16,11 +16,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
     <!-- Reads the shipped checkbox images, so the palette cannot drift from the pixels. -->
-    <PackageReference Include="System.Drawing.Common" Version="9.0.0" />
-    <PackageReference Include="xunit" Version="2.9.2" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="System.Drawing.Common" Version="10.0.15" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1" />
   </ItemGroup>
 
   <ItemGroup>

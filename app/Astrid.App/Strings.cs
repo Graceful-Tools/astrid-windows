@@ -93,6 +93,13 @@ internal static class Strings
         ["picker.evening"] = "Evening",
         ["picker.night"] = "Night",
         ["assignee.unassigned"] = "Unassigned",
+        // The popover a leading mark opens when the core says to ask rather than to finish
+        // (task 3c0dfb73). The board state is only in it when `pickerShowsProjectState` says so.
+        ["picker.priority"] = "Priority",
+        ["picker.assignee"] = "Assigned to",
+        ["picker.status"] = "Status",
+        ["picker.complete"] = "Complete",
+        ["picker.options_for"] = "Options for {0}",
         ["defaults.task_creator"] = "Task creator",
         ["detail.copy_link"] = "Copy link",
         ["detail.copy_task_id"] = "Copy task id",
@@ -114,6 +121,11 @@ internal static class Strings
         ["account.resend"] = "Resend verification email",
         ["account.verification_sent"] = "Verification email sent. Check your inbox and click the link.",
         ["account.waiting_for"] = "Waiting for verification: ",
+        // Changing the address (task e61a3e60). The sentence is careful on purpose: the address
+        // above does not move until the link in the mail is followed.
+        ["account.new_email"] = "New email address",
+        ["account.change_email"] = "Change email",
+        ["account.email_change_sent"] = "Check the new address for the confirmation link. The address above changes once you follow it.",
         ["account.information"] = "Account information",
         ["account.created"] = "Account created",
         ["account.last_updated"] = "Last updated",
@@ -123,10 +135,19 @@ internal static class Strings
         ["account.delete_warning"] = "This permanently removes your tasks, lists, comments, files, integrations and settings, and your access to shared lists. It cannot be undone. Consider exporting your data first, under Your data.",
         ["account.type_to_confirm"] = "Type DELETE MY ACCOUNT to confirm",
         ["account.delete_button"] = "Permanently delete account",
+        // The Integrations page's account panel (task e32f1322). "Connected as " ends in a space
+        // because the address follows it in the same line.
+        ["integrations.google"] = "Google Tasks",
+        ["integrations.github"] = "GitHub",
+        ["integrations.connected_as"] = "Connected as ",
+        ["integrations.google_not_connected"] = "No Google account connected.",
+        ["integrations.github_not_connected"] = "No GitHub account connected.",
+        ["integrations.no_links"] = "No lists linked yet.",
+        ["integrations.new_list"] = "New List",
         ["smart.title"] = "Tasks",
         ["smart.email_to_task"] = "Email-to-Task",
         ["smart.email_to_task_hint"] = "Create tasks by sending email to",
-        ["smart.email_address"] = "remindme@astrid.cc",
+        // The address itself is not a word: it comes from the build, through BrandCopy.
         ["smart.default_due_date"] = "Default due date",
         ["smart.default_due_date_hint"] = "Tasks created by email are due this long after they are sent.",
         ["smart.default_due_time"] = "Default due time",
@@ -160,11 +181,17 @@ internal static class Strings
         ["contacts.clear_confirm"] = "Remove every imported contact? This cannot be undone.",
         ["contacts.clear_yes"] = "Clear contacts",
         ["help.title"] = "Help & Support",
+        ["feedback.title"] = "Report an Issue",
         ["privacy.title"] = "Privacy Policy",
         ["terms.title"] = "Terms of Service",
-        ["passkeys.note"] = "Passkeys sign you in without a password. Adding one happens in the browser; renaming and revoking happen here.",
+        ["passkeys.note"] = "Passkeys sign you in without a password. Windows Hello can add one here, with your face, fingerprint or PIN.",
         ["passkeys.none"] = "No passkeys registered yet.",
-        ["passkeys.add"] = "Add a passkey in the browser",
+        ["passkeys.add"] = "Add a passkey",
+        ["passkeys.manage_on_the_web"] = "Manage on the web",
+        // What Windows Hello said when the ceremony did not finish (task e61a3e60). Closing the
+        // prompt is not one of these: that is a choice, and nothing is shown for it.
+        ["passkeys.hello_failed"] = "Windows Hello could not add a passkey: {0}",
+        ["passkeys.hello_options"] = "This server's passkey challenge could not be read: {0}",
         ["passkeys.added"] = "Added ",
         ["passkeys.synced"] = "Synced",
         ["passkeys.rename"] = "Rename",
@@ -189,17 +216,22 @@ internal static class Strings
         ["repeating.yearly"] = "Yearly",
         ["repeating.custom"] = "Custom…",
         ["repeat.none"] = "Does not repeat",
-        ["repeat.every_day"] = "Every day",
-        ["repeat.every_n_days"] = "Every {0} days",
-        ["repeat.every_week"] = "Every week",
-        ["repeat.every_n_weeks"] = "Every {0} weeks",
-        ["repeat.every_month"] = "Every month",
-        ["repeat.every_n_months"] = "Every {0} months",
-        ["repeat.every_year"] = "Every year",
-        ["repeat.every_n_years"] = "Every {0} years",
+        // One word per CLDR category, which `astrid_rules::plurals::category` picks between
+        // (task b656efce). The shell asked `count == 1 ? "every_day" : "every_n_days"` until
+        // then — right in English and in German, wrong in every language with more than two
+        // forms, which is what the catalog's plural keys exist to fix.
+        ["repeat.every_n_days.one"] = "Every day",
+        ["repeat.every_n_days.other"] = "Every {0} days",
+        ["repeat.every_n_weeks.one"] = "Every week",
+        ["repeat.every_n_weeks.other"] = "Every {0} weeks",
+        ["repeat.every_n_months.one"] = "Every month",
+        ["repeat.every_n_months.other"] = "Every {0} months",
+        ["repeat.every_n_years.one"] = "Every year",
+        ["repeat.every_n_years.other"] = "Every {0} years",
         ["repeat.on_weekdays"] = "on {0}",
         ["repeat.on_day_of_month"] = "on the {0}",
         ["repeat.on_nth_weekday"] = "on the {0} {1}",
+        ["repeat.on_last_weekday"] = "on the last {0}",
         ["repeat.on_month_and_day"] = "on {0} {1}",
         ["repeat.ends_after"] = "({0}x)",
         ["repeat.ends_on"] = "until {0}",
@@ -220,6 +252,7 @@ internal static class Strings
         ["settings.integrations_line"] = "Google lists, the webhook, and Copilot",
         ["settings.data_line"] = "Download all your tasks, lists, and account data",
         ["settings.help_line"] = "Troubleshooting guides and contact support",
+        ["settings.feedback_line"] = "Tell us what went wrong, or what is missing",
         ["settings.privacy_line"] = "How your data is handled",
         ["settings.terms_line"] = "The terms you agreed to",
         // The calendar feed (task 28c5c6a9): the web's three choices and its line under each.
@@ -262,6 +295,18 @@ internal static class Strings
         ["filter.assignee.nobody"] = "Nobody",
         ["filter.repeat"] = "Repeat",
         ["filter.repeat.never"] = "Does not repeat",
+        // The repeat FILTER's rows, under the spelling the PINNED core still emits.
+        //
+        // These were missing until task b63d8679, so this filter group drew its own keys on screen
+        // (CONTRACTS D60). astrid-core then collapsed the two spellings onto the repeat picker's
+        // `repeating.*` (task b0b5f3cc, core `ba154ed`): the filter asks for `repeating.daily` from
+        // that revision on, so `repeat.daily` ... `repeat.custom` are words for keys nothing sends.
+        //
+        // **Deleted with the pin bump that passed `ba154ed`** (task b656efce), which is the only
+        // moment it was safe: removing them earlier would have put the raw key on screen in the
+        // filter sheet, and leaving them later is a translator's wasted hour and a reader's false
+        // clue that the shell still draws that row. `CorePinFollowsIosTests.RetiredKeys` holds
+        // them gone.
         ["filter.assigned_by"] = "Assigned by",
         ["filter.assigned_by.me"] = "Me",
         ["filter.assigned_by.someone_else"] = "Somebody else",
@@ -290,11 +335,23 @@ internal static class Strings
         ["stats.completed"] = "{0} finished",
         ["stats.inspired"] = "{0} inspired",
         ["stats.supported"] = "{0} supported",
+        // What a list has been doing (task 48c624ad). The spellings are web's own, under
+        // `listInsights` in lib/i18n/locales/*.json, so the two clients read the same.
+        ["listInsights.days7"] = "7 days",
+        ["listInsights.days30"] = "30 days",
+        ["listInsights.days90"] = "90 days",
+        ["listInsights.createdTotal"] = "{0} new",
+        ["listInsights.completedTotal"] = "{0} completed",
+        ["listInsights.sampleSize"] = "from {0}",
+        ["listInsights.profileCounts"] = "{0} completed · {1} inspired · {2} supported",
+        ["listInsights.activityCounts"] = "{0} created · {1} edits · {2} comments",
+        ["listInsights.duration.minutes"] = "{0} min",
+        ["listInsights.duration.hours"] = "{0} h",
+        ["listInsights.duration.days"] = "{0} d",
         ["agents.key_set"] = "Set up",
         ["agents.secret_title"] = "Copy this now — it is not shown again",
         ["dialog.close"] = "Close",
         ["agents.no_key"] = "No key",
-        ["app.name"] = "Astrid",
         ["settings.account"] = "Account",
         ["settings.reminders"] = "Reminders",
         ["settings.appearance"] = "Appearance",
@@ -308,10 +365,14 @@ internal static class Strings
         ["reminder.toast_snooze"] = "Snooze {0} min",
         ["timer.hours_minutes"] = "{0}h {1}m",
         ["timer.minutes"] = "{0}m",
-        ["ordinal.st"] = "{0}st",
-        ["ordinal.nd"] = "{0}nd",
-        ["ordinal.rd"] = "{0}rd",
-        ["ordinal.th"] = "{0}th",
+        // The ORDINAL categories, not the cardinal ones: English's ordinal 1 is `one`, 2 is
+        // `two`, 3 is `few` and everything else `other`, which is the same four suffixes the
+        // shell used to pick with a `% 100` rule of its own. German has one form and says
+        // "{0}." to all of them, which is why its .resw carries only `format_ordinal_other`.
+        ["format.ordinal.one"] = "{0}st",
+        ["format.ordinal.two"] = "{0}nd",
+        ["format.ordinal.few"] = "{0}rd",
+        ["format.ordinal.other"] = "{0}th",
         ["notification.assigned"] = "Assigned to you",
         ["notification.mentioned"] = "Mentioned you",
         ["notification.replied"] = "Replied to you",
@@ -326,6 +387,14 @@ internal static class Strings
         ["copy.include_comments"] = "Include comments",
         ["copy.button"] = "Copy",
         ["copy.done"] = "Copied",
+        // The trade-off grid's rating words, under the core's own spelling — the registry's, which
+        // `Strings.Get` flattens to `tasks_tradeoffRatings_veryGood`. This shell had them under an
+        // invented `tradeoff_very_good` until task b63d8679, and no fallback at all.
+        ["tasks.tradeoffRatings.veryPoor"] = "Very poor",
+        ["tasks.tradeoffRatings.poor"] = "Poor",
+        ["tasks.tradeoffRatings.mixed"] = "Mixed",
+        ["tasks.tradeoffRatings.good"] = "Good",
+        ["tasks.tradeoffRatings.veryGood"] = "Very good",
         // The first letter of the reader's word for "unassigned": U here, 未 in Japanese, Н in
         // Russian (PRODUCT_CONTRACT.md §4). A translator changes this, not the code.
         ["tasks.unassigned_mark"] = "U",
@@ -336,8 +405,35 @@ internal static class Strings
         ["outbox.retry_sent"] = "{0} sent again",
         ["outbox.retry_none"] = "Nothing to retry",
         ["appearance.hotkey"] = "Quick-add shortcut",
-        ["appearance.hotkey_hint"] = "Brings Astrid forward from anywhere, ready for a new task. Ctrl, Alt or Win, plus one letter or digit.",
         ["appearance.apply"] = "Apply",
+        // The lines that have to name the brand (task 8d241526). {0} is filled in by BrandCopy
+        // from the build's own profile, so a translator owns the sentence and the packager owns
+        // the noun — and hosted Astrid reads exactly as it always did.
+        ["appearance.hotkey_hint"] = "Brings {0} forward from anywhere, ready for a new task. Ctrl, Alt or Win, plus one letter or digit.",
+        // Said "astrid.app" until task 8d241526, which is not a host this product has ever been on.
+        ["brand.board_turn_one_on"] = "Turn one on for this list in {0}, and its columns show up here.",
+        ["brand.connections_web_session"] = "The server wants a signed-in browser for this. Open Settings, then Connections, at {0}.",
+        ["brand.tour_hotkey"] = "Ctrl+Shift+A brings {0} forward from anywhere, ready for a new task.",
+        ["brand.agent_model_heading"] = "The model behind @{0}",
+        ["brand.agent_model_none"] = "Add an API key or register a custom agent below to power {0}.",
+        ["brand.agent_model_auto"] = "Let {0} choose",
+        ["brand.agent_model_hint"] = "Choose the model that powers {0} for My Tasks and your private lists.",
+        // The sign-in card's promise, composed from the brand's own methods (task 28348df8). The
+        // method names are lower case because they are read in the middle of a list; the first one
+        // in a given build is capitalised by AuthMethods.List, which is the only thing that knows
+        // which it is.
+        ["brand.sign_in_methods"] = "{0} all work there. You stay signed in here afterwards.",
+        ["auth.method_github"] = "GitHub",
+        ["auth.method_google"] = "Google",
+        ["auth.method_apple"] = "Apple",
+        ["auth.method_passkey"] = "passkeys",
+        ["auth.method_sso"] = "your organisation's single sign-on",
+        ["auth.method_magic_link"] = "magic links",
+        // How this language joins a list. Separate from the sentence so the sentence does not have
+        // to be rewritten per number of methods, and a resource rather than a literal because
+        // German joins with "und" and the next language may not use a comma at all.
+        ["list.separator"] = ", ",
+        ["list.conjunction"] = "{0} and {1}",
     };
 
     /// <summary>The fallback table, for the tests that check every key has a string.</summary>

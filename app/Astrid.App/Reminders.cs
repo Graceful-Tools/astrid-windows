@@ -111,7 +111,7 @@ public sealed class Reminders
             // notifications carry it. A file beside the executable: the unpackaged build has no
             // ms-appx the notification platform can read.
             .SetAppLogoOverride(new Uri(MarkPath), AppNotificationImageCrop.Circle)
-            .AddText(Strings.Get("app.name"))
+            .AddText(BrandCopy.AppName)
             .AddText(reminder.Title)
             .AddButton(new AppNotificationButton(Strings.Get("reminder.toast_complete"))
                 .AddArgument("action", "complete")

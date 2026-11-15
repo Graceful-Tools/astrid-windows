@@ -51,6 +51,9 @@ public sealed class BrandHeaderSearchTests
     private static XElement Shell() =>
         XDocument.Load(Path.Combine(LocalisationTests.AppDirectory(), "ShellPage.xaml")).Root!;
 
+    private static XElement Sidebar() =>
+        XDocument.Load(Path.Combine(LocalisationTests.AppDirectory(), "Views", "SidebarView.xaml")).Root!;
+
     private static string TitleBarCodeBehind() =>
         File.ReadAllText(Path.Combine(LocalisationTests.AppDirectory(), "Views", "TitleBarView.xaml.cs"));
 
@@ -115,16 +118,19 @@ public sealed class BrandHeaderSearchTests
     /// other two platforms each had to fix."</i> WinUI has no tidy way to share one
     /// <c>GridLength</c> between two files' column definitions, so the number appears in both
     /// and this test makes them equal. Change one and this fails naming the other.
+    ///
+    /// <b>Where the sidebar's width lives moved in task ab4cb9ee.</b> The page's column is
+    /// <c>Auto</c> now, because the sidebar is 260 wide open and a 48px rail hidden and only it
+    /// knows which — so the number to compare against is the one on the sidebar's own open panel,
+    /// not the page's column definition. The invariant is unchanged; what states it moved one file.
     /// </remarks>
     [Fact]
     public void The_brand_header_is_exactly_as_wide_as_the_sidebar_task_20dcc235()
     {
-        var sidebarColumn = Shell()
+        var sidebarWidth = (string?)Sidebar()
             .Descendants()
-            .First(element => element.Name.LocalName == "Grid.ColumnDefinitions")
-            .Elements()
-            .First();
-        var sidebarWidth = (string?)sidebarColumn.Attribute("Width");
+            .First(element => element.Name.LocalName == "Grid" && element.Attribute("Width") is not null)
+            .Attribute("Width");
 
         var header = Search(TitleBar()).Parent!;
         var headerWidth = (string?)header.Attribute("Width");

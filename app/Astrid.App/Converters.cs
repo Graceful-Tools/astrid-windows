@@ -13,41 +13,26 @@ using Windows.UI.Text;
 namespace Astrid.App;
 
 /// <summary>
-/// A colour for a priority, or for a list's hex.
+/// A colour for a list, from the hex the server stores.
 /// </summary>
 /// <remarks>
-/// The hex values match every other client — see <c>Task.Priority.color</c> on Apple. They are
-/// stated in App.xaml as brushes and read here rather than written twice.
+/// It used to answer for a priority too, building a brush out of <c>PriorityPalette</c>'s hex. That
+/// moved to the <c>PriorityOutline</c> attached property in task 82e4ad32, because a priority's colour
+/// now depends on the theme — <c>priority-low</c> is a different brand value on dark — and a
+/// converter is handed a value and a target type but never the element, so it has no theme to
+/// resolve in. A list's colour is a person's pick out of a fixed palette and the same in every
+/// theme, so it stays here.
 /// </remarks>
 public sealed partial class PriorityBrushConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language) => value switch
     {
-        int priority => new SolidColorBrush(PriorityColor(priority)),
-        // A list colour arrives as the hex the server stores.
         string hex => new SolidColorBrush(Parse(hex)),
         _ => new SolidColorBrush(Colors.Transparent),
     };
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("colours are read-only in the UI");
-
-    /// <summary>
-    /// The colour for a priority, from the one table that also describes the row marks.
-    /// </summary>
-    /// <remarks>
-    /// These were hardcoded here, in values that disagreed with the checkbox images every row
-    /// draws — priority 1 was green here and blue on screen (task 204c9d98). The table is now
-    /// <see cref="PriorityPalette"/>, pinned against the shipped assets by a test.
-    ///
-    /// Zero is the exception, and stays transparent: no priority draws nothing at all rather than
-    /// grey, because a stripe on every row is a stripe that says nothing and the point of the
-    /// stripe is that it is glanceable. The picker's swatch, which needs a visible outline, asks
-    /// the palette for the grey directly.
-    /// </remarks>
-    private static Color PriorityColor(int priority) => priority is 1 or 2 or 3
-        ? Parse(PriorityPalette.Hex(priority))
-        : Colors.Transparent;
 
     /// <summary>
     /// Read <c>#rrggbb</c> or <c>#aarrggbb</c>.
@@ -264,15 +249,20 @@ public sealed partial class ChipTintConverter : IValueConverter
 
 /// <summary>The funnel goes accent-coloured when something is narrowing the list.</summary>
 /// <remarks>
+/// <para>
 /// The word "Filtered" used to say it. With an icon-only toolbar the colour has to, or a list
 /// quietly hiding half its tasks looks like a list that lost them.
+/// </para>
+/// <para>
+/// The unfiltered colour is <c>AstridTextPrimary</c>, which is themed — white on dark, near-black
+/// on light — so it goes through <see cref="ThemeBrushes"/> rather than the application, which
+/// would answer for the light theme whatever the app is wearing (task 770625f8).
+/// </para>
 /// </remarks>
 public sealed partial class FilterTintConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language) =>
-        value is true
-            ? Application.Current.Resources["AstridAccentBrush"]
-            : Application.Current.Resources["AstridTextPrimary"];
+        ThemeBrushes.For(value is true ? "AstridAccentBrush" : "AstridTextPrimary");
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("a tint is not a value to read back");
@@ -591,32 +581,29 @@ public sealed partial class RepeatSummaryConverter : IValueConverter
     {
         var count = part.Count ?? 1;
         var format = System.Globalization.CultureInfo.CurrentCulture;
-        // The singular is its own key rather than a rule about the number: "every 1 week" is wrong
-        // in English and differently wrong in languages with more than two plural forms.
+        // The plural keys carry one word per CLDR category and the core picks between them. The
+        // shell used to ask `count == 1` and keep a singular key beside each plural one, which is
+        // right in English and in German and wrong in every language with more than two forms --
+        // Russian needs a third word at 2, Polish a different one at 22 (task b656efce).
         return part.Key switch
         {
             // The four cadences took iOS's spelling when the core followed it (D49); the
             // qualifiers below kept theirs.
             "repeating.daily" or "repeating.weekly" or "repeating.monthly" or "repeating.yearly"
                 or "repeat.from_due_date" => Strings.Get(part.Key),
-            "repeat.every_n_days" => count == 1
-                ? Strings.Get("repeat.every_day")
-                : Strings.Get("repeat.every_n_days", count),
-            "repeat.every_n_weeks" => count == 1
-                ? Strings.Get("repeat.every_week")
-                : Strings.Get("repeat.every_n_weeks", count),
-            "repeat.every_n_months" => count == 1
-                ? Strings.Get("repeat.every_month")
-                : Strings.Get("repeat.every_n_months", count),
-            "repeat.every_n_years" => count == 1
-                ? Strings.Get("repeat.every_year")
-                : Strings.Get("repeat.every_n_years", count),
+            "repeat.every_n_days" or "repeat.every_n_weeks" or "repeat.every_n_months"
+                or "repeat.every_n_years" => Plural(part.Key, count),
             "repeat.on_weekdays" => Strings.Get(
                 "repeat.on_weekdays", string.Join(", ", part.Values.Select(Weekday))),
             "repeat.on_day_of_month" => Strings.Get("repeat.on_day_of_month", Ordinal(count)),
             "repeat.on_nth_weekday" => Strings.Get(
                 "repeat.on_nth_weekday",
                 Ordinal(count),
+                Weekday(part.Values.FirstOrDefault() ?? string.Empty)),
+            // "The last Thursday" has no ordinal, so the core sends no count with it (task
+            // e4f160cc); an ordinal of nothing would read "on the 0th Thursday".
+            "repeat.on_last_weekday" => Strings.Get(
+                "repeat.on_last_weekday",
                 Weekday(part.Values.FirstOrDefault() ?? string.Empty)),
             "repeat.on_month_and_day" => Strings.Get(
                 "repeat.on_month_and_day", Month(part.Values.FirstOrDefault()), Ordinal(count)),
@@ -640,24 +627,33 @@ public sealed partial class RepeatSummaryConverter : IValueConverter
             ? System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month)
             : string.Empty;
 
-    /// <summary>
-    /// "1st", "22nd", "13th" — the suffix rule is English, but the suffixes themselves are
-    /// resources, so a language whose ordinals are "1." or "1er" sets all four keys and gets
-    /// its own. A rule that produces the right form for every language is a bigger job than a
-    /// repeat summary is worth; this is the honest halfway.
-    /// </summary>
-    private static string Ordinal(long number)
+    /// <summary>"1st", "22nd", "13th" — in whatever language this reader is in.</summary>
+    /// <remarks>
+    /// <para>
+    /// This was a private <c>% 100</c> / <c>% 10</c> suffix rule with four keys of its own,
+    /// described in the code it replaced as "the honest halfway" because a rule that produces the
+    /// right form for every language was "a bigger job than a repeat summary is worth". The core
+    /// has that rule now — CLDR for twelve languages, fixtured — so the halfway is no longer the
+    /// best available (task b656efce).
+    /// </para>
+    /// <para>
+    /// The categories are the ORDINAL ones, which is not the same question as the cardinal plural
+    /// above: English's cardinal 3 is <c>other</c> and its ordinal 3 is <c>few</c>.
+    /// </para>
+    /// </remarks>
+    private static string Ordinal(long number) =>
+        Plural(Plurals.OrdinalKey, number, CountForm.Ordinal);
+
+    /// <summary>The word for a plural key, from the category the core picks for this reader.</summary>
+    /// <remarks>
+    /// The locale is the reader's UI culture, passed whole: the core takes the language subtag, so
+    /// <c>de-DE</c> and <c>pt-BR</c> are answered rather than falling through to <c>other</c>.
+    /// </remarks>
+    private static string Plural(string key, long count, CountForm form = CountForm.Cardinal)
     {
-        var key = (number % 100) is >= 11 and <= 13
-            ? "ordinal.th"
-            : (number % 10) switch
-            {
-                1 => "ordinal.st",
-                2 => "ordinal.nd",
-                3 => "ordinal.rd",
-                _ => "ordinal.th",
-            };
-        return Strings.Get(key, number);
+        var locale = System.Globalization.CultureInfo.CurrentUICulture.Name;
+        var category = AstridClient.PluralCategory(locale, form, count);
+        return Strings.Get($"{key}.{category}", count);
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
@@ -708,13 +704,21 @@ public sealed partial class BubbleAlignConverter : IValueConverter
 
 /// <summary>The bubble's own ground: mine on the surface tint, theirs a shade deeper.</summary>
 /// <remarks>
+/// <para>
 /// astrid-web's <c>.chat-bubble-mine</c> / <c>.chat-bubble-other</c>. Two shades rather than a
 /// colour, because a coloured bubble competes with the list colours the panel is full of.
+/// </para>
+/// <para>
+/// Both shades are themed, and reading them off the application answered with the light theme's in
+/// every appearance: in dark, every bubble came back a near-white rectangle with the thread's white
+/// text on it, unreadable (task 770625f8). <see cref="ThemeBrushes"/> asks the theme the app is
+/// actually wearing.
+/// </para>
 /// </remarks>
 public sealed partial class BubbleBrushConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language) =>
-        Application.Current.Resources[value is true ? "AstridBgSelected" : "AstridSurfaceHover"];
+        ThemeBrushes.For(value is true ? "AstridBgSelected" : "AstridSurfaceHover");
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("a bubble's ground is not a value to read back");
@@ -958,4 +962,147 @@ public sealed partial class BoardColumnWidthConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("a width is not a value to read back");
+}
+
+// ── What a list has been doing (task 48c624ad) ────────────────────────────────────────────────
+//
+// The view model carries numbers and resource keys and never a sentence, so these are where the
+// Insights panel's words come from. The spellings are web's own, under `listInsights` in
+// lib/i18n/locales/*.json, because the two clients should read the same.
+
+/// <summary>Nothing, said once: an em dash where a missing value would otherwise be a blank.</summary>
+/// <remarks>
+/// A dash is not a word in a language, which is why it is here rather than in the resources — and
+/// why a value the server does not have must not be drawn as an empty label, which reads as a
+/// panel that failed to load rather than as a fact nobody has recorded.
+/// </remarks>
+public sealed partial class DashedTextConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is string text && text.Length > 0 ? text : "—";
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a placeholder is not a value to read back");
+}
+
+/// <summary>One of the window picker's three buttons: "7 days", "30 days", "90 days".</summary>
+/// <remarks>
+/// Inside a DataTemplate, so it cannot be worded by an <c>x:Uid</c> — and the three are a list in
+/// the view model rather than three buttons in the XAML, because the route answers 400 to a fourth
+/// and the core is what decides which three those are.
+/// </remarks>
+public sealed partial class InsightWindowConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is int days ? Strings.Get($"listInsights.days{days}") : string.Empty;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a window is not a value to read back");
+}
+
+/// <summary>A median, at the unit the view model chose — or an em dash when there is no median.</summary>
+public sealed partial class InsightDurationConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is Astrid.App.ViewModels.InsightDurationLabel { Key: { } key } median
+            ? Strings.Get(key, median.Amount)
+            // Not "0": nothing was measured, and a zero would read as instantaneous.
+            : "—";
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a median is not a value to read back");
+}
+
+/// <summary>How many went into a median — and nothing at all when there is no median to qualify.</summary>
+public sealed partial class InsightSampleConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is Astrid.App.ViewModels.InsightDurationLabel { HasMedian: true } median
+            ? Strings.Get("listInsights.sampleSize", median.SampleSize)
+            : string.Empty;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a sample size is not a value to read back");
+}
+
+/// <summary>One of the chart's two totals, with its word: "60 new", "45 completed".</summary>
+/// <remarks>
+/// Not <see cref="CountedWordsConverter"/>, which disappears at zero: a window in which nothing
+/// was completed is worth saying out loud beside one in which sixty tasks were created.
+/// </remarks>
+public sealed partial class InsightCountConverter : IValueConverter
+{
+    /// <summary>Which total this instance says: <c>listInsights.createdTotal</c> or its sibling.</summary>
+    public string Key { get; set; } = "listInsights.createdTotal";
+
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is int count ? Strings.Get(Key, count) : string.Empty;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a total is not a value to read back");
+}
+
+/// <summary>
+/// A contributor's line: the three profile metrics the ranking uses, or the activity that breaks
+/// their ties (AWTD-1333).
+/// </summary>
+/// <remarks>
+/// One converter with a key rather than two classes, as <see cref="StatConverter"/> is: the three
+/// numbers differ, the shape of the sentence does not.
+/// </remarks>
+public sealed partial class InsightCountsConverter : IValueConverter
+{
+    /// <summary><c>listInsights.profileCounts</c> or <c>listInsights.activityCounts</c>.</summary>
+    public string Key { get; set; } = "listInsights.profileCounts";
+
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        if (value is not InsightContributor person)
+        {
+            return string.Empty;
+        }
+        return Key == "listInsights.activityCounts"
+            ? Strings.Get(Key, person.Created, person.Edited, person.Commented)
+            : Strings.Get(Key, person.Completed, person.Inspired, person.Supported);
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a contributor's counts are read-only in the UI");
+}
+
+/// <summary>One series as a polyline over the plot.</summary>
+/// <remarks>
+/// The view model hands over fractions — 0 to 1 across the window, 0 to 1 up from the busiest day
+/// in either series — because it must not know how wide the panel is. This is where they become
+/// pixels, and the only place the plot's size is stated, so the two lines cannot end up on
+/// different scales. Y is flipped: a chart's zero is at the bottom and a canvas's is at the top.
+/// </remarks>
+public sealed partial class InsightLineConverter : IValueConverter
+{
+    public double PlotWidth { get; set; } = 288;
+
+    public double PlotHeight { get; set; } = 120;
+
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        var points = new PointCollection();
+        if (value is IEnumerable<Astrid.App.ViewModels.InsightSeriesPoint> series)
+        {
+            foreach (var point in series)
+            {
+                points.Add(new Windows.Foundation.Point(
+                    point.X * PlotWidth, PlotHeight - (point.Y * PlotHeight)));
+            }
+        }
+        // A Polyline of one point draws nothing, and a one-day window is a legitimate answer from
+        // a list created yesterday. Carry it across as a flat line rather than as a blank chart.
+        if (points.Count == 1)
+        {
+            points.Add(new Windows.Foundation.Point(PlotWidth, points[0].Y));
+        }
+        return points;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException("a chart is not a value to read back");
 }

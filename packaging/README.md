@@ -41,6 +41,15 @@ top of `dist/` are what the Store takes and are never touched. With `-Install` i
 bundle and reports which architecture Windows chose; with `-Launch` it starts the app from its
 packaged identity and checks the process is the packaged one.
 
+**Install it and then START it.** An install proves almost nothing: the app is framework-dependent
+on the Windows App SDK runtime, and until 2026-10-18 the manifest declared no `PackageDependency`
+for it, so every package this repo had ever built installed perfectly and then died on the first
+line of `Main` with `REGDB_E_CLASSNOTREG` — `AppInstance.GetCurrent()` cannot resolve inside a
+package whose manifest does not name the runtime. Unpackaged builds reach it through the
+bootstrapper instead, which is why `F5` and the UI smoke tests never saw it. `-Launch` is the
+switch that would have caught it; `scripts/tests/packaging-manifest.Tests.ps1` now keeps the
+manifest and the csproj's `Microsoft.WindowsAppSDK` version in step, in `predeploy`.
+
 Adding a certificate to a machine's store is a change to the machine, not to this repository,
 which is why it took a decision (Jon approved it on 2026-09-13, task edf273c3). The certificate
 is named "Astrid local test signing" in certmgr, and `-RemoveCertificate` takes it out again;
@@ -82,7 +91,22 @@ go back.
 
 `listing/store-listing.md` is the Partner Center listing, drafted 2026-09-13 (task f91d2f07) to
 match the iOS App Store listing for Astrid Tasks: description, features, search terms, the
-age-rating answers, and what to put in every other field. `listing/screenshots/` holds the seven
+age-rating answers, and what to put in every other field.
+
+**It is a template since task AWTD-1636; paste the filled copy, not the file.** `package.ps1` writes
+`dist/<stem>-<version>.store-listing.md` beside the `.msixupload`, and
+`powershell -File scripts/store-listing.ps1 [-Brand acme] [-Version 1.2.3.0]` writes it on its own,
+without a publish. Identifying values are `{PLACEHOLDER}`s the brand profile fills (the name, the
+upload's file name, the website, the support address, the privacy policy, the copyright holder);
+prose that is hosted Astrid's own sits in `<!-- brand: astrid -->` / `<!-- brand: partner -->`
+blocks, and a partner gets the second half — guidance and `[TO WRITE: ...]` holes, since their
+marketing copy is theirs to write. A value the profile does not give is a `[TO FILL: ...]` hole,
+never ours, and the script lists every hole as a warning. **With no profile the output is byte for
+byte the listing hosted Astrid has always submitted**: `scripts/tests/store-listing.Tests.ps1`
+holds it to a SHA-256, so a deliberate edit to the hosted listing updates that hash in the same
+commit. `scripts/lib/store-listing.ps1` has the rules.
+
+`listing/screenshots/` holds the seven
 Store screenshots, 2538x1589 PNGs taken from the app signed in as the demo account. Take new ones
 the same way when the app changes: run the debug build into its own `ASTRID_DATA_DIR`, size the
 window to at least 1366x768 physical pixels, and capture the DWM frame bounds.

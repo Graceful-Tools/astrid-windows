@@ -20,9 +20,16 @@
         unplugged, which on this machine is most of the time.
       * StartWhenAvailable. After sleep, a tick that was missed runs once on wake instead of being
         dropped until the next half hour.
-      * MultipleInstances = IgnoreNew, plus an execution time limit a little above the loop's own
+      * MultipleInstances = IgnoreNew, plus an execution time limit DERIVED from the loop's own
         watchdog. One wedged run must not stack copies, and must not be able to outlive its own
-        watchdog either.
+        watchdog either - but neither may the scheduler kill a run BEFORE that watchdog fires.
+        Until task 18ba8c2e it did: the limit was a literal 55 minutes against a 75-minute
+        watchdog, so Task Scheduler killed every long tick twenty minutes early, and a scheduler
+        kill runs none of the loop's recovery - no WIP commit, no Doing release, no wake
+        acknowledgement, no comment on the task it had taken. Two independently-defaulted numbers
+        is how those drifted apart, so there is now ONE watchdog: -WatchdogMinutes is forwarded to
+        the loop explicitly AND is what the deadline is computed from, with -RecoveryMinutes of
+        headroom on top for the loop to finish cleaning up after its own watchdog fires.
 
     The schedule is :10 and :40, chosen to interleave with the other loops working Astrid boards
     rather than to compete with them for the same quota: :00/:30 astrid-ios (claude), :20/:50
@@ -39,6 +46,30 @@
     Start one pass immediately through the scheduler, which is how to prove the registration
     itself works rather than just the script.
 
+.PARAMETER WatchdogMinutes
+    The ONE watchdog. Passed to the loop as -MaxMinutes and used to compute the scheduler's
+    execution time limit, so the two cannot drift apart again. Must match what the loop would
+    otherwise default to (75).
+
+.PARAMETER RecoveryMinutes
+    How long the loop is given, on top of its watchdog, to save unfinished work, release its Doing
+    claims, acknowledge its wake keys and comment on the task before Task Scheduler stops it.
+
+.PARAMETER LongRunMinutes
+    The ceiling a tick may reach when it takes a task flagged LONG-RUN (task 0216d83c). The loop
+    sizes its OWN watchdog per tick, from the plan astrid-web's preflight returns, so by the time
+    anything knows this is an 8-hour run the scheduler's deadline is already fixed - which is why
+    the deadline has to be computed for the longest tick that is possible rather than the one that
+    is usual.
+
+    THE COST, stated plainly: the scheduler's deadline is also the backstop against the LOOP ITSELF
+    wedging, and that backstop now sits at the long-run ceiling for every tick, ordinary ones
+    included. It is the lesser harm. The loop's own watchdog still kills an ordinary wedged RUN at
+    75 minutes and recovers; what gets weaker is only the outer guard against the launcher hanging,
+    which has never happened. What this replaces is certain: an 85-minute kill of a tick that was
+    legitimately given eight hours, with no WIP commit, no Doing release and no comment. Set 0 to
+    opt out and keep the tight deadline - a long task is then simply never started here.
+
 .EXAMPLE
     powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-fixall-task.ps1
 
@@ -50,12 +81,30 @@ param(
     [switch]$Uninstall,
     [switch]$Status,
     [switch]$RunNow,
-    [string]$TaskName = 'Astrid fixall (Windows board)'
+    [string]$TaskName = 'Astrid fixall (Windows board)',
+
+    # Ranged, because both numbers are load-bearing and neither failure is visible: a watchdog of
+    # minutes kills every real run, and one of hours lets a wedged tick swallow a whole evening of
+    # them (MultipleInstances = IgnoreNew).
+    [ValidateRange(10, 240)][int]$WatchdogMinutes = 75,
+    [ValidateRange(1, 60)][int]$RecoveryMinutes = 10,
+
+    # The CEILING a LONG-RUN tick may reach, which the deadline below must also allow for (task
+    # 0216d83c). The loop sizes its own watchdog from the preflight's plan at RUN TIME, so the
+    # scheduler cannot know on any given tick whether this is a 75-minute run or an 8-hour one -
+    # and a deadline set for the ordinary case kills the long one at 85 minutes, running NONE of
+    # the loop's recovery. 480 is astrid-web's LONG_RUN_MAX_MINUTES; 0 disables long runs entirely,
+    # which is what to set if this machine must never give a tick more than its watchdog.
+    [ValidateRange(0, 480)][int]$LongRunMinutes = 480
 )
 
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
+# The deadline arithmetic and the argument string are NOT written here. They are the two things the
+# loop has to be able to check this registration against, and two independently written copies is
+# precisely how 55 and 75 drifted apart. See scripts/lib/fixall-schedule.ps1.
+. (Join-Path $PSScriptRoot 'lib\fixall-schedule.ps1')
 $LoopScript = Join-Path $RepoRoot 'scripts\fixall-loop.ps1'
 $LogFile = Join-Path $env:LOCALAPPDATA 'Astrid\logs\fixall-windows.log'
 
@@ -74,6 +123,14 @@ if ($Status) {
     Write-Host "Runs:        $(($existing.Actions | ForEach-Object { $_.Execute + ' ' + $_.Arguments }) -join '; ')"
     Write-Host "Last run:    $($info.LastRunTime)  (result $($info.LastTaskResult))"
     Write-Host "Next run:    $($info.NextRunTime)"
+    # The question -Status is actually asked: is the thing on this machine the thing in this
+    # checkout? It was not, for seventeen days, and nothing said so (task 18ba8c2e).
+    $drift = Get-ScheduleDriftVerdict -Registration (Read-FixallScheduleRegistration -TaskName $TaskName) `
+        -LoopScript $LoopScript -WatchdogMinutes $WatchdogMinutes `
+        -DeadlineMinutes (Get-FixallScheduleDeadlineMinutes -WatchdogMinutes $WatchdogMinutes `
+            -RecoveryMinutes $RecoveryMinutes -LongRunMinutes $LongRunMinutes)
+    if ($drift.Reason) { Write-Host "STALE:       $($drift.Reason)" -ForegroundColor Yellow }
+    else { Write-Host 'Matches:     yes - the registration is what this checkout would install' }
     Write-Host "Log:         $LogFile"
     if (Test-Path $LogFile) {
         Write-Host '--- last 15 log lines ---'
@@ -97,8 +154,15 @@ if ($RunNow) {
 }
 
 # ── Install ───────────────────────────────────────────────────────────────────────────────────
+# The watchdog is FORWARDED, never left to the loop's own default: the deadline below is computed
+# from this number, and a deadline derived from one number while the loop obeys another is the
+# drift task 18ba8c2e fixed. Both strings come from the shared library, which is also what each
+# tick compares the registered entry against.
+$DeadlineMinutes = Get-FixallScheduleDeadlineMinutes -WatchdogMinutes $WatchdogMinutes `
+    -RecoveryMinutes $RecoveryMinutes -LongRunMinutes $LongRunMinutes
+
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' `
-    -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$LoopScript`"" `
+    -Argument (Get-FixallScheduleArgument -LoopScript $LoopScript -WatchdogMinutes $WatchdogMinutes) `
     -WorkingDirectory $RepoRoot
 
 # One trigger, repeating every 30 minutes forever, rather than two daily triggers: the same two
@@ -111,7 +175,7 @@ $settings = New-ScheduledTaskSettingsSet `
     -DontStopIfGoingOnBatteries `
     -StartWhenAvailable `
     -MultipleInstances IgnoreNew `
-    -ExecutionTimeLimit (New-TimeSpan -Minutes 55) `
+    -ExecutionTimeLimit (New-TimeSpan -Minutes $DeadlineMinutes) `
     -RestartCount 0
 
 $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" `
@@ -124,8 +188,10 @@ Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger `
 
 $info = Get-ScheduledTaskInfo -TaskName $TaskName
 Write-Host "Registered '$TaskName' for $env:USERNAME."
-Write-Host "  runs:     powershell -NoProfile -ExecutionPolicy Bypass -File $LoopScript"
+Write-Host "  runs:     powershell -NoProfile -ExecutionPolicy Bypass -File $LoopScript -MaxMinutes $WatchdogMinutes"
 Write-Host "  schedule: :10 and :40, every hour"
+Write-Host "  watchdog: ${WatchdogMinutes}m, with the scheduler stopping it at ${DeadlineMinutes}m (${RecoveryMinutes}m to recover)"
+Write-Host "  long run: up to ${LongRunMinutes}m for a task flagged LONG-RUN, inside its window - the loop sizes each tick"
 Write-Host "  next run: $($info.NextRunTime)"
 Write-Host "  log:      $LogFile"
 Write-Host ''

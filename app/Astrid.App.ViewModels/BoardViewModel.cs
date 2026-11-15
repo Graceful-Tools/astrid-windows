@@ -37,6 +37,8 @@ public sealed class BoardViewModel : ObservableObject
     /// the same reason.
     /// </remarks>
     private readonly Dictionary<string, string> _drafts = [];
+    /// <summary>A move into Waiting that is waiting on a date or a task (task 7462618e).</summary>
+    private readonly PendingWait _pendingWait;
     private string _listId = string.Empty;
     private Board? _board;
     private bool _isLoading;
@@ -46,6 +48,7 @@ public sealed class BoardViewModel : ObservableObject
     public BoardViewModel(IAstridCore core)
     {
         _core = core;
+        _pendingWait = new PendingWait(() => Raise(nameof(WaitPrompt)));
     }
 
     /// <summary>The columns, in the order the board shows them.</summary>
@@ -78,6 +81,24 @@ public sealed class BoardViewModel : ObservableObject
         get => _expandedTaskId;
         private set => Set(ref _expandedTaskId, value);
     }
+
+    /// <summary>
+    /// The condition the shell must ask for before this move into Waiting can happen, if one is
+    /// outstanding (task 7462618e).
+    /// </summary>
+    /// <remarks>
+    /// Not an error: nothing was written, and the card never left its column. The view draws the
+    /// "waiting until… / waiting on…" picker while this is set, and answers with
+    /// <see cref="ResolveWaitAsync"/> or <see cref="CancelWaitPrompt"/>.
+    /// </remarks>
+    public WaitPrompt? WaitPrompt => _pendingWait.Prompt;
+
+    /// <summary>The list this board was last loaded for, or empty if it has not been.</summary>
+    /// <remarks>
+    /// Read by the shell to decide whether a <c>task</c> change is worth a reload at all (task
+    /// 05c95986): a change in some other list leaves this board exactly as it was drawn.
+    /// </remarks>
+    public string ListId => _listId;
 
     /// <summary>Load the board the given list belongs to, if it belongs to one.</summary>
     public async Task LoadAsync(string listId, CancellationToken cancellationToken = default)
@@ -142,14 +163,135 @@ public sealed class BoardViewModel : ObservableObject
     /// one column — dropping a repeating card on Done rolls it forward and leaves it in the column
     /// it came from — and a view that moved the card itself would have to know that.
     /// </remarks>
+    /// <param name="wait">
+    /// The wait condition, when this is the second attempt and the user has answered for one. A
+    /// first attempt sends none: whether the column needs one is the core's decision, not a
+    /// predicate this class evaluates against a column name (task 7462618e).
+    /// </param>
     public async Task<bool> MoveAsync(string taskId, string columnId,
-        CancellationToken cancellationToken = default)
+        WaitCondition? wait = null, CancellationToken cancellationToken = default)
     {
         var response = await _core.CallAsync(
-            Commands.MoveTaskToColumn(taskId, columnId, _listId), cancellationToken);
+            Commands.MoveTaskToColumn(taskId, columnId, _listId, wait), cancellationToken);
+        if (response.NeedsWaitCondition)
+        {
+            // Nothing was written, so the card is still where it was. Ask, rather than report.
+            _pendingWait.Ask(
+                new WaitPrompt(columnId, NameOf(columnId), taskId, null),
+                (condition, token) => MoveAsync(taskId, columnId, condition, token));
+            return false;
+        }
         if (!response.Ok)
         {
             // Offline is not a failure: the move is in the Outbox and the board already shows it.
+            ErrorMessage = response.IsStillPending ? null : response.Error?.Message;
+        }
+        await RefreshAsync(cancellationToken);
+        return response.Ok;
+    }
+
+    /// <summary>
+    /// Answer an outstanding <see cref="WaitPrompt"/>, which sends the refused move again.
+    /// </summary>
+    /// <returns>
+    /// <c>false</c> when there was nothing to answer, when the answer named neither a date nor a
+    /// task, or when the core refused it as well — in the last case the prompt is up again.
+    /// </returns>
+    public Task<bool> ResolveWaitAsync(WaitCondition condition,
+        CancellationToken cancellationToken = default) =>
+        _pendingWait.ResolveAsync(condition, cancellationToken);
+
+    /// <summary>Drop the prompt and leave the task where it was.</summary>
+    public void CancelWaitPrompt() => _pendingWait.Cancel();
+
+    /// <summary>
+    /// A column's name as the core last gave it, for the prompt's title.
+    /// </summary>
+    /// <remarks>
+    /// The id is the fallback rather than a hardcoded "Waiting": the column is whatever this
+    /// board calls it, and only a stale board would fail to name it.
+    /// </remarks>
+    private string NameOf(string columnId) =>
+        _board?.Columns.FirstOrDefault(column => column.Id == columnId)?.Name ?? columnId;
+
+    /// <summary>
+    /// Complete a card's task, or bring it back (task 6979e694).
+    /// </summary>
+    /// <remarks>
+    /// Always the complete command, never an update carrying <c>completed</c>: a repeating task
+    /// rolls forward rather than finishing, and only that path does it — see
+    /// <c>astrid_core::services::task</c>. The board is re-read afterwards for the same reason a
+    /// move re-reads it: a rolled-forward task is a different card now, with a new date and
+    /// possibly a different column, and only the core knows what it looks like.
+    /// </remarks>
+    /// <summary>The picker a card's mark opens, which is always what a card's mark does.</summary>
+    public LeadingPickerViewModel LeadingPicker => _leadingPicker ??=
+        new LeadingPickerViewModel(_core, RefreshAsync);
+
+    private LeadingPickerViewModel? _leadingPicker;
+
+    /// <summary>
+    /// A card's mark, tapped (task 3c0dfb73).
+    /// </summary>
+    /// <remarks>
+    /// A board card always opens the picker, in both display modes: a board is where a task has a
+    /// status, so the control is how you set it. Completing outright from a card is the trapdoor
+    /// tasks <c>9be8cb1b</c> and <c>f9d7ed42</c> closed on Apple — one tap that reads as "pick this
+    /// one" finished the task instead, and Windows had it the whole time. The surface still asks
+    /// rather than assuming, because the answer is the core's and a copy-only card is a card too.
+    /// </remarks>
+    public async Task<LeadingOutcome> ActivateLeadingAsync(string taskId,
+        CancellationToken cancellationToken = default)
+    {
+        var card = Columns
+            .SelectMany(column => column.Cards)
+            .FirstOrDefault(candidate => candidate.Id == taskId);
+        if (card is null)
+        {
+            return LeadingOutcome.Gone;
+        }
+        if (card.IsCopyOnly)
+        {
+            await CopyAsync(taskId, cancellationToken);
+            return LeadingOutcome.Copied;
+        }
+        if (card.OpensPicker)
+        {
+            await LeadingPicker.OpenAsync(card, cancellationToken);
+            return LeadingOutcome.OpenPicker;
+        }
+        await SetCompletedAsync(taskId, completed: !card.Completed, cancellationToken);
+        return LeadingOutcome.Completed;
+    }
+
+    public async Task<bool> SetCompletedAsync(string taskId, bool completed,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(
+            Commands.CompleteTask(taskId, completed), cancellationToken);
+        if (!response.Ok)
+        {
+            // Offline is not a failure, as with a move: the write is in the Outbox.
+            ErrorMessage = response.IsStillPending ? null : response.Error?.Message;
+        }
+        await RefreshAsync(cancellationToken);
+        return response.Ok;
+    }
+
+    /// <summary>
+    /// Copy a card's task into this account's own tasks (task 6979e694).
+    /// </summary>
+    /// <remarks>
+    /// The fourth thing a card's mark can be: a task in a public list the reader cannot edit draws
+    /// the web's copy control, and the tap copies rather than completes. The board is re-read so
+    /// the copy appears if it belongs in one of these columns.
+    /// </remarks>
+    public async Task<bool> CopyAsync(string taskId, CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(
+            Commands.CopyTask(taskId, targetListId: null, includeComments: false), cancellationToken);
+        if (!response.Ok)
+        {
             ErrorMessage = response.IsStillPending ? null : response.Error?.Message;
         }
         await RefreshAsync(cancellationToken);
@@ -179,17 +321,37 @@ public sealed class BoardViewModel : ObservableObject
     /// swallow what they typed.
     /// </para>
     /// </remarks>
-    public async Task<bool> AddCardAsync(string columnId, CancellationToken cancellationToken = default)
+    public Task<bool> AddCardAsync(string columnId, CancellationToken cancellationToken = default)
     {
         var title = DraftFor(columnId).Trim();
         if (title.Length == 0)
         {
-            return false;
+            return Task.FromResult(false);
         }
         _drafts[columnId] = string.Empty;
+        return AddCardAsync(columnId, title, null, cancellationToken);
+    }
 
+    /// <summary>
+    /// Create the card, with a wait condition when the column turned out to need one.
+    /// </summary>
+    /// <remarks>
+    /// The title is a parameter rather than re-read from the draft: the field was cleared before
+    /// the first attempt, so a retry that read it again would create an empty card.
+    /// </remarks>
+    private async Task<bool> AddCardAsync(string columnId, string title, WaitCondition? wait,
+        CancellationToken cancellationToken)
+    {
         var response = await _core.CallAsync(
-            Commands.AddBoardCard(_listId, columnId, title), cancellationToken);
+            Commands.AddBoardCard(_listId, columnId, title, wait), cancellationToken);
+        if (response.NeedsWaitCondition)
+        {
+            // A card born in Waiting is a task entering Waiting, so the same rule and the same ask.
+            _pendingWait.Ask(
+                new WaitPrompt(columnId, NameOf(columnId), null, title),
+                (condition, token) => AddCardAsync(columnId, title, condition, token));
+            return false;
+        }
         if (!response.Ok)
         {
             // Offline is not a failure: the card is in the Outbox and the board already shows it.
@@ -242,14 +404,23 @@ public sealed class BoardColumnView
     {
         _column = column;
         _board = board;
-        var items = new List<object>(column.Cards.Count + 1);
+        var items = new List<object>(column.Cards.Count);
         foreach (var card in column.Cards)
         {
-            items.Add(card);
+            // The expanded card is REPLACED by its detail, not followed by it (task 6df01318).
+            // Drawing both put the collapsed card — mark, identifier, title, due — immediately
+            // above a pane carrying the same task, so one task appeared twice. astrid-web's
+            // `renderCard` has always returned the inline detail INSTEAD of the card div. The slot
+            // takes the card's own place, so the detail opens where the reader tapped and the
+            // cards either side of it do not move.
             if (card.Id == expandedTaskId)
             {
                 items.Add(new InlineDetailSlot(card.Id));
                 HoldsExpandedCard = true;
+            }
+            else
+            {
+                items.Add(card);
             }
         }
         Items = items;
@@ -272,8 +443,8 @@ public sealed class BoardColumnView
     public IReadOnlyList<TaskRow> Cards => _column.Cards;
 
     /// <summary>
-    /// What the column draws, top to bottom: every card, and the detail slot right after the
-    /// expanded one.
+    /// What the column draws, top to bottom: every card, with the expanded one's place taken by
+    /// the detail slot.
     /// </summary>
     public IReadOnlyList<object> Items { get; }
 
@@ -302,7 +473,7 @@ public sealed class BoardColumnView
 }
 
 /// <summary>
-/// Where the expanded card's detail is drawn: the item right after that card in its column.
+/// Where the expanded card's detail is drawn: that card's own place in its column.
 /// </summary>
 /// <remarks>
 /// A place, not a view. The shell puts its one task-detail pane here, so the board shows the same

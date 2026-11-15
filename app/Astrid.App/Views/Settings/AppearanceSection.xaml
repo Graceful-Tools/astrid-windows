@@ -35,8 +35,7 @@
                      Header="Quick-add shortcut"
                      AutomationProperties.Name="Quick-add shortcut"
                      Text="{x:Bind Shell.Settings.Appearance.HotkeyChord, Mode=OneWay}" />
-            <TextBlock x:Uid="hotkey_hint"
-                       Text="Brings Astrid forward from anywhere, ready for a new task. Ctrl, Alt or Win, plus one letter or digit."
+            <TextBlock Text="{x:Bind local:BrandCopy.HotkeyHint}"
                        TextWrapping="Wrap"
                        Style="{ThemeResource CaptionTextBlockStyle}"
                        Foreground="{ThemeResource AstridTextMuted}" />
@@ -44,6 +43,19 @@
                     AutomationProperties.Name="Apply shortcut"
                     Click="OnApplyHotkey" />
         </StackPanel>
+        <!--
+            How much of a title a row shows (DS19, task 3d5cca89).
+            Wrap by default - every client truncated before this,
+            and a title is the task. This machine's, like the
+            theme above it rather than like the layout below.
+        -->
+        <ComboBox x:Uid="title_display_box" x:Name="TitleDisplayBox"
+                  HorizontalAlignment="Stretch"
+                  AutomationProperties.Name="Task titles"
+                  ItemsSource="{x:Bind Shell.Settings.Appearance.TitleDisplayChoices, Mode=OneWay}"
+                  ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                  SelectedItem="{x:Bind Shell.Settings.Appearance.TitleDisplayChoice, Mode=OneWay}"
+                  SelectionChanged="OnTitleDisplayChosen" />
         <!--
             The task-detail layout, where the web keeps it
             (task c0f3db19). An account setting, so it

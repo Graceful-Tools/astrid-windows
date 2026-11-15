@@ -541,13 +541,7 @@ public sealed class TaskListViewModel : ObservableObject
     public int QuickAddPriority
     {
         get => _quickAddPriority;
-        private set
-        {
-            if (Set(ref _quickAddPriority, value))
-            {
-                Raise(nameof(QuickAddCheckboxAsset));
-            }
-        }
+        private set => Set(ref _quickAddPriority, value);
     }
 
     /// <summary>Who the task would go to, resolved. Null is nobody.</summary>
@@ -582,18 +576,10 @@ public sealed class TaskListViewModel : ObservableObject
     /// <summary>Somebody else's, or nobody's: a priority-coloured square with a mark in it.</summary>
     public bool QuickAddIsSquare => !QuickAddIsCheckbox;
 
-    /// <summary>
-    /// The same PNG a row draws, so the mark above the box and the mark on the row it makes are
-    /// one picture rather than two that resemble each other.
-    /// </summary>
-    public string QuickAddCheckboxAsset
-    {
-        get
-        {
-            var priority = QuickAddPriority is >= 0 and <= 3 ? QuickAddPriority : 0;
-            return $"ms-appx:///Assets/Checkboxes/check_box_{priority}.png";
-        }
-    }
+    // `QuickAddCheckboxAsset` was here, naming one of the sixteen PNGs. Quick-add binds
+    // `QuickAddPriority` straight to `PriorityMark` now (task 82e4ad32), so the mark above the box
+    // and the mark on the row it makes are the same art drawn from the same token rather than two
+    // pictures that resemble each other.
 
     /// <summary>What goes in the square: their initials, or the unassigned mark for nobody.</summary>
     public string QuickAddMark => QuickAddAssignees
@@ -694,6 +680,43 @@ public sealed class TaskListViewModel : ObservableObject
 
         await RefreshAsync(cancellationToken);
         return true;
+    }
+
+    /// <summary>The picker a row's mark opens when the core says to ask rather than to finish.</summary>
+    public LeadingPickerViewModel LeadingPicker => _leadingPicker ??=
+        new LeadingPickerViewModel(_core, RefreshAsync);
+
+    private LeadingPickerViewModel? _leadingPicker;
+
+    /// <summary>
+    /// A row's mark, tapped: do whatever the core said this control does (task 3c0dfb73).
+    /// </summary>
+    /// <remarks>
+    /// The three answers, all three of them. The shell read only <c>copy</c> until this task and
+    /// completed on everything else, so a row nobody owned finished on a click that the core had
+    /// said should first ask whose it is (AITD-382) — and so did somebody else's (AITD-375).
+    /// </remarks>
+    public async Task<LeadingOutcome> ActivateLeadingAsync(string taskId,
+        CancellationToken cancellationToken = default)
+    {
+        if (Rows.FirstOrDefault(candidate => candidate.Id == taskId) is not { } row)
+        {
+            // A row that is no longer here is not a row to guess about. Completing on a miss is
+            // what made this a trapdoor in the first place.
+            return LeadingOutcome.Gone;
+        }
+        if (row.IsCopyOnly)
+        {
+            await CopyAsync(taskId, cancellationToken);
+            return LeadingOutcome.Copied;
+        }
+        if (row.OpensPicker)
+        {
+            await LeadingPicker.OpenAsync(row, cancellationToken);
+            return LeadingOutcome.OpenPicker;
+        }
+        await SetCompletedAsync(taskId, completed: !row.Completed, cancellationToken);
+        return LeadingOutcome.Completed;
     }
 
     /// <summary>

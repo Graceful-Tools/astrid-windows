@@ -11,12 +11,15 @@ public sealed class TaskDetailViewModelTests
         string[]? comments = null,
         bool isCanceled = false, object? boardState = null, object? blockers = null,
         string? identifier = null, bool showsIdentifier = false,
-        bool offersCopyIdentifier = false) => new
+        bool offersCopyIdentifier = false, object? supports = null) => new
         {
             task = new { id = "t1", title, description = "two weeks", priority, completed, identifier },
             isCanceled,
             boardState,
             blockers,
+            // Absent by default, which is what a classic list answers with and what a core older
+            // than the block sends (task 897e25c5).
+            supports,
             showsIdentifier,
             offersCopyIdentifier,
             link = "https://astrid.cc/tasks/t1",
@@ -347,6 +350,129 @@ public sealed class TaskDetailViewModelTests
         new { isAllDay = true, dates = Array.Empty<object>(), times = Array.Empty<object>() };
 
     /// <summary>
+    /// A time of day from the picker becomes a timed due date: the core is asked what that time
+    /// means for this task, and its answer is what gets written (task 974d37d2).
+    /// </summary>
+    /// <remarks>
+    /// Two steps, like a day pick, and for the same reason. The shell knows the hour the reader
+    /// chose and nothing else — not which calendar day it lands on for an all-day task, not that a
+    /// task with no date at all anchors on today, and not what the offset is where the reader is.
+    /// <c>dueDateAtTime</c> answers all three, so the instant below is read back and sent on
+    /// untouched.
+    /// </remarks>
+    [Fact]
+    public async Task A_chosen_time_of_day_is_asked_of_the_core_and_written_back_task_974d37d2()
+    {
+        var core = OpenedTask()
+            .AnswerOk("dueDateAtTime", new { dueDateTime = "2026-11-01T21:30:00Z", isAllDay = false })
+            .AnswerOk("updateTask")
+            .AnswerOk("taskDetail", Detail())
+            .AnswerOk("dueDateOptions", NoDuePicks());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.True(await view.SetDueTimeAsync(14, 30));
+
+        var asked = core.Sent.First(sent => sent.Contains("dueDateAtTime"));
+        Assert.Contains("\"taskId\":\"t1\"", asked);
+        Assert.Contains("\"hour\":14", asked);
+        Assert.Contains("\"minute\":30", asked);
+
+        // The instant written is the core's, verbatim — 14:30 where the reader is, which is not
+        // 14:30 UTC — and a time of day is what stops a task being all-day.
+        var written = core.Sent.First(sent => sent.Contains("updateTask"));
+        Assert.Contains("\"dueDateTime\":\"2026-11-01T21:30:00Z\"", written);
+        Assert.Contains("\"isAllDay\":false", written);
+    }
+
+    /// <summary>
+    /// A refused ask writes nothing: the shell has no instant of its own to fall back on
+    /// (task 974d37d2).
+    /// </summary>
+    [Fact]
+    public async Task A_refused_time_question_leaves_the_date_alone_task_974d37d2()
+    {
+        var core = OpenedTask()
+            .AnswerFailure("dueDateAtTime", AstridFailureKind.Refused, "no such task");
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.False(await view.SetDueTimeAsync(9, 0));
+        Assert.DoesNotContain(core.Sent, sent => sent.Contains("updateTask"));
+    }
+
+    /// <summary>
+    /// Taking the time off a task makes it all-day and keeps the day it was showing — and the day
+    /// is the core's answer, never the instant the shell already had (task 0616f2d1).
+    /// </summary>
+    /// <remarks>
+    /// The write that looks obvious here — the task's current <c>dueDateTime</c> with
+    /// <c>isAllDay: true</c> — moves the date. Nothing on either side normalises that pair, and an
+    /// all-day date is read as its UTC day, so a task due in the evening west of UTC would jump to
+    /// tomorrow. <c>dueDateAllDay</c> answers the task's local day at UTC midnight; the shell sends
+    /// that back untouched.
+    /// </remarks>
+    [Fact]
+    public async Task Clearing_the_time_keeps_the_day_and_asks_the_core_for_it_task_0616f2d1()
+    {
+        var core = OpenedTask()
+            .AnswerOk("dueDateAllDay", new { dueDateTime = "2026-12-14T00:00:00Z", isAllDay = true })
+            .AnswerOk("updateTask")
+            .AnswerOk("taskDetail", Detail())
+            .AnswerOk("dueDateOptions", NoDuePicks());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.True(await view.ClearDueTimeAsync());
+
+        var asked = core.Sent.First(sent => sent.Contains("dueDateAllDay"));
+        Assert.Contains("\"taskId\":\"t1\"", asked);
+
+        // 20:00 on the 14th in California is 03:00Z on the 15th. The 14th is what the reader saw.
+        var written = core.Sent.First(sent => sent.Contains("updateTask"));
+        Assert.Contains("\"dueDateTime\":\"2026-12-14T00:00:00Z\"", written);
+        Assert.Contains("\"isAllDay\":true", written);
+    }
+
+    /// <summary>
+    /// A task with no date has no day to keep: the core answers a null date and that is written as
+    /// one, rather than the shell inventing today (task 0616f2d1).
+    /// </summary>
+    [Fact]
+    public async Task Clearing_the_time_on_a_dateless_task_writes_no_date_task_0616f2d1()
+    {
+        var core = OpenedTask()
+            .AnswerOk("dueDateAllDay", new { dueDateTime = (string?)null, isAllDay = true })
+            .AnswerOk("updateTask")
+            .AnswerOk("taskDetail", Detail())
+            .AnswerOk("dueDateOptions", NoDuePicks());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.True(await view.ClearDueTimeAsync());
+
+        var written = core.Sent.First(sent => sent.Contains("updateTask"));
+        Assert.Contains("\"dueDateTime\":null", written);
+        Assert.Contains("\"isAllDay\":true", written);
+    }
+
+    /// <summary>
+    /// A refused ask writes nothing — the shell has no day of its own to fall back on, which is
+    /// the whole reason it asked (task 0616f2d1).
+    /// </summary>
+    [Fact]
+    public async Task A_refused_all_day_question_leaves_the_date_alone_task_0616f2d1()
+    {
+        var core = OpenedTask()
+            .AnswerFailure("dueDateAllDay", AstridFailureKind.Refused, "no such task");
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        Assert.False(await view.ClearDueTimeAsync());
+        Assert.DoesNotContain(core.Sent, sent => sent.Contains("updateTask"));
+    }
+
+    /// <summary>
     /// The menu's closing entry reads "Won't do" on an open task and sends the reason; on a task
     /// closed that way it reads "Reopen" and sends null. What canceled means is the core's
     /// (task 016ce981).
@@ -461,6 +587,48 @@ public sealed class TaskDetailViewModelTests
     }
 
     /// <summary>
+    /// The Status menu asks for a wait condition rather than reporting a refusal (task 7462618e).
+    /// </summary>
+    /// <remarks>
+    /// The same rule as a dragged card, because it is the same move: <c>setTaskStatus</c> carries
+    /// the four <c>WaitOptions</c> keys too. <see cref="TaskDetailViewModel.ErrorMessage"/> stays
+    /// null — the user has not been asked yet, so there is nothing to report.
+    /// </remarks>
+    [Fact]
+    public async Task Setting_status_to_waiting_with_no_condition_asks_for_one_task_7462618e()
+    {
+        var chips = new
+        {
+            current = "doing",
+            chips = new[]
+            {
+                new { id = "waiting", name = "Waiting", kind = "status", isCurrent = false },
+                new { id = "doing", name = "Doing", kind = "status", isCurrent = true },
+            },
+        };
+        var core = new FakeCore()
+            .AnswerOk("taskDetail", Detail(boardState: chips))
+            .Answer("setTaskStatus",
+                """{"ok":false,"error":{"kind":"refused","message":"waiting on what?","code":"WAITING_NEEDS_CONDITION"}}""")
+            .AnswerOk("setTaskStatus", new { id = "t1", statusRole = "waiting" })
+            .AnswerOk("taskDetail", Detail(boardState: chips));
+        var view = new TaskDetailViewModel(core);
+
+        await view.OpenAsync("t1");
+
+        Assert.False(await view.SetStatusAsync("waiting"));
+        Assert.Null(view.ErrorMessage);
+        Assert.NotNull(view.WaitPrompt);
+        Assert.Equal("Waiting", view.WaitPrompt!.ColumnName);
+
+        Assert.True(await view.ResolveWaitAsync(new WaitCondition(DueDateTime: "2026-12-01T09:00:00Z")));
+        var retry = core.Sent.Last(sent => sent.Contains("setTaskStatus"));
+        Assert.Contains("\"columnId\":\"waiting\"", retry);
+        Assert.Contains("\"dueDateTime\":\"2026-12-01T09:00:00Z\"", retry);
+        Assert.Null(view.WaitPrompt);
+    }
+
+    /// <summary>
     /// Most tasks are not on a board, and the core says so with no row at all; the pane draws
     /// nothing rather than an empty strip.
     /// </summary>
@@ -474,6 +642,62 @@ public sealed class TaskDetailViewModelTests
 
         Assert.False(view.ShowsBoardState);
         Assert.Empty(view.BoardStateChips);
+    }
+
+    /// <summary>
+    /// A control is offered only where it would work (task 897e25c5). A GitHub-backed board with
+    /// no Priority or date field mapped in its binding, and whose comments live on the issue, hides
+    /// the priority row, the date row and the composer — and the pane holds no predicate of its
+    /// own: it draws <c>taskDetail.supports</c>, which the core decided from the task's own list.
+    /// </summary>
+    [Fact]
+    public async Task A_board_offers_no_control_its_binding_cannot_write_task_897e25c5()
+    {
+        var core = new FakeCore().AnswerOk("taskDetail", Detail(supports: new
+        {
+            priority = false,
+            dueDate = false,
+            comments = false,
+            privateTasks = false,
+            multipleAssignees = true,
+            deleteTask = "remove_from_list",
+        }));
+        var view = new TaskDetailViewModel(core);
+
+        await view.OpenAsync("t1");
+
+        Assert.False(view.ShowsPriority);
+        Assert.False(view.ShowsDueDate);
+        Assert.False(view.ShowsCommentComposer);
+        // No control in this shell yet, so the core's answer is carried rather than drawn — but it
+        // is carried, so the first shell to grow one does not re-derive it.
+        Assert.False(view.SupportsPrivateTasks);
+        Assert.True(view.SupportsMultipleAssignees);
+        Assert.Equal("remove_from_list", view.DeleteTaskMode);
+    }
+
+    /// <summary>
+    /// The case that matters most, because getting it wrong hides working controls from everybody:
+    /// <strong>absent is classic</strong> (task 897e25c5). No <c>supports</c> block at all — a
+    /// classic list, or a core older than the keys — and a block that merely omits one key both
+    /// leave every control exactly where it was.
+    /// </summary>
+    [Fact]
+    public async Task A_list_that_says_nothing_keeps_every_control_task_897e25c5()
+    {
+        foreach (var supports in new object?[] { null, new { multipleAssignees = true } })
+        {
+            var core = new FakeCore().AnswerOk("taskDetail", Detail(supports: supports));
+            var view = new TaskDetailViewModel(core);
+
+            await view.OpenAsync("t1");
+
+            Assert.True(view.ShowsPriority);
+            Assert.True(view.ShowsDueDate);
+            Assert.True(view.ShowsCommentComposer);
+            Assert.True(view.SupportsPrivateTasks);
+            Assert.Equal("delete", view.DeleteTaskMode);
+        }
     }
 
     /// <summary>
@@ -943,6 +1167,49 @@ public sealed class TaskDetailViewModelTests
     }
 
     /// <summary>
+    /// Opening a different task does not leave the last one's files on screen (task 4f429ae8).
+    /// </summary>
+    /// <remarks>
+    /// Reported from the running app: attach a file to one task, create another, and the new one
+    /// shows the first one's attachment. <c>Attachments</c> was filled only after an attach or a
+    /// download and nothing emptied it, so the collection outlived the task it belonged to — and
+    /// the section is drawn whenever its count is non-zero, so the file appeared under a task that
+    /// does not have it. Nothing was wrong on the server; it was the pane lying about what it had
+    /// just created.
+    /// </remarks>
+    [Fact]
+    public async Task Opening_another_task_drops_the_last_ones_attachments_task_4f429ae8()
+    {
+        var core = OpenedTask().AnswerOk("attachments", new
+        {
+            files = new[]
+            {
+                new
+                {
+                    id = "f1",
+                    name = "itinerary.pdf",
+                    size = 2048,
+                    mimeType = "application/pdf",
+                    isCached = false,
+                    path = "C:/cache/f1.pdf",
+                },
+            },
+        });
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+        await view.LoadAttachmentsAsync();
+        Assert.Single(view.Attachments);
+
+        await view.OpenAsync("t2");
+
+        Assert.Empty(view.Attachments);
+        // Cleared, not refetched: opening a task stays the three commands
+        // `Opening_a_task_fills_the_pane_from_one_command` pins, so attachments remain lazy. The
+        // only `attachments` on the wire is the explicit load above.
+        Assert.Equal(1, core.SentKinds().Count(kind => kind == "attachments"));
+    }
+
+    /// <summary>
     /// A download answers with a path, not with bytes: what somebody does with an attachment is
     /// open it in the program that reads that kind of file.
     /// </summary>
@@ -1138,6 +1405,105 @@ public sealed class TaskDetailViewModelTests
         await view.SetCustomRepeatAsync("days", 0);
 
         Assert.Contains("\"interval\":1", core.Sent.First(sent => sent.Contains("updateTask")));
+    }
+
+    // ── Authoring a monthly repeat (task 914fc180) ──────────────────────────────────────────
+    //
+    // Windows could READ a monthly weekday rule since task e4f160cc — the summary says "on the
+    // last Thursday" — and could not write one, so the sheet showed a pattern it offered no way
+    // to change. What a pattern posted from here must look like is astrid-web's
+    // `MonthlyRepeatingPattern`, because that is what every other client reads back.
+
+    /// <summary>
+    /// "Day 15 of every month": the day goes with the type, and the weekday pair stays out —
+    /// a `monthWeekday` left over from a previous edit is a different rule to the next reader.
+    /// </summary>
+    [Fact]
+    public async Task A_monthly_pattern_on_a_date_posts_the_day_task_914fc180()
+    {
+        var core = OpenedTask().AnswerOk("updateTask").AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.SetCustomRepeatAsync("months", 1, monthRepeatType: "same_date", monthDay: 15);
+
+        var update = core.Sent.First(sent => sent.Contains("updateTask"));
+        Assert.Contains("\"monthRepeatType\":\"same_date\"", update);
+        Assert.Contains("\"monthDay\":15", update);
+        Assert.DoesNotContain("monthWeekday", update);
+    }
+
+    /// <summary>
+    /// "The last Thursday of every month". <c>weekOfMonth</c> is -1 for the last, after
+    /// iCalendar's <c>BYDAY=-1TH</c> — 5 is not a synonym, and a month with four Thursdays has
+    /// no fifth.
+    /// </summary>
+    [Fact]
+    public async Task A_monthly_pattern_on_the_last_weekday_posts_minus_one_task_914fc180()
+    {
+        var core = OpenedTask().AnswerOk("updateTask").AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.SetCustomRepeatAsync("months", 1,
+            monthRepeatType: "same_weekday",
+            monthWeekday: "thursday",
+            weekOfMonth: TaskDetailViewModel.LastWeekOfMonth);
+
+        var update = core.Sent.First(sent => sent.Contains("updateTask"));
+        Assert.Contains("\"monthRepeatType\":\"same_weekday\"", update);
+        Assert.Contains("\"weekday\":\"thursday\"", update);
+        Assert.Contains("\"weekOfMonth\":-1", update);
+        Assert.DoesNotContain("monthDay", update);
+    }
+
+    /// <summary>
+    /// A week nobody can count to ends the series on every client. Rather than post a rule that
+    /// means something different to each of them, an incoherent pair writes neither month field
+    /// and the pattern stays the plain "every N months" it has always been.
+    /// </summary>
+    [Theory]
+    [InlineData("same_weekday", "thursday", 6)]   // past the 5th week
+    [InlineData("same_weekday", "thursday", 0)]   // no 0th weekday
+    [InlineData("same_weekday", "thursday", -2)]  // -1 is the only negative that means anything
+    [InlineData("same_weekday", null, 2)]         // a week with no weekday to count
+    [InlineData("same_date", null, null)]         // a date pattern with no date
+    public async Task An_unsaveable_month_pattern_posts_neither_field_task_914fc180(
+        string monthRepeatType, string? monthWeekday, int? weekOfMonth)
+    {
+        var core = OpenedTask().AnswerOk("updateTask").AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.SetCustomRepeatAsync("months", 3,
+            monthRepeatType: monthRepeatType,
+            monthWeekday: monthWeekday,
+            weekOfMonth: weekOfMonth);
+
+        var update = core.Sent.First(sent => sent.Contains("updateTask"));
+        Assert.Contains("\"interval\":3", update);
+        Assert.DoesNotContain("monthRepeatType", update);
+        Assert.DoesNotContain("monthWeekday", update);
+        Assert.DoesNotContain("monthDay", update);
+    }
+
+    /// <summary>
+    /// The month fields belong to a monthly pattern and to no other. A weekly rule carrying a
+    /// <c>monthDay</c> is the same free-form-JSON hazard the weekday list already guards against.
+    /// </summary>
+    [Fact]
+    public async Task Only_a_monthly_pattern_carries_the_month_fields_task_914fc180()
+    {
+        var core = OpenedTask().AnswerOk("updateTask").AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        await view.SetCustomRepeatAsync("weeks", 1, ["monday"],
+            monthRepeatType: "same_date", monthDay: 15);
+
+        var update = core.Sent.First(sent => sent.Contains("updateTask"));
+        Assert.DoesNotContain("monthRepeatType", update);
+        Assert.DoesNotContain("monthDay", update);
     }
 
     /// <summary>

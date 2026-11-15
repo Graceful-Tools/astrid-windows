@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using Astrid.App.ViewModels;
 using Astrid.Core.Bindings;
 using Microsoft.UI.Xaml;
@@ -153,6 +154,19 @@ public sealed partial class TaskDetailPane : UserControl
 
     private async void OnCloseDetail(object sender, RoutedEventArgs args) => await Shell.Detail.CloseAsync();
 
+    /// <summary>
+    /// The comments toolbar's two controls (task 77d17dc8): the system filter, and Refresh.
+    /// </summary>
+    /// <remarks>
+    /// Both only dispatch — what "system" means and what a refresh fetches are the view model's
+    /// and the core's. The Mac's toolbar is where this pane got them.
+    /// </remarks>
+    private void OnToggleSystemComments(object sender, RoutedEventArgs args) =>
+        Shell.Detail.ShowsSystemComments = !Shell.Detail.ShowsSystemComments;
+
+    private async void OnRefreshComments(object sender, RoutedEventArgs args) =>
+        await Shell.Detail.RefreshCommentsAsync();
+
     /// <summary>Full screen and back (task 1927c2e7). Whether the control is offered is the shell's decision.</summary>
     private void OnToggleFullScreen(object sender, RoutedEventArgs args) => Shell.Detail.ToggleFullScreen();
 
@@ -196,7 +210,31 @@ public sealed partial class TaskDetailPane : UserControl
         if (sender is FrameworkElement { Tag: string columnId })
         {
             await Shell.Detail.SetStatusAsync(columnId);
+            await AskForWaitConditionAsync();
         }
+    }
+
+    /// <summary>
+    /// Ask what the task is waiting for, if the core said the move needs it (task 7462618e).
+    /// </summary>
+    /// <remarks>
+    /// The same ask a dragged card gets, because it is the same move. Cancelling leaves the task
+    /// where it was: the core refused before writing anything.
+    /// </remarks>
+    private async Task AskForWaitConditionAsync()
+    {
+        if (Shell.Detail.WaitPrompt is not { } prompt)
+        {
+            return;
+        }
+        var condition = await WaitConditionDialog.AskAsync(
+            XamlRoot, prompt, query => Shell.SearchTasksAsync(query));
+        if (condition is null)
+        {
+            Shell.Detail.CancelWaitPrompt();
+            return;
+        }
+        await Shell.Detail.ResolveWaitAsync(condition);
     }
 
     /// <summary>
@@ -213,6 +251,7 @@ public sealed partial class TaskDetailPane : UserControl
         }
         chip.IsChecked = !chip.IsChecked;
         await Shell.Detail.SetStatusAsync(columnId);
+        await AskForWaitConditionAsync();
     }
 
     private async void OnToggleWontDo(object sender, RoutedEventArgs args) =>
@@ -367,6 +406,22 @@ public sealed partial class TaskDetailPane : UserControl
         await Shell.Detail.SetDueDayAsync(day);
     }
 
+    /// <summary>
+    /// A time of day was chosen from the clock (task 974d37d2).
+    /// </summary>
+    /// <remarks>
+    /// Guarded against the null the control raises while it is being reset, the same way the
+    /// calendar is: the flyout closing would otherwise read as a time of midnight.
+    /// </remarks>
+    private async void OnDueTimePicked(TimePicker sender, TimePickerSelectedValueChangedEventArgs args)
+    {
+        if (args.NewTime is not { } time)
+        {
+            return;
+        }
+        await Shell.Detail.SetDueTimeAsync(time.Hours, time.Minutes);
+    }
+
     private async void OnDuePickChosen(object sender, RoutedEventArgs args)
     {
         if (sender is not FrameworkElement { Tag: string key })
@@ -384,6 +439,11 @@ public sealed partial class TaskDetailPane : UserControl
     /// <summary>"No due date" in the when flyout: the shell's own control now (task 6ee938cc).</summary>
     private async void OnDueCleared(object sender, RoutedEventArgs args) =>
         await Shell.Detail.ClearDueAsync();
+
+    /// <summary>"All day" in the when flyout: the clock's off switch, which it hasn't got
+    /// (task 0616f2d1). The day it keeps is the core's answer.</summary>
+    private async void OnDueTimeCleared(object sender, RoutedEventArgs args) =>
+        await Shell.Detail.ClearDueTimeAsync();
 
     /// <summary>The copy control in the header, on a task that can only be copied (task f6bc59e8).</summary>
     private async void OnDetailCopyClicked(object sender, RoutedEventArgs args) =>
@@ -513,6 +573,9 @@ public sealed partial class TaskDetailPane : UserControl
 
     private async void OnRepeatFlyoutOpening(object sender, object args)
     {
+        // The sheet keeps whatever unit it was last left on, so the branch is matched to it on
+        // the way in rather than only when the combo next changes.
+        SyncRepeatBranch();
         await Shell.Detail.LoadRepeatAsync();
     }
 
@@ -534,6 +597,40 @@ public sealed partial class TaskDetailPane : UserControl
         }
     }
 
+    /// <summary>
+    /// Which rows of the custom-repeat sheet are showing (task 914fc180).
+    /// </summary>
+    /// <remarks>
+    /// Rendering, not a decision: nothing here reads or writes a task, and what a pattern MEANS is
+    /// <see cref="TaskDetailViewModel.SetCustomRepeatAsync"/>'s. A monthly rule needs a date or a
+    /// weekday-and-week, a weekly one needs the toggles, and the rest need neither — so each unit
+    /// is drawn its own editor rather than all of them at once.
+    /// The null guards are for the flyout's own construction: <c>SelectedIndex="0"</c> raises
+    /// <c>SelectionChanged</c> while the rest of the tree's named fields are still being assigned.
+    /// </remarks>
+    private void SyncRepeatBranch()
+    {
+        if (RepeatUnit is null || RepeatWeekdays is null || RepeatMonthType is null
+            || RepeatMonthDay is null || RepeatMonthWeekdayRow is null)
+        {
+            return;
+        }
+        var unit = (RepeatUnit.SelectedItem as FrameworkElement)?.Tag as string;
+        var monthly = unit == "months";
+        var byWeekday = monthly
+            && (RepeatMonthType.SelectedItem as FrameworkElement)?.Tag as string == "same_weekday";
+
+        RepeatWeekdays.Visibility = Shown(unit == "weeks");
+        RepeatMonthType.Visibility = Shown(monthly);
+        RepeatMonthDay.Visibility = Shown(monthly && !byWeekday);
+        RepeatMonthWeekdayRow.Visibility = Shown(byWeekday);
+
+        static Visibility Shown(bool shown) => shown ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnRepeatBranchChanged(object sender, SelectionChangedEventArgs args) =>
+        SyncRepeatBranch();
+
     private async void OnCustomRepeatSaved(object sender, RoutedEventArgs args)
     {
         var unit = (RepeatUnit.SelectedItem as FrameworkElement)?.Tag as string ?? "days";
@@ -543,13 +640,25 @@ public sealed partial class TaskDetailPane : UserControl
             .Select(button => (string)button.Tag)
             .ToList();
         var ends = (RepeatEnd.SelectedItem as FrameworkElement)?.Tag as string;
+        // The monthly branch is read whatever the unit is; the view model drops the month fields
+        // unless the pattern is monthly, the same way it drops the weekday list above. A cleared
+        // NumberBox reads NaN, so the day falls back to the 1st the box opens on rather than
+        // casting to a number no month has.
+        var monthDay = double.IsNaN(RepeatMonthDay.Value) ? 1 : (int)RepeatMonthDay.Value;
+        var week = int.TryParse(
+            (RepeatMonthWeek.SelectedItem as FrameworkElement)?.Tag as string,
+            NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) ? parsed : (int?)null;
         await Shell.Detail.SetCustomRepeatAsync(
             unit,
             (int)RepeatInterval.Value,
             days,
             ends,
             (int)RepeatEndCount.Value,
-            RepeatEndDate.Date?.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"));
+            RepeatEndDate.Date?.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+            (RepeatMonthType.SelectedItem as FrameworkElement)?.Tag as string,
+            monthDay,
+            (RepeatMonthWeekday.SelectedItem as FrameworkElement)?.Tag as string,
+            week);
     }
 
     /// <summary>
@@ -727,11 +836,9 @@ public sealed partial class TaskDetailPane : UserControl
         }
     }
 
-    /// <summary>A themed brush by key, from the dictionary the current theme resolves.</summary>
-    private static Brush ThemedBrush(string key) =>
-        Application.Current.Resources.TryGetValue(key, out var brush) && brush is Brush themed
-            ? themed
-            : new SolidColorBrush(Colors.Gray);
+    /// <summary>A themed brush by key, from the dictionary THIS PANE's theme resolves.</summary>
+    /// <remarks>See <see cref="ThemeBrushes"/>: the app-level lookup answers for the wrong theme.</remarks>
+    private Brush ThemedBrush(string key) => ThemeBrushes.For(this, key);
 
     /// <summary>The rendered description was clicked: open the editor where it was.</summary>
     private async void OnDescriptionTapped(object sender, TappedRoutedEventArgs args)
@@ -1236,13 +1343,17 @@ public sealed partial class TaskDetailPane : UserControl
         void Paint(Button button, int level)
         {
             var (background, foreground, border) = PrioritySwatch.For(level, chosen);
-            button.BorderBrush = SwatchBrush(border);
-            button.Background = SwatchBrush(background);
-            button.Foreground = SwatchBrush(foreground);
+            button.BorderBrush = SwatchBrush(button, border);
+            button.Background = SwatchBrush(button, background);
+            button.Foreground = SwatchBrush(button, foreground);
         }
 
-        static Brush SwatchBrush(string hex) => hex == PrioritySwatch.Transparent
-            ? new SolidColorBrush(Colors.Transparent)
-            : new SolidColorBrush(Colours.Parse(hex) ?? Colors.Gray);
+        // The rule answers with a themed brush key, so the theme the button is wearing picks the
+        // colour (task 82e4ad32). Resolving from Application.Current.Resources would answer from
+        // the light dictionary and paint a dark-theme picker in light-theme blue.
+        static Brush SwatchBrush(FrameworkElement element, string key) =>
+            key == PrioritySwatch.Transparent
+                ? new SolidColorBrush(Colors.Transparent)
+                : ThemeBrushes.For(element, key);
     }
 }

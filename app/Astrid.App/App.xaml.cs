@@ -65,8 +65,23 @@ public partial class App : Application
     /// <summary>Why the core would not start, if it would not.</summary>
     internal static string? StartupError { get; private set; }
 
-    /// <summary>Where the last crash was written.</summary>
+    /// <summary>Where the last crash was written. Absent unless the app actually fell over.</summary>
+    /// <remarks>
+    /// Only <see cref="Log(Exception)"/> writes here, and only from the unhandled-exception handler.
+    /// That is what makes the file's mere EXISTENCE an answer — the UI smoke suite asks exactly that
+    /// question nine times, and while <see cref="Log(string)"/> shared this file it was answering
+    /// "did anything at all get logged", which on a machine where another Astrid already holds the
+    /// global hotkey is "yes, every launch" (task 46c3fdfd).
+    /// </remarks>
     internal static string CrashLogPath => Path.Combine(DataDirectory(), "crash.log");
+
+    /// <summary>Where everything worth noting goes, crashes included.</summary>
+    /// <remarks>
+    /// Still one file to read when the question is "what happened on that machine?" — a crash is
+    /// appended here as well as to <see cref="CrashLogPath"/>, so splitting the two costs nobody a
+    /// second file to find.
+    /// </remarks>
+    internal static string LogPath => Path.Combine(DataDirectory(), "astrid.log");
 
     /// <summary>The window a file picker should belong to.</summary>
     internal static IntPtr MainWindowHandle { get; private set; }
@@ -105,7 +120,10 @@ public partial class App : Application
     {
         try
         {
-            Core = AstridClient.Start(CachePath(), ServerUrl);
+            // The brand's scheme, which is also what Program.cs registers and SignInCallback reads,
+            // so the core's own callback check follows the build rather than assuming `astrid`
+            // (task 8cbed184).
+            Core = AstridClient.Start(CachePath(), ServerOrigin, BrandDefaults.UrlScheme);
             Core.Subscribe();
             WatchNetwork();
         }
@@ -145,6 +163,7 @@ public partial class App : Application
         // window it belongs to, and without that it throws rather than opening — a failure that
         // looks like the button doing nothing at all.
         MainWindowHandle = WinRT.Interop.WindowNative.GetWindowHandle(_window);
+        ShowTheBuildsOwnIcon(_window);
         _window.Closed += (_, _) =>
         {
             Core?.Dispose();
@@ -159,6 +178,32 @@ public partial class App : Application
         {
             Deliver(_launchActivation);
         }
+    }
+
+    /// <summary>
+    /// Put this build's own icon on the window (task 28348df8).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The executable's icon is compiled in and reaches Explorer and the taskbar; the WINDOW's is a
+    /// separate thing that nothing was setting, so the title bar's corner and the Alt-Tab card wore
+    /// the framework's default — and a partner's build advertised Astrid there however carefully
+    /// the rest of the package was branded.
+    /// </para>
+    /// <para>
+    /// Guarded on the file rather than caught afterwards: <c>SetIcon</c> throws on a path it cannot
+    /// read, and a missing icon is not worth taking the window down over. It is missing exactly
+    /// when the build's assets did not make it next to the executable — the same condition that
+    /// already costs this build its strings.
+    /// </para>
+    /// </remarks>
+    private static void ShowTheBuildsOwnIcon(Window window)
+    {
+        if (window.AppWindow is not { } appWindow || !File.Exists(Brand.IconPath))
+        {
+            return;
+        }
+        appWindow.SetIcon(Brand.IconPath);
     }
 
     /// <summary>Pull the URI out of an activation and tell whoever is listening.</summary>
@@ -207,21 +252,43 @@ public partial class App : Application
             $"command line:{Environment.CommandLine}",
         ]);
 
-    private static void Log(Exception exception) => Log(exception.ToString());
+    /// <summary>
+    /// Record a crash: the general log, so the sequence that led to it is in one place, and
+    /// <see cref="CrashLogPath"/>, whose existence is the fact that the app fell over.
+    /// </summary>
+    private static void Log(Exception exception)
+    {
+        var message = exception.ToString();
+        Append(LogPath, message);
+        Append(CrashLogPath, message);
+    }
 
     /// <summary>
     /// Note something that went wrong but did not stop the app.
     /// </summary>
     /// <remarks>
-    /// The same file as a crash, because the question being answered is always "what happened on
-    /// that machine?" and two files means finding one of them.
+    /// <para>
+    /// The general log, NOT the crash log. It used to be the same file, on the reasoning that the
+    /// question being answered is always "what happened on that machine?" and two files means
+    /// finding one of them — but it also meant an ordinary startup warning created a file named
+    /// <c>crash.log</c>. Two of those fire on every launch whenever another Astrid is installed
+    /// (the global hotkey is taken; a stale <c>astrid://</c> registration is tidied), so the UI
+    /// smoke suite's nine <c>Assert.False(File.Exists(CrashLogPath))</c> checks reported a crash
+    /// that had not happened and <c>predeploy:full</c> could not pass for any change (task
+    /// 46c3fdfd).
+    /// </para>
+    /// <para>
+    /// The one-file-to-read property survives: <see cref="Log(Exception)"/> appends here too.
+    /// </para>
     /// </remarks>
-    internal static void Log(string message)
+    internal static void Log(string message) => Append(LogPath, message);
+
+    private static void Append(string path, string message)
     {
         try
         {
             File.AppendAllText(
-                CrashLogPath,
+                path,
                 $"{DateTimeOffset.Now:O}  {message}{Environment.NewLine}{Environment.NewLine}");
         }
         catch (IOException)
@@ -365,15 +432,10 @@ public partial class App : Application
     /// test that wrote a fake session over somebody's real one would be a test nobody runs twice.
     /// It is also the honest way to try a second account without signing out of the first.
     /// </remarks>
-    private static string DataDirectory()
-    {
-        var chosen = Environment.GetEnvironmentVariable("ASTRID_DATA_DIR");
-        var directory = string.IsNullOrWhiteSpace(chosen)
-            ? Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Astrid")
-            : chosen;
-        Directory.CreateDirectory(directory);
-        return directory;
-    }
+    /// <remarks>
+    /// One definition, in <see cref="DevicePreferences.DataDirectory"/> — the window's remembered
+    /// panes live in the same folder as the core's data, and two copies of this would drift until
+    /// the smoke tests were pointed at a directory the app does not use.
+    /// </remarks>
+    private static string DataDirectory() => DevicePreferences.DataDirectory();
 }

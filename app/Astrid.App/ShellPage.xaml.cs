@@ -65,7 +65,13 @@ public sealed partial class ShellPage : UserControl
         IAstridCore core = App.Core is { } running
             ? running
             : new UnavailableCore(App.StartupError);
-        Shell = new ShellViewModel(core, Post);
+        // The third argument is what this screen remembers about its own furniture (task ab4cb9ee)
+        // — which of the two side panes were left open. Nothing else in the window reads it.
+        // The fourth is Windows Hello, which only the Account page asks for (task e61a3e60): the
+        // prompt is parented to this window, so the ceremony has to be told which window it is.
+        Shell = new ShellViewModel(
+            core, Post, DevicePreferences.ForThisDevice(),
+            WindowsHelloPasskeys.ForThisWindow(() => App.MainWindowHandle));
         _reminders = new Reminders(Shell, Post);
         _shortcuts = new ShortcutDispatcher(core, Shell);
         Shell.PaletteCommandRequested += OnPaletteCommand;
@@ -84,6 +90,7 @@ public sealed partial class ShellPage : UserControl
         Chat.Shell = Shell;
         Detail.Shell = Shell;
         Settings.Shell = Shell;
+        OpenedPublicList.Shell = Shell;
 
         // What one part has to tell another.
         TitleBar.SearchRequested += async () => await OpenSearchAsync();
@@ -177,6 +184,11 @@ public sealed partial class ShellPage : UserControl
         // in. It comes from the cache, so this does not wait for a network.
         Shell.Settings.Appearance.ThemeChanged += ApplyTheme;
         await Shell.Settings.Appearance.LoadThemeAsync();
+        // How much of a title a row shows (DS19, task 3d5cca89). From the cache like the look, and
+        // before the first list is drawn, so a person who chose one line does not watch their rows
+        // shrink a moment after they appear.
+        Shell.Settings.Appearance.TitleDisplayChanged += Rows.ApplyTitleDisplay;
+        await Shell.Settings.Appearance.LoadTitleDisplayAsync();
         await Shell.StartAsync();
         await Shell.RaiseRemindersAsync();
         await Shell.MaybeShowTourAsync();
@@ -368,6 +380,12 @@ public sealed partial class ShellPage : UserControl
             return;
         }
 
+        // This element is where the appearance lives, so it is the element anything resolving a
+        // themed brush from code has to ask — a converter has no element of its own (task
+        // 770625f8). Registered before the theme is set, so the first lookup after this already
+        // sees the new one.
+        ThemeBrushes.Follow(root);
+
         root.RequestedTheme = settings.ThemeIsDark switch
         {
             true => ElementTheme.Dark,
@@ -381,10 +399,10 @@ public sealed partial class ShellPage : UserControl
 
         // The sign-in screen covers everything, including the surface, so it wears the wash itself
         // rather than showing a plain panel on the one screen a first-time user actually sees.
-        SignIn.WearSurface(ocean
-            ? (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AstridOceanBrush"]
-            : (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources[
-                "SolidBackgroundFillColorBaseBrush"]);
+        // It is told WHETHER, not which brush: its own ground already follows the appearance, and
+        // the base brush this used to read here is themed too — so in dark the first screen anybody
+        // saw was the light theme's (task 770625f8).
+        SignIn.WearSurface(ocean);
 
         // Rows already on screen keep the colours of the theme they were born in unless their
         // style is re-attached; see Restyling.

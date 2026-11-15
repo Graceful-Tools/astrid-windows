@@ -1,0 +1,740 @@
+//! `deny.toml`'s repo-local half, asserted where it can actually run — task `e750d9c1`.
+//!
+//! `cargo deny check` is CI's gate, not `predeploy`'s, and `deny.toml` says why: the advisories
+//! half needs the RustSec database, which means the network, and cargo-deny is not installed on
+//! the dev machines. `cargo install cargo-deny --locked` does not fix that here — it dies in
+//! `ring`'s build script with `ToolNotFound: failed to find tool "clang"`.
+//!
+//! But `.github/workflows/ci.yml` runs cargo-deny as TWO jobs precisely because the two halves
+//! fail for unrelated reasons: `advisories` goes red when the WORLD changed, `licenses bans
+//! sources` when THIS REPO changed. Only the first half needs the network. The second is a
+//! question about a lockfile and a config file that are both sitting right here, and until this
+//! file existed the only way to ask it was to push and wait — which is how the wildcard
+//! requirement on the `astrid-core` git pin went red in CI with nothing local to say so.
+//!
+//! So this is not a second copy of cargo-deny. It is the subset of `deny.toml` that is decidable
+//! offline, read out of `deny.toml` itself rather than restated, so that editing the config moves
+//! the test with it and the two cannot drift. `advisories` stays CI's alone.
+//!
+//! The facts come from `cargo metadata --format-version 1 --all-features`, the same command
+//! `deny.toml`'s own header cites for how its allow list was computed, and `all-features` for the
+//! reason given there: a feature nobody enables today is enabled by the next caller.
+//!
+//! Where this deliberately stops short of cargo-deny: it evaluates an SPDX expression against the
+//! allow list and nothing else. It does not implement `exceptions`, `clarify`, `private`, or the
+//! OSI/FSF classifications, because `deny.toml` uses none of them — every one of those would be a
+//! new decision in the config, and the config is the thing being read. An expression this
+//! evaluator cannot parse is a failure asking for a person, never a quiet pass.
+
+use std::collections::BTreeSet;
+use std::path::PathBuf;
+use std::process::Command;
+use std::sync::OnceLock;
+
+use serde_json::Value;
+
+/// The workspace root: this crate sits at `crates/astrid-ffi`.
+fn repo_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("..")
+}
+
+fn deny_toml() -> &'static str {
+    static DENY: OnceLock<String> = OnceLock::new();
+    DENY.get_or_init(|| {
+        let path = repo_root().join("deny.toml");
+        std::fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("deny.toml is the gate being asserted; {path:?}: {e}"))
+    })
+}
+
+/// `deny.toml` is the core's, at the revision this repo pins — task `32d7c04d`.
+///
+/// Four Rust workspaces carry one of these: astrid-core, this one, astrid-ios' `core/` and
+/// astrid-android's `core/`. They were four hand-copied files that drifted, and the drift was
+/// invisible until somebody compared them — on 2026-11-14 astrid-core had allowed `BSD-2-Clause`
+/// for a crate under `resvg` and the other three did not know. A licence decision reached the other
+/// repositories only when a person remembered.
+///
+/// So the core generates each copy now (`cargo xtask gen-deny` there) and carries them in
+/// `astrid_core::supply_chain`, which means this test compares against **the core this repository
+/// pins** rather than against its `main`. That is the only question this repo can act on, and it
+/// keeps what the old headers in both files insisted on: nothing crosses implicitly, the copy moves
+/// when the pin moves, and in between this file gates this repository's own lockfile on its own.
+///
+/// What this is NOT is a second opinion about the config's contents — every other test in this file
+/// reads `deny.toml` for that. This one asks only whether the file is still the one the core wrote.
+///
+/// The comparison lives in the core, so all three consumers normalise line endings the same way:
+/// `core.autocrlf` differing between two checkouts made `check-contracts` report thirteen fixtures
+/// as drift in task `f1c7b53f`, and a gate that said "your deny.toml is not the core's" for that
+/// reason would be worse than no gate.
+#[test]
+fn deny_toml_is_the_core_it_pins_task_32d7c04d() {
+    assert!(
+        astrid_core::supply_chain::deny_toml("astrid-windows").is_some(),
+        "the core generates no copy for `astrid-windows`, so this test would pass vacuously. \
+         Either the key changed or this repository was dropped from `gen-deny`'s consumer list."
+    );
+
+    assert!(
+        astrid_core::supply_chain::matches("astrid-windows", deny_toml()),
+        "deny.toml is not what astrid-core generated for this repository at the revision \
+         crates/astrid-ffi/Cargo.toml pins.\n\n\
+         This file is GENERATED. A change to what the Rust workspaces accept — a licence, an \
+         advisory ignore, a ban — is made in astrid-core's own deny.toml and arrives here when the \
+         pin is bumped. To take it: bump the pin, then copy \
+         `supply-chain/deny.astrid-windows.toml` from that revision over this file.\n\n\
+         Editing this copy instead is how the four configs drifted in the first place."
+    );
+}
+
+/// The resolved graph, asked for once however many tests want it.
+fn metadata() -> &'static Value {
+    static META: OnceLock<Value> = OnceLock::new();
+    META.get_or_init(|| {
+        let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
+        let out = Command::new(&cargo)
+            .args(["metadata", "--format-version", "1", "--all-features"])
+            .arg("--manifest-path")
+            .arg(repo_root().join("Cargo.toml"))
+            .output()
+            .unwrap_or_else(|e| panic!("`{cargo} metadata` must run: {e}"));
+        assert!(
+            out.status.success(),
+            "`cargo metadata` failed:\n{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        serde_json::from_slice(&out.stdout).expect("cargo metadata emits JSON")
+    })
+}
+
+/// A `key = ["a", "b"]` list out of a named table in `deny.toml`.
+///
+/// Hand-rolled rather than parsed with the `toml` crate on purpose: this file guards the
+/// dependency graph, and adding a dependency to it would be the one change most likely to need
+/// guarding. The shape it reads is the shape `deny.toml` is written in — a `[table]` header, then
+/// `key = [` and quoted entries until `]` — and a list it cannot find is a panic, never an empty
+/// allow list that would make every assertion below vacuous.
+fn string_list(table: &str, key: &str) -> BTreeSet<String> {
+    let rest = table_body(table);
+    let key_at = rest
+        .find(&format!("{key} = ["))
+        .unwrap_or_else(|| panic!("deny.toml's [{table}] has no `{key}` list"));
+    let open = rest[key_at..].find('[').expect("just matched");
+    let close = rest[key_at + open..]
+        .find(']')
+        .unwrap_or_else(|| panic!("deny.toml's [{table}].{key} list is unterminated"));
+    let body = &rest[key_at + open + 1..key_at + open + close];
+    body.split(',')
+        .filter_map(|entry| {
+            let entry = entry.split('#').next().unwrap_or("").trim();
+            let entry = entry.trim_matches('"');
+            (!entry.is_empty()).then(|| entry.to_string())
+        })
+        .collect()
+}
+
+/// A named table's body: from its header line to the next table header, or the end of the file.
+///
+/// The header must START A LINE, and that is not fussiness — task `32d7c04d` made `deny.toml` a
+/// generated file whose header prose explains the config, so the comments at the top now contain
+/// the words `[sources]` and `[licenses]`. A search for the bare text found the PROSE first and
+/// then stopped the slice at the next line beginning with `[`, so `allow-git` was reported missing
+/// from a file that plainly has it — a parser reading comments as structure, which was always a
+/// trap and only now had something to trip on.
+fn table_body(table: &str) -> &'static str {
+    let src = deny_toml();
+    let header = format!("[{table}]");
+    let table_at = src
+        .lines()
+        .scan(0usize, |offset, line| {
+            let at = *offset;
+            // `lines()` drops the separator; a CRLF checkout adds one more byte per line, which
+            // `line.len()` does not count.
+            *offset += line.len()
+                + if src[at + line.len()..].starts_with("\r\n") {
+                    2
+                } else {
+                    1
+                };
+            Some((at, line))
+        })
+        .find(|(_, line)| line.trim_end() == header)
+        .map(|(at, _)| at)
+        .unwrap_or_else(|| panic!("deny.toml has no [{table}] table"));
+
+    let rest = &src[table_at..];
+    // Stop at the next table header so a key is never read out of the wrong one.
+    match rest[1..].find("\n[") {
+        Some(end) => &rest[..end + 1],
+        None => rest,
+    }
+}
+
+/// A `key = "value"` string out of a named table, for the lint levels.
+fn lint_level(table: &str, key: &str) -> String {
+    let rest = table_body(table);
+    let line = rest
+        .lines()
+        .find(|l| l.trim_start().starts_with(&format!("{key} = ")))
+        .unwrap_or_else(|| panic!("deny.toml's [{table}] has no `{key}`"));
+    line.split('=')
+        .nth(1)
+        .expect("just matched")
+        .split('#')
+        .next()
+        .unwrap_or("")
+        .trim()
+        .trim_matches('"')
+        .to_string()
+}
+
+fn packages() -> impl Iterator<Item = &'static Value> {
+    metadata()["packages"]
+        .as_array()
+        .expect("cargo metadata lists packages")
+        .iter()
+}
+
+fn workspace_member_ids() -> BTreeSet<&'static str> {
+    metadata()["workspace_members"]
+        .as_array()
+        .expect("cargo metadata lists workspace members")
+        .iter()
+        .map(|id| id.as_str().expect("an id is a string"))
+        .collect()
+}
+
+fn name_and_version(pkg: &Value) -> String {
+    format!(
+        "{} {}",
+        pkg["name"].as_str().unwrap_or("?"),
+        pkg["version"].as_str().unwrap_or("?")
+    )
+}
+
+/// cargo-deny's `[bans] wildcards`, over the crates this repository actually writes.
+///
+/// A wildcard requirement is a dependency whose version nothing records, so the lockfile is the
+/// only thing that knows what shipped — `deny.toml`'s own words. A `{ git, rev }` dependency is
+/// one: cargo reports its requirement as `*`, and `astrid-core` reached this workspace that way.
+/// Naming a `version` alongside the `rev` costs nothing, is checked against the pinned checkout at
+/// build time, and means the requirement is written down in the manifest where a person reads it.
+#[test]
+fn no_workspace_crate_takes_a_wildcard_dependency_task_e750d9c1() {
+    assert_eq!(
+        lint_level("bans", "wildcards"),
+        "deny",
+        "this test exists to enforce `[bans] wildcards`; if deny.toml has stopped denying them, \
+         delete the test rather than leaving it asserting something nobody asked for"
+    );
+
+    let members = workspace_member_ids();
+    let mut wildcards = Vec::new();
+    for pkg in packages() {
+        let id = pkg["id"].as_str().unwrap_or_default();
+        if !members.contains(id) {
+            continue;
+        }
+        for dep in pkg["dependencies"].as_array().into_iter().flatten() {
+            if dep["req"].as_str() == Some("*") {
+                wildcards.push(format!(
+                    "{} -> {} (kind {})",
+                    pkg["name"].as_str().unwrap_or("?"),
+                    dep["name"].as_str().unwrap_or("?"),
+                    dep["kind"].as_str().unwrap_or("normal"),
+                ));
+            }
+        }
+    }
+
+    assert!(
+        wildcards.is_empty(),
+        "cargo-deny's `licenses bans sources` job fails on a wildcard requirement. Give each of \
+         these an explicit `version`:\n  {}",
+        wildcards.join("\n  ")
+    );
+}
+
+/// Every `[workspace.dependencies]` entry is taken by a member — task `d24777f5`.
+///
+/// A workspace dependency is a template, not a dependency: cargo instantiates it only where a
+/// member writes `{ workspace = true }`, and an entry nobody writes costs nothing to compile. It
+/// is not free, though. Dependabot reads the manifest, not the graph, so it opens a PR to bump a
+/// crate this app never builds (that is PR #12), and the next person to read the file believes the
+/// entry describes a choice this repository made. Twelve of them did: the comments beside them
+/// described the HTTP stack, the SQLite build and the Markdown dialect — all real decisions, all
+/// of them astrid-core's since the extraction, none of them this workspace's any more.
+///
+/// `cargo metadata` cannot answer this on its own, because an uninstantiated workspace dependency
+/// never reaches the graph at all — which is exactly why nothing noticed. So the manifest is read
+/// for the declarations and the graph for the uses, and the gap between them is the finding.
+#[test]
+fn no_workspace_dependency_goes_uninstantiated_task_d24777f5() {
+    let manifest_path = repo_root().join("Cargo.toml");
+    let manifest = std::fs::read_to_string(&manifest_path).unwrap_or_else(|e| {
+        panic!("the workspace manifest is the subject; {manifest_path:?}: {e}")
+    });
+
+    let declared = workspace_dependency_names(&manifest);
+    assert!(
+        !declared.is_empty(),
+        "no `[workspace.dependencies]` parsed out of {manifest_path:?}, which would make this \
+         test vacuous"
+    );
+
+    // Every dependency named by a member, of any kind — a dev-dependency instantiates a workspace
+    // entry just as a normal one does, and `tokio` is taken both ways here.
+    let members = workspace_member_ids();
+    let mut used: BTreeSet<String> = BTreeSet::new();
+    for pkg in packages() {
+        if !members.contains(pkg["id"].as_str().unwrap_or_default()) {
+            continue;
+        }
+        for dep in pkg["dependencies"].as_array().into_iter().flatten() {
+            if let Some(name) = dep["name"].as_str() {
+                used.insert(name.to_string());
+            }
+        }
+    }
+
+    let unused: Vec<&String> = declared
+        .iter()
+        .filter(|name| !used.contains(*name))
+        .collect();
+    assert!(
+        unused.is_empty(),
+        "these `[workspace.dependencies]` entries are instantiated by no member, so they are \
+         documentation that Dependabot mistakes for a dependency. Delete the entry, and its \
+         comment with it — if the comment is still worth saying, it belongs wherever the choice \
+         now lives:\n  {}",
+        unused
+            .iter()
+            .map(|n| n.as_str())
+            .collect::<Vec<_>>()
+            .join("\n  ")
+    );
+}
+
+/// The dependency names declared in `[workspace.dependencies]`.
+///
+/// Hand-rolled for the same reason `string_list` above is: this file guards the dependency graph,
+/// and a `toml` dependency added to read it would be the one addition most in need of guarding.
+/// The shape read is the shape the manifest is written in — a `[workspace.dependencies]` header,
+/// then one `name = ...` per line until the next table.
+fn workspace_dependency_names(manifest: &str) -> BTreeSet<String> {
+    let table_at = match manifest.find("[workspace.dependencies]") {
+        Some(at) => at,
+        None => return BTreeSet::new(),
+    };
+    let rest = &manifest[table_at..];
+    let body = match rest[1..].find("\n[") {
+        Some(end) => &rest[..end + 1],
+        None => rest,
+    };
+    body.lines()
+        .skip(1)
+        .filter_map(|line| {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                return None;
+            }
+            // `name = ...`; a continuation line of a multi-line table value has no `=` before
+            // its first `{`, `[` or quote, and is skipped by the same test.
+            let (name, _) = line.split_once('=')?;
+            let name = name.trim();
+            (!name.is_empty()
+                && name
+                    .chars()
+                    .all(|c| c.is_alphanumeric() || c == '-' || c == '_'))
+            .then(|| name.to_string())
+        })
+        .collect()
+}
+
+/// The graph a real build of this app resolves FOR one target: default features, one platform.
+///
+/// Both narrowings matter, and for the same reason `default_metadata` below gives: the question is
+/// what this app compiles, not what it could ever compile.
+///
+/// `cargo tree`, rather than the `cargo metadata` every other test here uses, and the reason is
+/// worth writing down because the first version of this test got it wrong twice.
+///
+/// `metadata.packages` is the LOCKFILE. `--filter-platform` prunes it by platform but not by
+/// feature, so an optional dependency nobody enables is still listed — and walking out from the
+/// workspace members through `resolve.nodes` does not help either, because `cargo metadata`
+/// unifies features across dependency kinds in a way the real resolver does not. Both readings
+/// reported `windows-sys` 0.52, arriving through `ring` ← `rustls` ← an optional reqwest feature
+/// this workspace has a written reason to refuse: `ring` needs clang to assemble on
+/// aarch64-pc-windows-msvc, the architecture this is built ON, so a build that actually wanted it
+/// would not compile at all. No build of this app has ever contained that crate.
+///
+/// `cargo tree` runs the resolver that decides what rustc is invoked on, which is the only one
+/// whose answer is a fact about the binary. It is also, exactly, the command the task's acceptance
+/// names — so this test asks the question in the form the acceptance asked it, instead of
+/// reimplementing feature resolution and getting a different answer.
+fn duplicate_crates_for(triple: &str) -> String {
+    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
+    let out = Command::new(&cargo)
+        .args(["tree", "--duplicates", "--target", triple])
+        .arg("--manifest-path")
+        .arg(repo_root().join("Cargo.toml"))
+        .output()
+        .unwrap_or_else(|e| panic!("`{cargo} tree --duplicates --target {triple}` must run: {e}"));
+    assert!(
+        out.status.success(),
+        "`cargo tree --duplicates --target {triple}` failed:\n{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    String::from_utf8_lossy(&out.stdout).into_owned()
+}
+
+/// One `windows-sys` per shipped target — task `d24777f5`.
+///
+/// `windows-sys` is the Win32 ABI, and it is enormous: a second major version is a second copy of
+/// tens of thousands of generated bindings, compiled and linked into the same binary. This crate
+/// asked for 0.60 for DPAPI while tokio brought 0.61 for its IOCP reactor, so both were built,
+/// every time, on both architectures — two sets of declarations of the same operating system.
+///
+/// Asserted over both targets this app ships, so it is the gate that notices rather than someone
+/// remembering to run the command. Scoped to `windows-sys` and not to duplicates in general: a
+/// duplicate deep in someone else's tree is not this repository's to fix, and a test that failed
+/// for one would be turned off rather than acted on.
+#[test]
+fn each_shipped_target_carries_one_windows_sys_task_d24777f5() {
+    for triple in ["aarch64-pc-windows-msvc", "x86_64-pc-windows-msvc"] {
+        let duplicates = duplicate_crates_for(triple);
+        // `cargo tree -d` prints one block per duplicated crate, each headed by an unindented
+        // `name vX.Y.Z`. The reverse-dependency lines under it are indented, so a `windows-sys`
+        // that merely DEPENDS on something duplicated is not a match.
+        let offenders: Vec<&str> = duplicates
+            .lines()
+            .filter(|line| line.starts_with("windows-sys v"))
+            .collect();
+
+        assert!(
+            offenders.is_empty(),
+            "{triple} compiles {} versions of `windows-sys`:\n  {}\nThat is that many copies of \
+             the Win32 bindings in the binary. Move this crate's requirement to whichever version \
+             the rest of the graph already resolves.",
+            offenders.len(),
+            offenders.join("\n  ")
+        );
+    }
+}
+
+/// `(`, `)` and `/` are tokens in their own right; everything else splits on whitespace.
+fn tokenize(expr: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let mut current = String::new();
+    let flush = |current: &mut String, tokens: &mut Vec<String>| {
+        if !current.is_empty() {
+            tokens.push(std::mem::take(current));
+        }
+    };
+    for ch in expr.chars() {
+        match ch {
+            '(' | ')' | '/' => {
+                flush(&mut current, &mut tokens);
+                tokens.push(ch.to_string());
+            }
+            c if c.is_whitespace() => flush(&mut current, &mut tokens),
+            c => current.push(c),
+        }
+    }
+    flush(&mut current, &mut tokens);
+    tokens
+}
+
+/// An SPDX expression evaluated straight to "does the allow list satisfy it".
+///
+/// `AND` binds tighter than `OR`, parentheses override that, and `/` is `OR` — the last because
+/// cargo-deny parses in the `spdx` crate's lax mode, and it has to: `MIT/Apache-2.0` is what
+/// `fnv`, `version_check` and a dozen other crates every Rust graph contains actually declare.
+///
+/// `A WITH B` stays ONE term that must appear in the allow list verbatim, so allowing `Apache-2.0`
+/// does not also allow `Apache-2.0 WITH LLVM-exception`. That is `[licenses] version = 2`'s
+/// behaviour, and the right one: an exception modifies the licence and is a separate decision.
+/// Every such package in this graph is satisfied through a plain `MIT` or `Apache-2.0` branch
+/// instead.
+struct Spdx<'a> {
+    tokens: Vec<String>,
+    at: usize,
+    allow: &'a BTreeSet<String>,
+}
+
+impl<'a> Spdx<'a> {
+    fn peek(&self) -> Option<&str> {
+        self.tokens.get(self.at).map(String::as_str)
+    }
+
+    /// `and ( ('OR' | '/') and )*`
+    fn or_expr(&mut self) -> Result<bool, String> {
+        let mut satisfied = self.and_expr()?;
+        while matches!(self.peek(), Some("OR" | "/")) {
+            self.at += 1;
+            // Parsed before combining: a short circuit would leave the rest untokenised and a
+            // malformed tail would pass unnoticed.
+            let branch = self.and_expr()?;
+            satisfied = satisfied || branch;
+        }
+        Ok(satisfied)
+    }
+
+    /// `term ( 'AND' term )*`
+    fn and_expr(&mut self) -> Result<bool, String> {
+        let mut satisfied = self.term()?;
+        while self.peek() == Some("AND") {
+            self.at += 1;
+            let term = self.term()?;
+            satisfied = satisfied && term;
+        }
+        Ok(satisfied)
+    }
+
+    /// `'(' or_expr ')' | licence ( 'WITH' exception )?`
+    fn term(&mut self) -> Result<bool, String> {
+        match self.peek() {
+            Some("(") => {
+                self.at += 1;
+                let inner = self.or_expr()?;
+                if self.peek() != Some(")") {
+                    return Err("unbalanced `(`".into());
+                }
+                self.at += 1;
+                Ok(inner)
+            }
+            Some("OR" | "AND" | "WITH" | ")" | "/") => Err(format!(
+                "expected a licence, found `{}`",
+                self.peek().unwrap()
+            )),
+            Some(name) => {
+                let mut term = name.to_string();
+                self.at += 1;
+                if self.peek() == Some("WITH") {
+                    self.at += 1;
+                    let exception = self.peek().ok_or("`WITH` with no exception after it")?;
+                    term = format!("{term} WITH {exception}");
+                    self.at += 1;
+                }
+                Ok(self.allow.contains(&term))
+            }
+            None => Err("expression ended early".into()),
+        }
+    }
+}
+
+fn satisfied_by(expr: &str, allow: &BTreeSet<String>) -> Result<bool, String> {
+    let mut parser = Spdx {
+        tokens: tokenize(expr),
+        at: 0,
+        allow,
+    };
+    if parser.tokens.is_empty() {
+        return Err("empty licence expression".into());
+    }
+    let satisfied = parser
+        .or_expr()
+        .map_err(|why| format!("`{expr}` could not be read: {why}"))?;
+    if parser.at != parser.tokens.len() {
+        return Err(format!(
+            "`{expr}` has trailing tokens from `{}`",
+            parser.tokens[parser.at]
+        ));
+    }
+    Ok(satisfied)
+}
+
+#[test]
+fn the_spdx_evaluator_handles_the_shapes_the_graph_contains_task_e750d9c1() {
+    let allow: BTreeSet<String> = ["Apache-2.0", "MIT", "BSD-3-Clause", "Unicode-3.0"]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+    let yes = |e: &str| satisfied_by(e, &allow).unwrap_or_else(|w| panic!("{e}: {w}"));
+
+    assert!(yes("MIT"));
+    assert!(!yes("GPL-3.0"));
+    // `/` is OR, which is the whole reason lax mode exists.
+    assert!(yes("MIT/Apache-2.0"));
+    assert!(yes("Apache-2.0 / MIT"));
+    // AND binds tighter than OR, and parentheses override it.
+    assert!(yes("(Apache-2.0 OR MIT) AND BSD-3-Clause"));
+    assert!(yes("(MIT OR Apache-2.0) AND Unicode-3.0"));
+    assert!(!yes("(MIT OR Apache-2.0) AND GPL-3.0"));
+    assert!(yes("GPL-3.0 AND Nope OR MIT"), "AND binds tighter than OR");
+    // An exception is a term of its own, satisfied here only by the MIT branch beside it.
+    assert!(!yes("Apache-2.0 WITH LLVM-exception"));
+    assert!(yes("Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT"));
+    // Malformed expressions are errors, never a quiet `false`.
+    assert!(satisfied_by("MIT AND", &allow).is_err());
+    assert!(satisfied_by("(MIT OR Apache-2.0", &allow).is_err());
+    assert!(satisfied_by("MIT Apache-2.0", &allow).is_err());
+}
+
+/// cargo-deny's `[licenses]`, over every package in the graph.
+#[test]
+fn every_licence_in_the_graph_is_allowed_task_e750d9c1() {
+    let allow = string_list("licenses", "allow");
+    assert!(
+        !allow.is_empty(),
+        "deny.toml's licence allow list parsed as empty, which would make this test vacuous"
+    );
+
+    let mut problems = Vec::new();
+    for pkg in packages() {
+        let who = name_and_version(pkg);
+        match pkg["license"].as_str() {
+            Some(expr) => match satisfied_by(expr, &allow) {
+                Ok(true) => {}
+                Ok(false) => problems.push(format!("{who}: [{expr}] is not in the allow list")),
+                Err(why) => problems.push(format!("{who}: {why}")),
+            },
+            // A package with no `license` needs a cargo-deny clarification, which is a decision a
+            // person makes once and records. Failing here is how it gets asked for.
+            None => problems.push(format!(
+                "{who}: no `license` field (license_file = {})",
+                pkg["license_file"].as_str().unwrap_or("none")
+            )),
+        }
+    }
+
+    assert!(
+        problems.is_empty(),
+        "deny.toml's allow list does not cover the graph. Every entry there is REQUIRED by \
+         something in the tree and says why, so read each of these before adding one:\n  {}",
+        problems.join("\n  ")
+    );
+}
+
+/// cargo-deny's `[sources]`, over every package that came from somewhere.
+///
+/// `unknown-registry` and `unknown-git` are both `deny`, and `allow-git` has exactly one entry:
+/// the core's URL, matched by URL rather than revision so that bumping the pin — which is how
+/// every shared-behaviour change reaches this app — does not need that list touched. This test
+/// matches it the same way, or a pin bump would go red here instead of in CI.
+#[test]
+fn every_crate_came_from_an_accepted_source_task_e750d9c1() {
+    const CRATES_IO: &str = "registry+https://github.com/rust-lang/crates.io-index";
+    let allow_git = string_list("sources", "allow-git");
+
+    let mut problems = Vec::new();
+    for pkg in packages() {
+        // Workspace members have no source: they are this repository.
+        let Some(source) = pkg["source"].as_str() else {
+            continue;
+        };
+        if source == CRATES_IO {
+            continue;
+        }
+        if let Some(url) = source.strip_prefix("git+") {
+            let url = url.split(['?', '#']).next().unwrap_or(url);
+            if allow_git.contains(url) {
+                continue;
+            }
+            problems.push(format!(
+                "{}: git source {url} is not in [sources] allow-git",
+                name_and_version(pkg)
+            ));
+            continue;
+        }
+        problems.push(format!(
+            "{}: unknown registry {source}",
+            name_and_version(pkg)
+        ));
+    }
+
+    assert!(
+        problems.is_empty(),
+        "a crate arrived from somewhere nobody has accepted:\n  {}",
+        problems.join("\n  ")
+    );
+}
+
+/// The graph as a REAL build of this app resolves it: default features, not `--all-features`.
+///
+/// Everything above wants the widest possible graph, because a feature nobody enables today is
+/// enabled by the next caller. The question below is the opposite one — what does *this* app
+/// actually compile — and `--all-features` cannot answer it: it would turn on the very feature
+/// being asserted and pass whatever the manifests said.
+fn default_metadata() -> &'static Value {
+    static META: OnceLock<Value> = OnceLock::new();
+    META.get_or_init(|| {
+        let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
+        let out = Command::new(&cargo)
+            .args(["metadata", "--format-version", "1"])
+            .arg("--manifest-path")
+            .arg(repo_root().join("Cargo.toml"))
+            .output()
+            .unwrap_or_else(|e| panic!("`{cargo} metadata` must run: {e}"));
+        assert!(
+            out.status.success(),
+            "`cargo metadata` failed:\n{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        serde_json::from_slice(&out.stdout).expect("cargo metadata emits JSON")
+    })
+}
+
+/// Which features a named crate resolves WITH, out of `resolve.nodes` — the answer cargo itself
+/// computed, rather than the manifests' request re-read by hand.
+fn resolved_features(meta: &Value, crate_name: &str) -> BTreeSet<String> {
+    let id = meta["packages"]
+        .as_array()
+        .expect("cargo metadata lists packages")
+        .iter()
+        .find(|pkg| pkg["name"] == crate_name)
+        .unwrap_or_else(|| panic!("`{crate_name}` is not in this app's dependency graph at all"))
+        ["id"]
+        .as_str()
+        .expect("a package id is a string")
+        .to_string();
+    meta["resolve"]["nodes"]
+        .as_array()
+        .expect("cargo metadata resolves a graph")
+        .iter()
+        .find(|node| node["id"].as_str() == Some(id.as_str()))
+        .unwrap_or_else(|| panic!("`{crate_name}` has no node in the resolved graph"))["features"]
+        .as_array()
+        .expect("a node lists its features")
+        .iter()
+        .map(|f| f.as_str().expect("a feature is a string").to_string())
+        .collect()
+}
+
+/// This app compiles SQLite in, and goes on doing so after the core made that a choice.
+///
+/// Task `f1210dd8`: `bundled` used to be requested by astrid-core's workspace manifest, which no
+/// consumer could take back. It is now the core's `bundled-sqlite` feature, on by default, so that
+/// Apple can link the system SQLite it already carries. Windows cannot: there is no `libsqlite3`
+/// for an MSVC link to find, so an unbundled build of this app fails to link — on both targets,
+/// and only at link time.
+///
+/// Which makes this the one assertion that has to live HERE. The core's own test can say that
+/// `default` carries the feature; only this repository can say that *this* app still ends up with
+/// it, through a `default-features = false` nobody meant, a feature resolution that changed under
+/// a pin bump, or a later crate in the graph taking rusqlite without it.
+#[test]
+fn the_app_still_compiles_sqlite_in_task_f1210dd8() {
+    let meta = default_metadata();
+
+    let core = resolved_features(meta, "astrid-core");
+    assert!(
+        core.contains("bundled-sqlite"),
+        "astrid-core resolved without `bundled-sqlite`, so this app would link against a system \
+         SQLite that Windows does not have. Features: {core:?}"
+    );
+
+    // The feature chain, end to end: a `bundled-sqlite` that reached neither crate would be a name
+    // that compiles and does nothing, and the link failure would be the first thing to notice.
+    for (crate_name, feature) in [("rusqlite", "bundled"), ("libsqlite3-sys", "bundled")] {
+        let features = resolved_features(meta, crate_name);
+        assert!(
+            features.contains(feature),
+            "`{crate_name}` resolved without `{feature}`, so the core's `bundled-sqlite` is not \
+             reaching the crate that compiles SQLite. Features: {features:?}"
+        );
+    }
+}

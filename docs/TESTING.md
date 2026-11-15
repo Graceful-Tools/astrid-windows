@@ -10,11 +10,36 @@ not: what covers the UI smoke tests, and when.*
 | Layer | Where | Runs in |
 |---|---|---|
 | The rules, the services, the Outbox, sync | astrid-core (its own repo) | astrid-core's gate |
-| The bindings contract — `Commands.cs` against the core's command list | `crates/astrid-ffi/tests/` | `npm run predeploy` |
+| The bindings contract — `Commands.cs` and `Models.cs` against the core's command list and its **wire schema** (task 9ef7edb4) | `crates/astrid-ffi/tests/` | `npm run predeploy` |
 | Shell view-models, against a fake core | `app/Astrid.App.Tests/` | `npm run predeploy` |
 | The app itself: a real window, the real core, a real SQLite file | `app/Astrid.App.UITests/` | `npm run predeploy:full` **only** |
 
 The first three need nothing but a checkout. The fourth needs a desktop.
+
+## The design budget is a count, not a rule (task `d7e381a7`)
+
+Some drift cannot be forbidden outright — the shell has 380 literal margins, and a test that banned
+them would simply be deleted. So the hand-written colours, sizes and strings are **counted**, the
+count is committed in `app/Astrid.App.Tests/design-metrics.json`, and `DesignMetricsTests` fails
+when one rises. It is in the view-model layer above, so `npm run predeploy` checks it and no
+autonomous run can walk past it, which is the half Jon asked for: the loops must not regress the
+reduction.
+
+```powershell
+powershell -File scripts/report-design-metrics.ps1            # the table: budgeted, now, delta
+powershell -File scripts/report-design-metrics.ps1 -Update    # rewrite the budget
+```
+
+A **fall** fails too, asking for the budget to be lowered — a budget left above where the code is
+hands the room back, and the next drift spends it silently. `-Update` is the answer to both, and a
+rise that is genuinely intended needs a reason in the commit message, since nothing else records
+one. The counting lives in `DesignMetrics.cs`, not in the script: a second counter in PowerShell
+would drift from the one in the gate and the two reports would just disagree.
+
+`App.xaml` and `Views/ShellResources.xaml` are exempt — they are where the tokens are written down.
+XAML strings are absent because `LocalisationTests` already holds untranslatable literals at zero;
+`code.strings` counts the other half of [ASTRID.md](./ASTRID.md) rule 10, the prose built in C#,
+which no `x:Uid` can reach.
 
 ## The UI smoke suite runs when a person runs it
 
@@ -85,6 +110,52 @@ nicety there, and the seven tests that do not need a mouse still pass on a locke
 that split — a hard `Activate()` in a test that does not need the pointer would throw away
 coverage for nothing.
 
+## A colour can be checked here, and nowhere else
+
+`PriorityMarkColourTests` reads the row mark's colour out of the rendered window, at each of the
+four priorities, in light and in dark (task 82e4ad32). It was the first test in the repo to look at
+a pixel, and it exists because the question it answers cannot be asked anywhere else: the mark's
+colour is resolved at run time by `ThemeBrushes.For` against the theme the *element* is wearing, and
+the appearance is applied to ShellPage's root long after the marks are built.
+`Application.Current.Resources[key]` would answer from the light dictionary however dark the window
+is — a mistake that every XAML-reading test passes and only a rendered pixel catches.
+
+So the chain is held in three links, each by the test that can see it: astrid-core's tokens →
+`App.xaml` (`DesignTokenTests`, `PriorityPaletteTests`) → the screen (here). This test takes its
+expectations out of `App.xaml` rather than restating the hexes, so it asserts only its own link.
+
+Two things make it work, and both are worth knowing before writing another one:
+
+- **`Capture` does not grab the screen.** `PrintWindow` with `PW_RENDERFULLCONTENT` asks the window
+  to draw itself into a bitmap, so it does not need the app in front, or unoccluded — unlike the
+  mouse-driven tests above, which is why this one passes on a machine where those cannot run. A
+  capture that comes back a single flat colour is the signature of a session that is not rendering
+  at all, and the test says so rather than reporting a wrong colour.
+- **The seed signs a user in.** `LeadingControl::for_task` gives an *unassigned* task the square
+  rather than the checkbox, and the square deliberately draws nothing at priority 0 — so without
+  `account.current-user` in the cache's metadata, three quarters of what is under test is invisible.
+  `theme.mode` in the same table chooses the appearance, which is a per-machine setting the core
+  keeps.
+
+Every failure writes the window out as `priority-marks-<theme>.png` beside the test binary and names
+the path in the message. For a colour that is the whole diagnosis: "wrong where" is the only
+question, and only the picture answers it.
+
+`PaletteSelectionTests` is the second, and it asks a different kind of question: not *what colour
+came out* but *what shape the highlight is* (task b37d76c3). The command palette selected through
+WinUI's own `ListViewItemPresenter` — the row filled, where the sidebar and the settings cards
+outline — and a one-attribute template swap is precisely the change the rest of the gate cannot see.
+It asserts both halves of an outline, because they differ in two places: the border is drawn, and
+the inside of the row is left as the card it sits on. Run against the old XAML it reported
+`#F6F6F6 x66194` filling the light row and `#2C3643 x66191` the dark one, which is the bug stated as
+a number. Its pictures are `palette-selected-<theme>.png`, written on every run rather than only on
+failure, because the point of a by-eye check is that somebody can look.
+
+**This suite does not need the app packaged.** It launches `Astrid.App.exe` straight out of
+`app/Astrid.App/bin/…/win-arm64/` with `ASTRID_DATA_DIR` pointed at a temp folder — no MSIX, no
+certificate, no `Add-AppxPackage`. `/astridwin` is the route for *installing* the app, which is a
+different need from looking at it, and three `/fixall` runs were parked on the wrong one.
+
 ## Running them
 
 ```powershell
@@ -106,6 +177,6 @@ build, so a shell built for the wrong one is simply not found.
 |---|---|
 | `could not bring the app to the front … LockApp` | The session is locked. Unlock it; nothing is wrong with the code. |
 | `the app did not start` / `never showed a window` | Usually no `astrid_ffi.dll` for this architecture, or a stale one. `cargo build -p astrid-ffi --target aarch64-pc-windows-msvc`. |
-| `the core did not load` in the crash log | The wrong `astrid_ffi.dll` landed in `bin/`. Check which candidate `Astrid.Core.Bindings.csproj` picked — a stale `target/release` can shadow a fresh `target/<triple>/debug`. |
+| `the core did not load` in `astrid.log` (the app's general log, beside `crash.log` in its data folder) | The wrong `astrid_ffi.dll` landed in `bin/`. Check which candidate `Astrid.Core.Bindings.csproj` picked — a stale `target/release` can shadow a fresh `target/<triple>/debug`. |
 | `no element named '…' on screen. Saw: …` | The app drew a different screen, and the names say which. Not usually a test bug. |
 | `error MSB3027 … locked by: "Astrid.App"` | A copy of the app is running and holds the DLLs the build wants to overwrite. Close it. |

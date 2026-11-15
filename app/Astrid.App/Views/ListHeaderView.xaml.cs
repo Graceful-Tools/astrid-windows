@@ -13,7 +13,8 @@ using Windows.System;
 namespace Astrid.App.Views;
 
 /// <summary>
-/// The row above the list: its name, the filter, the chat, the settings, the board toggle, the search, the bell and the account.
+/// The row above the list: its name, the filter, the chat, the settings, the board toggle, the
+/// search, and what the connection is doing. The bell and the account are the sidebar's.
 /// </summary>
 public sealed partial class ListHeaderView : UserControl
 {
@@ -123,30 +124,6 @@ public sealed partial class ListHeaderView : UserControl
         await Shell.ShowBoardAsync(BoardToggle.IsChecked == true);
     }
 
-    // ── The bell ─────────────────────────────────────────────────────────────────────────────
-
-    /// <summary>Opening the bell asks the server; the badge was already right from the cache.</summary>
-    private async void OnNotificationsOpening(object sender, object args) =>
-        await Shell.Notifications.RefreshAsync();
-
-    private async void OnMarkAllNotificationsRead(object sender, RoutedEventArgs args) =>
-        await Shell.Notifications.MarkAllReadAsync();
-
-    /// <summary>A row is the task it is about: mark it read, open the task.</summary>
-    private async void OnNotificationOpened(object sender, ItemClickEventArgs args)
-    {
-        if (args.ClickedItem is not NotificationItem item)
-        {
-            return;
-        }
-        NotificationsFlyout.Hide();
-        if (!item.IsRead)
-        {
-            await Shell.Notifications.MarkReadAsync(item.Id);
-        }
-        if (item.TaskId is { } taskId)
-        {
-            await Shell.OpenTaskAsync(taskId);
-        }
-    }
+    // The bell's three handlers were here. They are SidebarView's since task 96759883, with the
+    // bell itself.
 }

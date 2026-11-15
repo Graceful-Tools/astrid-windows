@@ -26,7 +26,12 @@
     <Grid x:Name="RootGrid" KeyDown="OnKeyDown"
           Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="260" />
+            <!--
+                Auto rather than 260 since task ab4cb9ee: the sidebar is 260 wide open and a 48px
+                rail hidden, and which of those it is belongs to the sidebar rather than to the
+                page. Signed out it draws neither, and the sign-in screen spans this column anyway.
+            -->
+            <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
             <!--
                 The conversation, then the detail pane. Auto rather than fixed widths so each
@@ -79,6 +84,13 @@
             sign-in screen and the tour; over everything else, the expanded detail included.
         -->
         <settings:SettingsView x:Name="Settings" Grid.Row="1" Grid.ColumnSpan="4" Canvas.ZIndex="8" />
+
+        <!--
+            One public list, opened by its id and read (task 6fc92134) — Report an Issue's in-app
+            destination. Over the settings, since that is where it is opened from, and under the
+            palette and the sign-in screen like everything else.
+        -->
+        <views:PublicListView x:Name="OpenedPublicList" Grid.Row="1" Grid.ColumnSpan="4" Canvas.ZIndex="9" />
 
         <!--
             The sign-in screen. It covers the app rather than replacing it, so the window does
@@ -135,8 +147,19 @@
                        Visibility="{x:Bind Shell.Tasks.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
         </Grid>
 
-        <!-- The conversation. Beside the list, and collapsed rather than narrow when it is shut. -->
-        <views:ChatPane x:Name="Chat" Grid.Row="1" Grid.Column="2" />
+        <!--
+            The conversation. Beside the list, and collapsed rather than narrow when it is shut.
+
+            It yields its column to the open task's detail (task 1ffc12af): the pane used to be the
+            column after this one, which left the conversation wedged between the list and the
+            detail — the pane's arrow pointing at this pane's edge instead of at the row it
+            measured, and this pane's own hide control sitting beside the open task. With the column
+            at nothing the 360-wide pane in column 3 is flush against the list, which is where the
+            arrow has always aimed. A board card holding the detail is not the side pane, so the
+            board keeps its conversation.
+        -->
+        <views:ChatPane x:Name="Chat" Grid.Row="1" Grid.Column="2"
+                        Visibility="{x:Bind Shell.ShowsConversation, Mode=OneWay, Converter={StaticResource Visible}}" />
 
         <!--
             The task detail. Collapsed rather than merely narrow when nothing is open, so it is out

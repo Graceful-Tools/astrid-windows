@@ -29,6 +29,43 @@ public sealed class ListSettingsViewModelTests
     };
 
     /// <summary>
+    /// The defaults section offers a default only for a field the list actually has (task
+    /// 897e25c5): a default priority for a board with no Priority field mapped is a setting that
+    /// can never apply. Absent is classic, so a list the server says nothing about keeps all five
+    /// choices it has always had.
+    /// </summary>
+    [Fact]
+    public async Task A_board_offers_no_default_for_a_field_it_does_not_have_task_897e25c5()
+    {
+        var board = new FakeCore().AnswerOk("listMembers", new
+        {
+            listId = "l1",
+            name = "Roadmap",
+            canManageList = true,
+            supports = new { priority = false, dueDate = false },
+            members = Array.Empty<object>(),
+        });
+        var view = new ListSettingsViewModel(board);
+        await view.LoadAsync("l1");
+        Assert.False(view.ShowsDefaultPriority);
+        Assert.False(view.ShowsDefaultDueDate);
+
+        var classic = new ListSettingsViewModel(new FakeCore().AnswerOk("listMembers", Settings()));
+        await classic.LoadAsync("l1");
+        Assert.True(classic.ShowsDefaultPriority);
+        Assert.True(classic.ShowsDefaultDueDate);
+
+        // And a reader who cannot manage the list is offered no default either way — the two
+        // answers are both needed, which is why they are ANDed rather than one standing in for
+        // the other.
+        var reader = new ListSettingsViewModel(
+            new FakeCore().AnswerOk("listMembers", Settings(canManage: false)));
+        await reader.LoadAsync("l1");
+        Assert.False(reader.ShowsDefaultPriority);
+        Assert.False(reader.ShowsDefaultDueDate);
+    }
+
+    /// <summary>
     /// The flyout opens from the cache and then catches up: the roster the server answers with
     /// replaces the one the cache had, in one open.
     /// </summary>
@@ -452,6 +489,32 @@ public sealed class ListSettingsViewModelTests
         Assert.Equal("Dana", view.Members[1].DisplayName);
         Assert.Equal("role.member", view.Members[1].RoleKey);
         Assert.True(view.CanManageMembers);
+    }
+
+    /// <summary>
+    /// Every member row carries whether this account may take that person off the list, so the
+    /// Remove button is drawn per row rather than on every roster regardless. It used to be on
+    /// every roster regardless — a viewer on somebody else's list, and now a GitHub-backed board
+    /// whose roster is the project's (<c>supports.membership: false</c>), were both offered a
+    /// Remove that 403s. The row carries the core's answer; it does not work one out
+    /// (task 93ffa9ea).
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Remove_is_offered_per_member_only_where_the_core_says_the_roster_can_change(bool canManage)
+    {
+        var core = new FakeCore().AnswerOk("listMembers", Settings(canManage: canManage));
+        var view = new ListSettingsViewModel(core);
+
+        await view.LoadAsync("l1");
+
+        Assert.Equal(2, view.Members.Count);
+        Assert.All(view.Members, row => Assert.Equal(canManage, row.CanRemove));
+        Assert.Equal(canManage, view.CanManageMembers);
+        // The roster itself is still shown either way: who is on the list is worth seeing even
+        // where it cannot be changed from here.
+        Assert.Equal("Dana", view.Members[1].DisplayName);
     }
 
     /// <summary>

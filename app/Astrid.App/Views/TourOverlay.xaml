@@ -30,8 +30,8 @@
             <StackPanel Spacing="12">
                 <TextBlock x:Uid="three_things_worth_knowing" Text="Three things worth knowing"
                            Style="{ThemeResource SubtitleTextBlockStyle}" />
-                <TextBlock x:Uid="ctrl_shift_a_brings_astrid_forward" TextWrapping="Wrap"
-                           Text="Ctrl+Shift+A brings Astrid forward from anywhere, ready for a new task." />
+                <TextBlock TextWrapping="Wrap"
+                           Text="{x:Bind local:BrandCopy.TourHotkey}" />
                 <TextBlock x:Uid="ctrl_k_finds_a_list_a" TextWrapping="Wrap"
                            Text="Ctrl+K finds a list, a task or a command." />
                 <TextBlock x:Uid="lists_every_keyboard_shortcut_they_work" TextWrapping="Wrap"

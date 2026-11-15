@@ -1,3 +1,4 @@
+using Astrid.Core.Bindings;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Xunit;
@@ -143,6 +144,94 @@ public sealed class LocalisationTests
     /// string is formatted. And the two the task singled out: the unassigned mark is one letter,
     /// and every ordinal still has its number.
     /// </remarks>
+    /// <summary>
+    /// A plural row this language's CLDR rules can never select, and so has no word for
+    /// (task b656efce).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// "Every language carries every key" is right for ordinary keys and wrong for plural ones.
+    /// A plural key is held as one flat resource per CLDR category — Windows has no plural
+    /// resource — and <em>how many categories there are is a property of the language</em>.
+    /// English ordinals have four (<c>1st</c>, <c>2nd</c>, <c>3rd</c>, <c>4th</c>); German has
+    /// one, <c>{0}.</c>, for every number there is. Requiring German to carry
+    /// <c>format_ordinal_one</c> would be requiring a translator to invent a word no reader can
+    /// reach, and it is exactly what astrid-core's own generated <c>de-DE</c> catalog omits.
+    /// </para>
+    /// <para>
+    /// <strong>The core decides, not this test.</strong> The categories are sampled from
+    /// <c>plurals::category</c> itself rather than listed here, so a language whose rules change
+    /// — or a thirteenth language — needs no edit. Sampling rather than enumerating because the
+    /// door answers one count at a time; the span is wide enough to reach every category CLDR
+    /// defines for the twelve languages in the catalog, including the ones that turn on the last
+    /// two digits.
+    /// </para>
+    /// </remarks>
+    private static bool IsUnreachablePluralRow(string tag, string resourceName)
+    {
+        foreach (var (key, form) in Plurals.Keys)
+        {
+            var prefix = key.Replace('.', '_') + "_";
+            if (!resourceName.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                continue;
+            }
+            var category = resourceName[prefix.Length..];
+            return !Reachable(tag, form).Contains(category);
+        }
+        return false;
+    }
+
+    private static readonly Dictionary<(string, CountForm), HashSet<string>> Sampled = [];
+
+    /// <summary>Every category the core can answer for this language and this form.</summary>
+    /// <remarks>
+    /// Sampled rather than enumerated because the door answers one count at a time. The span
+    /// reaches every category CLDR defines for the twelve languages in the catalog, the ones that
+    /// turn on the last two digits included.
+    /// </remarks>
+    private static HashSet<string> Reachable(string tag, CountForm form)
+    {
+        if (Sampled.TryGetValue((tag, form), out var known))
+        {
+            return known;
+        }
+        var found = new HashSet<string>(StringComparer.Ordinal);
+        for (var count = 0L; count <= 130; count++)
+        {
+            found.Add(AstridClient.PluralCategory(tag, form, count));
+        }
+        foreach (var count in new long[] { 101, 111, 112, 113, 121, 1_000, 1_000_000 })
+        {
+            found.Add(AstridClient.PluralCategory(tag, form, count));
+        }
+        Sampled[(tag, form)] = found;
+        return found;
+    }
+
+    /// <summary>
+    /// The core answers these at all — a stale <c>astrid_ffi.dll</c> refuses every request and
+    /// <c>PluralCategory</c> falls back to <c>other</c>, which looks exactly like a language with
+    /// one form and would quietly excuse every missing row.
+    /// </summary>
+    /// <remarks>
+    /// English ordinals have four categories, so this cannot pass by accident. It is how a stale
+    /// DLL was caught while this test was being written: `cargo build --workspace` had refreshed
+    /// `target/debug`, and `Astrid.Core.Bindings.csproj` prefers the triple-specific build. Run
+    /// `cargo build -p astrid-ffi --target aarch64-pc-windows-msvc`.
+    /// </remarks>
+    [Fact]
+    public void The_core_answers_plural_categories_task_b656efce()
+    {
+        Assert.Equal("few", AstridClient.PluralCategory("en-US", CountForm.Ordinal, 3));
+        Assert.Equal("other", AstridClient.PluralCategory("en-US", CountForm.Cardinal, 3));
+        Assert.True(
+            Reachable("en-US", CountForm.Ordinal).Count >= 4,
+            "the core answered fewer than four categories for English ordinals, so astrid_ffi.dll "
+            + "is stale or does not know `pluralCategory`. Run: cargo build -p astrid-ffi "
+            + "--target aarch64-pc-windows-msvc");
+    }
+
     [Fact]
     public void Every_language_carries_every_key_task_b9dd4a25()
     {
@@ -160,7 +249,11 @@ public sealed class LocalisationTests
             var tag = Path.GetFileName(folder);
             var words = Words(folder);
 
-            var missing = english.Keys.Except(words.Keys).OrderBy(key => key, StringComparer.Ordinal).ToList();
+            var missing = english.Keys
+                .Except(words.Keys)
+                .Where(key => !IsUnreachablePluralRow(tag, key))
+                .OrderBy(key => key, StringComparer.Ordinal)
+                .ToList();
             Assert.True(missing.Count == 0, $"{tag} is missing:\n  " + string.Join("\n  ", missing));
             var extra = words.Keys.Except(english.Keys).OrderBy(key => key, StringComparer.Ordinal).ToList();
             Assert.True(extra.Count == 0, $"{tag} has keys en-US does not:\n  " + string.Join("\n  ", extra));
@@ -170,6 +263,7 @@ public sealed class LocalisationTests
             Assert.True(empty.Count == 0, $"{tag} leaves these empty:\n  " + string.Join("\n  ", empty));
 
             var lostPlaceholders = english
+                .Where(word => words.ContainsKey(word.Key))
                 .SelectMany(word => new[] { "{0}", "{1}", "{2}" }
                     .Where(placeholder => word.Value.Contains(placeholder, StringComparison.Ordinal)
                                           && !words[word.Key].Contains(placeholder, StringComparison.Ordinal))
@@ -178,7 +272,11 @@ public sealed class LocalisationTests
             Assert.True(lostPlaceholders.Count == 0, $"{tag}:\n  " + string.Join("\n  ", lostPlaceholders));
 
             Assert.Equal(1, new System.Globalization.StringInfo(words["tasks_unassigned_mark"]).LengthInTextElements);
-            foreach (var ordinal in new[] { "ordinal_st", "ordinal_nd", "ordinal_rd", "ordinal_th" })
+            // Every ordinal this language HAS still has its number in it. Which rows it has is the
+            // language's business — English keeps four, German one — so the set is the resw's
+            // rather than a list here (task b656efce).
+            foreach (var ordinal in words.Keys.Where(
+                key => key.StartsWith("format_ordinal_", StringComparison.Ordinal)))
             {
                 Assert.Contains("{0}", words[ordinal]);
             }
