@@ -18,7 +18,7 @@ namespace Astrid.App.Tests;
 /// </para>
 /// <para>
 /// This is a source-level check because there is nothing else available. The test project is plain
-/// <c>net9.0</c> and does not reference <c>Astrid.App</c> — see its csproj: a test project that has
+/// <c>net10.0</c> and does not reference <c>Astrid.App</c> — see its csproj: a test project that has
 /// to start the Windows App SDK is one that gets skipped on the machine where it matters — so a
 /// converter cannot be instantiated here and a dark-theme assertion cannot be made at all. It is
 /// the same reason <see cref="DesignTokenTests"/> and <see cref="LocalisationTests"/> read the XAML
