@@ -97,7 +97,7 @@ if (Test-Path $appSolution) {
     Invoke-Step 'shell build (ARM64)' {
         dotnet build $appProject -c Release -r win-arm64 --self-contained false
     }
-    # The tests are plain net9.0 and run on the host, so they are built and run without a RID.
+    # The tests are plain net10.0 and run on the host, so they are built and run without a RID.
     # They include the C#-to-Rust boundary tests, which need the DLL the Rust steps built.
     Invoke-Step 'shell tests' { dotnet test $appSolution -c Release }
 } else {

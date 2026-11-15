@@ -136,7 +136,7 @@ jobs:
           key: shell
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 9.0.x
+          dotnet-version: 10.0.x
 
       # The shell carries the core's DLL and refuses to build without the one for its
       # architecture (ASTRID001 in Astrid.Core.Bindings.csproj), so both are built first — the
@@ -154,7 +154,7 @@ jobs:
       - name: Build the shell (ARM64)
         run: dotnet build app/Astrid.App/Astrid.App.csproj -c Release -r win-arm64 --self-contained false
 
-      # The view-model tests and the C#-to-Rust boundary tests. Plain net9.0, run as the host.
+      # The view-model tests and the C#-to-Rust boundary tests. Plain net10.0, run as the host.
       # The UI smoke tests are not in the solution: they need a desktop session.
       - name: Shell tests
         run: dotnet test app/Astrid.sln -c Release
