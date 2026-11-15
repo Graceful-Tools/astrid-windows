@@ -87,7 +87,7 @@
       the package instead - bigger, and not what the Store build should be.
     -->
     <PackageDependency Name="Microsoft.WindowsAppRuntime.2"
-                       MinVersion="2.5.1.0"
+                       MinVersion="2.6.5.0"
                        Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" />
   </Dependencies>
 
