@@ -29,7 +29,14 @@
     pruned by age: MSBuild's incremental check is timestamp-based against inputs rather than a
     content hash like cargo's fingerprints, and removing a file underneath it produces a build
     that succeeds and an app that does not run, which is a far worse failure than a slow rebuild.
-    `dotnet clean` is the honest tool there, and the report says so.
+    So they are reported, never pruned here.
+
+    THE REPORT USED TO SAY `dotnet clean app/Astrid.sln`, AND THAT IS NOT ENOUGH. Measured on
+    2026-11-14: it recovered 0.08 GB of a reported 1.13 GB, leaving 1.05 GB behind. `dotnet clean`
+    cleans the configuration and RID it is invoked for - Debug, no RID - while a full gate leaves
+    Debug, Release, win-x64 and win-arm64 outputs side by side. Clearing all of them means
+    removing the directories, which is safe precisely because MSBuild rebuilds whatever is absent;
+    what is unsafe is removing SOME of what it is tracking, which is the paragraph above.
 
 .PARAMETER Root
     The checkout(s) to measure and prune. Defaults to this repo and ../astrid-core, which are the
@@ -156,7 +163,12 @@ foreach ($checkout in $Root) {
             if ($s) { $appSize += $s }
         }
         $totalSeen += $appSize
-        Write-Host "    plus $(Format-Size $appSize) in $($appDirs.Count) app bin/obj director(ies) - clear with ``dotnet clean app/Astrid.sln``" -ForegroundColor DarkGray
+        # Not `dotnet clean`: it clears only the configuration and RID it is invoked for, and a
+        # full gate leaves four sets side by side. Measured, it recovered 0.08 GB of 1.13 GB.
+        Write-Host "    plus $(Format-Size $appSize) in $($appDirs.Count) app bin/obj director(ies)" -ForegroundColor DarkGray
+        Write-Host "      clear with: Get-ChildItem app -Recurse -Directory |" -ForegroundColor DarkGray
+        Write-Host "        Where-Object Name -in bin,obj | Remove-Item -Recurse -Force" -ForegroundColor DarkGray
+        Write-Host "      (`dotnet clean` leaves the other configurations and RIDs behind)" -ForegroundColor DarkGray
     }
 }
 
