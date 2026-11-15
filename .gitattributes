@@ -17,6 +17,7 @@
 # `body-sha256` astrid-core stamped on the art. Git would otherwise check it out CRLF here (there
 # is no `*.xaml` rule, and `text=auto` picks the platform), and the stamp is over LF.
 design/AstridCheckbox.xaml text eol=lf
+design/AstridTokens.xaml text eol=lf
 
 *.png     binary
 *.ico     binary
