@@ -82,6 +82,30 @@ function Get-TreeFiles([string]$Path) {
     return @(Get-ChildItem -LiteralPath $Path -Recurse -File -Force -ErrorAction SilentlyContinue)
 }
 
+# Is this file a BUILD SCRIPT OUTPUT - something under `target/<profile>/build/<crate>/out/`?
+#
+# Those are the one thing in a target tree that cargo will NOT replace when it goes missing. It
+# decides whether to re-run a build script from a fingerprint kept elsewhere, so a file taken out
+# of `out/` leaves the fingerprint saying fresh, the script never runs again, and the crate fails
+# to compile against a file that is simply gone.
+#
+# Walked rather than pattern-matched: a path pattern here needs backslashes escaped through
+# whatever writes this file, and getting that subtly wrong produced a filter that silently matched
+# nothing - which is exactly the failure this guard exists to prevent, wearing a different hat.
+function Test-BuildScriptOutput([System.IO.FileInfo]$File) {
+    $directory = $File.Directory
+    while ($null -ne $directory) {
+        if ($directory.Name -eq 'out' -and
+            $null -ne $directory.Parent -and
+            $null -ne $directory.Parent.Parent -and
+            $directory.Parent.Parent.Name -eq 'build') {
+            return $true
+        }
+        $directory = $directory.Parent
+    }
+    return $false
+}
+
 $totalFreed = 0L
 $totalSeen = 0L
 
@@ -119,7 +143,27 @@ foreach ($checkout in $Root) {
     # LastWriteTime, not LastAccessTime: NTFS last-access updates are off by default on Windows, so
     # every file in the tree would look untouched since it was written and the "keep what the
     # current build needs" half of this would silently do nothing.
-    $stale = @($files | Where-Object { $_.LastWriteTime -lt $cutoff })
+    #
+    # NEVER anything under `target\...uild\<crate>\out\`: those are BUILD SCRIPT OUTPUTS, and cargo does not treat
+    # them the way it treats its own artefacts. It decides whether to re-run a build script from a
+    # FINGERPRINT kept elsewhere in the tree; take a file out of `out/` and the fingerprint still
+    # says fresh, so the script never re-runs and the crate fails to compile against a file that
+    # is simply gone:
+    #
+    #     error: couldn't read .../libsqlite3-sys-<hash>/out/bindgen.rs: The system cannot find
+    #     the file specified. (os error 2)
+    #
+    # That is not hypothetical. On 2026-11-14 this script freed exactly ONE file from
+    # astrid-core/target -- 126,710 bytes -- and it was that `bindgen.rs`, generated once when
+    # libsqlite3-sys was first built and never written again, so it aged out while the crate it
+    # belongs to was in daily use. astrid-core would not build until `cargo clean -p
+    # libsqlite3-sys` forced the script to run again (task 011080d4 hit it).
+    #
+    # The script's own header says cargo "rebuilds whatever it finds missing". That is true of
+    # compilation artefacts and false of build script outputs, which is the whole of this bug.
+    $stale = @($files | Where-Object {
+            $_.LastWriteTime -lt $cutoff -and -not (Test-BuildScriptOutput $_)
+        })
     $staleSize = ($stale | Measure-Object -Property Length -Sum).Sum
     if (-not $staleSize) { $staleSize = 0L }
 
