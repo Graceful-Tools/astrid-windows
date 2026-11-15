@@ -2306,3 +2306,62 @@ public sealed record TransferAvailability
 
     [JsonPropertyName("owners")] public IReadOnlyList<UserSummary> Owners { get; init; } = [];
 }
+
+/// <summary>
+/// A rectangle in the window's coordinates, y increasing downward (task eb2684bb).
+/// </summary>
+/// <remarks>
+/// Logical pixels, already divided by the scale factor. Deliberately not WinUI's <c>Rect</c>: this
+/// assembly is the bindings and has no XAML reference, and the two are the same four numbers.
+/// </remarks>
+public sealed record CalloutRect(
+    [property: JsonPropertyName("left")] double Left,
+    [property: JsonPropertyName("top")] double Top,
+    [property: JsonPropertyName("width")] double Width,
+    [property: JsonPropertyName("height")] double Height);
+
+/// <summary>
+/// Where the core says a task callout goes, and where its arrow points (task eb2684bb).
+/// </summary>
+/// <remarks>
+/// <para>
+/// <see cref="Left"/>, <see cref="Top"/>, <see cref="Width"/> and <see cref="Height"/> are the
+/// callout's own box, already clamped into the viewport — a callout allowed to hang off the window
+/// is one the reader cannot finish, which is worse than one overlapping the column it came from.
+/// </para>
+/// <para>
+/// <see cref="ArrowOffset"/> is how far DOWN the anchored edge to draw the arrow, measured from
+/// <see cref="Top"/>. It points at the ROW's middle wherever the callout ended up, which after
+/// clamping is usually not the callout's own middle — drawing the arrow at the midpoint is the
+/// mistake the rule exists to stop.
+/// </para>
+/// </remarks>
+public sealed record CalloutPlacement
+{
+    /// <summary><c>left</c> or <c>right</c> — which side of the anchor it opened on.</summary>
+    [JsonPropertyName("side")]
+    public string Side { get; init; } = "right";
+
+    [JsonPropertyName("left")]
+    public double Left { get; init; }
+
+    [JsonPropertyName("top")]
+    public double Top { get; init; }
+
+    [JsonPropertyName("width")]
+    public double Width { get; init; }
+
+    [JsonPropertyName("height")]
+    public double Height { get; init; }
+
+    [JsonPropertyName("arrowOffset")]
+    public double ArrowOffset { get; init; }
+
+    /// <summary>Whether the callout opened to the left of its anchor.</summary>
+    /// <remarks>
+    /// The arrow is on the side facing the anchor, so this is what decides which edge it is drawn
+    /// on. A string comparison spelled once here rather than at each call site.
+    /// </remarks>
+    [JsonIgnore]
+    public bool OpensLeft => Side == "left";
+}

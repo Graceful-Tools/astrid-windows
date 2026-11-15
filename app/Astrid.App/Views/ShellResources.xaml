@@ -325,7 +325,6 @@
     <local:CompletedStrikeConverter x:Key="CompletedStrike" />
     <local:CountVisibleConverter x:Key="CountVisible" />
     <local:FilterTintConverter x:Key="FilterTint" />
-    <local:BoardColumnWidthConverter x:Key="ColumnWidth" />
     <local:SwatchRingConverter x:Key="SwatchRing" />
     <local:ChoiceLabelConverter x:Key="ChoiceLabel" />
     <local:ReplyIndentConverter x:Key="ReplyIndent" />

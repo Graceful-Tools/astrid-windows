@@ -445,7 +445,9 @@ public sealed partial class ShellPage : UserControl
             DetachDetailPane();
             host.Content = Detail;
             _detailHost = host;
-            Detail.WearAsCard();
+            // The board's only host is its callout now (task eb2684bb), which draws the border,
+            // the corner and the arrow itself.
+            Detail.WearAsCallout();
         }
         PlaceDetailPane();
     }

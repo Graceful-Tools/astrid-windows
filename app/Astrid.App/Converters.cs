@@ -841,28 +841,6 @@ public sealed partial class FileThumbnailConverter : IValueConverter
 }
 
 /// <summary>
-/// Which template a board column item takes: a card, or the slot the expanded card's detail is
-/// drawn in (task 91a25b8a).
-/// </summary>
-/// <remarks>
-/// The column's items are cards with one slot among them, and a selector is how an
-/// <c>ItemsControl</c> draws two kinds of thing from one list without the template deciding
-/// anything — the board view model already said which item is which.
-/// </remarks>
-public sealed partial class BoardItemTemplateSelector : DataTemplateSelector
-{
-    public DataTemplate? Card { get; set; }
-
-    public DataTemplate? DetailSlot { get; set; }
-
-    protected override DataTemplate? SelectTemplateCore(object item) =>
-        item is Astrid.App.ViewModels.InlineDetailSlot ? DetailSlot : Card;
-
-    protected override DataTemplate? SelectTemplateCore(object item, DependencyObject container) =>
-        SelectTemplateCore(item);
-}
-
-/// <summary>
 /// What a default's choice is called: a member's name when it has one, otherwise the word its
 /// resource key names (task c4102c67).
 /// </summary>
@@ -946,23 +924,6 @@ public sealed partial class SwatchRingConverter : IValueConverter
         throw new NotSupportedException("a border is not a value to read back");
 }
 
-/// <summary>
-/// How wide a board column is: the ordinary width, or the wider one that holds the expanded
-/// card's detail.
-/// </summary>
-/// <remarks>
-/// astrid-web's columns are <c>min-w-[18rem] max-w-[28rem] flex-1</c>, so the one carrying an
-/// expanded task grows towards the upper bound. The two widths here are those bounds in pixels,
-/// which keeps the detail's field rows — laid out for the 360px side pane — from folding.
-/// </remarks>
-public sealed partial class BoardColumnWidthConverter : IValueConverter
-{
-    public object Convert(object value, Type targetType, object parameter, string language) =>
-        value is true ? 448.0 : 288.0;
-
-    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
-        throw new NotSupportedException("a width is not a value to read back");
-}
 
 // ── What a list has been doing (task 48c624ad) ────────────────────────────────────────────────
 //

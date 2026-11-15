@@ -152,15 +152,6 @@
                 </Grid>
             </views:BoardCard>
         </DataTemplate>
-        <DataTemplate x:Key="BoardDetailSlotTemplate" x:DataType="viewmodels:InlineDetailSlot">
-            <ContentControl x:Uid="open_task" HorizontalAlignment="Stretch"
-                            HorizontalContentAlignment="Stretch"
-                            AutomationProperties.Name="Open task"
-                            Loaded="OnInlineDetailSlotLoaded" />
-        </DataTemplate>
-        <local:BoardItemTemplateSelector x:Key="BoardItem"
-                                         Card="{StaticResource BoardCardTemplate}"
-                                         DetailSlot="{StaticResource BoardDetailSlotTemplate}" />
     </UserControl.Resources>
 
     <Grid>
@@ -235,7 +226,7 @@
                             grows towards its upper bound, so the detail's rows keep the
                             layout they have in the side pane.
                         -->
-                        <Border Width="{x:Bind HoldsExpandedCard, Converter={StaticResource ColumnWidth}}"
+                        <Border Width="288"
                                 CornerRadius="8"
                                 AllowDrop="True"
                                 Tag="{x:Bind Id}"
@@ -315,10 +306,14 @@
                                                        Foreground="{ThemeResource AstridTextMuted}" />
                                         </Border>
 
-                                        <!-- The cards, with the open one's detail among
-                                             them. Which is which is the view model's. -->
-                                        <ItemsControl ItemsSource="{x:Bind Items}"
-                                                      ItemTemplateSelector="{StaticResource BoardItem}" />
+                                        <!--
+                                            Just the cards. The open one's detail is a CALLOUT
+                                            anchored to its card (task eb2684bb), not a slot
+                                            spliced in among them, so opening a card moves
+                                            nothing in the column.
+                                        -->
+                                        <ItemsControl ItemsSource="{x:Bind Cards}"
+                                                      ItemTemplate="{StaticResource BoardCardTemplate}" />
                                     </StackPanel>
                                 </ScrollViewer>
 
@@ -443,5 +438,77 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
+
+        <!--
+            The open card's detail, as a CALLOUT anchored to that card (task eb2684bb).
+
+            It used to be an `InlineDetailSlot` spliced into the column's item list, with the
+            column growing wider to hold it: detail arrived as another card-shaped block pushed
+            in between cards, so there was no side to choose and no arrow to aim. The Mac, the
+            iPad and the Android tablet all open a callout here, and now so does this.
+
+            A Popup rather than a Flyout because the position is the CORE's and not the
+            framework's: `astrid_rules::rows::callout::place` decides the side, the box and the
+            arrow, and a Flyout would insist on its own `FlyoutPlacementMode` instead. The
+            offsets are set in code, from that answer.
+
+            IsLightDismissEnabled is off: the pane holds a description editor and a comment box,
+            and a light-dismiss popup closes on the first click into either. Closing is the
+            card's own toggle and the pane's ✕, as it was when this was a slot.
+        -->
+        <Popup x:Name="CardCallout"
+               IsLightDismissEnabled="False"
+               ShouldConstrainToRootBounds="True">
+            <!--
+                The frame is inset by ArrowGutter on both sides, and the arrow lives in that
+                gutter. It is not decoration: a Popup CLIPS its child to the child's own bounds,
+                so an arrow hung off the frame on a negative margin is laid out, reported to UI
+                Automation, and never drawn — which is exactly what happened the first time.
+                Both sides are inset, not just the one in use, so the frame's box is the same
+                whichever side the core picks and the offset arithmetic stays one line.
+            -->
+            <Grid x:Name="CardCalloutRoot">
+                <Border x:Name="CardCalloutFrame"
+                        CornerRadius="{ThemeResource AstridRadiusLarge}"
+                        BorderThickness="1"
+                        BorderBrush="{ThemeResource AstridBorder}"
+                        Background="{ThemeResource AstridSurface}">
+                    <ContentControl x:Uid="open_task" x:Name="CardCalloutHost"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Stretch"
+                                    VerticalAlignment="Stretch"
+                                    VerticalContentAlignment="Stretch"
+                                    AutomationProperties.Name="Open task"
+                                    Loaded="OnCardCalloutHostLoaded" />
+                </Border>
+
+                <!--
+                    The arrow: a square turned 45 degrees and pushed half its width off the
+                    edge, so two of its sides draw as the point and the other two are covered
+                    by the frame. The same shape the list's pane uses.
+
+                    Its Y comes from the core's `arrowOffset`, which is measured from the
+                    callout's TOP and points at the ROW's middle — after clamping those are not
+                    the same thing, and drawing it at the callout's own midpoint is the mistake
+                    the rule exists to stop. Which EDGE it sits on is the core's `side`. Both
+                    are set in code, because both are answers rather than constants.
+                -->
+                <Border x:Name="CardCalloutArrow"
+                        Width="16" Height="16"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Background="{ThemeResource AstridSurface}"
+                        BorderThickness="1,0,0,1"
+                        BorderBrush="{ThemeResource AstridBorder}"
+                        Visibility="Collapsed">
+                    <Border.RenderTransform>
+                        <TransformGroup>
+                            <RotateTransform Angle="45" CenterX="8" CenterY="8" />
+                            <TranslateTransform x:Name="CardCalloutArrowOffset" />
+                        </TransformGroup>
+                    </Border.RenderTransform>
+                </Border>
+            </Grid>
+        </Popup>
     </Grid>
 </UserControl>
