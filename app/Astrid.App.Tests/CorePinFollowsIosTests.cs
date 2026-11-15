@@ -106,7 +106,7 @@ public sealed class CorePinFollowsIosTests
     /// <c>RepeatSummaryConverter.Say</c> ends in <c>_ => string.Empty</c>, so an unknown key is not
     /// an exception but a silence — and a summary of nothing but silences renders as "Does not
     /// repeat" on a task that repeats daily. The switch is read out of the source because the
-    /// converter is a WinUI type and this project is deliberately plain <c>net9.0</c>.
+    /// converter is a WinUI type and this project is deliberately plain <c>net10.0</c>.
     /// </remarks>
     [Fact]
     public void The_repeat_summary_knows_every_part_the_pinned_core_sends_task_6ee938cc()

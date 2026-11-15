@@ -6,7 +6,7 @@ The exact versions this repo is built and tested against. Bump deliberately, in 
 |---|---|---|
 | Rust | 1.98.1 (stable channel) | `rust-toolchain.toml` |
 | Rust targets | `x86_64-pc-windows-msvc`, `aarch64-pc-windows-msvc` | `rust-toolchain.toml` |
-| .NET SDK | 9.0.317 | installed via winget; CI uses `actions/setup-dotnet` |
+| .NET SDK | 10.0.4xx (LTS) | installed via winget; CI uses `actions/setup-dotnet` |
 | Visual Studio Build Tools | 2022 (17.14), MSVC 14.44 with x64 + ARM64 | developer machine setup |
 | Windows SDK | 10.0.26100 | Build Tools install |
 | Node.js | 24.x | contract fixture export only |
@@ -48,7 +48,7 @@ turning something on here.
 
 ```powershell
 winget install Rustlang.Rustup
-winget install Microsoft.DotNet.SDK.9
+winget install Microsoft.DotNet.SDK.10
 winget install Microsoft.VisualStudio.2022.BuildTools --override `
   "--quiet --wait --norestart --add Microsoft.VisualStudio.Workload.VCTools ^
    --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 ^
@@ -58,3 +58,8 @@ winget install Microsoft.VisualStudio.2022.BuildTools --override `
 ```
 
 The ARM64 MSVC component is not optional: `npm run predeploy` cross-builds for ARM64 on every run.
+
+**.NET 10, not 9.** .NET 9 left support on 2026-11-10 and every MSIX publishes `--self-contained`,
+so a 9.x build ships a runtime that no longer gets security patches. The five csproj files target
+`net10.0*` and the gate will not run without the .NET 10 SDK: `dotnet --list-sdks` must show a
+`10.0.*` entry (task `57603c11`).

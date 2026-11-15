@@ -88,7 +88,7 @@ public sealed class PlainSquareMarkTests
     /// </summary>
     /// <remarks>
     /// Read out of the source the way <c>PriorityPaletteTests</c> reads <c>PriorityPalette.cs</c>
-    /// for a stray hex: this test project is plain net9.0 and cannot load a WinUI type, and the one
+    /// for a stray hex: this test project is plain net10.0 and cannot load a WinUI type, and the one
     /// thing worth pinning is that nothing between the row and the brush decides to draw nothing.
     /// <c>PriorityPalette.Key</c> already answers <c>AstridPriorityNone</c> for 0, and
     /// <c>PriorityPaletteTests</c> holds it there.

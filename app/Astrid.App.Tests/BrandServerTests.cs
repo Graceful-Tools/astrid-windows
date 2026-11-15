@@ -92,7 +92,7 @@ public sealed class BrandServerTests
     /// <remarks>
     /// <para>
     /// Read out of the source, because <c>App.xaml.cs</c> is in the WinUI assembly and this test
-    /// project is <c>net9.0</c> — it cannot reference it, let alone start one. A coarse test, but
+    /// project is <c>net10.0</c> — it cannot reference it, let alone start one. A coarse test, but
     /// the bug was one identifier long and lived on exactly this line, so the thing worth guarding
     /// is which identifier is written there.
     /// </para>

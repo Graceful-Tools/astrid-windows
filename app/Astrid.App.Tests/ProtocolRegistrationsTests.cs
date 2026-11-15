@@ -11,7 +11,7 @@ namespace Astrid.App.Tests;
 /// </summary>
 public sealed class ProtocolRegistrationsTests
 {
-    private const string Mine = @"C:\src\astrid-windows\app\Astrid.App\bin\Debug\net9.0-windows10.0.19041.0\win-arm64\Astrid.App.exe";
+    private const string Mine = @"C:\src\astrid-windows\app\Astrid.App\bin\Debug\net10.0-windows10.0.19041.0\win-arm64\Astrid.App.exe";
 
     [Fact]
     public void Other_builds_are_stale_and_this_one_is_not()
@@ -20,14 +20,14 @@ public sealed class ProtocolRegistrationsTests
         {
             new Registration("App.1", $"\"{Mine}\" \"----ms-protocol:%1\""),
             new Registration("App.2", @"C:\src\astrid-windows\dist\portable\win-arm64\Astrid.App.exe ""----ms-protocol:%1"""),
-            new Registration("App.3", @"""C:\src\astrid-windows\app\Astrid.App\bin\Release\net9.0-windows10.0.19041.0\win-arm64\Astrid.App.exe"" ""----ms-protocol:%1"""),
+            new Registration("App.3", @"""C:\src\astrid-windows\app\Astrid.App\bin\Release\net10.0-windows10.0.19041.0\win-arm64\Astrid.App.exe"" ""----ms-protocol:%1"""),
         };
 
         Assert.Equal(
             new[]
             {
                 @"C:\src\astrid-windows\dist\portable\win-arm64\Astrid.App.exe",
-                @"C:\src\astrid-windows\app\Astrid.App\bin\Release\net9.0-windows10.0.19041.0\win-arm64\Astrid.App.exe",
+                @"C:\src\astrid-windows\app\Astrid.App\bin\Release\net10.0-windows10.0.19041.0\win-arm64\Astrid.App.exe",
             },
             StaleExecutables(registrations, Mine));
     }
