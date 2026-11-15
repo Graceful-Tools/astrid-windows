@@ -30,13 +30,17 @@ namespace Astrid.App.UITests;
 /// then be sampling the title.
 /// </para>
 /// <para>
-/// <b>What this does NOT cover: the checkbox.</b> The harness's session carries a cookie and no
-/// user id, so no seeded task can be the reader's and all four cards come back as squares — the
-/// test prints each mark's automation name, and all four read <c>Options for …</c> rather than
-/// <c>Complete …</c>. Said here rather than papered over with a card called "mine". The checkbox is
-/// a single image, and <c>PriorityMarkColourTests</c> reads its pixels on the list side; the
-/// squares are the ones assembled out of a Border, a TextBlock and an attached property, which is
-/// where this bug came from.
+/// <b>All three answers, including the checkbox.</b> That one needs a signed-in user —
+/// <c>AstridApp.WriteSession</c> writes a cookie and no user id, so without
+/// <c>account.current-user</c> in the cache every card comes back a square however it is assigned,
+/// and an earlier version of this test covered two states while reading as though it covered three.
+/// </para>
+/// <para>
+/// <b>The automation name does not tell the states apart here, and that is correct.</b> All four
+/// read <c>Options for …</c>, including the reader's own: on a BOARD every mark opens the assignee
+/// picker rather than completing the task, which is what task <c>3c0dfb73</c> fixed. So the name is
+/// used only to find the element and to print what was found; what separates a checkbox from a
+/// square is what is drawn, which is what this measures.
 /// </para>
 /// </remarks>
 [Collection("ui")]
@@ -73,7 +77,7 @@ public sealed class BoardCardMarkTests
                      Seeds.BoardCardTitle,       // nobody's, priority 0
                      Seeds.TheirsCardTitle,      // somebody else's
                      Seeds.RepeatingCardTitle,   // somebody else's, repeating
-                     Seeds.HighPriorityCardTitle, // nobody's, priority 3
+                     Seeds.MineCardTitle,        // mine — a checkbox
                  })
         {
             if (MarkOf(app, title) is not { } found)

@@ -44,7 +44,7 @@ internal static class Seeds
         transaction.Commit();
     }
 
-    internal const string HighPriorityCardTitle = "Draft the invitations";
+    internal const string MineCardTitle = "Draft the invitations";
     internal const string TheirsCardTitle = "Book the room";
     internal const string RepeatingCardTitle = "Water the plants";
 
@@ -60,16 +60,10 @@ internal static class Seeds
     /// nowhere to say "repeats" until task <c>fa63a5dd</c>.
     /// </para>
     /// <para>
-    /// <b>The checkbox is deliberately not here, because this harness cannot make one.</b>
-    /// <c>AstridApp.WriteSession</c> writes a cookie and no user id, so no seeded task can be the
-    /// reader's and every card comes back as a square. Pretending otherwise with a fourth title
-    /// called "mine" would be a test that reads as covering three states and covers two.
-    /// </para>
-    /// <para>
-    /// That gap costs little: the checkbox is a single image that draws priority, repeating and
-    /// done at once, and <c>PriorityMarkColourTests</c> already reads its pixels on the list side.
-    /// The squares are the ones assembled from a Border, a TextBlock and an attached property —
-    /// which is exactly where the blank this task is about came from.
+    /// All three, which needs a signed-in user: the credential file the launcher writes carries
+    /// only a cookie, so <c>account.current-user</c> has to be in the cache's metadata or the app
+    /// is signed in as nobody and every card comes back a square however it is assigned. That row
+    /// is what makes the fourth card the reader's own, and so a checkbox.
     /// </para>
     /// </remarks>
     internal static void BoardWithEveryMark(string cachePath)
@@ -87,6 +81,12 @@ internal static class Seeds
             ("$name", BoardListName),
             ("$json", $$"""{"id":"l1","name":"{{BoardListName}}","projectId":"p1"}"""));
 
+        // Without this the app is signed in as nobody, and no card can be the reader's however it
+        // is assigned — the credential file the launcher writes carries only a cookie.
+        Execute(connection,
+            "INSERT OR REPLACE INTO metadata (key, value) VALUES ('account.current-user', $json)",
+            ("$json", $$"""{"id":"{{OwnerId}}","name":"Smoke Tester","email":"smoke@example.com"}"""));
+
         // Nobody's: no assignee at all, which is what a card typed into a column of a list whose
         // defaultAssigneeId is "unassigned" becomes.
         AddBoardCard(connection, "t1", BoardCardTitle, assignee: null, priority: 0, repeating: false);
@@ -94,10 +94,10 @@ internal static class Seeds
         AddBoardCard(connection, "t2", TheirsCardTitle, assignee: "Dana", priority: 2, repeating: false);
         // Somebody else's AND repeating: the arrows are the square's border.
         AddBoardCard(connection, "t3", RepeatingCardTitle, assignee: "Dana", priority: 1, repeating: true);
-        // Nobody's again, at the top priority: the square carries priority as its colour, and the
-        // first card is priority 0 — the value whose default sentinel caused the original blank.
-        // Both ends of that range, so a brush that is never asked for fails here either way.
-        AddBoardCard(connection, "t4", HighPriorityCardTitle, assignee: null, priority: 3, repeating: false);
+        // Mine: a checkbox, which is a different control from the other three rather than the same
+        // square in another colour. Priority 3, so the first card (priority 0) and this one sit at
+        // both ends of the range whose default sentinel caused the original blank.
+        AddBoardCard(connection, "t4", MineCardTitle, assignee: OwnerId, priority: 3, repeating: false);
 
         transaction.Commit();
     }
@@ -110,10 +110,14 @@ internal static class Seeds
         // little but quotes, and a raw string holding them needs more quote characters in its
         // fence than it does content.
         var quote = "\"";
+        // assigneeId AND assignee: the first is what the core compares against the signed-in user
+        // to decide whose task this is, the second is what a square draws an initial from.
+        var name = assignee == OwnerId ? "Smoke Tester" : assignee;
         var who = assignee is null
             ? string.Empty
-            : ",\"assignee\":{\"id\":" + quote + assignee + quote
-                + ",\"name\":" + quote + assignee + quote + "}";
+            : ",\"assigneeId\":" + quote + assignee + quote
+                + ",\"assignee\":{\"id\":" + quote + assignee + quote
+                + ",\"name\":" + quote + name + quote + "}";
         var repeat = repeating ? ",\"repeating\":\"weekly\"" : string.Empty;
         var json = "{\"id\":" + quote + id + quote
             + ",\"title\":" + quote + title + quote
