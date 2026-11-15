@@ -431,12 +431,25 @@ public sealed class BoardViewModelTests
 
 
 /// <summary>
-/// A tapped card expands in place, as astrid-web's board does (task 91a25b8a).
+/// <summary>
+/// A tapped card opens a CALLOUT anchored to it (task eb2684bb, replacing the inline slot of
+/// 91a25b8a).
 /// </summary>
 /// <remarks>
-/// The board says WHERE the detail goes — a slot after the expanded card — and nothing about what
-/// the detail contains. The shell hosts its one detail pane in that slot, so the board and the
-/// list share one implementation of a task.
+/// <para>
+/// The board says WHICH card is open and nothing about where the callout goes — that is
+/// <c>astrid_rules::rows::callout::place</c>, asked by the view with a rectangle it measured. The
+/// shell hosts its one detail pane in the callout, so the board and the list still share one
+/// implementation of a task.
+/// </para>
+/// <para>
+/// <strong>This reverses task 6df01318 deliberately.</strong> That task made the expanded card be
+/// REPLACED by its detail, because an inline slot drawn after the card showed the same task twice
+/// — collapsed card above, detail pane below. A callout is not drawn in the list at all, and the
+/// card is what it points at: removing the card would leave the arrow aimed at whatever slid up
+/// into its place. So the card stays, and the duplication 6df01318 was about cannot happen, since
+/// there is no second copy in the column.
+/// </para>
 /// </remarks>
 public sealed class BoardExpansionTests
 {
@@ -462,18 +475,15 @@ public sealed class BoardExpansionTests
     private static object Board(params object[] columns) => new { projectId = "p1", columns };
 
     /// <summary>
-    /// The expanded card is REPLACED by its detail, not followed by it (task 6df01318).
+    /// Opening a card leaves the column exactly as it was (task eb2684bb).
     /// </summary>
     /// <remarks>
-    /// The slot used to be added after the card, so the column drew the collapsed card — mark,
-    /// identifier, title, due — and then the detail pane carrying the same task underneath it. Jon
-    /// saw one task twice. The web board has always replaced the card: <c>renderCard</c> in
-    /// <c>project-status-board.tsx</c> returns the inline detail INSTEAD of the <c>task-card</c>
-    /// div when the card is expanded. The slot still sits where the card was, so the detail opens
-    /// in place and the cards around it do not move.
+    /// The whole of what was wrong before: an <c>InlineDetailSlot</c> took the card's place and the
+    /// column grew wider to hold it, so opening a card re-laid out the board under the reader's
+    /// cursor. A callout floats above, and the cards do not move.
     /// </remarks>
     [Fact]
-    public async Task Expanding_a_card_replaces_it_rather_than_drawing_it_twice_task_6df01318()
+    public async Task Opening_a_card_moves_nothing_in_the_column_task_eb2684bb()
     {
         var core = new FakeCore().AnswerOk("board", Board(Column("ready", "t1", "t2", "t3")));
         var view = new BoardViewModel(core);
@@ -481,17 +491,23 @@ public sealed class BoardExpansionTests
 
         view.Expand("t2");
 
-        var items = view.Columns[0].Items;
-        Assert.Equal(3, items.Count);
-        Assert.DoesNotContain(items, item => item is TaskRow row && row.Id == "t2");
-        Assert.Equal("t2", Assert.IsType<InlineDetailSlot>(items[1]).TaskId);
-        // The cards either side keep their places, so the detail opens where the card was.
-        Assert.Equal("t1", Assert.IsType<TaskRow>(items[0]).Id);
-        Assert.Equal("t3", Assert.IsType<TaskRow>(items[2]).Id);
+        var cards = view.Columns[0].Cards;
+        Assert.Equal(["t1", "t2", "t3"], cards.Select(card => card.Id));
+        // The open card is still THERE — it is what the callout's arrow points at. Taking it out
+        // would leave the arrow aimed at whichever card slid up into its place.
+        Assert.Contains(cards, card => card.Id == "t2");
     }
 
+    /// <summary>
+    /// The column names the card the callout is anchored to (task eb2684bb).
+    /// </summary>
+    /// <remarks>
+    /// The id rather than a flag, because the view has to find that card's element to measure it:
+    /// the core is given a rectangle, and where a row sits on screen is geometry no view model can
+    /// know.
+    /// </remarks>
     [Fact]
-    public async Task Expanding_a_card_puts_the_detail_slot_where_that_card_was_task_91a25b8a()
+    public async Task The_column_names_the_card_the_callout_is_anchored_to_task_eb2684bb()
     {
         var core = new FakeCore().AnswerOk("board", Board(Column("ready", "t1", "t2", "t3")));
         var view = new BoardViewModel(core);
@@ -500,15 +516,13 @@ public sealed class BoardExpansionTests
         view.Expand("t2");
 
         Assert.Equal("t2", view.ExpandedTaskId);
-        var items = view.Columns[0].Items;
-        Assert.Equal("t2", Assert.IsType<InlineDetailSlot>(items[1]).TaskId);
+        Assert.Equal("t2", view.Columns[0].ExpandedTaskId);
         Assert.True(view.Columns[0].HoldsExpandedCard);
-        // The cards themselves are untouched: the slot is a place, not a card.
         Assert.Equal(3, view.Columns[0].Cards.Count);
     }
 
     [Fact]
-    public async Task Collapsing_removes_the_slot()
+    public async Task Collapsing_leaves_nothing_anchored_task_eb2684bb()
     {
         var core = new FakeCore().AnswerOk("board", Board(Column("ready", "t1", "t2")));
         var view = new BoardViewModel(core);
@@ -518,17 +532,23 @@ public sealed class BoardExpansionTests
         view.Collapse();
 
         Assert.Null(view.ExpandedTaskId);
-        Assert.Equal(2, view.Columns[0].Items.Count);
-        Assert.DoesNotContain(view.Columns[0].Items, item => item is InlineDetailSlot);
+        Assert.Null(view.Columns[0].ExpandedTaskId);
         Assert.False(view.Columns[0].HoldsExpandedCard);
+        Assert.Equal(2, view.Columns[0].Cards.Count);
     }
 
     /// <summary>
-    /// A refresh — a sync, a colleague's edit, the expanded task's own title being changed — must
-    /// not lose the expansion. The slot follows the card wherever the reload puts it.
+    /// A refresh — a sync, a colleague's edit, the open task's own title being changed — must not
+    /// lose the expansion. The callout follows the card wherever the reload puts it
+    /// (task eb2684bb).
     /// </summary>
+    /// <remarks>
+    /// <c>HoldsExpandedCard</c> is computed from the cards the column actually has rather than set
+    /// while building them, so a card that moved columns takes its callout with it without the
+    /// board being told twice.
+    /// </remarks>
     [Fact]
-    public async Task A_refresh_keeps_the_slot_with_its_card_even_when_the_card_moves()
+    public async Task A_refresh_keeps_the_callout_with_its_card_even_when_the_card_moves_task_eb2684bb()
     {
         var core = new FakeCore()
             .AnswerOk("board", Board(Column("ready", "t1", "t2"), Column("doing")))
@@ -542,8 +562,9 @@ public sealed class BoardExpansionTests
         Assert.Equal("t2", view.ExpandedTaskId);
         Assert.False(view.Columns[0].HoldsExpandedCard);
         Assert.True(view.Columns[1].HoldsExpandedCard);
-        Assert.Equal("t2", Assert.IsType<InlineDetailSlot>(view.Columns[1].Items[0]).TaskId);
+        Assert.Equal("t2", view.Columns[1].Cards[0].Id);
     }
+
 
     /// <summary>A card that is no longer on the board has nothing to expand, as on the web.</summary>
     [Fact]

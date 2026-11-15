@@ -490,26 +490,12 @@ public sealed class BoardColumnView
     {
         _column = column;
         _board = board;
-        var items = new List<object>(column.Cards.Count);
-        foreach (var card in column.Cards)
-        {
-            // The expanded card is REPLACED by its detail, not followed by it (task 6df01318).
-            // Drawing both put the collapsed card — mark, identifier, title, due — immediately
-            // above a pane carrying the same task, so one task appeared twice. astrid-web's
-            // `renderCard` has always returned the inline detail INSTEAD of the card div. The slot
-            // takes the card's own place, so the detail opens where the reader tapped and the
-            // cards either side of it do not move.
-            if (card.Id == expandedTaskId)
-            {
-                items.Add(new InlineDetailSlot(card.Id));
-                HoldsExpandedCard = true;
-            }
-            else
-            {
-                items.Add(card);
-            }
-        }
-        Items = items;
+        // The expanded card's detail is NOT in this list any more (task eb2684bb). It used to be:
+        // an `InlineDetailSlot` took the card's own place and the column grew wider to hold it,
+        // which meant detail arrived as another card-shaped block pushed in between cards. The
+        // board opens a callout anchored to the card now, as the Mac and the iPad do, so the cards
+        // are just the cards and nothing moves when one is opened.
+        ExpandedTaskId = expandedTaskId;
     }
 
     /// <summary>A status role, or one of the two virtual ids for Inbox and Done.</summary>
@@ -529,16 +515,18 @@ public sealed class BoardColumnView
     public IReadOnlyList<TaskRow> Cards => _column.Cards;
 
     /// <summary>
-    /// What the column draws, top to bottom: every card, with the expanded one's place taken by
-    /// the detail slot.
+    /// Which card in this column is open, if any — what the callout is anchored to (task eb2684bb).
     /// </summary>
-    public IReadOnlyList<object> Items { get; }
+    /// <remarks>
+    /// The id rather than a flag, because the view has to find that card's element to measure it:
+    /// where a row sits on screen is geometry, and the core's placement rule is given the rectangle
+    /// the shell measured. A column with nothing open answers null.
+    /// </remarks>
+    public string? ExpandedTaskId { get; }
 
-    /// <summary>
-    /// Whether the expanded card is in this column — the one that grows to make room for its
-    /// detail, as the web's column does.
-    /// </summary>
-    public bool HoldsExpandedCard { get; }
+    /// <summary>Whether the open card is in this column at all.</summary>
+    public bool HoldsExpandedCard =>
+        ExpandedTaskId is not null && Cards.Any(card => card.Id == ExpandedTaskId);
 
     /// <summary>
     /// What is half-typed in this column's add field (task 95c7a68f).
@@ -599,11 +587,4 @@ public sealed class BoardColumnView
         _board.PickQuickAddAssigneeAsync(Id, userId);
 }
 
-/// <summary>
-/// Where the expanded card's detail is drawn: that card's own place in its column.
-/// </summary>
-/// <remarks>
-/// A place, not a view. The shell puts its one task-detail pane here, so the board shows the same
-/// detail the list does — fields, thread, comment box — without a second copy of any of it.
-/// </remarks>
-public sealed record InlineDetailSlot(string TaskId);
+

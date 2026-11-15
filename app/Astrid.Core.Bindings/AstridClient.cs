@@ -168,6 +168,72 @@ public sealed class AstridClient : IAstridCore, IDisposable
     }
 
     /// <summary>
+    /// Where a task callout opens from the row it belongs to, and where its arrow points — the
+    /// core's <c>calloutPlacement</c> rule (task eb2684bb, the Windows half of 011080d4).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A multi-column screen has to pick a side and aim an arrow before it can draw a callout, and
+    /// both are arithmetic every client would otherwise repeat. The Mac, the iPad and the Android
+    /// tablet ask this same rule; this shell asked nothing at all, because its board spliced detail
+    /// into the column as another card instead of opening a callout.
+    /// </para>
+    /// <para>
+    /// Logical pixels in the window's space, y increasing downward. Divide by the scale factor
+    /// before asking — the rule does not take one, deliberately, because a rule that took a scale
+    /// factor is a rule that can get it wrong.
+    /// </para>
+    /// <para>
+    /// The callout's SIZE is the caller's. How big a detail pane wants to be is a design decision
+    /// per platform and per density, so the shell measures and then asks. What comes back is that
+    /// same size, placed.
+    /// </para>
+    /// </remarks>
+    public static CalloutPlacement CalloutPlacement(
+        CalloutRect anchor, CalloutRect viewport, double width, double height)
+    {
+        var request = JsonSerializer.Serialize(new CalloutPlacementRequest
+        {
+            Anchor = anchor,
+            Viewport = viewport,
+            Width = width,
+            Height = height,
+        });
+        var answer = AstridResponse.Parse(Rule(request));
+        // A refusal would mean this build's core does not know the rule, which the pin makes
+        // impossible — but a callout is not worth throwing over, so an unplaced one falls back to
+        // the anchor's own top-left rather than leaving the reader with no detail at all.
+        return answer.ValueAs<CalloutPlacement>()
+            ?? new CalloutPlacement
+            {
+                Side = "right",
+                Left = anchor.Left + anchor.Width,
+                Top = anchor.Top,
+                Width = width,
+                Height = height,
+                ArrowOffset = height / 2,
+            };
+    }
+
+    private sealed record CalloutPlacementRequest
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("kind")]
+        public string Kind { get; init; } = "calloutPlacement";
+
+        [System.Text.Json.Serialization.JsonPropertyName("anchor")]
+        public CalloutRect Anchor { get; init; } = new(0, 0, 0, 0);
+
+        [System.Text.Json.Serialization.JsonPropertyName("viewport")]
+        public CalloutRect Viewport { get; init; } = new(0, 0, 0, 0);
+
+        [System.Text.Json.Serialization.JsonPropertyName("width")]
+        public double Width { get; init; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("height")]
+        public double Height { get; init; }
+    }
+
+    /// <summary>
     /// Start the core against a cache at <paramref name="cachePath"/>.
     /// </summary>
     /// <exception cref="AstridStartupException">

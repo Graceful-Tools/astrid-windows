@@ -59,21 +59,31 @@ public sealed partial class TaskDetailPane : UserControl
         };
     }
 
-    // ── Where the pane sits (task 91a25b8a) ──────────────────────────────────────────────────
+    // ── Where the pane sits (tasks 91a25b8a, eb2684bb) ───────────────────────────────────────
     //
-    // The page moves this one pane between the column beside the list and the slot after a
-    // board's expanded card. What changes with the move is the pane's own shape, which is here.
+    // The page moves this ONE pane between the column beside the list, the board's callout, and
+    // the whole window. What changes with the move is the pane's own shape, which is here — so the
+    // board and the list show the same detail without a second copy of any of it.
+    //
+    // `WearAsCard` lived here too, for the inline slot the board used to splice into a column. The
+    // callout replaced that (task eb2684bb), and a wear mode with no caller is a shape nobody can
+    // see — so it went with it rather than waiting for someone to wonder what it was for.
 
     /// <summary>
-    /// A card, not a panel: every edge drawn, the corner the cards have, and the same 6px gap
-    /// under it the cards keep between themselves.
+    /// Inside the board's callout (task eb2684bb): no border and no corner of its own.
     /// </summary>
-    internal void WearAsCard()
+    /// <remarks>
+    /// The callout frame draws both, and a pane that drew them too would put a second hairline just
+    /// inside the first and a 10px corner inside a 12px one — which reads as a rendering fault
+    /// rather than as a design. The arrow is the frame's as well, and the pane's own stays hidden:
+    /// in board view <c>PointArrowAtSelectedRow</c> never points it.
+    /// </remarks>
+    internal void WearAsCallout()
     {
         DetailPane.Width = double.NaN;
-        DetailPane.BorderThickness = new Thickness(1);
-        DetailPane.CornerRadius = new CornerRadius(10);
-        DetailPane.Margin = new Thickness(0, 0, 0, 6);
+        DetailPane.BorderThickness = new Thickness(0);
+        DetailPane.CornerRadius = new CornerRadius(0);
+        DetailPane.Margin = new Thickness(0);
         DetailDescriptionBox.MinHeight = DescriptionMinHeight;
     }
 

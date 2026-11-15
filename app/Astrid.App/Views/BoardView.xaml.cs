@@ -32,13 +32,49 @@ public sealed partial class BoardView : UserControl
     internal event Action? CardOpened;
 
     /// <summary>
-    /// The slot after the expanded card has loaded. The page moves its one detail pane into it.
+    /// The callout's host has loaded. The page moves its one detail pane into it.
     /// </summary>
+    /// <remarks>
+    /// Still one pane, as it was when this was an inline slot (task eb2684bb): the board shows the
+    /// same detail the list does — fields, thread, comment box — without a second copy of any of
+    /// it. Only where it is hosted changed.
+    /// </remarks>
     internal event Action<ContentControl>? DetailSlotLoaded;
 
     public BoardView()
     {
         InitializeComponent();
+
+        // The callout follows the open card, and follows the window (task eb2684bb). A placement
+        // made against a viewport that has since changed is a callout hanging off the window edge,
+        // which is the case the core's clamping exists to prevent — so a resize re-asks.
+        SizeChanged += (_, _) => PlaceCardCallout();
+        Loaded += (_, _) => WatchExpandedCard();
+    }
+
+    private ShellViewModel? _watched;
+
+    private void WatchExpandedCard()
+    {
+        if (ReferenceEquals(_watched, Shell) || Shell is null)
+        {
+            return;
+        }
+        _watched = Shell;
+        Shell.Board.PropertyChanged += (_, changed) =>
+        {
+            if (changed.PropertyName is nameof(BoardViewModel.ExpandedTaskId)
+                or nameof(BoardViewModel.Columns))
+            {
+                // Queued, not immediate: the board raises Columns before the new cards have been
+                // laid out, and a card that is not yet realised cannot be measured. Low priority
+                // puts this after that layout pass.
+                DispatcherQueue.TryEnqueue(
+                    Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+                    PlaceCardCallout);
+            }
+        };
+        PlaceCardCallout();
     }
 
     /// <summary>
@@ -180,14 +216,6 @@ public sealed partial class BoardView : UserControl
         await Shell.Board.ResolveWaitAsync(condition);
     }
 
-    private void OnInlineDetailSlotLoaded(object sender, RoutedEventArgs args)
-    {
-        if (sender is ContentControl host)
-        {
-            DetailSlotLoaded?.Invoke(host);
-        }
-    }
-
     /// <summary>
     /// Moving a card. A menu rather than a drag, for now.
     /// </summary>
@@ -272,4 +300,170 @@ public sealed partial class BoardView : UserControl
             await column.PickQuickAddAssigneeAsync(element.Tag as string);
         }
     }
+
+    // ── The open card's callout (task eb2684bb) ─────────────────────────────────────────────
+    //
+    // The board used to splice an `InlineDetailSlot` into the column's item list and widen the
+    // column to hold it, so detail arrived as another card-shaped block pushed in between cards.
+    // There was no side to choose and no arrow to aim. It opens a real callout now, placed by
+    // `astrid_rules::rows::callout::place` — the same rule the Mac, the iPad and the Android
+    // tablet ask, so four clients cannot drift apart on where a callout goes.
+    //
+    // What is the shell's and not the core's: the callout's SIZE, and measuring the card. Where a
+    // row sits on screen is geometry the view model cannot know, and how big a detail pane wants
+    // to be is a design decision per platform — so this measures, then asks.
+
+    /// <summary>
+    /// How wide the callout is, and how tall it would like to be.
+    /// </summary>
+    /// <remarks>
+    /// The pane's card width plus its border, and a height that shows a description and the top of
+    /// the thread without reaching for the whole window. The core clamps both into the viewport, so
+    /// these are a preference rather than a promise — a short window gets a shorter callout.
+    /// </remarks>
+    private const double CalloutWidth = 400;
+    private const double CalloutHeight = 560;
+
+    /// <summary>
+    /// Half the arrow's 16px square: a rotated square is positioned by its corner, and the point
+    /// the core named is where its MIDDLE belongs.
+    /// </summary>
+    private const double ArrowHalf = 8;
+
+    /// <summary>
+    /// The inset the frame carries on both sides, which is the room the arrow is drawn in.
+    /// </summary>
+    /// <remarks>
+    /// A Popup clips its child to that child's own bounds, so the arrow cannot hang off the frame
+    /// on a negative margin — it is laid out and reported to UI Automation but never drawn. The
+    /// frame is inset instead, and the popup is opened this much to the left of where the core put
+    /// the callout so that the FRAME lands on the core's answer.
+    /// </remarks>
+    private const double ArrowGutter = 12;
+
+    private void OnCardCalloutHostLoaded(object sender, RoutedEventArgs args)
+    {
+        if (sender is ContentControl host)
+        {
+            DetailSlotLoaded?.Invoke(host);
+        }
+    }
+
+    /// <summary>
+    /// Open, move or close the callout to match whichever card is expanded.
+    /// </summary>
+    /// <remarks>
+    /// Called whenever the board says a different card is open, and again when the control is
+    /// resized — a callout placed against a viewport that has since changed is a callout hanging
+    /// off the window, which is the case the core's clamping exists to prevent.
+    /// </remarks>
+    private void PlaceCardCallout()
+    {
+        var taskId = Shell?.Board?.ExpandedTaskId;
+        if (taskId is null)
+        {
+            CardCallout.IsOpen = false;
+            return;
+        }
+
+        if (FindCardElement(taskId) is not { } card)
+        {
+            // The card is not realised — a column scrolled away, or the board still loading. Not
+            // an error: the next placement pass finds it.
+            CardCallout.IsOpen = false;
+            return;
+        }
+
+        var viewport = new CalloutRect(0, 0, ActualWidth, ActualHeight);
+        if (viewport.Width <= 0 || viewport.Height <= 0)
+        {
+            return;
+        }
+
+        var anchor = MeasureAgainstBoard(card);
+        var height = Math.Min(CalloutHeight, Math.Max(0, viewport.Height - 16));
+        var placement = AstridClient.CalloutPlacement(anchor, viewport, CalloutWidth, height);
+
+        CardCalloutFrame.Width = placement.Width;
+        CardCalloutFrame.Height = placement.Height;
+        // Inset on BOTH sides, not just the one in use, so the frame's box is the same whichever
+        // side the core picks and the offset below stays one line. Set here rather than in the
+        // XAML because ArrowGutter is the number, and writing 12 there too would be the same
+        // constant in two files, free to drift the day one of them changes.
+        CardCalloutFrame.Margin = new Thickness(ArrowGutter, 0, ArrowGutter, 0);
+
+        // The arrow sits on the edge FACING the anchor, which is the opposite edge from the side
+        // the callout opened on: a callout to the left of its card points rightward, at the card.
+        CardCalloutArrow.HorizontalAlignment = placement.OpensLeft
+            ? HorizontalAlignment.Right
+            : HorizontalAlignment.Left;
+        CardCalloutArrow.Margin = placement.OpensLeft
+            ? new Thickness(0, 0, ArrowGutter - ArrowHalf, 0)
+            : new Thickness(ArrowGutter - ArrowHalf, 0, 0, 0);
+        // Which two sides of the rotated square are drawn: the two that face the anchor.
+        CardCalloutArrow.BorderThickness = placement.OpensLeft
+            ? new Thickness(0, 1, 1, 0)
+            : new Thickness(1, 0, 0, 1);
+        CardCalloutArrowOffset.Y = placement.ArrowOffset - ArrowHalf;
+        CardCalloutArrow.Visibility = Visibility.Visible;
+
+        // Opened a gutter to the left of the core's answer, so that the FRAME — not the popup's
+        // outer box, which is wider by two gutters — lands exactly where the rule put it.
+        CardCallout.HorizontalOffset = placement.Left - ArrowGutter;
+        CardCallout.VerticalOffset = placement.Top;
+        CardCallout.IsOpen = true;
+    }
+
+    /// <summary>
+    /// The card's rectangle in the board's own coordinates — which is the space the viewport is
+    /// described in, so the core compares like with like.
+    /// </summary>
+    /// <remarks>
+    /// Logical pixels. WinUI lays out in those already, which is why nothing here divides by a
+    /// scale factor: the core deliberately does not take one, because a rule that took a scale
+    /// factor is a rule that can get it wrong.
+    /// </remarks>
+    private CalloutRect MeasureAgainstBoard(FrameworkElement card)
+    {
+        try
+        {
+            var corner = card.TransformToVisual(this).TransformPoint(new Windows.Foundation.Point(0, 0));
+            return new CalloutRect(corner.X, corner.Y, card.ActualWidth, card.ActualHeight);
+        }
+        catch (Exception)
+        {
+            // TransformToVisual throws when either element is not in the tree yet, which happens on
+            // the first layout pass. An anchor at the origin is placed rather than crashed; the
+            // next pass measures it properly.
+            return new CalloutRect(0, 0, card.ActualWidth, card.ActualHeight);
+        }
+    }
+
+    /// <summary>The element drawing the card with this id, if it is realised.</summary>
+    /// <remarks>
+    /// Walked rather than asked of the ItemsControl, because the cards are inside a column template
+    /// inside the board's own ItemsControl — two generators deep, and the inner one is reachable
+    /// only once its column's container exists. A walk answers the same question without depending
+    /// on how many templates are between here and there.
+    /// </remarks>
+    private FrameworkElement? FindCardElement(string taskId) => FindCardElement(this, taskId);
+
+    private static FrameworkElement? FindCardElement(DependencyObject root, string taskId)
+    {
+        var children = VisualTreeHelper.GetChildrenCount(root);
+        for (var index = 0; index < children; index++)
+        {
+            var child = VisualTreeHelper.GetChild(root, index);
+            if (child is BoardCard card && card.Tag as string == taskId)
+            {
+                return card;
+            }
+            if (FindCardElement(child, taskId) is { } found)
+            {
+                return found;
+            }
+        }
+        return null;
+    }
+
 }
