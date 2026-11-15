@@ -160,8 +160,42 @@ internal static class Seeds
                 ("$id", id));
         }
 
+        // A conversation on the list, so the chat pane has bubbles to draw rather than "no
+        // conversation yet" (task 770625f8). One message from the reader and one from somebody
+        // else: the two grounds are different brushes, and the bug was that BOTH came out of the
+        // light dictionary however dark the window was.
+        Execute(connection,
+            "INSERT OR REPLACE INTO chat_channels (id, list_id, json) VALUES ('c1', 'l3', $json)",
+            ("$json", """{"id":"c1","listId":"l3"}"""));
+        Execute(connection,
+            "INSERT OR REPLACE INTO users (id, json) VALUES ('u-other', $json)",
+            ("$json", """{"id":"u-other","name":"Ada"}"""));
+        var said = new[]
+        {
+            ("m1", OwnerId, "Smoke Tester", MineSaid, "2026-11-14T10:00:00.000Z"),
+            ("m2", "u-other", "Ada", TheirsSaid, "2026-11-14T10:01:00.000Z"),
+        };
+        foreach (var (id, author, name, content, at) in said)
+        {
+            Execute(connection,
+                "INSERT OR REPLACE INTO chat_messages (id, channel_id, author_id, created_at, json)"
+                + " VALUES ($id, 'c1', $author, $at, $json)",
+                ("$id", id),
+                ("$author", author),
+                ("$at", at),
+                ("$json", $$"""
+                    {"id":"{{id}}","channelId":"c1","authorId":"{{author}}","author":{"id":"{{author}}","name":"{{name}}"},"content":"{{content}}","createdAt":"{{at}}"}
+                    """));
+        }
+
         transaction.Commit();
     };
+
+    /// <summary>What the reader said, and what somebody else said — the two bubble grounds.</summary>
+    internal const string MineSaid = "Mine reads on both";
+
+    /// <summary>The other half of the pair.</summary>
+    internal const string TheirsSaid = "And so does theirs";
 
     private static void Execute(SqliteConnection connection, string sql, params (string Name, string Value)[] parameters)
     {
