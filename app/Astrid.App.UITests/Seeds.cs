@@ -44,6 +44,92 @@ internal static class Seeds
         transaction.Commit();
     }
 
+    internal const string HighPriorityCardTitle = "Draft the invitations";
+    internal const string TheirsCardTitle = "Book the room";
+    internal const string RepeatingCardTitle = "Water the plants";
+
+    /// <summary>
+    /// A board whose cards cover every mark this harness can produce (task e17707a2).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// PRODUCT_CONTRACT.md §4 gives three answers to "whose task is this?": mine, with a checkbox;
+    /// somebody else's, as their initial in a priority-coloured square; nobody's, as the unassigned
+    /// mark in the same square. This seeds the two SQUARE answers, at two priorities each, plus the
+    /// repeating square — which is built out of controls rather than drawn as one image, and so had
+    /// nowhere to say "repeats" until task <c>fa63a5dd</c>.
+    /// </para>
+    /// <para>
+    /// <b>The checkbox is deliberately not here, because this harness cannot make one.</b>
+    /// <c>AstridApp.WriteSession</c> writes a cookie and no user id, so no seeded task can be the
+    /// reader's and every card comes back as a square. Pretending otherwise with a fourth title
+    /// called "mine" would be a test that reads as covering three states and covers two.
+    /// </para>
+    /// <para>
+    /// That gap costs little: the checkbox is a single image that draws priority, repeating and
+    /// done at once, and <c>PriorityMarkColourTests</c> already reads its pixels on the list side.
+    /// The squares are the ones assembled from a Border, a TextBlock and an attached property —
+    /// which is exactly where the blank this task is about came from.
+    /// </para>
+    /// </remarks>
+    internal static void BoardWithEveryMark(string cachePath)
+    {
+        using var connection = new SqliteConnection($"Data Source={cachePath}");
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        Execute(connection,
+            "INSERT OR REPLACE INTO projects (id, name, json) VALUES ('p1', $name, $json)",
+            ("$name", BoardListName),
+            ("$json", $$"""{"id":"p1","name":"{{BoardListName}}"}"""));
+        Execute(connection,
+            "INSERT OR REPLACE INTO lists (id, name, project_id, json) VALUES ('l1', $name, 'p1', $json)",
+            ("$name", BoardListName),
+            ("$json", $$"""{"id":"l1","name":"{{BoardListName}}","projectId":"p1"}"""));
+
+        // Nobody's: no assignee at all, which is what a card typed into a column of a list whose
+        // defaultAssigneeId is "unassigned" becomes.
+        AddBoardCard(connection, "t1", BoardCardTitle, assignee: null, priority: 0, repeating: false);
+        // Somebody else's: their initial in the square.
+        AddBoardCard(connection, "t2", TheirsCardTitle, assignee: "Dana", priority: 2, repeating: false);
+        // Somebody else's AND repeating: the arrows are the square's border.
+        AddBoardCard(connection, "t3", RepeatingCardTitle, assignee: "Dana", priority: 1, repeating: true);
+        // Nobody's again, at the top priority: the square carries priority as its colour, and the
+        // first card is priority 0 — the value whose default sentinel caused the original blank.
+        // Both ends of that range, so a brush that is never asked for fails here either way.
+        AddBoardCard(connection, "t4", HighPriorityCardTitle, assignee: null, priority: 3, repeating: false);
+
+        transaction.Commit();
+    }
+
+    /// <summary>One card on the board's list, with whatever makes its mark.</summary>
+    private static void AddBoardCard(
+        SqliteConnection connection, string id, string title, string? assignee, int priority, bool repeating)
+    {
+        // Built by concatenation rather than as a raw string: these are fragments of JSON made of
+        // little but quotes, and a raw string holding them needs more quote characters in its
+        // fence than it does content.
+        var quote = "\"";
+        var who = assignee is null
+            ? string.Empty
+            : ",\"assignee\":{\"id\":" + quote + assignee + quote
+                + ",\"name\":" + quote + assignee + quote + "}";
+        var repeat = repeating ? ",\"repeating\":\"weekly\"" : string.Empty;
+        var json = "{\"id\":" + quote + id + quote
+            + ",\"title\":" + quote + title + quote
+            + ",\"priority\":" + priority
+            + who + repeat
+            + ",\"lists\":[{\"id\":\"l1\",\"name\":" + quote + BoardListName + quote + "}]}";
+        Execute(connection,
+            "INSERT OR REPLACE INTO tasks (id, title, json) VALUES ($id, $title, $json)",
+            ("$id", id),
+            ("$title", title),
+            ("$json", json));
+        Execute(connection,
+            "INSERT OR REPLACE INTO task_lists_membership (task_id, list_id) VALUES ($id, 'l1')",
+            ("$id", id));
+    }
+
     internal const string HandSortedListName = "Errands";
     internal const string FirstErrand = "Post the parcel";
     internal const string SecondErrand = "Return the library books";
