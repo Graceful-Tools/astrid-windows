@@ -96,6 +96,19 @@ fn every_command_the_shell_sends_is_one_the_core_understands() {
 /// the core Windows deliberately leaves alone, so "not needed" is not a reason and will not pass:
 /// say what this shell does instead, or name the task that will bind it.
 const NOT_BOUND: &[(&str, &str)] = &[
+    // ── The multi-list project board: swimlanes this shell does not draw yet ─────────────────
+    (
+        "projectBoardRows",
+        "The multi-list project board (AWTD-1676): each chosen list is a ROW and the project's          status columns stay columns. This shell's board draws ONE list's cards under that          project's columns (`board`), so it has no swimlane to fill. Binding this would mean          building the view first.",
+    ),
+    (
+        "projectBoardRow",
+        "One swimlane of the above. Same reason: there is no multi-list board here to put a row          in.",
+    ),
+    (
+        "saveProjectBoardRows",
+        "Writes which lists are rows, per person per project. Nothing in this shell can choose          them, so there is nothing to save; binding the write before the view would be a command          that can only ever send an empty set.",
+    ),
     (
         "clearCache",
         "For a shell whose isolation guard caught another account's rows. This shell has no such \

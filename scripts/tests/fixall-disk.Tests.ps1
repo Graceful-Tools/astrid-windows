@@ -250,7 +250,17 @@ function New-ScratchTree {
     Set-Content -LiteralPath $fresh -Value 'fresh' -Encoding ascii
     # The artefacts of a revision this app pinned months ago, which is what 103 GB is made of.
     (Get-Item $stale).LastWriteTime = (Get-Date).AddDays(-90)
-    return [pscustomobject]@{ Root = $root; Stale = $stale; Fresh = $fresh }
+
+    # A BUILD SCRIPT OUTPUT, old for an honest reason: it was generated once when the crate was
+    # first built and never written again, so it ages out while the crate it belongs to is in
+    # daily use. This is the real `libsqlite3-sys/out/bindgen.rs`, in miniature.
+    $outDir = Join-Path $root 'target\debug\build\libsqlite3-sys-56892577545eccf3\out'
+    New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+    $generated = Join-Path $outDir 'bindgen.rs'
+    Set-Content -LiteralPath $generated -Value 'pub const FFI: u32 = 1;' -Encoding ascii
+    (Get-Item $generated).LastWriteTime = (Get-Date).AddDays(-90)
+
+    return [pscustomobject]@{ Root = $root; Stale = $stale; Fresh = $fresh; Generated = $generated }
 }
 
 Invoke-Case 'the pruner reports and deletes NOTHING by default' {
@@ -276,6 +286,34 @@ Invoke-Case '-Apply removes what is stale and keeps what the current build needs
         # that takes what the CURRENT build is still touching.
         Assert-Equal 'the 90-day-old revision is gone' 'False' (Test-Path $t.Stale)
         Assert-Equal 'the one this build is using is kept' 'True' (Test-Path $t.Fresh)
+    }
+    finally { Remove-Item $t.Root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+Invoke-Case 'a build script output is never pruned, however old it is' {
+    $t = New-ScratchTree
+    try {
+        & powershell -NoProfile -ExecutionPolicy Bypass -File $PrunePath -Root $t.Root -Days 14 -Apply 2>&1 | Out-Null
+
+        # THE ONE THING CARGO WILL NOT REPLACE. It decides whether to re-run a build script from a
+        # fingerprint kept elsewhere in the tree, so taking a file out of `out/` leaves the
+        # fingerprint saying fresh, the script never runs again, and the crate fails to compile
+        # against a file that is simply gone:
+        #
+        #   error: couldn't read .../libsqlite3-sys-<hash>/out/bindgen.rs: The system cannot find
+        #   the file specified. (os error 2)
+        #
+        # Not hypothetical. On 2026-11-14 the pruner freed exactly ONE file from astrid-core's
+        # target - 126,710 bytes - and it was that bindgen.rs. astrid-core would not build until
+        # `cargo clean -p libsqlite3-sys` forced the script to run again.
+        #
+        # The age rule is right for compilation artefacts and wrong for these, and they are old for
+        # an honest reason: written once, never again, while the crate stays in daily use.
+        Assert-Equal 'the generated binding survives -Apply' 'True' (Test-Path $t.Generated)
+
+        # And the age rule still works beside it, so this guard narrowed nothing it should not.
+        Assert-Equal 'the 90-day-old revision is still gone' 'False' (Test-Path $t.Stale)
+        Assert-Equal 'and the current one is still kept' 'True' (Test-Path $t.Fresh)
     }
     finally { Remove-Item $t.Root -Recurse -Force -ErrorAction SilentlyContinue }
 }
