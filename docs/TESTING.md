@@ -46,7 +46,7 @@ which no `x:Uid` can reach.
 **`npm run predeploy:full`, by hand, at an unlocked machine. Nothing runs it automatically, and
 that is deliberate.**
 
-The suite is ten tests and a couple of minutes. It is not in `npm run predeploy` — the standard
+The suite is 29 tests and a couple of minutes. It is not in `npm run predeploy` — the standard
 gate, and the one the scheduled `/fixall` loop runs — because it needs a desktop session that the
 loop does not have. So between deliberate `:full` runs, the things only it covers can break and
 every task still reports green. That is a real gap, and it is the gap that hid task `f850514f` for
@@ -109,6 +109,31 @@ which is the difference between a question and an answer.
 nicety there, and the seven tests that do not need a mouse still pass on a locked machine. Keep
 that split — a hard `Activate()` in a test that does not need the pointer would throw away
 coverage for nothing.
+
+## The harness has no server, so a server-backed surface is half-reachable
+
+`AstridApp.Launch(signedIn: true)` writes a session cookie and there is nothing behind it. Every
+read the core answers out of its own cache works — the single-list board, the sidebar, a task row,
+every filter — which is most of the app, and is why this was never a problem before. A read that
+leaves the device comes back *the session is not valid*.
+
+The project board (task `f8b844dd`) is the first surface where that bites. Its swimlanes are
+`GET /api/v1/projects/{id}/board-rows`, and the core falls back to the last answer only for a
+**retryable** failure: a refusal is an error, on purpose — "the cache is for a missing network, not
+for a server that said no". Seeding the cached rows therefore does not help either, because the read
+still goes out first and still fails.
+
+What that leaves reachable is worth having, and is what `ProjectBoardTests` asserts: that the view
+takes the window from the list, and that a board which could not be read says so rather than drawing
+an empty grid. The first of those was red on its first run — `TaskRowsView`'s visibility was bound
+to `IsBoardView` and knew nothing of a third view, so the list's rows were still being drawn on top
+of the board while all 681 view-model and XAML tests passed. **That is the kind of bug this suite is
+for, and a layout one is no different.**
+
+What is NOT reachable is the layout itself: cells level with the header strip, rows stacked rather
+than side by side, a card dropped on a cell reaching the right row. Those assertions were written
+and then taken out again. Board task `68b00422` is the stub `HttpListener` that would put them back
+— and would open up every other surface the Outbox cannot carry, which is a growing set.
 
 ## A colour can be checked here, and nowhere else
 

@@ -197,6 +197,39 @@ public sealed class CommandSerializationTests
             StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A project board's rows: exactly one of the three ways to write them, and an empty set sent
+    /// as an empty set (task f8b844dd).
+    /// </summary>
+    /// <remarks>
+    /// The core refuses a write naming more than one of <c>listIds</c>, <c>addListId</c> and
+    /// <c>removeListId</c>, which makes <c>WhenWritingNull</c> load-bearing here rather than
+    /// incidental: adding a row has to arrive as a write that names only the addition.
+    /// </remarks>
+    [Fact]
+    public void Saving_board_rows_names_exactly_one_of_the_three_task_f8b844dd()
+    {
+        var added = Json(Commands.SaveProjectBoardRows("p1", addListId: "web"));
+        Assert.Contains("\"kind\":\"saveProjectBoardRows\"", added, StringComparison.Ordinal);
+        Assert.Contains("\"addListId\":\"web\"", added, StringComparison.Ordinal);
+        Assert.DoesNotContain("listIds", added, StringComparison.Ordinal);
+        Assert.DoesNotContain("removeListId", added, StringComparison.Ordinal);
+
+        var removed = Json(Commands.SaveProjectBoardRows("p1", removeListId: "web"));
+        Assert.Contains("\"removeListId\":\"web\"", removed, StringComparison.Ordinal);
+        Assert.DoesNotContain("addListId", removed, StringComparison.Ordinal);
+
+        // The board emptied on purpose. An omitted set would name none of the three and be
+        // refused; worse, if it were not, it would mean "the project's own lists" — the opposite.
+        var emptied = Json(Commands.SaveProjectBoardRows("p1", listIds: []));
+        Assert.Contains("\"listIds\":[]", emptied, StringComparison.Ordinal);
+        Assert.DoesNotContain("addListId", emptied, StringComparison.Ordinal);
+
+        // And the read is the project id and nothing else.
+        var read = Json(Commands.ProjectBoardRows("p1"));
+        Assert.Equal("{\"kind\":\"projectBoardRows\",\"projectId\":\"p1\"}", read);
+    }
+
     [Fact]
     public void Every_command_names_its_kind()
     {

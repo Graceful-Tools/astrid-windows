@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Astrid.App.Views.ProjectBoardView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:bindings="using:Astrid.Core.Bindings"
+    xmlns:local="using:Astrid.App"
+    xmlns:views="using:Astrid.App.Views"
+    xmlns:viewmodels="using:Astrid.App.ViewModels">
+
+    <!--
+        The project board (task f8b844dd): each chosen list is a ROW — a swimlane — and the
+        project's status columns stay the columns. It takes the same rows of the window the list
+        and the single-list board take, and the header's toggles swap which of the three is drawn.
+
+        Why this is a view of its own rather than a mode of BoardView: that one draws columns, and
+        this draws rows OF columns. The cell is the unit here — one row's cards in one column —
+        and a card dropped on one has to say which row as well as which column, which a board
+        made of columns alone has nowhere to put.
+
+        Every size, radius and gap below comes from a style in ShellResources.xaml rather than
+        being typed here (task d7e381a7). A swimlane board is repeating chrome, and that is where
+        the repetition belongs.
+    -->
+
+    <UserControl.Resources>
+        <!--
+            A card on a swimlane: the mark and the title.
+
+            Deliberately smaller than the single-list board's card, which also draws the due
+            label, the chips and all five leading states. A swimlane board is an overview — a
+            dozen cells on screen at once — and the full card would make each row as tall as a
+            column. The two are not meant to be the same card, and the mark is the same art
+            (PriorityMark), so one task still reads as one task.
+
+            A BoardCard rather than a Button because WinUI never starts a drag from a Button
+            (task b8e42e70). It is still a button, so a click, the keyboard and a screen reader
+            keep everything.
+        -->
+        <DataTemplate x:Key="SwimlaneCardTemplate" x:DataType="bindings:TaskRow">
+            <views:BoardCard Style="{StaticResource SwimlaneCardStyle}"
+                    Tag="{x:Bind Id}"
+                    AutomationProperties.Name="{x:Bind Title}"
+                    CanDrag="True"
+                    DragStarting="OnCardDragStarting"
+                    Click="OnCardOpened"
+                    RightTapped="OnCardRightTapped">
+                <Grid Style="{StaticResource SwimlaneGridStyle}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid Grid.Column="0" Width="24" Height="24" VerticalAlignment="Top">
+                        <!-- The reader's own task: one mark carrying priority, repeating and done. -->
+                        <local:PriorityMark Priority="{x:Bind Priority}"
+                                            IsRepeating="{x:Bind IsRepeating}"
+                                            ShowTick="{x:Bind Completed}"
+                                            Width="24" Height="24"
+                                            Visibility="{x:Bind LeadingIsCheckbox, Converter={StaticResource Visible}}" />
+                        <!--
+                            Anybody else's: a priority-coloured square carrying their mark. The
+                            core decided which of the two this task gets, so a card here and a row
+                            in the list cannot disagree about one task.
+                        -->
+                        <Border Style="{StaticResource SwimlaneMarkSquareStyle}"
+                                local:PriorityOutline.Priority="{x:Bind Priority}"
+                                Visibility="{x:Bind LeadingIsCheckbox, Converter={StaticResource NotVisible}}">
+                            <TextBlock Style="{StaticResource SwimlaneMarkTextStyle}"
+                                       Text="{x:Bind (bindings:TaskRow), Converter={StaticResource LeadingMark}}"
+                                       local:PriorityOutline.Priority="{x:Bind Priority}" />
+                        </Border>
+                    </Grid>
+                    <TextBlock Grid.Column="1"
+                               Style="{StaticResource SwimlaneCardTitleStyle}"
+                               Text="{x:Bind Title}" />
+                </Grid>
+            </views:BoardCard>
+        </DataTemplate>
+
+        <!--
+            One cell: a row's cards in one of the project's columns, and a drop target for a card
+            dragged from another cell. The cell knows both ids — the column it is and the row it
+            is in — which is why the handler reads its DataContext rather than a Tag: two ids do
+            not fit in one.
+
+            An empty cell says nothing. A swimlane board has a lot of empty cells by nature, since
+            most lists have no card in most statuses, and a notice in each would be the loudest
+            thing on the board; the cell's own outline is what says a card can be dropped there.
+        -->
+        <DataTemplate x:Key="SwimlaneCellTemplate" x:DataType="viewmodels:ProjectBoardColumnView">
+            <Border Style="{StaticResource SwimlaneCellStyle}"
+                    AllowDrop="True"
+                    DragOver="OnCardDragOver"
+                    Drop="OnCardDropped">
+                <ItemsControl ItemsSource="{x:Bind Cards}"
+                              ItemTemplate="{StaticResource SwimlaneCardTemplate}" />
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid Visibility="{x:Bind Shell.IsProjectBoardView, Mode=OneWay, Converter={StaticResource Visible}}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!--
+            The one control the board itself needs: which lists are rows. The cross on each row
+            header is the second way, and a list dragged from the sidebar is the third.
+        -->
+        <Grid Grid.Row="0" Style="{StaticResource BoardToolbarStyle}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <DropDownButton x:Uid="add_board_row" Grid.Column="0"
+                            Content="Add list"
+                            AutomationProperties.Name="Add list"
+                            Visibility="{x:Bind Shell.ProjectBoard.CanAddRow, Mode=OneWay, Converter={StaticResource Visible}}">
+                <DropDownButton.Flyout>
+                    <!--
+                        The candidates are the core's, in the core's order: it sorts by name with
+                        case folded so that four clients offer one order, and a shell that sorted
+                        again would disagree with them on exactly the awkward names.
+                    -->
+                    <MenuFlyout x:Name="AddRowMenu" Placement="Bottom"
+                                Opening="OnAddRowMenuOpening" />
+                </DropDownButton.Flyout>
+            </DropDownButton>
+            <TextBlock x:Uid="project_board_hint" Grid.Column="1"
+                       Style="{StaticResource BoardHintStyle}"
+                       Text="Drag a list from the sidebar to add a row" />
+        </Grid>
+
+        <!--
+            The board scrolls both ways as one surface, unlike the single-list board where each
+            column scrolls its own cards. A swimlane cannot scroll on its own: the cells of a row
+            have to stay level with each other and with the header strip above them, and a cell
+            that scrolled would take its row out of line with every other.
+
+            It is also the drop target for a list dragged out of the sidebar — anywhere on the
+            board rather than a particular spot, because the core appends a row wherever it was
+            dropped.
+        -->
+        <ScrollViewer Grid.Row="1"
+                      Style="{StaticResource BoardSurfaceStyle}"
+                      HorizontalScrollBarVisibility="Auto"
+                      HorizontalScrollMode="Enabled"
+                      VerticalScrollBarVisibility="Auto"
+                      AllowDrop="True"
+                      DragOver="OnListDragOver"
+                      Drop="OnListDropped">
+            <StackPanel Style="{StaticResource BoardStackStyle}">
+                <!--
+                    The column names, once, above every row. Every row answers under the same
+                    columns — that is what makes this one board rather than several — so a strip
+                    per row would be the same words repeated down the screen.
+                -->
+                <ItemsControl ItemsSource="{x:Bind Shell.ProjectBoard.Columns, Mode=OneWay}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Style="{StaticResource SwimlaneStripStyle}" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="bindings:BoardColumn">
+                            <Border Style="{StaticResource SwimlaneColumnHeadStyle}">
+                                <TextBlock Style="{StaticResource SwimlaneColumnNameStyle}"
+                                           Text="{x:Bind Name}" />
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <ItemsControl ItemsSource="{x:Bind Shell.ProjectBoard.Rows, Mode=OneWay}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="viewmodels:ProjectBoardRowView">
+                            <StackPanel Style="{StaticResource SwimlaneRowStyle}">
+                                <!--
+                                    The row head: whose list this is, and the cross that takes it
+                                    off the board. The dot is the list's colour, as the sidebar
+                                    draws it, because a swimlane IS a list and should be
+                                    recognisable as the same one.
+                                -->
+                                <Grid Style="{StaticResource SwimlaneGridStyle}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0"
+                                            Style="{StaticResource SwimlaneRowDotStyle}"
+                                            Background="{x:Bind Color, Converter={StaticResource PriorityBrush}}" />
+                                    <TextBlock Grid.Column="1"
+                                               Style="{StaticResource SwimlaneRowNameStyle}"
+                                               Text="{x:Bind Name}" />
+                                    <!--
+                                        Takes the row off THIS person's board for THIS project.
+                                        The list and its tasks are untouched, which is why it is a
+                                        cross and not a bin.
+                                    -->
+                                    <Button x:Uid="remove_board_row" Grid.Column="2"
+                                            Style="{StaticResource SwimlaneRowRemoveStyle}"
+                                            Content="&#xE711;"
+                                            AutomationProperties.Name="Remove this row"
+                                            ToolTipService.ToolTip="Remove this row"
+                                            Tag="{x:Bind ListId}"
+                                            Click="OnRemoveRow" />
+                                </Grid>
+                                <ItemsControl ItemsSource="{x:Bind Columns}"
+                                              ItemTemplate="{StaticResource SwimlaneCellTemplate}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Style="{StaticResource SwimlaneStripStyle}" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!--
+                    The two empty boards, which are not the same board (task f8b844dd). Nothing
+                    saved means this project's own lists, so an empty one of those is a project
+                    with no lists in it yet; an emptied board is one somebody cleared on purpose.
+                    One notice for both is how the second comes to read as the first being broken.
+                -->
+                <StackPanel Style="{StaticResource BoardNoticeStyle}"
+                            Visibility="{x:Bind Shell.ProjectBoard.ShowsNoRowsNotice, Mode=OneWay, Converter={StaticResource Visible}}">
+                    <TextBlock x:Uid="project_board_no_rows"
+                               Style="{StaticResource BoardNoticeTitleStyle}"
+                               Text="This project has no lists yet" />
+                    <TextBlock x:Uid="project_board_no_rows_hint"
+                               Style="{StaticResource BoardNoticeBodyStyle}"
+                               Text="A list in this project becomes a row on its board." />
+                </StackPanel>
+
+                <StackPanel Style="{StaticResource BoardNoticeStyle}"
+                            Visibility="{x:Bind Shell.ProjectBoard.ShowsEmptiedNotice, Mode=OneWay, Converter={StaticResource Visible}}">
+                    <TextBlock x:Uid="project_board_emptied"
+                               Style="{StaticResource BoardNoticeTitleStyle}"
+                               Text="This board has no rows" />
+                    <TextBlock x:Uid="project_board_emptied_hint"
+                               Style="{StaticResource BoardNoticeBodyStyle}"
+                               Text="Add a list to put a row back. Nothing was deleted." />
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <TextBlock Grid.Row="2"
+                   Style="{StaticResource BoardErrorTextStyle}"
+                   Text="{x:Bind Shell.ProjectBoard.ErrorMessage, Mode=OneWay}"
+                   Visibility="{x:Bind Shell.ProjectBoard.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
+    </Grid>
+</UserControl>

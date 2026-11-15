@@ -151,6 +151,25 @@
                           IsChecked="{x:Bind Shell.IsBoardView, Mode=OneWay}"
                           Visibility="{x:Bind Shell.ShowsBoardToggle, Mode=OneWay, Converter={StaticResource Visible}}"
                           Click="OnToggleBoard" />
+            <!--
+                And the project's whole board, every chosen list a row (task f8b844dd). Beside
+                the list's own board rather than inside it: they are two boards, not two states
+                of one, and the reader goes from a list to its board to its project's board.
+
+                Drawn on the same two gates as the toggle above, because a list that has a board
+                has a project. astrid-web reaches this from its Projects sidebar section, which
+                is a core change away here (web task 00cf4d5c) and will be a second way in rather
+                than a replacement for this one.
+            -->
+            <ToggleButton x:Uid="project_board_toggle" x:Name="ProjectBoardToggle"
+                          VerticalAlignment="Center"
+                          AutomationProperties.Name="Project board"
+                          ToolTipService.ToolTip="Project board"
+                          Content="&#xF168;"
+                          FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                          IsChecked="{x:Bind Shell.IsProjectBoardView, Mode=OneWay}"
+                          Visibility="{x:Bind Shell.ShowsProjectBoardToggle, Mode=OneWay, Converter={StaticResource Visible}}"
+                          Click="OnToggleProjectBoard" />
                 <!--
                     Search collapses to its icon, which is what astrid-web does when the
                     row is short: a box wide enough to type in does not fit beside a

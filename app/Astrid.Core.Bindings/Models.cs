@@ -1737,6 +1737,47 @@ public sealed record Board
     [JsonPropertyName("columns")] public IReadOnlyList<BoardColumn> Columns { get; init; } = [];
 }
 
+/// <summary>
+/// Which lists a project's multi-list board draws as rows, and which could be added
+/// (task f8b844dd; core AWTD-1676).
+/// </summary>
+/// <remarks>
+/// <para>
+/// The answer to <c>projectBoardRows</c> and to every <c>saveProjectBoardRows</c>, so a write
+/// returns the new state and nothing has to be guessed at from what was sent.
+/// </para>
+/// <para>
+/// <see cref="SavedListIds"/> and <see cref="RowListIds"/> are two different facts and the shell
+/// needs both. The core is careful to distinguish nothing saved from an empty set, and a shell
+/// that kept only the rows would collapse them: both draw no swimlanes, but one is a board waiting
+/// to be set up and the other is one somebody emptied deliberately.
+/// </para>
+/// </remarks>
+public sealed record ProjectBoardRowsAnswer
+{
+    [JsonPropertyName("projectId")] public string ProjectId { get; init; } = string.Empty;
+
+    /// <summary>
+    /// What the server holds — <c>null</c> when nothing has ever been saved for this person and
+    /// project, which is why this is a nullable list rather than an empty one.
+    /// </summary>
+    [JsonPropertyName("savedListIds")]
+    public IReadOnlyList<string>? SavedListIds { get; init; }
+
+    /// <summary>The lists to draw as rows, in order: the core's <c>resolve</c>.</summary>
+    [JsonPropertyName("rowListIds")] public IReadOnlyList<string> RowListIds { get; init; } = [];
+
+    /// <summary>What "Add list" offers, already ordered by name.</summary>
+    [JsonPropertyName("candidateListIds")]
+    public IReadOnlyList<string> CandidateListIds { get; init; } = [];
+
+    /// <summary>Whether another row would fit — the core's hundred-row ceiling.</summary>
+    [JsonPropertyName("canAddRow")] public bool CanAddRow { get; init; }
+
+    /// <summary>Whether this is the last answer rather than the server's, read offline.</summary>
+    [JsonPropertyName("fromCache")] public bool FromCache { get; init; }
+}
+
 /// <summary>One choice in the reminder picker, and the instant it means.</summary>
 public sealed record ReminderPick
 {

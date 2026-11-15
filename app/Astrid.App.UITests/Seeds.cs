@@ -287,6 +287,90 @@ internal static class Seeds
     /// <summary>The other half of the pair.</summary>
     internal const string TheirsSaid = "And so does theirs";
 
+    // ── The project board's swimlanes (task f8b844dd) ───────────────────────────────────────────
+
+    internal const string ProjectName = "Launch";
+    internal const string FirstRowName = "Web";
+    internal const string SecondRowName = "iOS";
+    internal const string OffBoardListName = "Groceries";
+    internal const string FirstRowCardTitle = "Ship the landing page";
+    internal const string SecondRowCardTitle = "Submit the build";
+
+    /// <summary>
+    /// A project with TWO lists on it, each holding a card, and one list on no project.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Two lists is the whole point: a project board with one row looks exactly like the
+    /// single-list board, so a one-row seed would pass whether the rows were being drawn or not.
+    /// Each card is in a different list, so a row drawing the wrong list's cards is visible.
+    /// </para>
+    /// <para>
+    /// Nothing is seeded for <c>project_board_rows</c>, deliberately. Offline the core's read
+    /// falls back to the project's own lists with <c>fromCache</c> set — which is the
+    /// <em>nothing saved</em> half of the distinction this board turns on, and the half a seeded
+    /// row would hide.
+    /// </para>
+    /// <para>
+    /// The third list belongs to no project, so it is a candidate for "Add list" and never a row.
+    /// It is also what a list dragged from the sidebar onto the board would be.
+    /// </para>
+    /// </remarks>
+    internal static void ProjectWithTwoLists(string cachePath)
+    {
+        using var connection = new SqliteConnection($"Data Source={cachePath}");
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        Execute(connection,
+            "INSERT OR REPLACE INTO projects (id, name, json) VALUES ('p1', $name, $json)",
+            ("$name", ProjectName),
+            ("$json", $$"""{"id":"p1","name":"{{ProjectName}}"}"""));
+
+        void List(string id, string name, string? projectId)
+        {
+            // NULL rather than an empty string for a list on no project: the column is what the
+            // store's own queries read, and "" is a project id as far as a comparison is
+            // concerned — it would make this list a member of a project nobody has.
+            if (projectId is null)
+            {
+                Execute(connection,
+                    "INSERT OR REPLACE INTO lists (id, name, project_id, json) VALUES ($id, $name, NULL, $json)",
+                    ("$id", id),
+                    ("$name", name),
+                    ("$json", $$"""{"id":"{{id}}","name":"{{name}}"}"""));
+                return;
+            }
+            Execute(connection,
+                "INSERT OR REPLACE INTO lists (id, name, project_id, json) VALUES ($id, $name, $project, $json)",
+                ("$id", id),
+                ("$name", name),
+                ("$project", projectId),
+                ("$json", $$"""{"id":"{{id}}","name":"{{name}}","projectId":"{{projectId}}"}"""));
+        }
+
+        void Card(string id, string title, string listId, string listName)
+        {
+            Execute(connection,
+                "INSERT OR REPLACE INTO tasks (id, title, json) VALUES ($id, $title, $json)",
+                ("$id", id),
+                ("$title", title),
+                ("$json", $$"""{"id":"{{id}}","title":"{{title}}","lists":[{"id":"{{listId}}","name":"{{listName}}"}]}"""));
+            Execute(connection,
+                "INSERT OR REPLACE INTO task_lists_membership (task_id, list_id) VALUES ($task, $list)",
+                ("$task", id),
+                ("$list", listId));
+        }
+
+        List("lweb", FirstRowName, "p1");
+        List("lios", SecondRowName, "p1");
+        List("lshop", OffBoardListName, null);
+        Card("tweb", FirstRowCardTitle, "lweb", FirstRowName);
+        Card("tios", SecondRowCardTitle, "lios", SecondRowName);
+
+        transaction.Commit();
+    }
+
     private static void Execute(SqliteConnection connection, string sql, params (string Name, string Value)[] parameters)
     {
         using var command = connection.CreateCommand();

@@ -86,6 +86,7 @@ public sealed partial class ShellPage : UserControl
         Sidebar.Shell = Shell;
         Header.Shell = Shell;
         Board.Shell = Shell;
+        ProjectBoard.Shell = Shell;
         Rows.Shell = Shell;
         Chat.Shell = Shell;
         Detail.Shell = Shell;

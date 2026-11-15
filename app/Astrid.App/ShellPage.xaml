@@ -138,6 +138,12 @@
                 drawn. Nothing else moves.
             -->
             <views:BoardView x:Name="Board" Grid.Row="1" Grid.RowSpan="2" />
+            <!--
+                And the project's whole board, the third of the three (task f8b844dd): the same
+                rows of the window, every chosen list a swimlane. Exactly one of the three is
+                visible — the shell keeps them exclusive, so all three can sit here.
+            -->
+            <views:ProjectBoardView x:Name="ProjectBoard" Grid.Row="1" Grid.RowSpan="2" />
             <views:TaskRowsView x:Name="Rows" Grid.Row="1" Grid.RowSpan="2" />
 
             <TextBlock Grid.Row="3"

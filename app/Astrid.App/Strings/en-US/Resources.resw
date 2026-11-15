@@ -2338,4 +2338,37 @@
   <data name="add_card_priority_high.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>High</value>
   </data>
+  <data name="project_board_toggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Project board</value>
+  </data>
+  <data name="project_board_toggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Project board</value>
+  </data>
+  <data name="add_board_row.Content" xml:space="preserve">
+    <value>Add list</value>
+  </data>
+  <data name="add_board_row.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Add list</value>
+  </data>
+  <data name="project_board_hint.Text" xml:space="preserve">
+    <value>Drag a list from the sidebar to add a row</value>
+  </data>
+  <data name="remove_board_row.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Remove this row</value>
+  </data>
+  <data name="remove_board_row.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Remove this row</value>
+  </data>
+  <data name="project_board_no_rows.Text" xml:space="preserve">
+    <value>This project has no lists yet</value>
+  </data>
+  <data name="project_board_no_rows_hint.Text" xml:space="preserve">
+    <value>A list in this project becomes a row on its board.</value>
+  </data>
+  <data name="project_board_emptied.Text" xml:space="preserve">
+    <value>This board has no rows</value>
+  </data>
+  <data name="project_board_emptied_hint.Text" xml:space="preserve">
+    <value>Add a list to put a row back. Nothing was deleted.</value>
+  </data>
 </root>

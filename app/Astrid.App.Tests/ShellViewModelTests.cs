@@ -1774,6 +1774,198 @@ public sealed class ShellViewModelTests
         Assert.Equal(before + 1, core.SentKinds().Count(kind => kind == "taskDetail"));
     }
 
+    // ── The project board (task f8b844dd) ───────────────────────────────────────────────────────
+
+    /// <summary>What the core answers for a project board with one row.</summary>
+    private static object BoardRows(params string[] rows) => new
+    {
+        projectId = "proj-1",
+        savedListIds = rows,
+        rowListIds = rows,
+        candidateListIds = Array.Empty<string>(),
+        canAddRow = true,
+        fromCache = false,
+    };
+
+    /// <summary>
+    /// A core with a project board ready to be opened: the lists the board names its rows from,
+    /// the rows themselves, and one answer per row.
+    /// </summary>
+    private static FakeCore WithProjectBoard(FakeCore core, params string[] rows)
+    {
+        // A second `lists` answer: the sidebar consumed the first, and the project board reads
+        // the lists itself rather than the sidebar's sections — a row or a candidate can be a
+        // list the sidebar does not draw.
+        core.AnswerOk("lists", Lists(("p1", "Launch", "proj-1")))
+            .AnswerOk("projectBoardRows", BoardRows(rows));
+        foreach (var _ in rows)
+        {
+            core.AnswerOk("projectBoardRow", BoardWith("t1"));
+        }
+        return core;
+    }
+
+    /// <summary>
+    /// The project board is opened with the PROJECT's id, not the list's — it is several lists'
+    /// cards under one project's columns, and the open list is only how the reader got there.
+    /// </summary>
+    [Fact]
+    public async Task The_project_board_opens_on_the_project_not_the_list_task_f8b844dd()
+    {
+        var core = WithProjectBoard(
+            StartedCoreWith(Lists(("p1", "Launch", "proj-1"))), "p1");
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        Assert.Equal("proj-1", shell.OpenListProjectId);
+        Assert.True(shell.ShowsProjectBoardToggle);
+
+        await shell.ShowProjectBoardAsync(true);
+
+        Assert.True(shell.IsProjectBoardView);
+        Assert.Equal("proj-1", shell.ProjectBoard.ProjectId);
+        Assert.Single(shell.ProjectBoard.Rows);
+        var asked = core.Sent.Last(json => json.Contains("\"projectBoardRows\""));
+        Assert.Contains("\"projectId\":\"proj-1\"", asked);
+    }
+
+    /// <summary>
+    /// A list with no project has no project board, so the toggle that would reach one is not
+    /// drawn — the trade task a66f0a16 made for the single-list board, for the same reason.
+    /// </summary>
+    [Fact]
+    public async Task A_list_with_no_project_is_never_offered_a_project_board_task_f8b844dd()
+    {
+        var core = StartedCoreWith(Lists(("l1", "Home", null)));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        Assert.Null(shell.OpenListProjectId);
+        Assert.False(shell.ShowsProjectBoardToggle);
+    }
+
+    /// <summary>
+    /// The list, its own board and its project's board are three views of one thing, and exactly
+    /// one is drawn: asking for either board puts the other away.
+    /// </summary>
+    [Fact]
+    public async Task The_two_boards_are_exclusive_task_f8b844dd()
+    {
+        var core = WithProjectBoard(
+            StartedCoreWith(Lists(("p1", "Launch", "proj-1"))).AnswerOk("board", BoardWith("t1")),
+            "p1");
+        core.AnswerOk("board", BoardWith("t1"));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        await shell.ShowBoardAsync(true);
+        Assert.True(shell.IsBoardView);
+        Assert.False(shell.ShowsListRows);
+
+        await shell.ShowProjectBoardAsync(true);
+        Assert.True(shell.IsProjectBoardView);
+        Assert.False(shell.IsBoardView, "the list's own board went away when the project's opened");
+        Assert.False(shell.ShowsListRows);
+
+        await shell.ShowBoardAsync(true);
+        Assert.True(shell.IsBoardView);
+        Assert.False(shell.IsProjectBoardView, "and back the other way");
+
+        await shell.ShowBoardAsync(false);
+        Assert.True(shell.ShowsListRows, "with neither on, the list's own rows are what is drawn");
+    }
+
+    /// <summary>
+    /// Opening a list that belongs to no project while a project board is on screen goes back to
+    /// the list, as it does for the single-list board (task a66f0a16).
+    /// </summary>
+    [Fact]
+    public async Task Opening_a_list_with_no_project_leaves_the_project_board_task_f8b844dd()
+    {
+        var core = WithProjectBoard(
+            StartedCoreWith(Lists(("p1", "Launch", "proj-1"), ("l1", "Home", null)))
+                .AnswerOk("rowsForList", EmptyWindow())
+                .AnswerOk("rowsForList", EmptyWindow()),
+            "p1");
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        // The sidebar is in name order, so the app opened Home: go to the board's list first.
+        await shell.OpenListAsync("p1", "Launch");
+        await shell.ShowProjectBoardAsync(true);
+        Assert.True(shell.IsProjectBoardView);
+
+        await shell.OpenListAsync("l1", "Home");
+
+        Assert.False(shell.IsProjectBoardView, "the list it moved to belongs to no project");
+        Assert.True(shell.ShowsListRows);
+        Assert.False(shell.ShowsProjectBoardToggle);
+    }
+
+    /// <summary>
+    /// A project board is behind the same <c>project_mode</c> flag as the list's own board, so a
+    /// server that takes the flag away closes it.
+    /// </summary>
+    [Fact]
+    public async Task A_project_board_closes_when_the_flag_goes_task_f8b844dd()
+    {
+        var core = WithProjectBoard(
+            StartedCoreWith(Lists(("p1", "Launch", "proj-1"))), "p1");
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        await shell.ShowProjectBoardAsync(true);
+        Assert.True(shell.IsProjectBoardView);
+        Assert.True(shell.ProjectModeEnabled, "the flag was on when the board was opened");
+
+        // Queued after the start, which has a LoadFeaturesAsync of its own: the board has to be
+        // open BEFORE the flag goes, or this would only be testing that it never opened.
+        core.AnswerOk("features", new { projectMode = false });
+        await shell.LoadFeaturesAsync();
+
+        Assert.False(shell.ProjectModeEnabled);
+        Assert.False(shell.IsProjectBoardView);
+        Assert.False(shell.ShowsProjectBoardToggle);
+        Assert.True(shell.ShowsListRows, "and the list is still there");
+    }
+
+    /// <summary>
+    /// A change in ANY of a project board's row lists redraws it — the board has several lists on
+    /// screen at once, where the single-list board has one.
+    /// </summary>
+    /// <remarks>
+    /// The narrowing task 05c95986 made for the single-list board still applies: a change in a
+    /// list no row draws costs nothing. What this guards is the other half, which a single-list
+    /// test cannot — a change in the SECOND row is a change on screen.
+    /// </remarks>
+    [Fact]
+    public async Task A_change_in_any_row_list_redraws_the_project_board_task_f8b844dd()
+    {
+        var core = WithProjectBoard(
+            StartedCoreWith(Lists(("p1", "Launch", "proj-1"))), "p1", "p2");
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        await shell.ShowProjectBoardAsync(true);
+        Assert.Equal(2, shell.ProjectBoard.Rows.Count);
+
+        for (var i = 0; i < 8; i++)
+        {
+            core.AnswerOk("projectBoardRows", BoardRows("p1", "p2"))
+                .AnswerOk("projectBoardRow", BoardWith("t1"))
+                .AnswerOk("projectBoardRow", BoardWith("t1"))
+                .AnswerOk("outboxStats", new { hasUnsentWork = false });
+        }
+        var before = core.SentKinds().Count(kind => kind == "projectBoardRows");
+
+        // The second row's list, which is not the one the shell has open.
+        core.NotifyTask("t9", "p2");
+
+        Assert.Equal(before + 1, core.SentKinds().Count(kind => kind == "projectBoardRows"));
+
+        // And a list no row draws is still free.
+        var after = core.SentKinds().Count(kind => kind == "projectBoardRows");
+        core.NotifyTask("t9", "somewhere-else");
+        Assert.Equal(after, core.SentKinds().Count(kind => kind == "projectBoardRows"));
+    }
+
     /// <summary>
     /// A post that queues work for a later turn, as a real dispatcher does (task 303f20c2).
     /// </summary>
