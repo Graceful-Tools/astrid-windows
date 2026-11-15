@@ -249,13 +249,28 @@ rejected: `ProtocolRegistrations.IsShellPicker`, unit-tested in the standard gat
 starting anything, since the older test launches the app first and so can only ever report the
 state after a dev build has just re-registered.
 
-**Not fixed, because it is a decision.** The task's own guidance is that the honest option is for
-the unpackaged build to stand aside while a packaged Astrid is installed, rather than for the
-packaged one to fight back — and explicitly not to add HKCU writes to the packaged path. That is a
-behaviour change, so it is Jon's call and not a side effect of a test fix. **Until it is made, the
-two UI protocol assertions are red on any machine with both builds installed** — correctly: they
-are reporting a real condition, and `npm run predeploy` (which does not run the UI suite) is
-unaffected.
+**Decided 2026-11-14 (Jon): accept the picker.** The option the task reserved was for the
+unpackaged build to stand aside while a packaged Astrid is installed — not for the packaged one to
+fight back, and no HKCU writes on the packaged path. It was not taken. A user has one Astrid, from
+the Store, so one claimant and no dialog; only a developer machine with both builds meets the
+prompt, and standing aside would mean packaging a build to test its sign-in, which costs more than
+one extra click does. **The packaged build does not own `astrid://`, and neither build was
+changed.**
+
+What changed is the two UI assertions, which were red on any machine with both builds installed and
+would have stayed red forever: they now accept *a claimant or the picker*, and report which one
+answered. `ProtocolRegistrations.IsShellPicker` stays exactly as it is, in the standard gate — the
+picker still has to be recognised to be reported, and the 2026-09-13 failure it was written for is
+still the one case where "a real executable with `%1`" is not enough. What the probes still fail on
+is a scheme that resolves to nothing, and a claimant that points at a file some deleted build left
+behind.
+
+**To get a single claimant back on a dev machine,** uninstall the test package
+(`Remove-AppxPackage`); the unpackaged build's own claim is then the only one and the shell stops
+asking. That is the interim answer for anyone who wants to exercise the sign-in hand-off end to end
+here, and it is also the reason steps 1–3 of the task (sign in from each build and confirm the
+callback arrives) were never run: they need real credentials and a browser, so they are a human's
+to do, against whichever single claimant is left installed.
 
 ### Settled — the credential at rest, 2026-09-07
 

@@ -15,7 +15,7 @@
     draws WPF.
   -->
   <PropertyGroup>
-    <TargetFramework>net9.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -27,14 +27,23 @@
 
   <ItemGroup>
     <!-- To seed the cache with what a fresh, offline app cannot make for itself: a list with a board. -->
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.15" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
     <!--
-      To write a failing capture out as a PNG. The assertions read the raw buffer; this is only so
-      that a failure can be looked at rather than guessed at, which for a colour is the difference
-      between a diagnosis and a theory. Same version as Astrid.App.Tests uses.
+      System.Drawing.Common is NOT referenced here, and the asymmetry with Astrid.App.Tests (which
+      does reference it) is deliberate rather than an oversight to tidy up (task 57603c11).
+
+      It is used for the same thing in both: writing a failing capture out as a PNG, so that a
+      failure can be looked at rather than guessed at, which for a colour is the difference between
+      a diagnosis and a theory.
+
+      This project targets `net10.0-windows`, and from .NET 10 that framework carries
+      System.Drawing.Common itself. An explicit PackageReference is then NU1510, "will not be
+      pruned ... remove the PackageReference item", which TreatWarningsAsErrors turns into a
+      restore failure. Astrid.App.Tests is plain `net10.0`, which does not carry it, so there the
+      reference is still required. Adding one back here breaks the build; removing it there breaks
+      the build.
     -->
-    <PackageReference Include="System.Drawing.Common" Version="9.0.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1" />
   </ItemGroup>

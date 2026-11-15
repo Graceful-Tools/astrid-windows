@@ -346,7 +346,7 @@ public sealed class AstridApp : IDisposable
             .Select(configuration => Path.Combine(
                 directory.FullName,
                 "app", "Astrid.App", "bin", configuration,
-                "net9.0-windows10.0.19041.0", runtime, "Astrid.App.exe"))
+                "net10.0-windows10.0.19041.0", runtime, "Astrid.App.exe"))
             .Where(File.Exists)
             .ToList();
 

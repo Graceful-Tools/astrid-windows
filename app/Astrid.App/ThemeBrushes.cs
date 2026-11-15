@@ -27,16 +27,55 @@ namespace Astrid.App;
 /// caller meant. A key outside the theme dictionaries — <c>AstridAccentBrush</c>, a priority — is
 /// found in the root dictionary as before.
 /// </para>
+/// <para>
+/// A converter has no element to ask: <c>IValueConverter.Convert</c> is handed a value and nothing
+/// else (task 770625f8). <see cref="Follow"/> is for them — the page registers the one element it
+/// sets the appearance on, and <see cref="For(string)"/> asks that. Deliberately a reference to the
+/// element rather than a copy of its theme: a stored <c>ElementTheme</c> is a second copy of the
+/// truth, and goes stale the moment anything sets <c>RequestedTheme</c> without telling it. The
+/// element cannot go stale, because it is what the appearance is set on.
+/// </para>
 /// </remarks>
 internal static class ThemeBrushes
 {
+    /// <summary>
+    /// The element that wears the app's appearance, for callers with no element of their own.
+    /// </summary>
+    /// <remarks>
+    /// Weak, because this is static for the life of the process and the tree it points into is
+    /// not: holding the page's content strongly would outlive the window.
+    /// </remarks>
+    private static WeakReference<FrameworkElement>? _appearance;
+
+    /// <summary>Register the element the appearance is set on. <c>ShellPage.ApplyTheme</c> calls it.</summary>
+    public static void Follow(FrameworkElement element) =>
+        _appearance = new WeakReference<FrameworkElement>(element);
+
     /// <summary>The brush <paramref name="key"/> names in the theme <paramref name="element"/> wears.</summary>
-    public static Brush For(FrameworkElement element, string key)
+    public static Brush For(FrameworkElement element, string key) =>
+        Resolve(element.ActualTheme, key);
+
+    /// <summary>
+    /// The brush <paramref name="key"/> names in the theme the app is wearing.
+    /// </summary>
+    /// <remarks>
+    /// For a converter, which has no element. Before <see cref="Follow"/> has been called — which
+    /// is only possible before the page has applied a theme at all — the light dictionary answers,
+    /// which is what WinUI's own default would have been.
+    /// </remarks>
+    public static Brush For(string key) =>
+        Resolve(
+            _appearance is not null && _appearance.TryGetTarget(out var element)
+                ? element.ActualTheme
+                : ElementTheme.Light,
+            key);
+
+    private static Brush Resolve(ElementTheme theme, string key)
     {
         var dictionaries = Application.Current.Resources.ThemeDictionaries;
-        var theme = element.ActualTheme == ElementTheme.Dark ? "Dark" : "Default";
+        var wanted = theme == ElementTheme.Dark ? "Dark" : "Default";
 
-        if (dictionaries.TryGetValue(theme, out var entry)
+        if (dictionaries.TryGetValue(wanted, out var entry)
             && entry is ResourceDictionary themed
             && themed.TryGetValue(key, out var found)
             && found is Brush brush)

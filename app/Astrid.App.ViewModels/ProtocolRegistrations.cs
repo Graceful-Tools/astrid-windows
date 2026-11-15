@@ -92,6 +92,13 @@ public static class ProtocolRegistrations
     /// spelling or casing of the System32 path the shell hands back. The name must match exactly:
     /// an app of one's own called <c>MyOpenWith.exe</c> is a claimant, not the picker.
     /// </para>
+    /// <para>
+    /// Naming it is not the same as rejecting it. Since 2026-11-14 (task 02a8b67e) the picker is an
+    /// accepted resolution: a packaged Astrid and a dev build claim the scheme through mechanisms
+    /// that cannot see each other, so any machine with both has two claimants and no default, while
+    /// a user has one Astrid and no dialog. Callers use this to say which answer they got, not to
+    /// fail on it.
+    /// </para>
     /// </remarks>
     public static bool IsShellPicker(string? command)
     {

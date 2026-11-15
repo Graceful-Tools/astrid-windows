@@ -66,7 +66,7 @@ jobs:
           - advisories
           - licenses bans sources
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check ${{ matrix.checks }}
@@ -92,7 +92,7 @@ jobs:
             target: aarch64-pc-windows-msvc
     continue-on-error: ${{ matrix.name == 'arm64' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # The toolchain, its components and both targets come from rust-toolchain.toml, so there is
       # one place that decides which Rust this repo builds with.
@@ -119,7 +119,7 @@ jobs:
     if: github.event_name != 'schedule'
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: Swatinem/rust-cache@v2
         with:
           key: cross-arm64
@@ -130,13 +130,13 @@ jobs:
     if: github.event_name != 'schedule'
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: Swatinem/rust-cache@v2
         with:
           key: shell
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 9.0.x
+          dotnet-version: 10.0.x
 
       # The shell carries the core's DLL and refuses to build without the one for its
       # architecture (ASTRID001 in Astrid.Core.Bindings.csproj), so both are built first — the
@@ -154,7 +154,7 @@ jobs:
       - name: Build the shell (ARM64)
         run: dotnet build app/Astrid.App/Astrid.App.csproj -c Release -r win-arm64 --self-contained false
 
-      # The view-model tests and the C#-to-Rust boundary tests. Plain net9.0, run as the host.
+      # The view-model tests and the C#-to-Rust boundary tests. Plain net10.0, run as the host.
       # The UI smoke tests are not in the solution: they need a desktop session.
       - name: Shell tests
         run: dotnet test app/Astrid.sln -c Release

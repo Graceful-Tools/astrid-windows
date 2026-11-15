@@ -14,17 +14,27 @@
         not have to tear down and rebuild the whole tree on the way in and out — and so
         signing out leaves an empty list behind it rather than a blank window.
 
-        Its ground is set in `ApplyTheme` rather than here: it covers the Ocean surface, so
-        it wears the wash itself, and the first screen anybody sees would otherwise be the
-        one screen the brand colour never touches.
+        Its ground is the appearance's own base, stated here rather than read in `ApplyTheme`:
+        a brush looked up from code answers for `Application.RequestedTheme`, which this app
+        never sets, so the first screen anybody saw was the light one however dark the app was
+        (task 770625f8). A ThemeResource follows the element instead, and goes on following it.
+
+        It is a Style setter rather than a plain attribute so that `WearSurface` can put the
+        Ocean wash over the top as a local value — this screen covers the Ocean surface, so it
+        wears the wash itself, or the first screen anybody sees is the one screen the brand
+        colour never touches — and hand the ground back by clearing that value.
 
         It sits AFTER the column definitions on purpose: in XAML a property element cannot
         follow a content child, and putting this first made the XAML compiler fail with no
         message at all — an hour of bisecting to find one ordering rule.
     -->
     <Grid x:Name="SignInLayer"
-          Background="Transparent"
           Visibility="{x:Bind Shell.SignIn.NeedsSignIn, Mode=OneWay, Converter={StaticResource Visible}}">
+        <Grid.Style>
+            <Style TargetType="Grid">
+                <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorBaseBrush}" />
+            </Style>
+        </Grid.Style>
         <!--
             A card rather than text floating in the middle of a window. This is the first
             screen anybody sees and it was three centred paragraphs; giving it an edge, a
