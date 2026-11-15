@@ -108,11 +108,25 @@ copied: three boards, one implementation of "which tasks are ready".
 
 ## Approvals
 
+The canonical policy is astrid-web's `docs/FIXALL_WORKFLOW.md` → *Autonomy* (Jon, 2026-11-15):
+work is Ready by default, and only high-risk steps wait for Jon. This section holds what that means
+here.
+
 **Always ask before:** publishing to the Microsoft Store or the public update feed, signing a
-release, and deleting files. Those reach real users or are hard to undo.
+release, deleting user data or files outside the repository, and credentials or machine-admin steps
+only Jon can do. Those reach real users, are hard to undo, or need his hands. Batch them: one task
+each, with the exact steps.
 
 **Autonomous:** code analysis, local builds and tests, implementation, local commits, documentation,
-and pushing `main`.
+pushing `main`, and:
+
+- **Cleanup** — deleting stale branches, dead code, superseded files and merged worktrees. Verify
+  (merged, unreferenced, replaced), then delete; no need to ask.
+- **Visual checks** — build, install, screenshot and compare (`/astridwin`). That is the loop's own
+  job; hand it back only when it genuinely needs a human.
+- **New work found while working** — filed **Ready**, not parked for Jon to promote.
+- **A low-risk choice with a recommended option** — decide it and record it on the task
+  (`Decided (agent, <date>): … Jon can override`) rather than handing it back.
 
 Work lands on `main`. A push builds nothing that reaches anyone — releases are a deliberate,
 manually triggered act, the same discipline astrid-web follows for production deploys.
