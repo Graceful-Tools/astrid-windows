@@ -48,11 +48,12 @@ public sealed class PlainSquareMarkTests
     /// <remarks>
     /// The counts are stated because the failure this test exists for is a square that quietly stops
     /// asking for a priority: the loop below has nothing to say about a site it cannot find.
-    /// TaskRowsView draws two — quick add's preview and the row itself — and BoardView one.
+    /// TaskRowsView draws two — quick add's preview and the row itself — and BoardView two, for
+    /// the same pair: a card, and the preview above its column's add field (task 71ad20a0).
     /// </remarks>
     [Theory]
     [InlineData("TaskRowsView.xaml", 2)]
-    [InlineData("BoardView.xaml", 1)]
+    [InlineData("BoardView.xaml", 2)]
     public void Every_square_mark_is_a_priority_outline_task_f1a8ff9f(string view, int expected)
     {
         var root = XDocument.Load(Path.Combine(LocalisationTests.AppDirectory(), "Views", view)).Root!;

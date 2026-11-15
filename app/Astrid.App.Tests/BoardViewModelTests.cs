@@ -302,6 +302,131 @@ public sealed class BoardViewModelTests
 
         Assert.Null(view.ErrorMessage);
     }
+
+    // ── What the field at the bottom of a column will make (task 71ad20a0) ──────────────────
+    //
+    // The field took a title and nothing else, while the list's own add field has offered a
+    // priority picker, an assignee picker and a preview since task 8aa5732c. Same gesture, two
+    // different sets of controls depending on which view you happened to be in.
+    //
+    // NOT smart parsing, deliberately (Jon, 2026-11-14): the column already decides the list and
+    // whether Done means already done, so a date or a #list tag read out of the sentence would be
+    // fighting it.
+
+    /// <summary>
+    /// A column's add field previews the card it would make, as the list's field does
+    /// (task 71ad20a0).
+    /// </summary>
+    /// <remarks>
+    /// Asked with the BOARD'S list id, not the column's: a card typed into a column belongs to the
+    /// board's list, and the column decides its status rather than its list. That is why the
+    /// preview needed no core change — only carrying the two picks did.
+    /// </remarks>
+    [Fact]
+    public async Task A_columns_add_field_previews_the_card_it_would_make_task_71ad20a0()
+    {
+        var core = new FakeCore()
+            .AnswerOk("board", Board(Column("doing", "Doing", "status")))
+            .AnswerOk("quickAddDefaults", QuickAdd.Defaults("checkbox", priority: 2, assigneeId: "me"));
+        var view = new BoardViewModel(core);
+        await view.LoadAsync("l1");
+
+        await view.Columns[0].LoadQuickAddDefaultsAsync();
+
+        var asked = core.Sent.Last(json => json.Contains("\"kind\":\"quickAddDefaults\""));
+        Assert.Contains("\"listId\":\"l1\"", asked);
+        Assert.True(view.Columns[0].QuickAddIsCheckbox);
+        Assert.False(view.Columns[0].QuickAddIsSquare);
+        Assert.Equal(2, view.Columns[0].QuickAddPriority);
+        Assert.Equal(3, view.Columns[0].QuickAddAssignees.Count);
+    }
+
+    /// <summary>
+    /// A pick is re-asked of the core rather than worked out here (task 71ad20a0).
+    /// </summary>
+    /// <remarks>
+    /// Which of the three leading states a pick produces is the same rule that produced the first
+    /// answer — docs/ASTRID.md rule 4. Choosing a priority in a column whose board would assign
+    /// the card to somebody else must not turn the square into a checkbox because the shell
+    /// guessed.
+    /// </remarks>
+    [Fact]
+    public async Task A_columns_quick_add_pick_is_re_asked_rather_than_worked_out_task_71ad20a0()
+    {
+        var core = new FakeCore()
+            .AnswerOk("board", Board(Column("doing", "Doing", "status")))
+            .AnswerOk("quickAddDefaults", QuickAdd.Defaults("checkbox", assigneeId: "me"))
+            .AnswerOk("quickAddDefaults", QuickAdd.Defaults("avatar", priority: 3, assigneeId: "dana"));
+        var view = new BoardViewModel(core);
+        await view.LoadAsync("l1");
+        await view.Columns[0].LoadQuickAddDefaultsAsync();
+
+        await view.Columns[0].PickQuickAddPriorityAsync(3);
+
+        var asked = core.Sent.Last(json => json.Contains("\"kind\":\"quickAddDefaults\""));
+        Assert.Contains("\"priority\":3", asked);
+        Assert.Equal(3, view.Columns[0].QuickAddPriority);
+        // The shell did not decide this: the second answer said avatar, so the preview followed it.
+        Assert.True(view.Columns[0].QuickAddIsSquare);
+        Assert.Equal("D", view.Columns[0].QuickAddMark);
+    }
+
+    /// <summary>
+    /// Choosing nobody is sent as the sentinel, never as a null (task 71ad20a0).
+    /// </summary>
+    /// <remarks>
+    /// A null means "nothing chosen", and the list's own default fills that back in — so a null
+    /// here would make choosing nobody do nothing at all in exactly the lists where it matters.
+    /// The same trap the list's field documents (task 8aa5732c).
+    /// </remarks>
+    [Fact]
+    public async Task Choosing_nobody_for_a_column_card_sends_the_sentinel_task_71ad20a0()
+    {
+        var core = new FakeCore()
+            .AnswerOk("board", Board(Column("doing", "Doing", "status")))
+            .AnswerOk("quickAddDefaults", QuickAdd.Defaults("checkbox", assigneeId: "me"))
+            .AnswerOk("quickAddDefaults", QuickAdd.Defaults("unassigned"));
+        var view = new BoardViewModel(core);
+        await view.LoadAsync("l1");
+        await view.Columns[0].LoadQuickAddDefaultsAsync();
+
+        await view.Columns[0].PickQuickAddAssigneeAsync(null);
+
+        var asked = core.Sent.Last(json => json.Contains("\"kind\":\"quickAddDefaults\""));
+        Assert.Contains("\"assigneeId\":\"unassigned\"", asked);
+    }
+
+    /// <summary>
+    /// The picks reach the created card, and only that column's card (task 71ad20a0).
+    /// </summary>
+    /// <remarks>
+    /// Per column, not per board, and held on the board view model for the reason the drafts are:
+    /// a create reloads the board and rebuilds every column view, so a pick kept on one of those
+    /// would vanish from whichever column its owner was still setting up.
+    /// </remarks>
+    [Fact]
+    public async Task A_columns_picks_reach_its_card_and_not_another_columns_task_71ad20a0()
+    {
+        var core = new FakeCore()
+            .AnswerOk("board", Board(Column("ready", "Ready", "status"), Column("doing", "Doing", "status")))
+            .AnswerOk("quickAddDefaults", QuickAdd.Defaults("checkbox", priority: 3, assigneeId: "dana"))
+            .AnswerOk("addBoardCard")
+            .AnswerOk("board", Board(Column("ready", "Ready", "status"), Column("doing", "Doing", "status", "Write it down")));
+        var view = new BoardViewModel(core);
+        await view.LoadAsync("l1");
+        await view.Columns[1].PickQuickAddPriorityAsync(3);
+        view.Columns[1].Draft = "Write it down";
+
+        Assert.True(await view.Columns[1].AddCardAsync());
+
+        var added = core.Sent.First(sent => sent.Contains("addBoardCard"));
+        Assert.Contains("\"columnId\":\"doing\"", added);
+        Assert.Contains("\"priority\":3", added);
+
+        // The other column was never set up, so its card would carry nothing — a pick in one
+        // column is not a pick in the next one along.
+        Assert.Equal(0, view.Columns[0].QuickAddPriority);
+    }
 }
 
 

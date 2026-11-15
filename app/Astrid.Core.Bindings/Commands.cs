@@ -759,9 +759,16 @@ public static class Commands
     /// <param name="wait">
     /// The wait condition, for a card typed straight into Waiting — see <see cref="WaitCondition"/>.
     /// </param>
+    /// <param name="priority">
+    /// What the column field's priority picker chose, or null to leave the list's own default to
+    /// fill it (task 71ad20a0).
+    /// </param>
+    /// <param name="assigneeId">
+    /// What its assignee picker chose — a user id, or <c>unassigned</c>. Null as above.
+    /// </param>
     public static object AddBoardCard(string listId, string columnId, string title,
-        WaitCondition? wait = null) =>
-        new AddBoardCardRequest("addBoardCard", listId, columnId, title,
+        WaitCondition? wait = null, int? priority = null, string? assigneeId = null) =>
+        new AddBoardCardRequest("addBoardCard", listId, columnId, title, priority, assigneeId,
             wait?.DueDateTime, wait?.IsAllDay, wait?.WaitOnTaskId, wait?.KeepAssigneeOrNull);
 
     /// <summary>
@@ -1126,6 +1133,8 @@ public static class Commands
         [property: JsonPropertyName("listId")] string ListId,
         [property: JsonPropertyName("columnId")] string ColumnId,
         [property: JsonPropertyName("title")] string Title,
+        [property: JsonPropertyName("priority")] int? Priority,
+        [property: JsonPropertyName("assigneeId")] string? AssigneeId,
         [property: JsonPropertyName("dueDateTime")] string? DueDateTime,
         [property: JsonPropertyName("isAllDay")] bool? IsAllDay,
         [property: JsonPropertyName("waitOnTaskId")] string? WaitOnTaskId,

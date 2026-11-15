@@ -306,6 +306,84 @@ public sealed class BoardViewModel : ObservableObject
     internal void SetDraft(string columnId, string draft) => _drafts[columnId] = draft;
 
     /// <summary>
+    /// What a column's add field will make: the priority and assignee its pickers chose, and the
+    /// preview the core drew from them (task 71ad20a0).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Held on the board rather than on the column objects, for the reason the drafts are: a
+    /// column view is rebuilt on every load, so a pick kept in one would be lost the moment
+    /// another column's create refreshed the board.
+    /// </para>
+    /// <para>
+    /// Per column, not per board. Each column has its own field, so each has its own half-made
+    /// card — the same reason the drafts are keyed this way.
+    /// </para>
+    /// </remarks>
+    private readonly Dictionary<string, QuickAddDefaults> _quickAdd = [];
+    private readonly Dictionary<string, int?> _priorityPicks = [];
+    private readonly Dictionary<string, string?> _assigneePicks = [];
+
+    internal QuickAddDefaults? QuickAddFor(string columnId) =>
+        _quickAdd.TryGetValue(columnId, out var defaults) ? defaults : null;
+
+    /// <summary>
+    /// Ask the core what a card born in this column would look like, after every pick.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The same question the list's field asks, with the board's own list id: a card typed into a
+    /// column belongs to the board's list, and the column decides its status rather than its list.
+    /// So no core change was needed for the preview — only for carrying the two values.
+    /// </para>
+    /// <para>
+    /// Re-asked rather than adjusted here, because which of the three leading states a pick
+    /// produces is the same rule that produced the first answer. A failure leaves the last answer
+    /// standing and raises nothing: the field still adds cards without its preview, and an error
+    /// banner over a decoration would be worse than the missing decoration.
+    /// </para>
+    /// </remarks>
+    internal async Task LoadQuickAddDefaultsAsync(string columnId,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _core.CallAsync(
+            Commands.QuickAddDefaults(
+                string.IsNullOrEmpty(_listId) ? null : _listId,
+                _assigneePicks.TryGetValue(columnId, out var who) ? who : null,
+                _priorityPicks.TryGetValue(columnId, out var priority) ? priority : null),
+            cancellationToken);
+        if (!response.Ok || response.Read<QuickAddDefaults>() is not { } defaults)
+        {
+            return;
+        }
+        _quickAdd[columnId] = defaults;
+        Raise(nameof(Columns));
+    }
+
+    /// <summary>Choose the priority the next card in this column is born with.</summary>
+    internal Task PickQuickAddPriorityAsync(string columnId, int priority,
+        CancellationToken cancellationToken = default)
+    {
+        _priorityPicks[columnId] = priority;
+        return LoadQuickAddDefaultsAsync(columnId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Choose who the next card goes to. <paramref name="userId"/> is null for the unassigned row.
+    /// </summary>
+    /// <remarks>
+    /// Nobody is sent as <c>"unassigned"</c>, not as a null — a null means "nothing chosen" and
+    /// the list's own default would fill it back in, so choosing nobody would do nothing at all in
+    /// exactly the lists where it matters. The same trap the list's field documents.
+    /// </remarks>
+    internal Task PickQuickAddAssigneeAsync(string columnId, string? userId,
+        CancellationToken cancellationToken = default)
+    {
+        _assigneePicks[columnId] = userId ?? "unassigned";
+        return LoadQuickAddDefaultsAsync(columnId, cancellationToken);
+    }
+
+    /// <summary>
     /// Add a card at the bottom of a column (task 95c7a68f).
     /// </summary>
     /// <remarks>
@@ -330,6 +408,7 @@ public sealed class BoardViewModel : ObservableObject
         }
         _drafts[columnId] = string.Empty;
         return AddCardAsync(columnId, title, null, cancellationToken);
+
     }
 
     /// <summary>
@@ -343,7 +422,14 @@ public sealed class BoardViewModel : ObservableObject
         CancellationToken cancellationToken)
     {
         var response = await _core.CallAsync(
-            Commands.AddBoardCard(_listId, columnId, title, wait), cancellationToken);
+            Commands.AddBoardCard(
+                _listId,
+                columnId,
+                title,
+                wait,
+                _priorityPicks.TryGetValue(columnId, out var priority) ? priority : null,
+                _assigneePicks.TryGetValue(columnId, out var who) ? who : null),
+            cancellationToken);
         if (response.NeedsWaitCondition)
         {
             // A card born in Waiting is a task entering Waiting, so the same rule and the same ask.
@@ -470,6 +556,47 @@ public sealed class BoardColumnView
 
     /// <summary>Add whatever is in this column's field as a card in this column.</summary>
     public Task<bool> AddCardAsync() => _board.AddCardAsync(Id);
+
+    // ── What this column's add field will make (task 71ad20a0) ──────────────────────────────
+    //
+    // Read through to the board for the same reason `Draft` is: a column object does not survive
+    // a reload, and these have to.
+
+    private QuickAddDefaults? Defaults => _board.QuickAddFor(Id);
+
+    /// <summary>The priority the next card here is born with.</summary>
+    public int QuickAddPriority => Defaults?.Priority ?? 0;
+
+    /// <summary>
+    /// Whose mark the preview draws, when it is a square rather than a checkbox: the chosen
+    /// assignee's glyph, read off the options the core sent with them.
+    /// </summary>
+    /// <remarks>
+    /// An em dash for nobody, the same fallback the list's field uses — an empty square reads as
+    /// a control that failed to draw rather than as a task nobody owns.
+    /// </remarks>
+    public string QuickAddMark => QuickAddAssignees
+        .FirstOrDefault(option => option.UserId == Defaults?.AssigneeId)?.Glyph ?? "—";
+
+    /// <summary>The people this column's card can go to.</summary>
+    public IReadOnlyList<AssigneeOption> QuickAddAssignees => Defaults?.Options ?? [];
+
+    /// <summary>Whether the preview is a checkbox — the card would be the reader's own.</summary>
+    public bool QuickAddIsCheckbox => Defaults?.Leading.Kind is null or "checkbox";
+
+    /// <summary>Or a priority-coloured square carrying somebody's mark.</summary>
+    public bool QuickAddIsSquare => !QuickAddIsCheckbox;
+
+    /// <summary>Ask the core what a card born here would look like.</summary>
+    public Task LoadQuickAddDefaultsAsync() => _board.LoadQuickAddDefaultsAsync(Id);
+
+    /// <summary>Choose the priority the next card here is born with.</summary>
+    public Task PickQuickAddPriorityAsync(int priority) =>
+        _board.PickQuickAddPriorityAsync(Id, priority);
+
+    /// <summary>Choose who it goes to; null is the unassigned row.</summary>
+    public Task PickQuickAddAssigneeAsync(string? userId) =>
+        _board.PickQuickAddAssigneeAsync(Id, userId);
 }
 
 /// <summary>
