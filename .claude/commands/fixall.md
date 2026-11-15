@@ -127,8 +127,20 @@ and stop until he has authorised — do not fall back to the database.
   local commits and pushing `main` are autonomous. **Push once, at the end of the run**, not per
   task — the same discipline as astrid-ios — and say in the completion report that the work is
   on `main`, never that it shipped.
-- **Always ask before:** publishing to the Store or the update feed, signing a release, and
-  deleting files.
+- **Autonomy follows astrid-web's [`docs/FIXALL_WORKFLOW.md`](../../../astrid-web/docs/FIXALL_WORKFLOW.md)
+  → *Autonomy*** (Jon, 2026-11-15), the canonical policy; CLAUDE.md → *Approvals* says what it
+  means here. In short:
+  - **Always ask before:** publishing to the Store or the update feed, signing a release,
+    deleting user data or files outside the repo, and credentials or machine-admin steps only Jon
+    can do. Batch these: one task each, with the exact steps.
+  - **Cleanup is not a deletion to ask about.** Stale branches, dead code, superseded files and
+    merged worktrees: verify, then delete.
+  - **New work found while working is filed Ready** on the right board, never parked in Inbox for
+    Jon to promote.
+  - **A low-risk choice with a recommended option is decided, not handed back.** Record it on the
+    task — `Decided (agent, <date>): <choice and why>. Jon can override.` — and carry on.
+  - **Visual checks are this loop's job:** build, install, screenshot, compare (`/astridwin`).
+    Hand back only when the check genuinely needs a human.
 - **A task is DONE when it is merged into `main` with `npm run predeploy` green.** Re-run the
   gate on the merged tree, not just the branch.
 - **One isolated branch/worktree per task.** In a Copilot app session, use the branch and
@@ -168,7 +180,8 @@ and stop until he has authorised — do not fall back to the database.
   close that task with a one-line explanation rather than leaving a false alarm on the board.
 - **If a task is blocked by something outside the repo**, park it in `Waiting` with the right
   condition (FIXALL_WORKFLOW.md → *Waiting carries its condition*): a decision only Jon can
-  make → assign to Jon with the question; blocked on another task → `BLOCKED-BY: <id>`; blocked
+  make (high risk, or no option you can recommend — see *Autonomy* above) → assign to Jon with
+  the question; blocked on another task → `BLOCKED-BY: <id>`; blocked
   on an external event → `BLOCKED-ON: <condition>` plus a recheck due date. Do not close it,
   and do not work around the block by breaking users.
 - **If every Ready task is blocked, say so in a few lines and stop.** A run that ends with
