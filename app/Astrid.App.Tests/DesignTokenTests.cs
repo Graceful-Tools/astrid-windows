@@ -442,31 +442,6 @@ public sealed class DesignTokenTests
         Assert.Equal(stamp.Groups["hash"].Value, hashed);
     }
 
-    /// <summary>
-    /// The name the generated dictionary gives each brush <c>App.xaml</c> writes by hand.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Only the names differ, and only for five of the twenty-two. Two are DS9, where this shell's
-    /// "surface" is a different token in each theme — <c>bg-hover</c> on light, <c>bg-secondary</c>
-    /// on dark — so the generator, which names a brush after one token, cannot spell it
-    /// <c>AstridSurface</c>. Three are WinUI's own accent-button brushes, which are overridden here
-    /// rather than derived (DS26) and are therefore named by WinUI, not by the register.
-    /// </para>
-    /// <para>
-    /// This map is the specification for the emitter's missing <c>XAML_ALIASES</c> entries, which is
-    /// why it is a table and not five <c>if</c>s: when astrid-core emits these names itself, every
-    /// row here becomes an identity and the table goes away with the hand-written brushes.
-    /// </para>
-    /// </remarks>
-    private static readonly Dictionary<string, (string Light, string Dark)> GeneratedNames = new()
-    {
-        ["AstridSurface"] = ("AstridBgHover", "AstridBgSecondary"),
-        ["AstridSurfaceHover"] = ("AstridBgTertiary", "AstridBgTertiary"),
-        ["AccentFillColorDefaultBrush"] = ("AstridAccent", "AstridAccent"),
-        ["AccentFillColorSecondaryBrush"] = ("AstridAccentHover", "AstridAccentHover"),
-        ["TextOnAccentFillColorPrimaryBrush"] = ("AstridAccentText", "AstridAccentText"),
-    };
 
     /// <summary>Every <c>SolidColorBrush</c> in one of the generated dictionary's themes.</summary>
     internal static Dictionary<string, string> GeneratedBrushes(string dictionary)
@@ -500,12 +475,26 @@ public sealed class DesignTokenTests
     /// would be — so an unmapped key fails here rather than being skipped.
     /// </para>
     /// <para>
-    /// This is the gate that makes the hand-written brushes safe to keep until they can be deleted.
-    /// Adoption — merging the generated dictionary and removing them — needs three things from
-    /// astrid-core that it does not emit yet: a <c>Default</c> theme dictionary (WinUI resolves
-    /// <c>Default</c>, not <c>Light</c>, when the system reports no preference, and
-    /// <c>ThemeBrushes.Resolve</c> asks for it by name), the two DS9 aliases above, and the WinUI
-    /// accent-button names. Until then the brushes stay and this compares them.
+    /// This is the gate that makes the hand-written brushes safe to keep until they can be
+    /// deleted. The three things adoption used to wait on from astrid-core all arrived with
+    /// ADEV-1 — a <c>Default</c> theme dictionary, the two DS9 surface aliases, and WinUI's
+    /// accent-button names — which is why the alias table that used to sit below is gone.
+    /// </para>
+    /// <para>
+    /// <strong>Adoption was then tried, and does not work.</strong> Merging the generated
+    /// dictionary into <c>Application.Resources</c> and deleting these brushes builds, passes
+    /// every unit test, and renders LIGHT correctly — and silently breaks DARK: the chat bubble
+    /// came back painted <c>#EFF6FF</c>, the LIGHT <c>AstridBgSelected</c>, which is the
+    /// white-on-white bug <c>ChatBubbleContrastTests</c> exists to catch. The reason is this
+    /// shell's own: it never sets <c>Application.RequestedTheme</c> and applies the appearance by
+    /// setting <c>RequestedTheme</c> on ShellPage's root (see <c>ThemeBrushes</c>), and theme
+    /// dictionaries reached through the application's merged dictionaries do not follow an
+    /// element's requested theme the way ones declared on <c>App.xaml</c> itself do.
+    /// </para>
+    /// <para>
+    /// So the brushes stay here, and this keeps comparing them. Moving them needs the shell's
+    /// theme switching rethought first, not another emitter change — board task 1fae8c54 carries
+    /// the finding.
     /// </para>
     /// </remarks>
     [Theory]
@@ -521,19 +510,20 @@ public sealed class DesignTokenTests
         Assert.NotEmpty(written);
         foreach (var (brush, colour) in written)
         {
-            var name = GeneratedNames.TryGetValue(brush, out var alias)
-                ? generatedTheme == "Dark" ? alias.Dark : alias.Light
-                : brush;
-
+            // By the brush's own name. There used to be a GeneratedNames table here, mapping the
+            // five whose names this shell and the generator spelled differently — the two DS9
+            // surfaces and WinUI's three accent-button brushes. astrid-core ADEV-1 taught the
+            // emitter all five, so every row became an identity and the table went (task
+            // 1fae8c54). Its own comment said that is how it should end.
             Assert.True(
-                generated.ContainsKey(name),
-                $"App.xaml's {brush} has no counterpart in the generated dictionary: it looked for "
-                    + $"{name} in the {generatedTheme} theme. Either astrid-core's design register "
-                    + "does not carry this brush, or GeneratedNames needs a row for it.");
+                generated.ContainsKey(brush),
+                $"App.xaml's {brush} has no counterpart in the generated dictionary's "
+                    + $"{generatedTheme} theme, so astrid-core's design register does not carry "
+                    + "it. A brush this shell paints with belongs in the register, not here.");
             Assert.True(
-                generated[name] == colour,
+                generated[brush] == colour,
                 $"App.xaml's {brush} is {colour} in the {dictionary} dictionary, but astrid-core "
-                    + $"generates {generated[name]} for {name} in the {generatedTheme} theme.");
+                    + $"generates {generated[brush]} for it in the {generatedTheme} theme.");
         }
     }
 
