@@ -421,6 +421,18 @@
         <Setter Property="Spacing" Value="4" />
     </Style>
     <!-- The list's colour on its row head, as the sidebar draws it: 12px, which the radius rounds. -->
+    <!--
+        A row head sits at the LEFT, beside its name — it does NOT stretch across the strip.
+        It used to: the board scrolls horizontally, so its content is measured against infinity
+        and a star column grew to the width of every column together, which put the cross that
+        removes the row a thousand pixels off the right of the window. UIA still reported the
+        button, so every assertion passed; its BoundingRectangle was Empty, which is what
+        offscreen looks like, and the only way to remove a row with a mouse was invisible.
+    -->
+    <Style x:Key="SwimlaneRowHeadStyle" TargetType="Grid">
+        <Setter Property="ColumnSpacing" Value="6" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
     <Style x:Key="SwimlaneRowDotStyle" TargetType="Border">
         <Setter Property="Width" Value="12" />
         <Setter Property="Height" Value="12" />
@@ -428,6 +440,7 @@
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <Style x:Key="SwimlaneRowNameStyle" TargetType="TextBlock">
+        <Setter Property="MaxWidth" Value="320" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="VerticalAlignment" Value="Center" />

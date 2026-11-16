@@ -183,10 +183,10 @@
                                     draws it, because a swimlane IS a list and should be
                                     recognisable as the same one.
                                 -->
-                                <Grid Style="{StaticResource SwimlaneGridStyle}">
+                                <Grid Style="{StaticResource SwimlaneRowHeadStyle}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <Border Grid.Column="0"

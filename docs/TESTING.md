@@ -46,7 +46,7 @@ which no `x:Uid` can reach.
 **`npm run predeploy:full`, by hand, at an unlocked machine. Nothing runs it automatically, and
 that is deliberate.**
 
-The suite is 29 tests and a couple of minutes. It is not in `npm run predeploy` — the standard
+The suite is 31 tests and a few minutes. It is not in `npm run predeploy` — the standard
 gate, and the one the scheduled `/fixall` loop runs — because it needs a desktop session that the
 loop does not have. So between deliberate `:full` runs, the things only it covers can break and
 every task still reports green. That is a real gap, and it is the gap that hid task `f850514f` for
@@ -109,31 +109,52 @@ which is the difference between a question and an answer.
 nicety there, and the seven tests that do not need a mouse still pass on a locked machine. Keep
 that split — a hard `Activate()` in a test that does not need the pointer would throw away
 coverage for nothing.
+## A server-backed surface needs the stub server (task `68b00422`)
 
-## The harness has no server, so a server-backed surface is half-reachable
+Most of this app is a projection over the cache: the sidebar, the single-list board, the task
+rows and every filter are answered without a packet leaving the device, which is why the suite
+got as far as it did with nothing behind `AstridApp.Launch(signedIn: true)`'s session cookie. A
+read that **does** leave the device came back *the session is not valid*, and the surface behind
+it was untestable.
 
-`AstridApp.Launch(signedIn: true)` writes a session cookie and there is nothing behind it. Every
-read the core answers out of its own cache works — the single-list board, the sidebar, a task row,
-every filter — which is most of the app, and is why this was never a problem before. A read that
-leaves the device comes back *the session is not valid*.
+`StubServer` is a `HttpListener` on loopback with the handful of routes a test names:
 
-The project board (task `f8b844dd`) is the first surface where that bites. Its swimlanes are
-`GET /api/v1/projects/{id}/board-rows`, and the core falls back to the last answer only for a
-**retryable** failure: a refusal is an error, on purpose — "the cache is for a missing network, not
-for a server that said no". Seeding the cached rows therefore does not help either, because the read
-still goes out first and still fails.
+```csharp
+using var server = StubServer.Start()
+    .Route("/api/v1/projects/p1/board-rows", """{"listIds":["lios","lweb"]}""");
+using var app = AstridApp.Launch(signedIn: true, seed: Seeds.ProjectWithTwoLists, server: server);
+```
 
-What that leaves reachable is worth having, and is what `ProjectBoardTests` asserts: that the view
-takes the window from the list, and that a board which could not be read says so rather than drawing
-an empty grid. The first of those was red on its first run — `TaskRowsView`'s visibility was bound
-to `IsBoardView` and knew nothing of a third view, so the list's rows were still being drawn on top
-of the board while all 681 view-model and XAML tests passed. **That is the kind of bug this suite is
-for, and a layout one is no different.**
+`Launch` points the app at it with `ASTRID_SERVER_URL`, which `ServerSelection.ParseOrigin`
+already accepts for a loopback http origin and nothing else — **no production rule is relaxed to
+make this work**.
 
-What is NOT reachable is the layout itself: cells level with the header strip, rows stacked rather
-than side by side, a card dropped on a cell reaching the right row. Those assertions were written
-and then taken out again. Board task `68b00422` is the stub `HttpListener` that would put them back
-— and would open up every other surface the Outbox cannot carry, which is a growing set.
+Three things to know before using it:
+
+- **A chosen server gets a cache file of its own** — `astrid-<host>-<port>.db`, so two servers'
+  accounts can never share one. `Launch` therefore seeds whatever file the first start actually
+  made rather than the `astrid.db` it used to assume; with a stub server the old assumption would
+  have written a file the app never opens, and every seeded row would have gone silently missing.
+- **An unnamed route 404s**, on purpose. A stub that invented plausible answers would let a test
+  pass against behaviour nobody wrote down. `server.Unanswered()` lists what was asked for and had
+  no route, which is the first thing to read when a test is not getting what it expects — the core
+  asks for exactly the URL it means, and a route registered one query parameter off looks from the
+  outside like a server that is not running.
+- **It is not a session.** The cookie is never checked. What is under test is the shell.
+
+### What this bought immediately
+
+The project board's swimlanes, which have no cache fallback by design — the core treats a refusal
+as an error rather than serving the last answer, because "the cache is for a missing network, not
+for a server that said no". With the rows readable, the layout became assertable, and the first
+run of those assertions found a bug that **four passing UIA assertions and 685 unit tests had all
+walked past**: the row header stretched the width of every column together, because the board
+scrolls horizontally and a star column is measured against infinity, so the cross that removes a
+row sat a thousand pixels off the right of the window. UIA reported both buttons and the *count*
+was right; their `BoundingRectangle` was `Rect.Empty`, which is what offscreen looks like.
+
+The lesson is in the assertion now: **count a control and then measure it**, because a control
+that exists and cannot be seen passes every test that only counts.
 
 ## A colour can be checked here, and nowhere else
 
