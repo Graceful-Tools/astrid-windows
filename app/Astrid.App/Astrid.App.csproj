@@ -103,6 +103,13 @@
   -->
   <ItemGroup>
     <Page Include="..\..\design\AstridCheckbox.xaml" Link="Assets\Design\AstridCheckbox.xaml" />
+    <!--
+      The generated token dictionary, vendored at design/AstridTokens.xaml and linked for the same
+      reason: `App.xaml` merges it instead of hand-writing sixty-six brushes, so the colours the
+      shell paints with ARE astrid-core's output rather than a copy checked against it (task
+      1fae8c54).
+    -->
+    <Page Include="..\..\design\AstridTokens.xaml" Link="Assets\Design\AstridTokens.xaml" />
   </ItemGroup>
 
   <ItemGroup>

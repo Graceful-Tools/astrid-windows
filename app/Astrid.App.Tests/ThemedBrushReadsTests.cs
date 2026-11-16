@@ -78,6 +78,18 @@ public sealed class ThemedBrushReadsTests
             .OfType<string>()
             .ToHashSet();
 
+        // And the generated token dictionary's, which is where the shell's themed brushes live
+        // since task 1fae8c54 — App.xaml's own theme dictionaries now carry only the accent ramp.
+        // Reading App.xaml alone would classify every one of them as a ROOT key, which inverts
+        // this file: `AstridBgSelected` read straight off the application is the white-on-white
+        // chat bubble, and this test would have started calling it safe.
+        themed.UnionWith(XDocument.Load(DesignTokenTests.TokenDictionaryPath()).Root!
+            .Descendants(Ui + "ResourceDictionary.ThemeDictionaries")
+            .Single()
+            .Descendants()
+            .Select(element => (string?)element.Attribute(Xaml + "Key"))
+            .OfType<string>());
+
         // Everything else keyed anywhere in App.xaml, minus the theme dictionaries' own names.
         var root = app
             .Descendants()

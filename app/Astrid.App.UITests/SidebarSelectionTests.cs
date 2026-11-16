@@ -219,41 +219,13 @@ public sealed class SidebarSelectionTests
                 Path.Combine(RepositoryRoot(), "design", "tokens.resolved.json")))
             .RootElement.GetProperty("state").GetProperty("selection-outline-opacity").GetDouble();
 
-    /// <summary>A colour <c>App.xaml</c> states, from the theme dictionary that is on screen.</summary>
+    /// <summary>The colour the shell states for a key, in the theme on screen.</summary>
     /// <remarks>
     /// <c>AstridAccentColor</c> sits outside the theme dictionaries, because the accent does not
-    /// follow the theme (astrid-core DS26) — so it is looked for in the dictionary first and in
-    /// the file second, rather than being special-cased by name.
+    /// follow the theme (astrid-core DS26) — so <see cref="ShellColours"/> looks in the themed
+    /// dictionary first and in <c>App.xaml</c> second, rather than special-casing it by name.
     /// </remarks>
-    private static int Brush(string theme, string key)
-    {
-        var xaml = XDocument.Load(Path.Combine(RepositoryRoot(), "app", "Astrid.App", "App.xaml"));
-        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
-        var wanted = theme == "dark" ? "Dark" : "Light";
-        var dictionary = xaml.Descendants()
-            .FirstOrDefault(element =>
-                element.Name.LocalName == "ResourceDictionary"
-                && (string?)element.Attribute(x + "Key") == wanted)
-            ?? throw new InvalidOperationException($"App.xaml has no '{wanted}' theme dictionary");
+    private static int Brush(string theme, string key) => ShellColours.Brush(theme, key);
 
-        var stated = dictionary.Elements()
-                .FirstOrDefault(element => (string?)element.Attribute(x + "Key") == key)
-            ?? xaml.Descendants()
-                .FirstOrDefault(element => (string?)element.Attribute(x + "Key") == key)
-            ?? throw new InvalidOperationException($"App.xaml does not state {key}");
-
-        var value = (string?)stated.Attribute("Color") ?? stated.Value;
-        return Convert.ToInt32(value.Trim().TrimStart('#'), 16);
-    }
-
-    private static string RepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !Directory.Exists(Path.Combine(directory.FullName, "design")))
-        {
-            directory = directory.Parent;
-        }
-        return directory?.FullName
-            ?? throw new InvalidOperationException("no repository root above " + AppContext.BaseDirectory);
-    }
+    private static string RepositoryRoot() => ShellColours.RepositoryRoot();
 }

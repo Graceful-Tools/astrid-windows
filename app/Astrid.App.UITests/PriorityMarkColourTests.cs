@@ -130,7 +130,7 @@ public sealed class PriorityMarkColourTests
     private const int MarkBand = 140;
 
     /// <summary>
-    /// The four priority colours a theme dictionary in <c>App.xaml</c> declares.
+    /// The four priority colours the shell declares for a theme.
     /// </summary>
     /// <remarks>
     /// Read rather than restated. Those values are themselves pinned to astrid-core's vendored
@@ -138,41 +138,13 @@ public sealed class PriorityMarkColourTests
     /// this test about the one thing it is for — that the declared colour reaches the element — and
     /// means a token change does not have to be typed out in three places.
     /// </remarks>
-    private static int[] PriorityBrushes(string theme)
-    {
-        var xaml = XDocument.Load(Path.Combine(RepositoryRoot(), "app", "Astrid.App", "App.xaml"));
-        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
-        var wanted = theme == "dark" ? "Dark" : "Light";
-        var dictionary = xaml.Descendants()
-            .FirstOrDefault(element =>
-                element.Name.LocalName == "ResourceDictionary"
-                && (string?)element.Attribute(x + "Key") == wanted)
-            ?? throw new InvalidOperationException($"App.xaml has no '{wanted}' theme dictionary");
-
-        return new[]
-            {
-                "AstridPriorityNone", "AstridPriorityLow", "AstridPriorityMedium", "AstridPriorityHigh",
-            }
-            .Select(key => dictionary.Elements()
-                .FirstOrDefault(element => (string?)element.Attribute(x + "Key") == key)
-                ?? throw new InvalidOperationException($"the {wanted} dictionary has no {key}"))
-            .Select(brush => Convert.ToInt32(
-                ((string?)brush.Attribute("Color") ?? throw new InvalidOperationException(
-                    "a priority brush has no Color")).TrimStart('#'),
-                16))
-            .ToArray();
-    }
-
-    private static string RepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !Directory.Exists(Path.Combine(directory.FullName, "design")))
+    private static int[] PriorityBrushes(string theme) =>
+        new[]
         {
-            directory = directory.Parent;
+            "AstridPriorityNone", "AstridPriorityLow", "AstridPriorityMedium", "AstridPriorityHigh",
         }
-        return directory?.FullName
-            ?? throw new InvalidOperationException("could not find the repository root");
-    }
+        .Select(key => ShellColours.Brush(theme, key))
+        .ToArray();
 
     /// <summary>The row a title sits in — the mark is at its leading edge.</summary>
     private static AutomationElement Row(AstridApp app, string title)

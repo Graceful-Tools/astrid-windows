@@ -10,7 +10,7 @@ using Xunit;
 namespace Astrid.App.Tests;
 
 /// <summary>
-/// Every themed brush in <c>App.xaml</c> is a design token, and says which one (task b4807cb5).
+/// Every themed brush the shell paints with is a design token, and says which one (task b4807cb5).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -23,9 +23,17 @@ namespace Astrid.App.Tests;
 /// </para>
 /// <para>
 /// So <c>design/tokens.resolved.json</c> is vendored beside <c>design/REVISION</c>, and this reads
-/// it. There is no Windows emitter in astrid-core yet; its <c>design/README.md</c> names exactly
-/// this arrangement until there is. The failure message carries the token name and both values,
-/// because the point is that the next re-vendor is a diff to read rather than a hunt.
+/// it. The failure message carries the token name and both values, because the point is that the
+/// next re-vendor is a diff to read rather than a hunt.
+/// </para>
+/// <para>
+/// There was no Windows emitter in astrid-core when that was written, so the brushes were written
+/// out by hand in <c>App.xaml</c> and these assertions were what held them to the tokens. ADEV-1
+/// built the emitter and task 1fae8c54 adopted its output: <c>App.xaml</c> merges
+/// <c>design/AstridTokens.xaml</c>, the sixty-six hand-written brushes are gone, and
+/// <see cref="ThemeBrushes"/> reads that file. The assertions stayed — they now ask the same
+/// question of astrid-core's two generated artefacts, the dictionary the shell paints from and the
+/// resolved tokens, which is a cross-check neither file can satisfy alone.
 /// </para>
 /// <para>
 /// There is no exception list. There was one, holding four brushes at astrid-web's older CSS with
@@ -103,18 +111,15 @@ public sealed class DesignTokenTests
         return resolved.ToUpperInvariant();
     }
 
-    /// <summary>Every <c>SolidColorBrush</c> in one of App.xaml's theme dictionaries.</summary>
-    internal static Dictionary<string, string> ThemeBrushes(string dictionary)
-    {
-        var app = XDocument.Load(Path.Combine(LocalisationTests.AppDirectory(), "App.xaml")).Root!;
-        var themed = app.Descendants(Ui + "ResourceDictionary.ThemeDictionaries").Single();
-        var wanted = themed.Elements(Ui + "ResourceDictionary")
-            .Single(entry => (string?)entry.Attribute(Xaml + "Key") == dictionary);
-        return wanted.Elements(Ui + "SolidColorBrush")
-            .ToDictionary(
-                brush => (string)brush.Attribute(Xaml + "Key")!,
-                brush => ((string)brush.Attribute("Color")!).ToUpperInvariant());
-    }
+    /// <summary>Every <c>SolidColorBrush</c> in one of the shell's theme dictionaries.</summary>
+    /// <remarks>
+    /// This read <c>App.xaml</c> until task 1fae8c54, when the sixty-six hand-written brushes went
+    /// and <c>App.xaml</c> began merging astrid-core's generated <c>design/AstridTokens.xaml</c>
+    /// instead. The dictionary the shell paints from is that file, so this reads it — every
+    /// assertion below goes on asking the same question of the same colours.
+    /// </remarks>
+    internal static Dictionary<string, string> ThemeBrushes(string dictionary) =>
+        GeneratedBrushes(dictionary);
 
     /// <summary>
     /// <c>Default</c> and <c>Light</c> are the same dictionary twice — WinUI resolves
@@ -199,22 +204,76 @@ public sealed class DesignTokenTests
     }
 
     /// <summary>
-    /// A brush that drifted is one thing; a brush nobody noticed is another. Everything in a theme
-    /// dictionary is a token or an accent-button override, never an invention.
+    /// <c>App.xaml</c> hand-writes no themed brush at all: it merges the generated dictionary
+    /// (task 1fae8c54).
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This was <c>No_themed_brush_is_outside_the_token_table</c>, which asked that every brush
+    /// written here be one the token table names — the best available check while sixty-six of
+    /// them were written here by hand. They are not any more, so the question is no longer "is this
+    /// one of ours" but "is there one at all": a brush reappearing in a theme dictionary is a value
+    /// living in a client's copy, which is the one thing astrid-core's design register forbids, and
+    /// it would quietly beat the generated dictionary because a dictionary's own entries win over
+    /// the ones it merges.
+    /// </para>
+    /// <para>
+    /// The accent ramp stays, and is the reason this asserts on brushes rather than on the
+    /// dictionaries being empty: <c>SystemAccentColor</c> and its six shades are <c>Color</c>
+    /// entries WinUI derives its own chrome from, and the register holds none of those shades
+    /// (<c>design/README.md</c>).
+    /// <see cref="Every_theme_dictionary_pins_the_accent_to_the_brand_task_b37d76c3"/> is their
+    /// gate.
+    /// </para>
+    /// </remarks>
     [Theory]
     [InlineData("Default")]
     [InlineData("Light")]
     [InlineData("Dark")]
-    public void No_themed_brush_is_outside_the_token_table_task_b4807cb5(string dictionary)
+    public void App_xaml_hand_writes_no_themed_brush_task_1fae8c54(string dictionary)
     {
-        var known = Brushes.Select(entry => entry.Brush)
-            .Concat(AccentButton.Select(entry => entry.Brush))
-            .ToHashSet(StringComparer.Ordinal);
+        var app = XDocument.Load(Path.Combine(LocalisationTests.AppDirectory(), "App.xaml")).Root!;
+        var themed = app.Descendants(Ui + "ResourceDictionary.ThemeDictionaries").Single();
+        var wanted = themed.Elements(Ui + "ResourceDictionary")
+            .Single(entry => (string?)entry.Attribute(Xaml + "Key") == dictionary);
 
-        var unknown = ThemeBrushes(dictionary).Keys.Where(brush => !known.Contains(brush)).ToList();
+        var written = wanted.Elements(Ui + "SolidColorBrush")
+            .Select(brush => (string)brush.Attribute(Xaml + "Key")!)
+            .ToList();
 
-        Assert.Empty(unknown);
+        Assert.True(
+            written.Count == 0,
+            $"App.xaml's {dictionary} dictionary writes {string.Join(", ", written)} by hand. The "
+            + "shell's colours are astrid-core's generated design/AstridTokens.xaml, which App.xaml "
+            + "merges; a brush stated here shadows it and is a value living in a client's copy.");
+    }
+
+    /// <summary>
+    /// The generated dictionary is merged, and the file it names is the vendored one
+    /// (task 1fae8c54).
+    /// </summary>
+    /// <remarks>
+    /// Named apart from the test above because they are the two halves of one change and either
+    /// alone passes on a broken shell: brushes deleted and nothing merged leaves every surface
+    /// unpainted, and a merge with the brushes still here changes nothing while reading as done.
+    /// The <c>Page</c> item in the csproj is checked too — a <c>Source</c> naming a file the project
+    /// does not compile is a launch-time <c>XamlParseException</c>, not a build error.
+    /// </remarks>
+    [Fact]
+    public void App_xaml_merges_the_vendored_token_dictionary_task_1fae8c54()
+    {
+        const string source = "ms-appx:///Assets/Design/AstridTokens.xaml";
+
+        var app = XDocument.Load(Path.Combine(LocalisationTests.AppDirectory(), "App.xaml")).Root!;
+        var merged = app.Descendants(Ui + "ResourceDictionary.MergedDictionaries").Single();
+
+        Assert.Contains(
+            merged.Elements(Ui + "ResourceDictionary"),
+            entry => (string?)entry.Attribute("Source") == source);
+
+        var csproj = File.ReadAllText(
+            Path.Combine(LocalisationTests.AppDirectory(), "Astrid.App.csproj"));
+        Assert.Contains(@"Link=""Assets\Design\AstridTokens.xaml""", csproj, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -475,56 +534,69 @@ public sealed class DesignTokenTests
     /// would be — so an unmapped key fails here rather than being skipped.
     /// </para>
     /// <para>
-    /// This is the gate that makes the hand-written brushes safe to keep until they can be
-    /// deleted. The three things adoption used to wait on from astrid-core all arrived with
-    /// ADEV-1 — a <c>Default</c> theme dictionary, the two DS9 surface aliases, and WinUI's
-    /// accent-button names — which is why the alias table that used to sit below is gone.
+    /// This was the gate that made the hand-written brushes safe to keep until they could be
+    /// deleted: it compared each of <c>App.xaml</c>'s sixty-six to the generated value. The three
+    /// things adoption waited on from astrid-core all arrived with ADEV-1 — a <c>Default</c> theme
+    /// dictionary, the two DS9 surface aliases, and WinUI's accent-button names — and task
+    /// 1fae8c54 then deleted the brushes and merged the file, so there is no longer a second copy
+    /// to compare. What is left to check is the half that was always the point: a brush the shell
+    /// PAINTS with is one astrid-core's register carries.
     /// </para>
     /// <para>
-    /// <strong>Adoption was then tried, and does not work.</strong> Merging the generated
-    /// dictionary into <c>Application.Resources</c> and deleting these brushes builds, passes
-    /// every unit test, and renders LIGHT correctly — and silently breaks DARK: the chat bubble
-    /// came back painted <c>#EFF6FF</c>, the LIGHT <c>AstridBgSelected</c>, which is the
-    /// white-on-white bug <c>ChatBubbleContrastTests</c> exists to catch. The reason is this
-    /// shell's own: it never sets <c>Application.RequestedTheme</c> and applies the appearance by
-    /// setting <c>RequestedTheme</c> on ShellPage's root (see <c>ThemeBrushes</c>), and theme
-    /// dictionaries reached through the application's merged dictionaries do not follow an
-    /// element's requested theme the way ones declared on <c>App.xaml</c> itself do.
-    /// </para>
-    /// <para>
-    /// So the brushes stay here, and this keeps comparing them. Moving them needs the shell's
-    /// theme switching rethought first, not another emitter change — board task 1fae8c54 carries
-    /// the finding.
+    /// Driven from the shell's own XAML, not from <see cref="Brushes"/>. That table is this file's
+    /// claim about which token each brush is; a <c>ThemeResource</c> naming a key no theme
+    /// dictionary defines is a different mistake, and one the table cannot see because it would
+    /// never be added to it. XAML catches the unresolvable key at build time — but only for a key
+    /// nothing defines anywhere, and the shell's root dictionary and <c>ShellResources</c> define
+    /// plenty. A themed name resolved out of the ROOT is the failure here: it is one value in both
+    /// appearances, which is the white-on-white bug with a different cause.
     /// </para>
     /// </remarks>
     [Theory]
-    [InlineData("Default", "Light")]
-    [InlineData("Light", "Light")]
-    [InlineData("Dark", "Dark")]
-    public void Every_themed_brush_is_the_generated_value_task_fdd8ef7f(
-        string dictionary, string generatedTheme)
+    [InlineData("Default")]
+    [InlineData("Light")]
+    [InlineData("Dark")]
+    public void Every_brush_the_shell_paints_with_is_in_the_register_task_1fae8c54(string dictionary)
     {
-        var written = ThemeBrushes(dictionary);
-        var generated = GeneratedBrushes(generatedTheme);
+        var generated = GeneratedBrushes(dictionary);
+        Assert.NotEmpty(generated);
 
-        Assert.NotEmpty(written);
-        foreach (var (brush, colour) in written)
+        // Everything App.xaml states outside the theme dictionaries, plus ShellResources' keys and
+        // the checkbox art's: a ThemeResource naming one of those is answered, and is not themed.
+        var app = XDocument.Load(Path.Combine(LocalisationTests.AppDirectory(), "App.xaml")).Root!;
+        var themeDictionaries = app.Descendants(Ui + "ResourceDictionary.ThemeDictionaries").Single();
+        var elsewhere = app.Descendants()
+            .Where(element => !element.Ancestors().Contains(themeDictionaries))
+            .Concat(XDocument
+                .Load(Path.Combine(LocalisationTests.AppDirectory(), "Views", "ShellResources.xaml"))
+                .Root!.Descendants())
+            .Concat(XDocument.Load(CheckboxArtPath()).Root!.DescendantsAndSelf())
+            .Select(element => (string?)element.Attribute(Xaml + "Key"))
+            .OfType<string>()
+            .ToHashSet(StringComparer.Ordinal);
+
+        var missing = new List<string>();
+        var seen = 0;
+
+        foreach (var path in LocalisationTests.WindowXaml(LocalisationTests.AppDirectory()))
         {
-            // By the brush's own name. There used to be a GeneratedNames table here, mapping the
-            // five whose names this shell and the generator spelled differently — the two DS9
-            // surfaces and WinUI's three accent-button brushes. astrid-core ADEV-1 taught the
-            // emitter all five, so every row became an identity and the table went (task
-            // 1fae8c54). Its own comment said that is how it should end.
-            Assert.True(
-                generated.ContainsKey(brush),
-                $"App.xaml's {brush} has no counterpart in the generated dictionary's "
-                    + $"{generatedTheme} theme, so astrid-core's design register does not carry "
-                    + "it. A brush this shell paints with belongs in the register, not here.");
-            Assert.True(
-                generated[brush] == colour,
-                $"App.xaml's {brush} is {colour} in the {dictionary} dictionary, but astrid-core "
-                    + $"generates {generated[brush]} for it in the {generatedTheme} theme.");
+            var xaml = File.ReadAllText(path);
+            foreach (var use in Regex.Matches(xaml, @"\{ThemeResource\s+(?<key>Astrid[A-Za-z]+)\}"))
+            {
+                var key = ((Match)use).Groups["key"].Value;
+                seen++;
+
+                if (!generated.ContainsKey(key) && !elsewhere.Contains(key))
+                {
+                    missing.Add($"{Path.GetFileName(path)}: {key}");
+                }
+            }
         }
+
+        // A sweep that stopped finding them would pass by reading nothing. The shell names its
+        // themed brushes in the hundreds; a hundred is far below that and far above an accident.
+        Assert.True(seen > 100, $"only {seen} ThemeResource uses found — the sweep read nothing");
+        Assert.Empty(missing.Distinct());
     }
 
     /// <summary>

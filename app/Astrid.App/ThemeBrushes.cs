@@ -72,13 +72,9 @@ internal static class ThemeBrushes
 
     private static Brush Resolve(ElementTheme theme, string key)
     {
-        var dictionaries = Application.Current.Resources.ThemeDictionaries;
         var wanted = theme == ElementTheme.Dark ? "Dark" : "Default";
 
-        if (dictionaries.TryGetValue(wanted, out var entry)
-            && entry is ResourceDictionary themed
-            && themed.TryGetValue(key, out var found)
-            && found is Brush brush)
+        if (Themed(Application.Current.Resources, wanted, key) is Brush brush)
         {
             return brush;
         }
@@ -87,5 +83,47 @@ internal static class ThemeBrushes
         return Application.Current.Resources.TryGetValue(key, out var fallback) && fallback is Brush root
             ? root
             : new SolidColorBrush(Colors.Gray);
+    }
+
+    /// <summary>
+    /// <paramref name="key"/> in <paramref name="theme"/>, looked for in a dictionary's own theme
+    /// dictionaries and then in each dictionary it merges (task 1fae8c54).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The merged half is the part that is easy to leave out, and it is silent when it is. The
+    /// shell's colours are astrid-core's generated <c>design/AstridTokens.xaml</c>, which
+    /// <c>App.xaml</c> MERGES — so <c>Application.Current.Resources.ThemeDictionaries</c> holds only
+    /// the accent ramp, and a lookup that stopped there would find no brush at all and fall through
+    /// to the root. The root search does walk merged dictionaries, but it resolves their theme
+    /// dictionaries against <c>Application.RequestedTheme</c>, which this app never sets — so every
+    /// caller would be handed the LIGHT value, and on a dark theme would paint a light shape on a
+    /// dark surface. That is the same white-on-white chat bubble task 770625f8 fixed, reintroduced
+    /// by moving the brushes rather than by changing one.
+    /// </para>
+    /// <para>
+    /// Recursive, because a merged dictionary may merge one of its own; the shell's are one deep
+    /// today and nothing says they stay that way.
+    /// </para>
+    /// </remarks>
+    private static Brush? Themed(ResourceDictionary dictionary, string theme, string key)
+    {
+        if (dictionary.ThemeDictionaries.TryGetValue(theme, out var entry)
+            && entry is ResourceDictionary themed
+            && themed.TryGetValue(key, out var found)
+            && found is Brush brush)
+        {
+            return brush;
+        }
+
+        foreach (var merged in dictionary.MergedDictionaries)
+        {
+            if (Themed(merged, theme, key) is Brush inherited)
+            {
+                return inherited;
+            }
+        }
+
+        return null;
     }
 }
