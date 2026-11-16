@@ -139,34 +139,7 @@ public sealed class ChatBubbleContrastTests
         return true;
     }
 
-    /// <summary>A colour <c>App.xaml</c> states, from the theme dictionary that is on screen.</summary>
-    private static int Brush(string theme, string key)
-    {
-        var xaml = XDocument.Load(Path.Combine(RepositoryRoot(), "app", "Astrid.App", "App.xaml"));
-        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
-        var wanted = theme == "dark" ? "Dark" : "Light";
-        var dictionary = xaml.Descendants()
-            .FirstOrDefault(element =>
-                element.Name.LocalName == "ResourceDictionary"
-                && (string?)element.Attribute(x + "Key") == wanted)
-            ?? throw new InvalidOperationException($"App.xaml has no '{wanted}' theme dictionary");
+    /// <summary>The colour the shell states for a key, in the theme on screen.</summary>
+    private static int Brush(string theme, string key) => ShellColours.Brush(theme, key);
 
-        var stated = dictionary.Elements()
-                .FirstOrDefault(element => (string?)element.Attribute(x + "Key") == key)
-            ?? throw new InvalidOperationException($"App.xaml's {wanted} dictionary does not state {key}");
-
-        var value = (string?)stated.Attribute("Color") ?? stated.Value;
-        return Convert.ToInt32(value.Trim().TrimStart('#'), 16);
-    }
-
-    private static string RepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !Directory.Exists(Path.Combine(directory.FullName, "design")))
-        {
-            directory = directory.Parent;
-        }
-        return directory?.FullName
-            ?? throw new InvalidOperationException("no repository root above " + AppContext.BaseDirectory);
-    }
 }
