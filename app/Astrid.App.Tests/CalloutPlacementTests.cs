@@ -44,17 +44,19 @@ public class CalloutPlacementTests
         // side/room-on-the-right
         var right = AstridClient.CalloutPlacement(Row(40, 300), Window, 420, 520);
         Assert.Equal("right", right.Side);
-        Assert.Equal(368, right.Left);
+        Assert.Equal(360, right.Left);
 
-        // side/room-on-the-left — the callout's own RIGHT edge sits a gutter clear of the anchor.
+        // side/room-on-the-left — the callout TOUCHES its anchor: its right edge, where the arrow tip
+        // is, sits on the anchor's left edge. It used to stand a gutter clear; astrid-ios AITD-679
+        // moved the gutter to being the clearance from the VIEWPORT only, and the fixture with it.
         var left = AstridClient.CalloutPlacement(Row(1000, 300), Window, 420, 520);
         Assert.Equal("left", left.Side);
-        Assert.Equal(572, left.Left);
+        Assert.Equal(580, left.Left);
 
         // side/equal-room-opens-right — a 320 column centred in 1400 leaves 540 each side.
         var tie = AstridClient.CalloutPlacement(Row(540, 300), Window, 420, 520);
         Assert.Equal("right", tie.Side);
-        Assert.Equal(868, tie.Left);
+        Assert.Equal(860, tie.Left);
     }
 
     /// <summary>

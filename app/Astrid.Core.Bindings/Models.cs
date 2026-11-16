@@ -398,6 +398,42 @@ public sealed record SidebarSections
 
     /// <summary>Everything else that can hold a task.</summary>
     [JsonPropertyName("lists")] public IReadOnlyList<ListSummary> Lists { get; init; } = [];
+
+    /// <summary>
+    /// The projects, each with its lists (task f8b844dd; core AWTD-1681).
+    /// </summary>
+    /// <remarks>
+    /// <c>null</c> when no section is drawn at all — Project Mode is off for this reader, or they
+    /// can see no project. The core decides that, not the shell: it reads the <c>project_mode</c>
+    /// flag itself and answers with no section rather than an empty one, so a shell that drew a
+    /// heading over an empty list would be drawing a heading the core said not to.
+    /// </remarks>
+    [JsonPropertyName("projects")] public IReadOnlyList<SidebarProject>? Projects { get; init; }
+}
+
+/// <summary>
+/// One project in the sidebar's Projects section (task f8b844dd; core AWTD-1681).
+/// </summary>
+/// <remarks>
+/// A list that belongs to a project appears BOTH here, under its project, and in
+/// <see cref="SidebarSections.Lists"/> — the core is explicit that the Projects section is a
+/// second way in and not a move, as it is on the web.
+/// </remarks>
+public sealed record SidebarProject
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    /// <summary>The project's name, else its key, else empty — the core's own fallback chain.</summary>
+    [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
+
+    /// <summary>Its colour, or the default blue when it has none. Already resolved by the core.</summary>
+    [JsonPropertyName("color")] public string Color { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The lists whose own <c>projectId</c> is this project, by name, badged like every other
+    /// entry. Empty for a project with no lists, which still shows so it can get its first.
+    /// </summary>
+    [JsonPropertyName("lists")] public IReadOnlyList<ListSummary> Lists { get; init; } = [];
 }
 
 /// <summary>A list, as the sidebar needs it.</summary>

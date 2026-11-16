@@ -1966,6 +1966,146 @@ public sealed class ShellViewModelTests
         Assert.Equal(after, core.SentKinds().Count(kind => kind == "projectBoardRows"));
     }
 
+    // ── The sidebar's Projects section (task f8b844dd; core AWTD-1681) ──────────────────────────
+
+    /// <summary>
+    /// A sidebar answer carrying a Projects section, which is what the core sends once Project
+    /// Mode is on and there is a project to see.
+    /// </summary>
+    private static object SidebarWithProjects() => new
+    {
+        myTasks = (object?)null,
+        favorites = Array.Empty<object>(),
+        // A list in a project is in BOTH sections. That is the core's decision, and a shell that
+        // took it out of Lists would be making a different one.
+        lists = new object[]
+        {
+            new { id = "p1", name = "Launch", projectId = "proj-1" },
+            new { id = "l1", name = "Home" },
+        },
+        projects = new object[]
+        {
+            new
+            {
+                id = "proj-1",
+                name = "Launch",
+                color = "#3b82f6",
+                lists = new object[] { new { id = "p1", name = "Launch", projectId = "proj-1" } },
+            },
+            new { id = "proj-2", name = "Empty", color = "#ef4444", lists = Array.Empty<object>() },
+        },
+    };
+
+    [Fact]
+    public async Task The_sidebar_draws_the_projects_section_the_core_sent_task_f8b844dd()
+    {
+        var core = new FakeCore()
+            .AnswerOk("isSignedIn", new { signedIn = true, waitingForCallback = false })
+            .AnswerOk("sidebar", SidebarWithProjects())
+            .AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("outboxStats", new { hasUnsentWork = false })
+            .AnswerOk("sync", new { fetched = false });
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        Assert.True(shell.Sidebar.ShowsProjects);
+        Assert.Equal(["Launch", "Empty"], shell.Sidebar.Projects.Select(project => project.Name));
+        // Collapsed to begin with, so a project costs one row until it is opened.
+        Assert.All(shell.Sidebar.Projects, project => Assert.Empty(project.Lists));
+        // A project with no lists keeps its row but offers no chevron.
+        Assert.True(shell.Sidebar.Projects[0].CanExpand);
+        Assert.False(shell.Sidebar.Projects[1].CanExpand);
+    }
+
+    /// <summary>
+    /// A project expands to its lists, and stays expanded across the reloads the sidebar does
+    /// several times a minute.
+    /// </summary>
+    /// <remarks>
+    /// The expansion is held on the sidebar rather than on the row object, which is rebuilt every
+    /// load — the same reason the board's column drafts are held on the board. Kept on the row it
+    /// would collapse under the reader whenever anything refreshed.
+    /// </remarks>
+    [Fact]
+    public async Task An_expanded_project_stays_expanded_across_a_reload_task_f8b844dd()
+    {
+        var core = new FakeCore()
+            .AnswerOk("isSignedIn", new { signedIn = true, waitingForCallback = false })
+            .AnswerOk("sidebar", SidebarWithProjects())
+            .AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("outboxStats", new { hasUnsentWork = false })
+            .AnswerOk("sync", new { fetched = false })
+            .AnswerOk("sidebar", SidebarWithProjects());
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        shell.Sidebar.Projects[0].ToggleExpanded();
+        Assert.Equal(["Launch"], shell.Sidebar.Projects[0].Lists.Select(list => list.Name));
+        Assert.True(shell.Sidebar.Projects[0].IsExpanded);
+
+        await shell.Sidebar.LoadAsync();
+
+        Assert.True(shell.Sidebar.Projects[0].IsExpanded, "and it survived the reload");
+        Assert.Single(shell.Sidebar.Projects[0].Lists);
+    }
+
+    /// <summary>
+    /// No section when the core sent none — which is Project Mode off, or no project this reader
+    /// can see. The core answers with no section rather than an empty one, so there is no heading
+    /// to draw.
+    /// </summary>
+    [Fact]
+    public async Task No_projects_section_when_the_core_sent_none_task_f8b844dd()
+    {
+        var core = StartedCoreWith(Lists(("l1", "Home", null)));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+
+        Assert.False(shell.Sidebar.ShowsProjects);
+        Assert.Empty(shell.Sidebar.Projects);
+    }
+
+    /// <summary>
+    /// A project opened from the sidebar opens ITS board, whichever list happens to be open — and
+    /// leaves a toggle that can dismiss it.
+    /// </summary>
+    /// <remarks>
+    /// The second half is the trap task a66f0a16 closed for the single-list board: the toggle used
+    /// to be gated on the open list alone, so opening a project board while a list with no project
+    /// was open would hide the only control that dismisses it.
+    /// </remarks>
+    [Fact]
+    public async Task A_project_opened_from_the_sidebar_opens_its_own_board_task_f8b844dd()
+    {
+        var core = new FakeCore()
+            .AnswerOk("isSignedIn", new { signedIn = true, waitingForCallback = false })
+            .AnswerOk("sidebar", SidebarWithProjects())
+            .AnswerOk("rowsForList", EmptyWindow())
+            .AnswerOk("outboxStats", new { hasUnsentWork = false })
+            .AnswerOk("sync", new { fetched = false })
+            .AnswerOk("lists", Lists(("p1", "Launch", "proj-1")))
+            .AnswerOk("projectBoardRows", BoardRows("p1"))
+            .AnswerOk("projectBoardRow", BoardWith("t1"));
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        // Home is open — it belongs to no project, so the header offers nothing to begin with.
+        await shell.OpenListAsync("l1", "Home");
+        Assert.False(shell.ShowsProjectBoardToggle);
+
+        await shell.OpenProjectBoardAsync("proj-1");
+
+        Assert.True(shell.IsProjectBoardView);
+        Assert.Equal("proj-1", shell.ProjectBoard.ProjectId);
+        Assert.Single(shell.ProjectBoard.Rows);
+        Assert.True(shell.ShowsProjectBoardToggle, "there is a way back out of it");
+
+        await shell.ShowProjectBoardAsync(false);
+
+        Assert.False(shell.IsProjectBoardView);
+        Assert.True(shell.ShowsListRows);
+        Assert.False(shell.ShowsProjectBoardToggle, "and it is not offered on this list again");
+    }
+
     /// <summary>
     /// A post that queues work for a later turn, as a real dispatcher does (task 303f20c2).
     /// </summary>

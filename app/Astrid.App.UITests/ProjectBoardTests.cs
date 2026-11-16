@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Windows.Automation;
@@ -119,6 +121,68 @@ public sealed class ProjectBoardTests
                 new PropertyCondition(AutomationElement.NameProperty, "Remove this row"))
             .Cast<AutomationElement>());
     }
+
+    /// <summary>
+    /// The sidebar draws a Projects section, and a project expands to its lists (task f8b844dd).
+    /// </summary>
+    /// <remarks>
+    /// Reachable here where the board itself is not, because the sidebar is a projection over the
+    /// cache: no server is involved, so the whole section — the heading, the project rows, the
+    /// chevron and the lists under it — is real in this window. The flag that gates it is a
+    /// metadata row the seed writes, which is where the core reads it from.
+    /// </remarks>
+    [Fact]
+    public void The_sidebar_draws_a_projects_section_that_expands_task_f8b844dd()
+    {
+        using var app = AstridApp.Launch(signedIn: true, seed: Seeds.ProjectWithTwoLists);
+        Thread.Sleep(1500);
+
+        Assert.True(app.Sees("Projects"), "the section's heading is drawn");
+        var project = Bounds(app, Seeds.ProjectName);
+        _output.WriteLine($"the project row: {project}");
+        Assert.True(project.Width > 0, "the project has a row");
+
+        // Shut to begin with: the chevron is there, and the lists are not under it yet.
+        var chevron = app.Require("Show the project's lists");
+        var listsBefore = ListRowsUnder(app, project);
+        _output.WriteLine($"{listsBefore} list rows under the project before");
+
+        ((InvokePattern)chevron.GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+        Thread.Sleep(900);
+
+        var listsAfter = ListRowsUnder(app, project);
+        _output.WriteLine($"{listsAfter} after");
+        Assert.True(listsAfter > listsBefore,
+            $"expanding put the project's lists under it ({listsBefore} -> {listsAfter})");
+
+        // And a picture of it, for the by-eye half. The assertions above say the rows are there
+        // and in the right order; whether the indent, the dot and the chevron READ as a section is
+        // not a rectangle, and the only way to answer it is to look. It is left in the system
+        // temp directory, named by this run, so whoever ran the suite can open it afterwards —
+        // the app's own data directory would not do, since Dispose takes that away with the app.
+        using var shot = Capture.Window(new IntPtr(app.Window.Current.NativeWindowHandle));
+        var path = shot.SavePng(Path.Combine(
+            Path.GetTempPath(), $"astrid-projects-sidebar-{Environment.ProcessId}.png"));
+        _output.WriteLine($"screenshot: {path}");
+        Assert.False(shot.IsBlank(), "the window actually drew something");
+    }
+
+    /// <summary>
+    /// How many rows named after one of the project's lists sit BELOW the project's own row.
+    /// </summary>
+    /// <remarks>
+    /// Below, because each of those lists also has a row in the Lists section above — the core
+    /// puts a project's lists in both sections on purpose — so counting them anywhere on screen
+    /// would count the same number before and after.
+    /// </remarks>
+    private static int ListRowsUnder(AstridApp app, System.Windows.Rect project) =>
+        new[] { Seeds.FirstRowName, Seeds.SecondRowName }
+            .SelectMany(name => app.Window
+                .FindAll(TreeScope.Descendants,
+                    new PropertyCondition(AutomationElement.NameProperty, name))
+                .Cast<AutomationElement>())
+            .Select(element => element.Current.BoundingRectangle)
+            .Count(bounds => bounds.Width > 0 && bounds.Y > project.Y);
 
     /// <summary>Open a list that belongs to the seeded project, which is what offers the toggle.</summary>
     private static void SelectAProjectList(AstridApp app)

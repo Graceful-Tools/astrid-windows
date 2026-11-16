@@ -196,6 +196,56 @@ public sealed partial class SidebarView : UserControl
         await Shell.OpenSelectedAsync();
     }
 
+    // ── The Projects section (task f8b844dd) ────────────────────────────────────────────────────
+
+    /// <summary>The chevron: open or close a project's lists. It opens no board.</summary>
+    /// <remarks>
+    /// Two controls on one row because they do two things — the web's Projects section is the
+    /// same. A single row that both navigated and expanded would make "see what is in this
+    /// project" and "go to this project" the same gesture, and one of them would always be the
+    /// one you did not want.
+    /// </remarks>
+    private void OnToggleProject(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.DataContext is SidebarProjectView project)
+        {
+            project.ToggleExpanded();
+        }
+    }
+
+    /// <summary>The project's name: open its board.</summary>
+    private async void OnOpenProjectBoard(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is string projectId)
+        {
+            await Shell.OpenProjectBoardAsync(projectId);
+        }
+    }
+
+    /// <summary>
+    /// A list under a project: open the list, as clicking it in the Lists section would.
+    /// </summary>
+    /// <remarks>
+    /// Through the sidebar's own <c>Selected</c>, so the highlight lands on that list's row in
+    /// the Lists section above — where every list has exactly one row, whichever way it was
+    /// reached. The core puts a project's lists in both sections on purpose.
+    /// </remarks>
+    private async void OnOpenProjectList(object sender, RoutedEventArgs args)
+    {
+        if ((sender as FrameworkElement)?.Tag is not string listId)
+        {
+            return;
+        }
+        var list = Shell.Sidebar.Favorites.Concat(Shell.Sidebar.Lists)
+            .FirstOrDefault(candidate => candidate.Id == listId);
+        if (list is null)
+        {
+            return;
+        }
+        Shell.Sidebar.Selected = list;
+        await Shell.OpenSelectedAsync();
+    }
+
     private async void OnAddList(object sender, RoutedEventArgs args) => await AddTypedList();
 
     private async void OnNewListKeyDown(object sender, KeyRoutedEventArgs args)

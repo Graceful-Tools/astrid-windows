@@ -362,6 +362,14 @@ internal static class Seeds
                 ("$list", listId));
         }
 
+        // Project Mode, which is what makes the core draw a Projects section at all. It reads the
+        // flag itself (AWTD-1681) and answers with NO section rather than an empty one when it is
+        // off, so without this row the sidebar has no Projects heading — correctly, and the
+        // section would be untestable.
+        Execute(connection,
+            "INSERT OR REPLACE INTO metadata (key, value) VALUES ('account.features', $json)",
+            ("$json", """{"project_mode":true}"""));
+
         List("lweb", FirstRowName, "p1");
         List("lios", SecondRowName, "p1");
         List("lshop", OffBoardListName, null);
