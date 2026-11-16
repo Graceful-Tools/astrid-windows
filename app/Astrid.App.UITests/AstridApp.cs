@@ -63,7 +63,14 @@ public sealed class AstridApp : IDisposable
     /// itself, such as a list that has a board. Runs against the cache file after a first start has
     /// created it, so the schema is the core's own and never a copy kept here.
     /// </param>
-    public static AstridApp Launch(bool signedIn, string? language = null, Action<string>? seed = null)
+    /// <param name="server">
+    /// A stub server for the surfaces that cannot be drawn without one (task 68b00422). The app
+    /// is pointed at it through <c>ASTRID_SERVER_URL</c>, which accepts http on loopback and
+    /// nothing else — so no production rule is relaxed to make this work. Null is the ordinary
+    /// case: most of the app is a projection over the cache and needs no server at all.
+    /// </param>
+    public static AstridApp Launch(bool signedIn, string? language = null,
+        Action<string>? seed = null, StubServer? server = null)
     {
         var directory = Path.Combine(
             Path.GetTempPath(), "astrid-uitests", Guid.NewGuid().ToString("n"));
@@ -77,14 +84,14 @@ public sealed class AstridApp : IDisposable
         {
             // The first start is only for the cache file: the core opens it and runs its
             // migrations, which is the one way the schema exists on disk.
-            var (first, _) = Start(directory, language);
+            var (first, _) = Start(directory, language, server);
             first.Kill();
             first.WaitForExit(5000);
             first.Dispose();
-            seed(Path.Combine(directory, "astrid.db"));
+            seed(CacheFile(directory));
         }
 
-        var (process, window) = Start(directory, language);
+        var (process, window) = Start(directory, language, server);
         // The first paint is a cache read, but the window appears before it lands.
         Thread.Sleep(1500);
         var app = new AstridApp(process, directory, window);
@@ -99,10 +106,35 @@ public sealed class AstridApp : IDisposable
         return app;
     }
 
-    private static (Process Process, AutomationElement Window) Start(string directory, string? language)
+    /// <summary>
+    /// The cache file the app actually made.
+    /// </summary>
+    /// <remarks>
+    /// NOT hardcoded as <c>astrid.db</c> any more. A chosen server gets a cache of its own —
+    /// <c>astrid-&lt;host&gt;-&lt;port&gt;.db</c>, so two servers' accounts can never share one
+    /// (<c>ServerSelection.CacheFileName</c>) — so with a stub server the seed would have written
+    /// a file the app never opens, and every seeded row would have gone silently missing.
+    /// Reading back what the first start left is the one answer that cannot drift from that rule.
+    /// </remarks>
+    private static string CacheFile(string directory)
+    {
+        var made = Directory.GetFiles(directory, "*.db");
+        return made.Length == 1
+            ? made[0]
+            : throw new InvalidOperationException(
+                $"expected one cache file in {directory}, found {made.Length}: " +
+                string.Join(", ", made.Select(Path.GetFileName)));
+    }
+
+    private static (Process Process, AutomationElement Window) Start(string directory,
+        string? language, StubServer? server = null)
     {
         var start = new ProcessStartInfo(ExecutablePath()) { UseShellExecute = false };
         start.Environment["ASTRID_DATA_DIR"] = directory;
+        if (server is not null)
+        {
+            start.Environment["ASTRID_SERVER_URL"] = server.Origin;
+        }
         if (language is not null)
         {
             start.Environment["ASTRID_LANGUAGE"] = language;
