@@ -13,7 +13,7 @@ namespace Astrid.App.UITests;
 /// <para>
 /// This is the clause of that task no other test could answer: *the checkbox checked by eye in both
 /// themes — the colours of a 17px glyph are exactly what a green test suite cannot see*.
-/// `PriorityPaletteTests` pins the four brushes in `App.xaml` to the vendored tokens per theme, and
+/// `PriorityPaletteTests` pins the four brushes to the vendored tokens per theme, and
 /// `DesignTokenTests` keeps that table honest, but both of them read XAML. Neither can see whether
 /// the right brush reaches the right element at run time — which is a real question here, because
 /// the colour is resolved through <c>ThemeBrushes.For</c> against the theme the element is
@@ -22,10 +22,10 @@ namespace Astrid.App.UITests;
 /// dark the window is, and that mistake is invisible to everything except a rendered pixel.
 /// </para>
 /// <para>
-/// So the chain is held end to end: astrid-core's tokens → `App.xaml` (`DesignTokenTests`,
-/// `PriorityPaletteTests`) → the screen (here). This test deliberately reads its expectations out
-/// of `App.xaml` rather than restating the hexes, so it asserts the one link the others do not and
-/// cannot drift from them.
+/// So the chain is held end to end: astrid-core's tokens → the vendored dictionary `App.xaml`
+/// merges (`DesignTokenTests`, `PriorityPaletteTests`) → the screen (here). This test deliberately
+/// reads its expectations out of that dictionary rather than restating the hexes, so it asserts the
+/// one link the others do not and cannot drift from them.
 /// </para>
 /// </remarks>
 [Collection("ui")]
