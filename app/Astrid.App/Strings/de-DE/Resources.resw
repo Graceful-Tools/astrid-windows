@@ -2361,4 +2361,13 @@
   <data name="project_board_emptied_hint.Text" xml:space="preserve">
     <value>Füge eine Liste hinzu, um eine Zeile zurückzubringen. Es wurde nichts gelöscht.</value>
   </data>
+  <data name="projects.Text" xml:space="preserve">
+    <value>Projekte</value>
+  </data>
+  <data name="expand_project.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Listen des Projekts anzeigen</value>
+  </data>
+  <data name="expand_project.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Listen des Projekts anzeigen</value>
+  </data>
 </root>

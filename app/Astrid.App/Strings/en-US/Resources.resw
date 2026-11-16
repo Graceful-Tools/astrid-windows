@@ -2371,4 +2371,13 @@
   <data name="project_board_emptied_hint.Text" xml:space="preserve">
     <value>Add a list to put a row back. Nothing was deleted.</value>
   </data>
+  <data name="projects.Text" xml:space="preserve">
+    <value>Projects</value>
+  </data>
+  <data name="expand_project.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Show the project's lists</value>
+  </data>
+  <data name="expand_project.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Show the project's lists</value>
+  </data>
 </root>

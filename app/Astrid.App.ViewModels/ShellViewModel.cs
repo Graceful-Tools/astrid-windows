@@ -306,11 +306,19 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// (task f8b844dd).
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The same two gates as <see cref="ShowsBoardToggle"/>, because it is the same project: a
     /// list that has a board has a project, and a project board is that project seen whole rather
     /// than through one of its lists.
+    /// </para>
+    /// <para>
+    /// Plus one more case: a board opened from the sidebar's Projects section, where the open list
+    /// may belong to no project at all. Without it the toggle that dismisses the board would be
+    /// hidden by the very act of opening it — the trap task a66f0a16 closed for the single-list
+    /// board, where the only way back was to open the board's own list again.
     /// </remarks>
-    public bool ShowsProjectBoardToggle => ProjectModeEnabled && OpenListHasBoard;
+    public bool ShowsProjectBoardToggle =>
+        ProjectModeEnabled && (OpenListHasBoard || IsProjectBoardView);
 
     /// <summary>Whether Google Tasks linking is offered (the <c>google_tasks</c> flag).</summary>
     public bool GoogleTasksEnabled
@@ -652,6 +660,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             {
                 Raise(nameof(ShowsEmptyList));
                 Raise(nameof(ShowsListRows));
+                // The toggle is offered while this is open even on a list with no project, so
+                // there is always a way back; so its visibility moves with this.
+                Raise(nameof(ShowsProjectBoardToggle));
                 RaiseDetailPlacement();
             }
         }
@@ -798,20 +809,39 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// pane keeps the task on screen without moving the board.
     /// </para>
     /// </remarks>
-    public async Task ShowProjectBoardAsync(bool board,
+    public Task ShowProjectBoardAsync(bool board,
+        CancellationToken cancellationToken = default) =>
+        board
+            ? OpenProjectBoardAsync(OpenListProjectId, cancellationToken)
+            : OpenProjectBoardAsync(null, cancellationToken);
+
+    /// <summary>
+    /// Open a named project's board, or close the board with <c>null</c> (task f8b844dd).
+    /// </summary>
+    /// <remarks>
+    /// This is what the sidebar's Projects section calls: a project there is not the open list's,
+    /// and the reader has not chosen a list at all. The header's toggle goes through
+    /// <see cref="ShowProjectBoardAsync"/>, which is this with the open list's project — one path,
+    /// so a board opened either way is the same board.
+    /// </remarks>
+    public async Task OpenProjectBoardAsync(string? projectId,
         CancellationToken cancellationToken = default)
     {
-        if (board && IsBoardView)
+        var opening = !string.IsNullOrEmpty(projectId);
+        if (opening && IsBoardView)
         {
             // Exclusive, as in ShowBoardAsync, and the card opened in place goes with the view.
             Board.Collapse();
             IsBoardView = false;
         }
-        IsProjectBoardView = board;
-        if (board && OpenListProjectId is { Length: > 0 } projectId)
+        IsProjectBoardView = opening;
+        if (opening)
         {
-            await ProjectBoard.LoadAsync(projectId, cancellationToken);
+            await ProjectBoard.LoadAsync(projectId!, cancellationToken);
         }
+        // The toggle's visibility depends on this view being open as well as on the open list, so
+        // that a board reached from the sidebar still has a control that dismisses it.
+        RaiseBoardAvailability();
         RaiseDetailPlacement();
     }
 

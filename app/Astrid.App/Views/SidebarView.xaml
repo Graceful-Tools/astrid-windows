@@ -244,6 +244,84 @@
                           ItemContainerStyle="{StaticResource SidebarRowStyle}"
                           ItemTemplate="{StaticResource SidebarRowTemplate}"
                           SelectionMode="Single" />
+
+                <!--
+                    Projects (task f8b844dd; core AWTD-1681). Tapping a project opens its board;
+                    the chevron expands it to its lists.
+
+                    Whether this section exists at all is the core's answer, not a count of rows:
+                    it reads the project_mode flag itself and sends no section rather than an
+                    empty one, so the heading follows that and not Projects.Count directly.
+
+                    A list under a project is ALSO in the Lists section above — the core is
+                    explicit that this is a second way in and not a move, as the web is. So these
+                    are plain buttons rather than a fourth ListView: the selection highlight has
+                    one home, which is the row in Lists, and OnListSelected keeps its three
+                    named views rather than an unbounded set of nested ones.
+                -->
+                <TextBlock x:Uid="projects" Text="Projects"
+                           Style="{StaticResource SidebarSectionHeadingStyle}"
+                           Visibility="{x:Bind Shell.Sidebar.ShowsProjects, Mode=OneWay, Converter={StaticResource Visible}}" />
+                <ItemsControl ItemsSource="{x:Bind Shell.Sidebar.Projects, Mode=OneWay}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="viewmodels:SidebarProjectView">
+                            <StackPanel>
+                                <Grid Style="{StaticResource SidebarProjectRowStyle}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <!--
+                                        A project with no lists keeps its row — that is how it
+                                        gets its first — but not a chevron, which would open onto
+                                        nothing.
+                                    -->
+                                    <Button x:Uid="expand_project" Grid.Column="0"
+                                            Style="{StaticResource SidebarProjectChevronStyle}"
+                                            AutomationProperties.Name="Show the project's lists"
+                                            ToolTipService.ToolTip="Show the project's lists"
+                                            Content="{x:Bind Chevron, Mode=OneWay}"
+                                            Tag="{x:Bind Id}"
+                                            Visibility="{x:Bind CanExpand, Converter={StaticResource Visible}}"
+                                            Click="OnToggleProject" />
+                                    <Border Grid.Column="1"
+                                            Style="{StaticResource SidebarProjectDotStyle}"
+                                            Background="{x:Bind Color, Converter={StaticResource PriorityBrush}}" />
+                                    <Button Grid.Column="2"
+                                            Style="{StaticResource SidebarProjectNameStyle}"
+                                            Content="{x:Bind Name}"
+                                            Tag="{x:Bind Id}"
+                                            Click="OnOpenProjectBoard" />
+                                </Grid>
+                                <ItemsControl Style="{StaticResource SidebarProjectListsStyle}"
+                                              ItemsSource="{x:Bind Lists, Mode=OneWay}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="bindings:ListSummary">
+                                            <Button Style="{StaticResource SidebarProjectListStyle}"
+                                                    Tag="{x:Bind Id}"
+                                                    AutomationProperties.Name="{x:Bind Name}"
+                                                    Click="OnOpenProjectList">
+                                                <Grid Style="{StaticResource SidebarProjectListGridStyle}">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Grid.Column="0"
+                                                            Style="{StaticResource SidebarProjectListDotStyle}"
+                                                            Background="{x:Bind DisplayColor, Converter={StaticResource PriorityBrush}}" />
+                                                    <TextBlock Grid.Column="1"
+                                                               Style="{StaticResource SidebarProjectListNameStyle}"
+                                                               Text="{x:Bind Name}" />
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </StackPanel>
         </ScrollViewer>
 

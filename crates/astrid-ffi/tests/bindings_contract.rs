@@ -96,6 +96,20 @@ fn every_command_the_shell_sends_is_one_the_core_understands() {
 /// the core Windows deliberately leaves alone, so "not needed" is not a reason and will not pass:
 /// say what this shell does instead, or name the task that will bind it.
 const NOT_BOUND: &[(&str, &str)] = &[
+    // ── Moving a list between projects (astrid-ios AITD-680, D68) ────────────────────────────
+    (
+        "setListProject",
+        "Moves a list into a project, or out of one. This shell's list settings edit a list's \
+         name, colour, privacy, members, statuses and integrations, and treat which PROJECT it \
+         belongs to as the board's own fact — a list arrives in a project because the board was \
+         made from it. Binding this means a Project control in list settings, which is its own \
+         task and not the project board's (f8b844dd bound the three board-rows commands).",
+    ),
+    (
+        "listProjectMoves",
+        "What that control would offer: where this list may move, and where a new one may be \
+         created. There is no such control here yet, so there is nothing to populate.",
+    ),
     (
         "clearCache",
         "For a shell whose isolation guard caught another account's rows. This shell has no such \
@@ -554,6 +568,7 @@ const SCHEMA_BACKED_MODELS: &[(&str, &str)] = &[
     ("PublicListOwner", "User"),
     ("ReminderPick", "ReminderPick"),
     ("RepeatPreset", "RepeatPreset"),
+    ("SidebarProject", "SidebarProject"),
     ("SidebarSections", "Sections"),
     ("SummaryPart", "SummaryPart"),
     ("UserSummary", "User"),

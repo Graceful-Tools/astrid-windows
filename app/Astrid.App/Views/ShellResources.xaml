@@ -484,4 +484,78 @@
         <Setter Property="TextWrapping" Value="Wrap" />
         <Setter Property="Foreground" Value="{ThemeResource SystemFillColorCriticalBrush}" />
     </Style>
+
+    <!--
+        The sidebar's Projects section (task f8b844dd; core AWTD-1681).
+
+        Sizes here rather than on the view, for the reason the swimlane styles above give. The
+        three headings already in SidebarView.xaml are left as they are: this section's heading
+        uses the style, and changing the others would lower a budget the ratchet also checks.
+    -->
+    <Style x:Key="SidebarSectionHeadingStyle" TargetType="TextBlock">
+        <Setter Property="Margin" Value="8,12,8,2" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Opacity" Value="0.5" />
+        <Setter Property="Foreground" Value="{ThemeResource AstridTextPrimary}" />
+    </Style>
+    <Style x:Key="SidebarProjectRowStyle" TargetType="Grid">
+        <Setter Property="ColumnSpacing" Value="6" />
+        <Setter Property="Margin" Value="0,0,0,2" />
+    </Style>
+    <!-- The chevron, which only turns: tapping the project's NAME opens its board. -->
+    <Style x:Key="SidebarProjectChevronStyle" TargetType="Button">
+        <Setter Property="FontFamily" Value="{ThemeResource SymbolThemeFontFamily}" />
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="Width" Value="24" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <!-- 16px across with an 8px radius, which is a circle. The colour is the core's. -->
+    <Style x:Key="SidebarProjectDotStyle" TargetType="Border">
+        <Setter Property="Width" Value="16" />
+        <Setter Property="Height" Value="16" />
+        <Setter Property="CornerRadius" Value="{StaticResource AstridRadiusMedium}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style x:Key="SidebarProjectNameStyle" TargetType="Button">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="Padding" Value="4,4" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{ThemeResource AstridTextPrimary}" />
+    </Style>
+    <!-- A project's lists, indented under it. -->
+    <Style x:Key="SidebarProjectListsStyle" TargetType="ItemsControl">
+        <Setter Property="Margin" Value="30,0,0,4" />
+    </Style>
+    <Style x:Key="SidebarProjectListStyle" TargetType="Button">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="Padding" Value="6,3" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <!--
+        A list under its project gets the same colour dot every other sidebar row has: without
+        one the rows read as loose text rather than as lists, and their names sat LEFT of the
+        project name above them. 12px across with a 6px radius, which is a circle.
+    -->
+    <Style x:Key="SidebarProjectListDotStyle" TargetType="Border">
+        <Setter Property="Width" Value="12" />
+        <Setter Property="Height" Value="12" />
+        <Setter Property="CornerRadius" Value="{StaticResource AstridRadiusSmall}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style x:Key="SidebarProjectListGridStyle" TargetType="Grid">
+        <Setter Property="ColumnSpacing" Value="6" />
+    </Style>
+    <Style x:Key="SidebarProjectListNameStyle" TargetType="TextBlock">
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        <Setter Property="Foreground" Value="{ThemeResource AstridTextSecondary}" />
+    </Style>
 </ResourceDictionary>
