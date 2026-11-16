@@ -341,6 +341,54 @@ public sealed partial class BoardView : UserControl
     /// </remarks>
     private const double ArrowGutter = 12;
 
+    /// <summary>
+    /// The narrowest the callout is allowed to shrink to before it stops being worth opening
+    /// beside the card.
+    /// </summary>
+    /// <remarks>
+    /// Below this the pane's own rows — a title, an assignee chip, the four priority squares —
+    /// start wrapping into something nobody can read, and a callout that covers its card is the
+    /// better of two bad answers. So this is a floor, not a target: a board narrow enough to hit
+    /// it gets the core's clamp, which is the behaviour as it was.
+    /// </remarks>
+    private const double MinCalloutWidth = 220;
+
+    /// <summary>
+    /// The box to ask the core to place: the panel plus the arrow's reach, narrowed to what will
+    /// actually fit beside the card (task 914fe805).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The core decides the SIDE and then clamps the box into the viewport; it does not resize it,
+    /// and should not — a rule that silently changed the size it was given would be deciding a
+    /// thing each platform wants differently. So the shell has to hand it a size that can be
+    /// placed, and the room beside the card is what that means: whichever side has more, less the
+    /// clearance the core keeps from the window edge.
+    /// </para>
+    /// <para>
+    /// The same comparison the core makes for the side, deliberately — if this measured room
+    /// differently it could ask for a width that fits the side the core does not choose.
+    /// </para>
+    /// </remarks>
+    private static double FittingWidth(CalloutRect anchor, CalloutRect viewport)
+    {
+        var onTheRight = viewport.Width - (anchor.Left + anchor.Width);
+        var onTheLeft = anchor.Left;
+        var room = Math.Max(onTheRight, onTheLeft) - ViewportGutter;
+        return Math.Clamp(room, MinCalloutWidth + ArrowGutter, CalloutWidth + ArrowGutter);
+    }
+
+    /// <summary>
+    /// The clearance the core keeps between a callout and the window's edge — its `ARROW_MARGIN`
+    /// sibling, `contracts/fixtures/callout-placement.json`'s 8.
+    /// </summary>
+    /// <remarks>
+    /// Written here because the width asked for has to leave it; the core is still the one that
+    /// applies it. If the fixture's value moves, this is the second place to follow it, which is
+    /// why it is named rather than an 8 in the middle of an expression.
+    /// </remarks>
+    private const double ViewportGutter = 8;
+
     private void OnCardCalloutHostLoaded(object sender, RoutedEventArgs args)
     {
         if (sender is ContentControl host)
@@ -382,15 +430,30 @@ public sealed partial class BoardView : UserControl
 
         var anchor = MeasureAgainstBoard(card);
         var height = Math.Min(CalloutHeight, Math.Max(0, viewport.Height - 16));
-        var placement = AstridClient.CalloutPlacement(anchor, viewport, CalloutWidth, height);
+        // The width asked for INCLUDES the arrow's reach, because the core now puts the box's
+        // near edge ON the card's edge (astrid-ios AITD-679, core ed8380c) — the 8px gutter is
+        // only the clearance from the window edges. Ask for the panel's width alone and the box
+        // that comes back is the panel's, so an arrow drawn outside it lands inside the card.
+        //
+        // And it is the width that FITS, which is the shell's decision and not the core's: the
+        // core places a box of the size it is given and clamps it into the viewport, so a box
+        // too wide for the room beside the card is clamped back OVER the card — correctly, and
+        // uselessly. With the chat pane open this board is about 540 logical wide and a card
+        // takes 270 of it, so a 412-wide callout had nowhere to go and covered the task it was
+        // opened from. Asking for what fits is what makes "beside the card" true (task 914fe805).
+        var placement = AstridClient.CalloutPlacement(
+            anchor, viewport, FittingWidth(anchor, viewport), height);
 
-        CardCalloutFrame.Width = placement.Width;
+        CardCalloutFrame.Width = Math.Max(0, placement.Width - ArrowGutter);
         CardCalloutFrame.Height = placement.Height;
-        // Inset on BOTH sides, not just the one in use, so the frame's box is the same whichever
-        // side the core picks and the offset below stays one line. Set here rather than in the
-        // XAML because ArrowGutter is the number, and writing 12 there too would be the same
-        // constant in two files, free to drift the day one of them changes.
-        CardCalloutFrame.Margin = new Thickness(ArrowGutter, 0, ArrowGutter, 0);
+        // Inset on the CARD's side only, which is the gutter the arrow is drawn in. Both sides
+        // were inset while the width asked for was the panel's alone; now that the box carries
+        // the arrow's reach, insetting the far side as well would make the panel a gutter
+        // narrower than it asked to be. Set here rather than in the XAML because ArrowGutter is
+        // the number, and writing 12 there too would be one constant living in two files.
+        CardCalloutFrame.Margin = placement.OpensLeft
+            ? new Thickness(0, 0, ArrowGutter, 0)
+            : new Thickness(ArrowGutter, 0, 0, 0);
 
         // The arrow sits on the edge FACING the anchor, which is the opposite edge from the side
         // the callout opened on: a callout to the left of its card points rightward, at the card.
@@ -407,9 +470,11 @@ public sealed partial class BoardView : UserControl
         CardCalloutArrowOffset.Y = placement.ArrowOffset - ArrowHalf;
         CardCalloutArrow.Visibility = Visibility.Visible;
 
-        // Opened a gutter to the left of the core's answer, so that the FRAME — not the popup's
-        // outer box, which is wider by two gutters — lands exactly where the rule put it.
-        CardCallout.HorizontalOffset = placement.Left - ArrowGutter;
+        // Exactly where the rule put it. The popup's box IS the core's box now — the panel plus
+        // the arrow's reach — so its near edge sits on the card's edge and the arrow inside it is
+        // what meets the card, rather than the panel being docked against the card with its arrow
+        // laid over the top.
+        CardCallout.HorizontalOffset = placement.Left;
         CardCallout.VerticalOffset = placement.Top;
         CardCallout.IsOpen = true;
     }

@@ -460,12 +460,16 @@
                IsLightDismissEnabled="False"
                ShouldConstrainToRootBounds="True">
             <!--
-                The frame is inset by ArrowGutter on both sides, and the arrow lives in that
-                gutter. It is not decoration: a Popup CLIPS its child to the child's own bounds,
-                so an arrow hung off the frame on a negative margin is laid out, reported to UI
-                Automation, and never drawn — which is exactly what happened the first time.
-                Both sides are inset, not just the one in use, so the frame's box is the same
-                whichever side the core picks and the offset arithmetic stays one line.
+                The frame is inset by ArrowGutter on the CARD's side, and the arrow lives in
+                that gutter. It is not decoration: a Popup CLIPS its child to the child's own
+                bounds, so an arrow hung off the frame on a negative margin is laid out,
+                reported to UI Automation, and never drawn — which is exactly what happened the
+                first time.
+
+                Which side is inset is set in code, from the core's answer, and so is the
+                frame's width. The box the core places is the panel PLUS that gutter, because
+                its near edge sits on the card's edge now (astrid-ios AITD-679) and it is the
+                arrow's tip, not the panel, that has to meet the card.
             -->
             <Grid x:Name="CardCalloutRoot">
                 <Border x:Name="CardCalloutFrame"

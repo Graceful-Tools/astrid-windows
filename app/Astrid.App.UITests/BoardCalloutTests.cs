@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Windows.Automation;
@@ -66,8 +68,14 @@ public sealed class BoardCalloutTests
 
         // 3. It FLOATS over the board rather than sitting in the column's flow: a callout laid out
         //    inside the column would be no wider than the column and would start at its left edge.
-        Assert.True(callout.Width > cardAfter.Width,
-            $"the callout ({callout.Width}) is wider than the column's card ({cardAfter.Width})");
+        //    It used to say "wider than the card", which stopped being true — and stopped being
+        //    the point — when the callout began narrowing to the room beside the card
+        //    (task 914fe805): on a board with the chat pane open it is now NARROWER than a card,
+        //    and still floating. What a callout laid out inside the column could not do, at any
+        //    width, is extend past the column's right edge. That is the property.
+        Assert.True(callout.Right > cardAfter.Right,
+            $"the callout ends at {callout.Right}, past the card's {cardAfter.Right}, so it is "
+            + "not laid out inside the column");
 
         // 4. It opened on the side the core chose, and the core's answer is what moved it.
         //
@@ -90,6 +98,35 @@ public sealed class BoardCalloutTests
         //    arrow would be drawn on a corner, which is the case the rule's margin exists for.
         var middle = cardAfter.Y + (cardAfter.Height / 2);
         Assert.InRange(middle, callout.Y, callout.Y + callout.Height);
+
+        // 6. The ARROW reaches the card, and the panel does not (task 914fe805; astrid-ios
+        //    AITD-679). Jon, on the iPad build: "the arrow doesn't touch the task row… It should."
+        //
+        //    The core answers with a box whose near edge sits ON the card's edge; the gutter in
+        //    the rule is only the clearance from the window. So the shell asks for a box of the
+        //    panel's width PLUS the arrow's reach and lays the panel inside it, leaving exactly
+        //    that reach between the card and the panel for the arrow to cross.
+        //
+        //    What UIA reports is the PANEL — the named "Open task" frame — so the gap measured
+        //    here is the arrow's room. It is the one number that tells the three states apart:
+        //    before the core changed, the panel stood a gutter off the card and the arrow
+        //    overhung it; asking for the panel's width alone against the new rule docks the panel
+        //    ON the card and draws the arrow inside it (gap 0); and this is the third.
+        // 6. A picture of it, for the arrow — which is the part of task 914fe805 that no
+        //    rectangle here answers. Jon, on the iPad build: "the arrow doesn't touch the task
+        //    row… It should."
+        //
+        //    Deliberately not asserted. The arrow is a rotated Border with no automation peer of
+        //    its own, and the named "Open task" element is the detail pane moved into the
+        //    callout, which sizes itself — so every number UIA offers here is a number about
+        //    something other than the arrow. An assertion over one of those would read as a
+        //    guarantee about the arrow and be a guarantee about nothing; the placement itself is
+        //    pinned where it is decided, against the core's fixture, in
+        //    <see cref="Astrid.App.Tests.CalloutPlacementTests"/>.
+        using var shot = Capture.Window(new IntPtr(app.Window.Current.NativeWindowHandle));
+        _output.WriteLine("screenshot: " + shot.SavePng(Path.Combine(
+            Path.GetTempPath(), $"astrid-board-callout-{Environment.ProcessId}.png")));
+        Assert.False(shot.IsBlank(), "the window drew something");
     }
 
     private static void OpenTheBoard(AstridApp app)
