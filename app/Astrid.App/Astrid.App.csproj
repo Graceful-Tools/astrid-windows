@@ -34,15 +34,36 @@
       Unpackaged by default, packaged on request.
 
       The unpackaged build is what a developer runs with F5 and what the UI smoke tests drive, so
-      it stays the default. `-p:AstridPackaged=true` leaves WindowsPackageType unset, which is the
-      SDK's way of saying MSIX — that is the Store build, and the only one whose `astrid://` comes
-      from the manifest rather than from the app writing its own registry key at startup.
+      it stays the default. `-p:AstridPackaged=true` is the Store build, the only one whose
+      `astrid://` comes from the manifest rather than from the app writing its own registry key at
+      startup.
+
+      WindowsPackageType STAYS None for both, and the second property is why.
+
+      Unset is not the SDK's way of saying MSIX. Microsoft.Windows.SDK.BuildTools.MSIX defaults an
+      empty WindowsPackageType to MSIX only when a `Package.appxmanifest` sits beside the project,
+      and otherwise to None — and it then refuses any value but None unless an @(AppxManifest) item
+      is supplied ("no AppxManifest is specified, but WindowsPackageType is not set to MSIX", a
+      garbled message for exactly that). This project has no such file on purpose: the manifest is
+      hand-written at packaging/AppxManifest.xml with {VERSION}/{ARCHITECTURE} placeholders that
+      package.ps1 substitutes, so the csproj must not be the thing that packages it. None it is.
+
+      But None also turns on WindowsAppSdkBootstrapInitialize
+      (Microsoft.WindowsAppSDK.BootstrapCommon.targets), which compiles the Windows App SDK
+      bootstrapper's auto-initializer into the exe. The bootstrapper exists for apps WITHOUT
+      package identity; called from inside an MSIX it returns 0x80070032 ERROR_NOT_SUPPORTED and
+      the initializer fails fast, so the app died before the first line of Main. Installing worked
+      and launching never did — the same "no MSIX this repo built had ever started" trap that the
+      PackageDependency in packaging/AppxManifest.xml was added to fix, one layer further down.
+      Setting it false for the packaged build is what suppresses that import; the unpackaged build
+      leaves it alone, because F5 and the UI smoke tests genuinely need the bootstrapper.
 
       One property rather than a second project: a .wapproj would mean a second build and a second
       place for the version number to be wrong, which is the reason the manifest is hand-written
       too (see packaging/README.md).
     -->
     <WindowsPackageType Condition="'$(AstridPackaged)' != 'true'">None</WindowsPackageType>
+    <WindowsAppSdkBootstrapInitialize Condition="'$(AstridPackaged)' == 'true'">false</WindowsAppSdkBootstrapInitialize>
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
