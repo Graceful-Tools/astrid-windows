@@ -85,12 +85,16 @@ jobs:
           - name: x64
             runner: windows-latest
             target: x86_64-pc-windows-msvc
-          # Native ARM64 runners are still rolling out. The job is allowed to be skipped rather
-          # than to fail the gate; the cross-build below always runs, so ARM64 is never unchecked.
+          # ARM64 is a gate, not a weather report (task `197acbdb`). This entry carried
+          # `continue-on-error` while native runners were rolling out; measured over every
+          # non-scheduled run from 2026-11-15 14:32 to 2026-11-16 21:38 it was 14 success, 0
+          # failure at ~159s, so the excuse outlived its reason and came out. It is the only job
+          # that RUNS the suite on aarch64 — `cross-build` below compiles and runs nothing — so
+          # excusing it again lets a target-specific failure reach `main` under a green tick.
+          # `ci_gate_contract.rs` holds this; re-excusing it means deleting a test and saying why.
           - name: arm64
             runner: windows-11-arm
             target: aarch64-pc-windows-msvc
-    continue-on-error: ${{ matrix.name == 'arm64' }}
     steps:
       - uses: actions/checkout@v7
 
