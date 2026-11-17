@@ -34,7 +34,18 @@
       "Bash(git merge:*)",
       "Bash(git push:*)",
       "Bash(git stash:*)",
-      "Bash(git remote:*)"
+      "Bash(git remote:*)",
+      "Bash(gh auth status)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh run watch:*)",
+      "Bash(gh api:*)",
+      "Bash(gh repo view:*)"
     ]
   }
 }
