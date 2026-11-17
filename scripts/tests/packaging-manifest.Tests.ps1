@@ -211,6 +211,116 @@ Invoke-Case 'the dependency is required because the SDK is NOT self-contained' {
         (-not ($csproj -match '<WindowsAppSDKSelfContained>\s*true'))
 }
 
+# --- the packaged build must not carry the bootstrapper ----------------------------------------
+# THE SECOND BUG, task 76fcd157, and the same shape as the first: the package installed, and then
+# no process ever appeared. The Application log said
+#
+#     Windows App Runtime, ERROR 0x80070032:
+#     Bootstrapper initialization failed while looking for version 2.x (MSIX package version >= 2.6.5.0)
+#
+# with that runtime installed and the manifest's PackageDependency resolving to it correctly. The
+# fault was that the BOOTSTRAPPER RAN AT ALL. It is the discovery mechanism for apps WITHOUT
+# package identity; called from inside an MSIX it returns 0x80070032 ERROR_NOT_SUPPORTED, and the
+# auto-initializer's response to that is to fail fast - before the first line of Main, which is why
+# the crash looked identical to the 2026-10-18 one from outside.
+#
+# HOW IT GOT IN. The csproj left WindowsPackageType unset when AstridPackaged=true, under a comment
+# claiming that unset was the SDK's way of saying MSIX. It is not.
+# Microsoft.Windows.SDK.BuildTools.MSIX defaults an empty WindowsPackageType to MSIX only when a
+# `Package.appxmanifest` sits beside the project, and otherwise to None - and this project has no
+# such file on purpose, because the manifest is hand-written with placeholders package.ps1
+# substitutes. So "unset" resolved to None, None turns on WindowsAppSdkBootstrapInitialize in
+# Microsoft.WindowsAppSDK.BootstrapCommon.targets, and that <Compile Include>s
+# MddBootstrapAutoInitializer.cs out of the NuGet package and into the exe.
+#
+# WHY THIS IS CHECKED TWICE. The broken csproj READ AS CORRECT - it even carried a comment
+# asserting the behaviour it did not have - so no amount of grepping the file would have found
+# this. Only asking MSBuild what it actually evaluates does. The text case is still worth having:
+# it needs no restore, so it runs everywhere and fails the moment the fix is deleted. The
+# evaluation case is the one that would have caught the original defect, and the one that will
+# catch the SDK changing these defaults again.
+$Csproj = Get-Content $CsprojPath -Raw
+$NuGetProps = Join-Path $RepoRoot 'app\Astrid.App\obj\Astrid.App.csproj.nuget.g.props'
+
+# $null when the properties cannot honestly be evaluated, so the caller can say SKIPPED rather
+# than fail. The Windows App SDK targets reach the project through obj\*.nuget.g.props, and
+# predeploy runs these script tests BEFORE any build - so on a checkout that has never restored,
+# WindowsAppSdkBootstrapInitialize would read empty for both builds and the unpackaged case would
+# fail for a reason that has nothing to do with this bug.
+function Get-EvaluatedProperties([bool]$Packaged) {
+    if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) { return $null }
+    if (-not (Test-Path $NuGetProps)) { return $null }
+
+    $msbuildArgs = @(
+        'msbuild'
+        $CsprojPath
+        '-nologo'
+        '-p:Configuration=Release'
+        '-p:RuntimeIdentifier=win-arm64'
+        '-getProperty:WindowsPackageType'
+        '-getProperty:WindowsAppSdkBootstrapInitialize'
+    )
+    # The packaged build is the one package.ps1 runs. Absent the switch this is the F5 build.
+    if ($Packaged) { $msbuildArgs += '-p:AstridPackaged=true' }
+
+    # Not redirected with 2>&1: in PS 5.1 that wraps a native command's stderr in ErrorRecords and
+    # sets $? false even on a clean exit, which would read as a broken evaluation.
+    $raw = & dotnet @msbuildArgs
+    if ($LASTEXITCODE -ne 0) { return $null }
+
+    # Two -getProperty switches make MSBuild emit JSON; one would print a bare value.
+    $json = $null
+    try { $json = ($raw -join "`n") | ConvertFrom-Json } catch { return $null }
+    if ($null -eq $json -or $null -eq $json.Properties) { return $null }
+
+    # A hashtable, so returning it cannot unroll the way an array would.
+    return @{
+        WindowsPackageType  = [string]$json.Properties.WindowsPackageType
+        BootstrapInitialize = [string]$json.Properties.WindowsAppSdkBootstrapInitialize
+    }
+}
+
+Invoke-Case 'the packaged build turns the bootstrapper off (task 76fcd157)' {
+    Assert-True 'the csproj sets WindowsAppSdkBootstrapInitialize false when AstridPackaged=true' `
+        ($Csproj -match '(?s)<WindowsAppSdkBootstrapInitialize[^>]*AstridPackaged[^>]*>\s*false\s*</WindowsAppSdkBootstrapInitialize>')
+
+    $props = Get-EvaluatedProperties $true
+    if ($null -eq $props) {
+        Write-Host '    SKIPPED the evaluated check: no restored obj\Astrid.App.csproj.nuget.g.props'
+        Write-Host '      (script tests run before any build; `dotnet restore` then re-run)'
+        return
+    }
+
+    # The invariant, stated as what the app needs rather than as a literal: anything but 'true'
+    # leaves Bootstrap.CS.targets unimported, which is the whole fix.
+    Assert-True 'MSBuild evaluates WindowsAppSdkBootstrapInitialize to something other than true' `
+        ($props.BootstrapInitialize -ne 'true')
+
+    # Deliberately still None. MSIX is the value that reads right and is wrong here: the MSIX
+    # tooling then requires an @(AppxManifest) item and fails the publish with "Improper project
+    # configuration: no AppxManifest is specified", which would drag packaging back into the csproj
+    # and defeat the hand-written manifest this whole file is about.
+    Assert-Equal 'WindowsPackageType stays None for the packaged build' 'None' $props.WindowsPackageType
+}
+
+Invoke-Case 'the unpackaged build still gets the bootstrapper (task 76fcd157)' {
+    # The other half, and the reason the fix is conditioned rather than blanket. F5 and the UI
+    # smoke tests drive the unpackaged build, which has no package identity and so reaches the
+    # Windows App SDK through the bootstrapper and nothing else. Turning it off for everyone would
+    # trade a dead MSIX for a dead inner loop.
+    Assert-True 'the csproj leaves WindowsPackageType None when not packaged' `
+        ($Csproj -match '(?s)<WindowsPackageType[^>]*AstridPackaged[^>]*>\s*None\s*</WindowsPackageType>')
+
+    $props = Get-EvaluatedProperties $false
+    if ($null -eq $props) {
+        Write-Host '    SKIPPED the evaluated check: no restored obj\Astrid.App.csproj.nuget.g.props'
+        return
+    }
+
+    Assert-Equal 'WindowsPackageType is None for the unpackaged build' 'None' $props.WindowsPackageType
+    Assert-Equal 'the bootstrapper is initialized for the unpackaged build' 'true' $props.BootstrapInitialize
+}
+
 Write-Host ''
 if ($script:Checks -lt 10) {
     Write-Host "FAIL: only $($script:Checks) assertion(s) ran - this file is meant to make more" -ForegroundColor Red
