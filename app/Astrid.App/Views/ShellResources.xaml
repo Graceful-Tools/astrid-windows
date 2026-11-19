@@ -381,6 +381,22 @@
         <Setter Property="HorizontalAlignment" Value="Center" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
+    <!--
+        The finished-on pill under a Done card's title (Jon, 2026-11-19; the same pill on every
+        platform): a small capsule, secondary ink on the hover surface, which is a step off the
+        card's own. The radius is the largest on the scale, which WinUI clamps to half the height —
+        a capsule whatever the text size.
+    -->
+    <Style x:Key="DonePillStyle" TargetType="Border">
+        <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="Padding" Value="6,1" />
+        <Setter Property="CornerRadius" Value="{StaticResource AstridRadiusXLarge}" />
+        <Setter Property="Background" Value="{ThemeResource AstridSurfaceHover}" />
+    </Style>
+    <Style x:Key="DonePillTextStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Foreground" Value="{ThemeResource AstridTextSecondary}" />
+    </Style>
     <Style x:Key="SwimlaneCardTitleStyle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="12" />
         <Setter Property="TextWrapping" Value="Wrap" />

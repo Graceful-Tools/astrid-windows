@@ -40,6 +40,31 @@ public sealed record TaskRow
 
     [JsonPropertyName("completed")] public bool Completed { get; init; }
 
+    /// <summary>
+    /// The day the task was finished, <c>YYYY-MM-DD</c> in the reader's own zone; null while it is
+    /// open (core PR #93).
+    /// </summary>
+    /// <remarks>
+    /// The core's day rather than a timestamp converted here, so "which day" cannot disagree
+    /// between clients at midnight. What a board's Done column draws from it is
+    /// <see cref="CompletedPill"/>.
+    /// </remarks>
+    [JsonPropertyName("completedOn")] public string? CompletedOn { get; init; }
+
+    /// <summary>
+    /// The finished-on pill under a Done card's title ("Nov 19"), or null where none is drawn.
+    /// </summary>
+    /// <remarks>
+    /// Not a wire field: the board's Done column copies it onto each of its cards, the way the
+    /// detail copies <c>canEdit</c> onto each blocker chip — a <c>DataTemplate</c> cannot
+    /// <c>x:Bind</c> past its own item to ask which column it is in. Every other surface leaves it
+    /// null, so a list row never grows one.
+    /// </remarks>
+    [JsonIgnore] public string? CompletedPill { get; init; }
+
+    /// <summary>Whether this card draws <see cref="CompletedPill"/>.</summary>
+    [JsonIgnore] public bool ShowsCompletedPill => !string.IsNullOrEmpty(CompletedPill);
+
     [JsonPropertyName("priority")] public int Priority { get; init; }
 
     [JsonPropertyName("due")] public DueLabel Due { get; init; } = new();
