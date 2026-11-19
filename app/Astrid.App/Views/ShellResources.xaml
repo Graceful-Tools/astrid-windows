@@ -393,6 +393,13 @@
         <Setter Property="CornerRadius" Value="{StaticResource AstridRadiusXLarge}" />
         <Setter Property="Background" Value="{ThemeResource AstridSurfaceHover}" />
     </Style>
+    <!--
+        The same pill on a swimlane card, where the title sits in a plain StackPanel with no
+        spacing of its own: the gap the single-list card's StackPanel gives, moved onto the pill.
+    -->
+    <Style x:Key="SwimlaneDonePillStyle" TargetType="Border" BasedOn="{StaticResource DonePillStyle}">
+        <Setter Property="Margin" Value="0,3,0,0" />
+    </Style>
     <Style x:Key="DonePillTextStyle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="11" />
         <Setter Property="Foreground" Value="{ThemeResource AstridTextSecondary}" />

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using Astrid.Core.Bindings;
 
 namespace Astrid.App.ViewModels;
 
@@ -43,6 +44,16 @@ public static partial class CompletedDayPill
     /// <summary>The label for today, in the reader's culture — what the board draws.</summary>
     public static string? Label(string? completedOn) =>
         Label(completedOn, DateOnly.FromDateTime(DateTime.Now), CultureInfo.CurrentCulture);
+
+    /// <summary>
+    /// A column's cards as a board draws them: in the core's order, and — in the Done column only —
+    /// each with its pill. Both boards ask this, the single-list board and the project board's
+    /// swimlanes, so the two cannot disagree about which cards get one.
+    /// </summary>
+    public static IReadOnlyList<TaskRow> OnCards(BoardColumn column) =>
+        column.Kind == "done"
+            ? column.Cards.Select(card => card with { CompletedPill = Label(card.CompletedOn) }).ToList()
+            : column.Cards;
 
     /// <summary>The full month name, as the abbreviated one.</summary>
     private static string Shorten(string pattern) =>

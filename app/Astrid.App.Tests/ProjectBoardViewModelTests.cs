@@ -531,4 +531,70 @@ public sealed class ProjectBoardViewModelTests
         Assert.Equal("stranger", view.Rows[0].ListId);
         Assert.Equal("stranger", view.Rows[0].Name);
     }
+
+    // ── Done's finished-on pill on a swimlane (Jon, 2026-11-19: the same on every platform) ──
+
+    private static object CardDoneOn(string id, string? completedOn) => new
+    {
+        id,
+        title = "Ship it",
+        completed = completedOn is not null,
+        completedOn,
+        priority = 0,
+        due = new { key = "none" },
+        leading = new { kind = "checkbox" },
+        action = "openPicker",
+        listChips = Array.Empty<object>(),
+    };
+
+    private static object ColumnOf(string id, string kind, params object[] cards) => new
+    {
+        id,
+        name = id,
+        description = string.Empty,
+        kind,
+        total = cards.Length,
+        cards,
+    };
+
+    /// <summary>
+    /// A swimlane's Done cell draws the same pill the single-list board does; no other cell does,
+    /// and an open card in Done has no day to show.
+    /// </summary>
+    [Fact]
+    public async Task A_swimlane_done_card_draws_its_finished_day_as_a_pill()
+    {
+        var thisYear = DateTime.Now.Year;
+        var core = Core(
+            Rows(saved: ["web"], rows: ["web"], candidates: []),
+            Row(
+                ColumnOf("ready", "status", CardDoneOn("r1", $"{thisYear}-11-19")),
+                ColumnOf("__virtual_done__", "done",
+                    CardDoneOn("d1", $"{thisYear}-11-19"),
+                    CardDoneOn("d2", "2025-03-04"),
+                    CardDoneOn("d3", null))));
+        var view = new ProjectBoardViewModel(core);
+        var previous = System.Globalization.CultureInfo.CurrentCulture;
+        System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo("en-US");
+        try
+        {
+            await view.LoadAsync("p1");
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = previous;
+        }
+
+        var ready = view.Rows[0].Columns[0].Cards;
+        var done = view.Rows[0].Columns[1].Cards;
+        Assert.Null(ready[0].CompletedPill);
+        Assert.False(ready[0].ShowsCompletedPill);
+        // In the core's order, untouched: the pill is added, nothing is re-sorted.
+        Assert.Equal(["d1", "d2", "d3"], done.Select(card => card.Id));
+        Assert.Equal("Nov 19", done[0].CompletedPill);
+        Assert.Equal("Mar 4, 2025", done[1].CompletedPill);
+        Assert.True(done[1].ShowsCompletedPill);
+        Assert.Null(done[2].CompletedPill);
+        Assert.False(done[2].ShowsCompletedPill);
+    }
 }
