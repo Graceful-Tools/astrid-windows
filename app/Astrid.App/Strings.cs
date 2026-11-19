@@ -187,6 +187,11 @@ internal static class Strings
         ["passkeys.hello_failed"] = "Windows Hello could not add a passkey: {0}",
         ["passkeys.hello_options"] = "This server's passkey challenge could not be read: {0}",
         ["passkeys.added"] = "Added ",
+        // A Done card's pill (Jon, 2026-11-19): a plain U+2713 check — never U+2714, which can draw
+        // as an emoji — then the day. The check is part of the words so it takes the pill's ink.
+        // The screen reader hears board.card.completed_on instead, so the glyph is never read.
+        ["board.card.completed_pill"] = "\u2713 on {0}",
+        ["board.card.completed_on"] = "Completed {0}",
         ["passkeys.synced"] = "Synced",
         ["passkeys.rename"] = "Rename",
         ["passkeys.revoke"] = "Revoke",

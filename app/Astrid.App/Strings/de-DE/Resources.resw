@@ -288,6 +288,12 @@
   <data name="passkeys_added" xml:space="preserve">
     <value>Hinzugefügt am </value>
   </data>
+  <data name="board_card_completed_pill" xml:space="preserve">
+    <value>✓ am {0}</value>
+  </data>
+  <data name="board_card_completed_on" xml:space="preserve">
+    <value>Erledigt am {0}</value>
+  </data>
   <data name="passkeys_synced" xml:space="preserve">
     <value>Synchronisiert</value>
   </data>

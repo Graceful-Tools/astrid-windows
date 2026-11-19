@@ -33,6 +33,9 @@
     <local:PasskeyAddedConverter x:Key="PasskeyAdded" />
     <local:FixedWordsConverter x:Key="PasskeyRenameWord" Key="passkeys.rename" />
     <local:FixedWordsConverter x:Key="PasskeyRevokeWord" Key="passkeys.revoke" />
+    <!-- A Done card's pill, and what a screen reader hears for it instead of the check. -->
+    <local:FilledWordsConverter x:Key="CompletedPillWords" Key="board.card.completed_pill" />
+    <local:FilledWordsConverter x:Key="CompletedPillName" Key="board.card.completed_on" />
     <local:FilterStateConverter x:Key="FilterText" />
     <local:MessageBylineConverter x:Key="Byline" />
     <local:TimerButtonConverter x:Key="TimerText" />
