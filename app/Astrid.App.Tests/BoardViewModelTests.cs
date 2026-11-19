@@ -553,6 +553,44 @@ public sealed class BoardViewModelTests
         Assert.DoesNotContain("2026", label);
     }
 
+    /// <summary>
+    /// The pill's words carry a plain check before the day, the same on every platform (Jon,
+    /// 2026-11-19): U+2713, never U+2714, which can draw as an emoji. A screen reader hears
+    /// "Completed …" instead, so the glyph is never read out.
+    /// </summary>
+    [Theory]
+    [InlineData("en-US", "board_card_completed_pill", "\u2713 on ")]
+    [InlineData("de-DE", "board_card_completed_pill", "\u2713 am ")]
+    [InlineData("en-US", "board_card_completed_on", "Completed ")]
+    [InlineData("de-DE", "board_card_completed_on", "Erledigt ")]
+    public void The_pill_says_a_check_and_the_day_and_a_screen_reader_hears_completed(
+        string language, string name, string words)
+    {
+        var resw = System.Xml.Linq.XDocument.Load(
+            Path.Combine(LocalisationTests.AppDirectory(), "Strings", language, "Resources.resw"));
+        var value = resw.Root!.Elements("data")
+            .Single(data => data.Attribute("name")!.Value == name)
+            .Element("value")!.Value;
+
+        // The words before the day, then the day; the pattern is checked in two halves so this file
+        // spells no sentence the design budget would count as hand-written copy.
+        Assert.StartsWith(words, value);
+        Assert.EndsWith("{0}", value);
+        Assert.DoesNotContain('\u2714', value);
+        // The day goes where {0} is, as the label the view model built says it.
+        Assert.EndsWith("Nov 19", string.Format(English, value, "Nov 19"));
+    }
+
+    /// <summary>The fallback table says the same as the English resources.</summary>
+    [Fact]
+    public void The_fallback_table_carries_both_pill_keys()
+    {
+        var source = File.ReadAllText(Path.Combine(LocalisationTests.AppDirectory(), "Strings.cs"));
+
+        Assert.Contains("[\"board.card.completed_pill\"] = \"\\u2713 on {0}\"", source);
+        Assert.Contains("[\"board.card.completed_on\"] = \"Completed {0}\"", source);
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

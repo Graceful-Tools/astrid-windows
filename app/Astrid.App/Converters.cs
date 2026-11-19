@@ -885,6 +885,23 @@ public sealed partial class FixedWordsConverter : IValueConverter
         throw new NotSupportedException("words are not a value to read back");
 }
 
+/// <summary>
+/// A value put into a sentence from the strings table — "✓ on Nov 19", "Completed Nov 19" — for an
+/// element inside a data template, which cannot reach the page to be worded there. Nothing at all
+/// for an empty value, so an element that is hidden anyway says nothing to a screen reader either.
+/// </summary>
+public sealed partial class FilledWordsConverter : IValueConverter
+{
+    /// <summary>The key, with <c>{0}</c> where the value goes.</summary>
+    public string Key { get; set; } = string.Empty;
+
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is string text && text.Length > 0 ? Strings.Get(Key, text) : string.Empty;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException(); // read-only words, like FixedWordsConverter
+}
+
 public sealed partial class ChoiceLabelConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language) =>

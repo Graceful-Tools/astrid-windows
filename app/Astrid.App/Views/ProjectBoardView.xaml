@@ -77,7 +77,8 @@
                                    Text="{x:Bind Title}" />
                         <Border Style="{StaticResource SwimlaneDonePillStyle}"
                                 Visibility="{x:Bind ShowsCompletedPill, Converter={StaticResource Visible}}">
-                            <TextBlock Text="{x:Bind CompletedPill}"
+                            <TextBlock Text="{x:Bind CompletedPill, Converter={StaticResource CompletedPillWords}}"
+                                       AutomationProperties.Name="{x:Bind CompletedPill, Converter={StaticResource CompletedPillName}}"
                                        Style="{StaticResource DonePillTextStyle}" />
                         </Border>
                     </StackPanel>

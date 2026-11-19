@@ -147,12 +147,16 @@
                                    TextDecorations="{x:Bind Completed, Converter={StaticResource CompletedStrike}}" />
                         <!--
                             The day it was finished, as a pill directly under the title — Done's
-                            cards only (Jon, 2026-11-19). The column copies the words onto its
-                            cards; every other column leaves them empty and draws nothing.
+                            cards only (Jon, 2026-11-19). The column copies the day onto its
+                            cards; every other column leaves it empty and draws nothing. The words
+                            are "✓ on Nov 19" (board.card.completed_pill), the check in them so it
+                            takes the pill's ink; a screen reader hears "Completed Nov 19"
+                            (board.card.completed_on) rather than the glyph.
                         -->
                         <Border Style="{StaticResource DonePillStyle}"
                                 Visibility="{x:Bind ShowsCompletedPill, Converter={StaticResource Visible}}">
-                            <TextBlock Text="{x:Bind CompletedPill}"
+                            <TextBlock Text="{x:Bind CompletedPill, Converter={StaticResource CompletedPillWords}}"
+                                       AutomationProperties.Name="{x:Bind CompletedPill, Converter={StaticResource CompletedPillName}}"
                                        Style="{StaticResource DonePillTextStyle}" />
                         </Border>
                         <TextBlock Text="{x:Bind Due, Converter={StaticResource DueText}}"

@@ -52,7 +52,8 @@ public sealed record TaskRow
     [JsonPropertyName("completedOn")] public string? CompletedOn { get; init; }
 
     /// <summary>
-    /// The finished-on pill under a Done card's title ("Nov 19"), or null where none is drawn.
+    /// The day on the finished-on pill under a Done card's title ("Nov 19"), or null where none is
+    /// drawn. The view words it — "✓ on Nov 19", and "Completed Nov 19" for a screen reader.
     /// </summary>
     /// <remarks>
     /// Not a wire field: the board's Done column copies it onto each of its cards, the way the
