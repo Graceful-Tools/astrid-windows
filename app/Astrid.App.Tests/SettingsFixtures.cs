@@ -36,7 +36,7 @@ internal static class SettingsFixtures
         timezone = "+00:00",
     };
 
-    public static object WithSmartTasks(string offset, string time, string layout, bool email = true) => new
+    public static object WithSmartTasks(string offset, string time, bool email = true) => new
     {
         user = new { id = "me", name = "Jon", email = "jon@x.io" },
         reminderSettings = new { enablePushReminders = true, enableEmailReminders = true },
@@ -47,7 +47,6 @@ internal static class SettingsFixtures
             emailToTaskEnabled = email,
             defaultTaskDueOffset = offset,
             defaultDueTime = time,
-            taskDisplayMode = layout,
             subtaskDisplay = "indented",
             smartTaskCreationEnabled = true,
         },
@@ -63,11 +62,6 @@ internal static class SettingsFixtures
             new { value = "09:00", titleKey = "smart.time.09_00" },
             new { value = "17:00", titleKey = "smart.time.17_00" },
         },
-        layoutChoices = new[]
-        {
-            new { value = "list", titleKey = "smart.layout.list" },
-            new { value = "project", titleKey = "smart.layout.project" },
-        },
     };
 
     public static object WithAppearance(bool parsing, string subtasks) => new
@@ -81,13 +75,11 @@ internal static class SettingsFixtures
             emailToTaskEnabled = true,
             defaultTaskDueOffset = "1_week",
             defaultDueTime = "17:00",
-            taskDisplayMode = "list",
             subtaskDisplay = subtasks,
             smartTaskCreationEnabled = parsing,
         },
         dueOffsetChoices = Array.Empty<object>(),
         dueTimeChoices = Array.Empty<object>(),
-        layoutChoices = Array.Empty<object>(),
         subtaskChoices = new[]
         {
             new { value = "indented", titleKey = "smart.subtasks.indented" },

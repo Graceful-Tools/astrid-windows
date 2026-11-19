@@ -175,6 +175,12 @@ const NOT_BOUND: &[(&str, &str)] = &[
         "Turning a list into a board in one request: the same missing surface as `createProject`.",
     ),
     (
+        "updateProject",
+        "Renaming a board, or changing its description or colour (core ADEV-69). Boards are \
+         opened and worked here but not edited as boards — the same missing surface as \
+         `createProject` and `deleteProject`.",
+    ),
+    (
         "deleteProject",
         "Deleting a board detaches its lists rather than deleting them, which needs explaining on          screen before it is offered. No such screen here yet.",
     ),

@@ -145,6 +145,16 @@
                                    TextWrapping="Wrap"
                                    Foreground="{ThemeResource AstridTextPrimary}"
                                    TextDecorations="{x:Bind Completed, Converter={StaticResource CompletedStrike}}" />
+                        <!--
+                            The day it was finished, as a pill directly under the title — Done's
+                            cards only (Jon, 2026-11-19). The column copies the words onto its
+                            cards; every other column leaves them empty and draws nothing.
+                        -->
+                        <Border Style="{StaticResource DonePillStyle}"
+                                Visibility="{x:Bind ShowsCompletedPill, Converter={StaticResource Visible}}">
+                            <TextBlock Text="{x:Bind CompletedPill}"
+                                       Style="{StaticResource DonePillTextStyle}" />
+                        </Border>
                         <TextBlock Text="{x:Bind Due, Converter={StaticResource DueText}}"
                                    FontSize="11"
                                    Foreground="{ThemeResource AstridTextMuted}" />

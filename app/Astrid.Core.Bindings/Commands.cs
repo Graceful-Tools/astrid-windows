@@ -68,9 +68,13 @@ public static class Commands
     /// How many rows. Pass the number visible plus a screenful, not the whole list: a list of ten
     /// thousand should cross the boundary as the fifty on screen.
     /// </param>
+    /// <remarks>
+    /// No display mode any more: the core dropped the project layout (ADEV-72), so every row is
+    /// the list layout and a <c>displayMode</c> sent here would be ignored.
+    /// </remarks>
     public static object RowsForList(string listId, int offset = 0, int? limit = null,
-        string? displayMode = null, string? surface = null) =>
-        new RowsRequest("rowsForList", listId, displayMode, surface, offset, limit);
+        string? surface = null) =>
+        new RowsRequest("rowsForList", listId, surface, offset, limit);
 
     public static object Task(string taskId) => new WithTaskId("task", taskId);
 
@@ -82,8 +86,8 @@ public static class Commands
     /// decision shared with web and both Apple clients, and a shell that assembled the screen
     /// itself would be the fifth place to get it wrong.
     /// </remarks>
-    public static object TaskDetail(string taskId, string? displayMode = null) =>
-        new DetailRequest("taskDetail", taskId, displayMode);
+    public static object TaskDetail(string taskId) =>
+        new DetailRequest("taskDetail", taskId);
 
     public static object Comments(string taskId) => new WithTaskId("comments", taskId);
 
@@ -1150,7 +1154,6 @@ public static class Commands
     private sealed record RowsRequest(
         [property: JsonPropertyName("kind")] string Kind,
         [property: JsonPropertyName("listId")] string ListId,
-        [property: JsonPropertyName("displayMode")] string? DisplayMode,
         [property: JsonPropertyName("surface")] string? Surface,
         [property: JsonPropertyName("offset")] int Offset,
         [property: JsonPropertyName("limit")] int? Limit);
@@ -1547,8 +1550,7 @@ public static class Commands
 
     private sealed record DetailRequest(
         [property: JsonPropertyName("kind")] string Kind,
-        [property: JsonPropertyName("taskId")] string TaskId,
-        [property: JsonPropertyName("displayMode")] string? DisplayMode);
+        [property: JsonPropertyName("taskId")] string TaskId);
 
     private sealed record BlockerRequest(
         [property: JsonPropertyName("kind")] string Kind,

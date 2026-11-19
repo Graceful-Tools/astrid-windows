@@ -42,8 +42,6 @@ public sealed partial class AppearanceSection : UserControl
     {
         InitializeComponent();
         // The page's words, from the strings table (tasks c0f3db19, 6ac2639a).
-        LayoutBox.Header = Strings.Get("smart.layout");
-        LayoutHint.Text = Strings.Get("smart.layout_hint");
         SmartParsingToggle.Header = Strings.Get("smart.parsing");
         SmartParsingHint.Text = Strings.Get("smart.parsing_hint");
         SubtasksBox.Header = Strings.Get("smart.subtasks");

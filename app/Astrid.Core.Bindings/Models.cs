@@ -40,6 +40,31 @@ public sealed record TaskRow
 
     [JsonPropertyName("completed")] public bool Completed { get; init; }
 
+    /// <summary>
+    /// The day the task was finished, <c>YYYY-MM-DD</c> in the reader's own zone; null while it is
+    /// open (core PR #93).
+    /// </summary>
+    /// <remarks>
+    /// The core's day rather than a timestamp converted here, so "which day" cannot disagree
+    /// between clients at midnight. What a board's Done column draws from it is
+    /// <see cref="CompletedPill"/>.
+    /// </remarks>
+    [JsonPropertyName("completedOn")] public string? CompletedOn { get; init; }
+
+    /// <summary>
+    /// The finished-on pill under a Done card's title ("Nov 19"), or null where none is drawn.
+    /// </summary>
+    /// <remarks>
+    /// Not a wire field: the board's Done column copies it onto each of its cards, the way the
+    /// detail copies <c>canEdit</c> onto each blocker chip — a <c>DataTemplate</c> cannot
+    /// <c>x:Bind</c> past its own item to ask which column it is in. Every other surface leaves it
+    /// null, so a list row never grows one.
+    /// </remarks>
+    [JsonIgnore] public string? CompletedPill { get; init; }
+
+    /// <summary>Whether this card draws <see cref="CompletedPill"/>.</summary>
+    [JsonIgnore] public bool ShowsCompletedPill => !string.IsNullOrEmpty(CompletedPill);
+
     [JsonPropertyName("priority")] public int Priority { get; init; }
 
     [JsonPropertyName("due")] public DueLabel Due { get; init; } = new();
@@ -1202,7 +1227,7 @@ public sealed record AccountSettings
     /// <summary>The address a calendar app subscribes to for this account's tasks (task 28c5c6a9).</summary>
     [JsonPropertyName("calendarFeedUrl")] public string? CalendarFeedUrl { get; init; }
 
-    /// <summary>The task defaults and the task-detail layout, shaped by the core (task c0f3db19).</summary>
+    /// <summary>The task defaults, shaped by the core (task c0f3db19).</summary>
     [JsonPropertyName("smartTasks")] public SmartTaskSettings SmartTasks { get; init; } = new();
 
     [JsonPropertyName("dueOffsetChoices")]
@@ -1211,16 +1236,14 @@ public sealed record AccountSettings
     [JsonPropertyName("dueTimeChoices")]
     public IReadOnlyList<SettingChoice> DueTimeChoices { get; init; } = [];
 
-    [JsonPropertyName("layoutChoices")]
-    public IReadOnlyList<SettingChoice> LayoutChoices { get; init; } = [];
-
     [JsonPropertyName("subtaskChoices")]
     public IReadOnlyList<SettingChoice> SubtaskChoices { get; init; } = [];
 }
 
 /// <summary>
-/// The account's task defaults and its task-detail layout, as the server stores them and the core
-/// defaults them (task c0f3db19). The due date and time are for tasks created by email.
+/// The account's task defaults, as the server stores them and the core defaults them (task
+/// c0f3db19). The due date and time are for tasks created by email. The task-detail layout is
+/// gone: the core dropped the project display mode (ADEV-72) and no longer reads or sends it.
 /// </summary>
 public sealed record SmartTaskSettings
 {
@@ -1229,9 +1252,6 @@ public sealed record SmartTaskSettings
     [JsonPropertyName("defaultTaskDueOffset")] public string DefaultTaskDueOffset { get; init; } = "1_week";
 
     [JsonPropertyName("defaultDueTime")] public string DefaultDueTime { get; init; } = "17:00";
-
-    /// <summary><c>list</c> or <c>project</c>.</summary>
-    [JsonPropertyName("taskDisplayMode")] public string TaskDisplayMode { get; init; } = "list";
 
     [JsonPropertyName("subtaskDisplay")] public string SubtaskDisplay { get; init; } = "indented";
 

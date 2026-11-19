@@ -19,7 +19,6 @@ internal static class SmartTaskChoice
         {
             "defaultTaskDueOffset" => settings.SmartTasks.DefaultTaskDueOffset,
             "defaultDueTime" => settings.SmartTasks.DefaultDueTime,
-            "taskDisplayMode" => settings.SmartTasks.TaskDisplayMode,
             "subtaskDisplay" => settings.SmartTasks.SubtaskDisplay,
             _ => null,
         };

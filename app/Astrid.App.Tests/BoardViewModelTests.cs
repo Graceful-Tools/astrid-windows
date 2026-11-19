@@ -427,7 +427,142 @@ public sealed class BoardViewModelTests
         // column is not a pick in the next one along.
         Assert.Equal(0, view.Columns[0].QuickAddPriority);
     }
+
+    // ── Done's finished-on pill (Jon, 2026-11-19: the same on every platform) ────────────────
+
+    private static readonly System.Globalization.CultureInfo English = new("en-US");
+
+    /// <summary>One card with the core's <c>completedOn</c>, in a column of the given kind.</summary>
+    private static object ColumnWithDay(string id, string kind, string? completedOn) => new
+    {
+        id,
+        name = id,
+        description = string.Empty,
+        kind,
+        total = 1,
+        cards = new[]
+        {
+            new
+            {
+                id = $"{id}-0",
+                title = "Ship it",
+                completed = completedOn is not null,
+                completedOn,
+                priority = 0,
+                due = new { key = "none" },
+                leading = new { kind = "checkbox" },
+                action = "openPicker",
+                listChips = Array.Empty<object>(),
+            },
+        },
+    };
+
+    /// <summary>The core's day decodes onto the row, whatever the column.</summary>
+    [Fact]
+    public async Task A_row_decodes_the_day_the_core_says_it_was_finished()
+    {
+        var core = new FakeCore().AnswerOk("board", Board(ColumnWithDay("__virtual_done__", "done", "2026-11-19")));
+        var view = new BoardViewModel(core);
+
+        await view.LoadAsync("l1");
+
+        Assert.Equal("2026-11-19", view.Columns[0].Cards[0].CompletedOn);
+    }
+
+    /// <summary>A Done card says when it was finished, as a pill, in the reader's words.</summary>
+    [Fact]
+    public async Task A_done_card_draws_its_finished_day_as_a_pill()
+    {
+        var thisYear = DateTime.Now.Year;
+        var core = new FakeCore().AnswerOk("board", Board(
+            ColumnWithDay("__virtual_done__", "done", $"{thisYear}-11-19")));
+        var view = new BoardViewModel(core);
+        var previous = System.Globalization.CultureInfo.CurrentCulture;
+        System.Globalization.CultureInfo.CurrentCulture = English;
+        try
+        {
+            await view.LoadAsync("l1");
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = previous;
+        }
+
+        var card = view.Columns[0].Cards[0];
+        Assert.Equal("Nov 19", card.CompletedPill);
+        Assert.True(card.ShowsCompletedPill);
+    }
+
+    /// <summary>
+    /// Only Done draws it: an open card has no day, and a card in any other column draws none
+    /// even if it carries one.
+    /// </summary>
+    [Fact]
+    public async Task Only_a_done_card_with_a_day_draws_a_pill()
+    {
+        var core = new FakeCore().AnswerOk("board", Board(
+            ColumnWithDay("ready", "status", null),
+            ColumnWithDay("doing", "status", "2026-11-19"),
+            ColumnWithDay("__virtual_done__", "done", null)));
+        var view = new BoardViewModel(core);
+
+        await view.LoadAsync("l1");
+
+        Assert.All(view.Columns, column =>
+        {
+            Assert.Null(column.Cards[0].CompletedPill);
+            Assert.False(column.Cards[0].ShowsCompletedPill);
+        });
+    }
+
+    /// <summary>The order is the core's — newest finished first — and the pill does not touch it.</summary>
+    [Fact]
+    public async Task Done_keeps_the_order_the_core_sent()
+    {
+        var core = new FakeCore().AnswerOk("board", Board(
+            Column("__virtual_done__", "Done", "done", "Newest", "Older", "Oldest")));
+        var view = new BoardViewModel(core);
+
+        await view.LoadAsync("l1");
+
+        Assert.Equal(["Newest", "Older", "Oldest"], view.Columns[0].Cards.Select(card => card.Title));
+    }
+
+    [Fact]
+    public void The_pill_leaves_out_the_year_when_it_is_this_one()
+    {
+        Assert.Equal("Nov 19", CompletedDayPill.Label("2026-11-19", new DateOnly(2026, 12, 31), English));
+    }
+
+    [Fact]
+    public void The_pill_says_the_year_when_it_was_another()
+    {
+        Assert.Equal("Nov 19, 2025", CompletedDayPill.Label("2025-11-19", new DateOnly(2026, 1, 2), English));
+    }
+
+    /// <summary>The month and the order are the reader's culture's, not English's.</summary>
+    [Fact]
+    public void The_pill_is_in_the_readers_culture()
+    {
+        var german = new System.Globalization.CultureInfo("de-DE");
+        var label = CompletedDayPill.Label("2026-11-19", new DateOnly(2026, 11, 20), german);
+
+        Assert.NotNull(label);
+        Assert.StartsWith("19.", label);
+        Assert.Contains("Nov", label);
+        Assert.DoesNotContain("2026", label);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("not a day")]
+    public void No_day_is_no_pill(string? completedOn)
+    {
+        Assert.Null(CompletedDayPill.Label(completedOn, new DateOnly(2026, 11, 19), English));
+    }
 }
+
 
 
 /// <summary>

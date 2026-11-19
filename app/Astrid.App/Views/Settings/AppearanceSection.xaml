@@ -57,24 +57,6 @@
                   SelectedItem="{x:Bind Shell.Settings.Appearance.TitleDisplayChoice, Mode=OneWay}"
                   SelectionChanged="OnTitleDisplayChosen" />
         <!--
-            The task-detail layout, where the web keeps it
-            (task c0f3db19). An account setting, so it
-            follows the person between devices; the theme
-            above is this machine's.
-        -->
-        <ComboBox x:Uid="layout_box" x:Name="LayoutBox"
-                  HorizontalAlignment="Stretch"
-                  AutomationProperties.Name="Task detail layout"
-                  ItemsSource="{x:Bind Shell.Settings.Tasks.LayoutChoices, Mode=OneWay}"
-                  ItemTemplate="{StaticResource DefaultChoiceTemplate}"
-                  SelectedItem="{x:Bind Shell.Settings.Tasks.SelectedLayout, Mode=OneWay}"
-                  SelectionChanged="OnSmartTaskChoiceChosen" />
-        <TextBlock FontSize="11" TextWrapping="Wrap"
-                   Foreground="{ThemeResource AstridTextMuted}"
-                   Text="{x:Bind Shell.Settings.Tasks.LayoutDescriptionKey, Mode=OneWay, Converter={StaticResource Words}}" />
-        <TextBlock x:Name="LayoutHint" FontSize="11" TextWrapping="Wrap"
-                   Foreground="{ThemeResource AstridTextMuted}" />
-        <!--
             The web's other two Appearance settings
             (task 6ac2639a): whether the add box reads
             #list tags, and where subtasks appear. Both

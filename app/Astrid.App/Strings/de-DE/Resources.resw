@@ -213,24 +213,6 @@
   <data name="smart_time_20_00" xml:space="preserve">
     <value>20:00 Uhr</value>
   </data>
-  <data name="smart_layout" xml:space="preserve">
-    <value>Layout der Aufgabendetails</value>
-  </data>
-  <data name="smart_layout_hint" xml:space="preserve">
-    <value>Wie Priorität, zugewiesene Person und Status in einer Aufgabe erscheinen. Geräteübergreifend synchronisiert.</value>
-  </data>
-  <data name="smart_layout_list" xml:space="preserve">
-    <value>Liste</value>
-  </data>
-  <data name="smart_layout_project" xml:space="preserve">
-    <value>Projekt</value>
-  </data>
-  <data name="smart_layout_list_desc" xml:space="preserve">
-    <value>Das Kontrollkästchen schließt die Aufgabe ab; Priorität und zugewiesene Person haben je eine eigene Zeile.</value>
-  </data>
-  <data name="smart_layout_project_desc" xml:space="preserve">
-    <value>Kompakt. Das Kontrollkästchen öffnet Priorität, zugewiesene Person, Status und Abschließen.</value>
-  </data>
   <data name="smart_parsing" xml:space="preserve">
     <value>Intelligente Aufgabenerstellung</value>
   </data>
@@ -1067,9 +1049,6 @@
   </data>
   <data name="invite_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Per E-Mail einladen</value>
-  </data>
-  <data name="layout_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
-    <value>Layout der Aufgabendetails</value>
   </data>
   <data name="leave_list.Content" xml:space="preserve">
     <value>Liste verlassen</value>
