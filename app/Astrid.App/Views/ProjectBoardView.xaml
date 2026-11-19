@@ -25,7 +25,9 @@
 
     <UserControl.Resources>
         <!--
-            A card on a swimlane: the mark and the title.
+            A card on a swimlane: the mark and the title, and in the Done column the day it was
+            finished as a pill under the title — the same pill, from the same styles, as the
+            single-list board and every other platform's swimlanes (Jon, 2026-11-19).
 
             Deliberately smaller than the single-list board's card, which also draws the due
             label, the chips and all five leading states. A swimlane board is an overview — a
@@ -70,9 +72,15 @@
                                        local:PriorityOutline.Priority="{x:Bind Priority}" />
                         </Border>
                     </Grid>
-                    <TextBlock Grid.Column="1"
-                               Style="{StaticResource SwimlaneCardTitleStyle}"
-                               Text="{x:Bind Title}" />
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Style="{StaticResource SwimlaneCardTitleStyle}"
+                                   Text="{x:Bind Title}" />
+                        <Border Style="{StaticResource SwimlaneDonePillStyle}"
+                                Visibility="{x:Bind ShowsCompletedPill, Converter={StaticResource Visible}}">
+                            <TextBlock Text="{x:Bind CompletedPill}"
+                                       Style="{StaticResource DonePillTextStyle}" />
+                        </Border>
+                    </StackPanel>
                 </Grid>
             </views:BoardCard>
         </DataTemplate>

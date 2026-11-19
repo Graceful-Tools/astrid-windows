@@ -493,9 +493,7 @@ public sealed class BoardColumnView
         // Done's cards carry the day they were finished, as a pill under the title (Jon,
         // 2026-11-19). Copied onto the card here because only the column knows it is Done; their
         // ORDER — newest finished first — is the core's, and is not touched.
-        Cards = column.Kind == "done"
-            ? column.Cards.Select(card => card with { CompletedPill = CompletedDayPill.Label(card.CompletedOn) }).ToList()
-            : column.Cards;
+        Cards = CompletedDayPill.OnCards(column);
         // The expanded card's detail is NOT in this list any more (task eb2684bb). It used to be:
         // an `InlineDetailSlot` took the card's own place and the column grew wider to hold it,
         // which meant detail arrived as another card-shaped block pushed in between cards. The

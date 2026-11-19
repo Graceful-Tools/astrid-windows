@@ -435,6 +435,9 @@ public sealed class ProjectBoardColumnView
     {
         RowListId = rowListId;
         _column = column;
+        // Done's cards carry their finished-on pill here too, as on the single-list board and on
+        // every other platform's swimlanes (Jon, 2026-11-19). The order stays the core's.
+        Cards = CompletedDayPill.OnCards(column);
     }
 
     /// <summary>The list of the row this cell is in.</summary>
@@ -451,6 +454,6 @@ public sealed class ProjectBoardColumnView
     /// <summary>How many of this row's cards the column holds, not how many were carried.</summary>
     public int Total => _column.Total;
 
-    /// <summary>The cards, as the core sent them.</summary>
-    public IReadOnlyList<TaskRow> Cards => _column.Cards;
+    /// <summary>The cards, as the core sent them and in its order; Done's with their pill.</summary>
+    public IReadOnlyList<TaskRow> Cards { get; }
 }
