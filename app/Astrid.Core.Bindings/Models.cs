@@ -1202,7 +1202,7 @@ public sealed record AccountSettings
     /// <summary>The address a calendar app subscribes to for this account's tasks (task 28c5c6a9).</summary>
     [JsonPropertyName("calendarFeedUrl")] public string? CalendarFeedUrl { get; init; }
 
-    /// <summary>The task defaults and the task-detail layout, shaped by the core (task c0f3db19).</summary>
+    /// <summary>The task defaults, shaped by the core (task c0f3db19).</summary>
     [JsonPropertyName("smartTasks")] public SmartTaskSettings SmartTasks { get; init; } = new();
 
     [JsonPropertyName("dueOffsetChoices")]
@@ -1211,16 +1211,14 @@ public sealed record AccountSettings
     [JsonPropertyName("dueTimeChoices")]
     public IReadOnlyList<SettingChoice> DueTimeChoices { get; init; } = [];
 
-    [JsonPropertyName("layoutChoices")]
-    public IReadOnlyList<SettingChoice> LayoutChoices { get; init; } = [];
-
     [JsonPropertyName("subtaskChoices")]
     public IReadOnlyList<SettingChoice> SubtaskChoices { get; init; } = [];
 }
 
 /// <summary>
-/// The account's task defaults and its task-detail layout, as the server stores them and the core
-/// defaults them (task c0f3db19). The due date and time are for tasks created by email.
+/// The account's task defaults, as the server stores them and the core defaults them (task
+/// c0f3db19). The due date and time are for tasks created by email. The task-detail layout is
+/// gone: the core dropped the project display mode (ADEV-72) and no longer reads or sends it.
 /// </summary>
 public sealed record SmartTaskSettings
 {
@@ -1229,9 +1227,6 @@ public sealed record SmartTaskSettings
     [JsonPropertyName("defaultTaskDueOffset")] public string DefaultTaskDueOffset { get; init; } = "1_week";
 
     [JsonPropertyName("defaultDueTime")] public string DefaultDueTime { get; init; } = "17:00";
-
-    /// <summary><c>list</c> or <c>project</c>.</summary>
-    [JsonPropertyName("taskDisplayMode")] public string TaskDisplayMode { get; init; } = "list";
 
     [JsonPropertyName("subtaskDisplay")] public string SubtaskDisplay { get; init; } = "indented";
 

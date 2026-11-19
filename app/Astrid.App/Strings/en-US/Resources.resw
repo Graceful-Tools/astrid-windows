@@ -214,24 +214,6 @@
   <data name="smart_time_20_00" xml:space="preserve">
     <value>8:00 PM</value>
   </data>
-  <data name="smart_layout" xml:space="preserve">
-    <value>Task detail layout</value>
-  </data>
-  <data name="smart_layout_hint" xml:space="preserve">
-    <value>How priority, assignee and state appear on a task. Synced across your devices.</value>
-  </data>
-  <data name="smart_layout_list" xml:space="preserve">
-    <value>List</value>
-  </data>
-  <data name="smart_layout_project" xml:space="preserve">
-    <value>Project</value>
-  </data>
-  <data name="smart_layout_list_desc" xml:space="preserve">
-    <value>The checkbox completes the task, and priority and assignee each get their own row.</value>
-  </data>
-  <data name="smart_layout_project_desc" xml:space="preserve">
-    <value>Compact. The checkbox opens priority, assignee, state and complete.</value>
-  </data>
   <data name="smart_parsing" xml:space="preserve">
     <value>Smart task creation</value>
   </data>
@@ -1077,9 +1059,6 @@
   </data>
   <data name="invite_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Invite by email</value>
-  </data>
-  <data name="layout_box.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
-    <value>Task detail layout</value>
   </data>
   <data name="leave_list.Content" xml:space="preserve">
     <value>Leave list</value>

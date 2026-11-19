@@ -71,6 +71,11 @@ public sealed class CorePinFollowsIosTests
         // They were never core keys, so nothing but this list holds them gone.
         "ordinal.st", "ordinal.nd", "ordinal.rd", "ordinal.th",
         "repeat.every_day", "repeat.every_week", "repeat.every_month", "repeat.every_year",
+        // The task-detail layout's choices, retired with the pin bump past core c7ee1b2 (ADEV-72):
+        // the core dropped the project display mode, stopped sending `layoutChoices`, and took
+        // these four out of its catalog. The picker that drew them went with them.
+        "smart.layout.list", "smart.layout.project",
+        "smart.layout.list_desc", "smart.layout.project_desc",
     ];
 
     /// <summary>

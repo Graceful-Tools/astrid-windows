@@ -104,8 +104,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         PublicList = new PublicListViewModel(core);
         _core.Changed += OnChanged;
 
-        // The task-detail layout decides what the leading control does on every row and in the
-        // open task (task c0f3db19). A change has to be seen at once, not after the next sync.
+        // The subtask layout decides where a subtask sits on every row and in the open task
+        // (task 6ac2639a). A change has to be seen at once, not after the next sync.
         Settings.Tasks.DisplayModeChanged += () => _post(async () =>
         {
             await Tasks.RefreshAsync();

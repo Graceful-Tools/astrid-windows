@@ -5,13 +5,12 @@ using static Astrid.App.Tests.SettingsFixtures;
 
 namespace Astrid.App.Tests;
 
-/// <summary>The task settings: the email defaults, the layout, subtasks and smart parsing.</summary>
+/// <summary>The task settings: the email defaults, subtasks and smart parsing.</summary>
 public sealed class TaskSettingsViewModelTests
 {
     /// <summary>
     /// Appearance reads whether smart parsing is on and where subtasks go, writes each as one
-    /// field, and announces a subtask change the way it announces a layout change — the rows are
-    /// different now (task 6ac2639a).
+    /// field, and announces a subtask change — the rows are different now (task 6ac2639a).
     /// </summary>
     [Fact]
     public async Task Appearance_reads_smart_parsing_and_subtasks_and_a_subtask_change_redraws_rows_task_6ac2639a()
@@ -44,16 +43,15 @@ public sealed class TaskSettingsViewModelTests
 
     /// <summary>
     /// The Tasks page reads the core's shaped defaults and its choices, lights the current one in
-    /// each combo, writes one field per change, and says so when the layout changed — because the
-    /// rows have to be redrawn for that one (task c0f3db19).
+    /// each combo, and writes one field per change, which redraws no rows (task c0f3db19). There
+    /// is no layout to change any more: the core dropped the project display mode (ADEV-72).
     /// </summary>
     [Fact]
-    public async Task Task_settings_read_the_defaults_write_one_field_and_announce_a_layout_change_task_c0f3db19()
+    public async Task Task_settings_read_the_defaults_and_write_one_field_task_c0f3db19()
     {
         var core = new FakeCore()
-            .AnswerOk("settings", WithSmartTasks("1_week", "17:00", "list"))
-            .AnswerOk("updateSmartTaskSettings", WithSmartTasks("3_days", "17:00", "list"))
-            .AnswerOk("updateSmartTaskSettings", WithSmartTasks("3_days", "17:00", "project"))
+            .AnswerOk("settings", WithSmartTasks("1_week", "17:00"))
+            .AnswerOk("updateSmartTaskSettings", WithSmartTasks("3_days", "17:00"))
             .AnswerFailure("updateSmartTaskSettings", AstridFailureKind.BadRequest, "Invalid defaultTaskDueOffset value");
         var settings = new SettingsViewModel(core);
         var view = settings.Tasks;
@@ -65,8 +63,6 @@ public sealed class TaskSettingsViewModelTests
         Assert.Equal(4, view.DueOffsetChoices.Count);
         Assert.Equal("smart.offset.1_week", view.SelectedDueOffset?.TitleKey);
         Assert.Equal("17:00", view.SelectedDueTime?.Value);
-        Assert.Equal("list", view.SelectedLayout?.Value);
-        Assert.Equal("smart.layout.list_desc", view.LayoutDescriptionKey);
 
         Assert.True(await view.SetSmartTaskAsync("defaultTaskDueOffset", "3_days"));
         Assert.Equal("3_days", view.SelectedDueOffset?.Value);
@@ -75,13 +71,8 @@ public sealed class TaskSettingsViewModelTests
             json.Contains("\"kind\":\"updateSmartTaskSettings\"")
             && json.Contains("\"changes\":{\"defaultTaskDueOffset\":\"3_days\"}"));
 
-        Assert.True(await view.SetSmartTaskAsync("taskDisplayMode", "project"));
-        Assert.Equal(1, layoutChanges);
-        Assert.Equal("project", view.SelectedLayout?.Value);
-        Assert.Equal("smart.layout.project_desc", view.LayoutDescriptionKey);
-
         Assert.False(await view.SetSmartTaskAsync("defaultTaskDueOffset", "2_weeks"));
         Assert.Equal("Invalid defaultTaskDueOffset value", settings.ErrorMessage);
-        Assert.Equal(1, layoutChanges); // a refused write changes nothing
+        Assert.Equal(0, layoutChanges); // a refused write changes nothing
     }
 }

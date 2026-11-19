@@ -5,11 +5,12 @@ namespace Astrid.App.ViewModels;
 
 /// <summary>
 /// The task settings (task c0f3db19): email-to-task and the defaults for tasks created by email,
-/// the task-detail layout, where subtasks go, and whether quick add reads <c>#list</c> tags.
+/// where subtasks go, and whether quick add reads <c>#list</c> tags. The task-detail layout used to
+/// be here too; the core dropped the project display mode (ADEV-72), so there is nothing to pick.
 /// </summary>
 /// <remarks>
 /// One server setting, one write, shown on two pages: the Tasks page draws the email defaults, and
-/// the Appearance page draws the layout, the subtasks and smart parsing (task 6ac2639a). They are
+/// the Appearance page draws the subtasks and smart parsing (task 6ac2639a). They are
 /// one view model because they are one blob — a page that held half of it would have to be told
 /// when the other half changed.
 /// </remarks>
@@ -25,14 +26,13 @@ public sealed class TaskSettingsViewModel : ObservableObject
         {
             ReplaceChoices(DueOffsetChoices, "defaultTaskDueOffset", account.DueOffsetChoices);
             ReplaceChoices(DueTimeChoices, "defaultDueTime", account.DueTimeChoices);
-            ReplaceChoices(LayoutChoices, "taskDisplayMode", account.LayoutChoices);
             ReplaceChoices(SubtaskChoices, "subtaskDisplay", account.SubtaskChoices);
             SmartTasks = account.SmartTasks;
         };
     }
 
     /// <summary>
-    /// The task defaults and the task-detail layout. Shaped by the core, so a server that has
+    /// The task defaults. Shaped by the core, so a server that has
     /// never stored them reads as the web's defaults here too.
     /// </summary>
     public SmartTaskSettings SmartTasks
@@ -45,8 +45,6 @@ public sealed class TaskSettingsViewModel : ObservableObject
                 Raise(nameof(EmailToTaskEnabled));
                 Raise(nameof(SelectedDueOffset));
                 Raise(nameof(SelectedDueTime));
-                Raise(nameof(SelectedLayout));
-                Raise(nameof(LayoutDescriptionKey));
                 Raise(nameof(SmartParsingEnabled));
                 Raise(nameof(SelectedSubtaskDisplay));
             }
@@ -73,25 +71,15 @@ public sealed class TaskSettingsViewModel : ObservableObject
     /// <summary>The due times the Tasks page offers.</summary>
     public ObservableCollection<DefaultChoice> DueTimeChoices { get; } = [];
 
-    /// <summary>The two task-detail layouts, for the Appearance page.</summary>
-    public ObservableCollection<DefaultChoice> LayoutChoices { get; } = [];
-
     public DefaultChoice? SelectedDueOffset =>
         DueOffsetChoices.FirstOrDefault(choice => choice.Value == SmartTasks.DefaultTaskDueOffset);
 
     public DefaultChoice? SelectedDueTime =>
         DueTimeChoices.FirstOrDefault(choice => choice.Value == SmartTasks.DefaultDueTime);
 
-    public DefaultChoice? SelectedLayout =>
-        LayoutChoices.FirstOrDefault(choice => choice.Value == SmartTasks.TaskDisplayMode);
-
-    /// <summary>The line under the layout combo, as a key: what the chosen layout does.</summary>
-    public string LayoutDescriptionKey => $"smart.layout.{SmartTasks.TaskDisplayMode}_desc";
-
     /// <summary>
-    /// Raised when the task-detail layout or the subtask layout changes, so the shell can redraw
-    /// the rows and the open task: what a row is, and what its leading control does, are different
-    /// now.
+    /// Raised when the subtask layout changes, so the shell can redraw the rows and the open task:
+    /// where a subtask sits is different now.
     /// </summary>
     public event Action? DisplayModeChanged;
 
@@ -102,7 +90,7 @@ public sealed class TaskSettingsViewModel : ObservableObject
     public async Task<bool> SetSmartTaskAsync(string field, object? value,
         CancellationToken cancellationToken = default)
     {
-        var before = (SmartTasks.TaskDisplayMode, SmartTasks.SubtaskDisplay);
+        var before = SmartTasks.SubtaskDisplay;
         var response = await _session.Core.CallAsync(
             Commands.UpdateSmartTaskSettings(new Dictionary<string, object?> { [field] = value }),
             cancellationToken);
@@ -110,7 +98,7 @@ public sealed class TaskSettingsViewModel : ObservableObject
         {
             return false;
         }
-        if ((SmartTasks.TaskDisplayMode, SmartTasks.SubtaskDisplay) != before)
+        if (SmartTasks.SubtaskDisplay != before)
         {
             DisplayModeChanged?.Invoke();
         }
