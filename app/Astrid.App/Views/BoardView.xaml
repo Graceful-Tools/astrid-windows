@@ -76,6 +76,7 @@
                             <local:PriorityMark Priority="{x:Bind Priority}"
                                                 IsRepeating="{x:Bind IsRepeating}"
                                                 ShowTick="{x:Bind Completed}"
+                                                Loaded="OnCardMarkLoaded"
                                                 Width="32" Height="32"
                                                 Visibility="{x:Bind LeadingIsCheckbox, Converter={StaticResource Visible}}" />
                             <!-- A task in a public list the reader cannot edit: the tap copies. -->

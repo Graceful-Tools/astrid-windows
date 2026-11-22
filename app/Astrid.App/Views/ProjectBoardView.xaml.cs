@@ -241,6 +241,21 @@ public sealed partial class ProjectBoardView : UserControl
     /// grown inside a row would push every other row off the screen — the thing a board is for is
     /// seeing the rows at once.
     /// </remarks>
+    /// <summary>
+    /// DS16's pop for the card whose task was just completed (task 27c773f5) — the same memory
+    /// <see cref="BoardView"/> keeps, for the same reason: a rebuilt swimlane draws the finished
+    /// task with a new mark that was ticked before it loaded.
+    /// </summary>
+    private void OnCardMarkLoaded(object sender, RoutedEventArgs args)
+    {
+        if (sender is PriorityMark { DataContext: Astrid.Core.Bindings.TaskRow row } mark)
+        {
+            _completionPops.Drawn(row, mark);
+        }
+    }
+
+    private readonly CompletionPopTracker _completionPops = new();
+
     private async void OnCardOpened(object sender, RoutedEventArgs args)
     {
         if ((sender as FrameworkElement)?.Tag is string taskId)

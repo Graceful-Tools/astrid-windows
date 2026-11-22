@@ -281,34 +281,15 @@ public sealed partial class TaskRowsView : UserControl
         }
         if (args.Item is TaskRow row && root.FindName("RowMark") is PriorityMark mark)
         {
-            PopIfJustCompleted(row, mark);
+            _completionPops.Drawn(row, mark);
         }
     }
 
     /// <summary>
-    /// Whether each task was done the last time a row for it was realised (task 4717a2fd).
+    /// DS16's pop for the row whose task was just completed (tasks 787c7aa5, 4717a2fd): a
+    /// completed row arrives as a new item, so only this list knows it was unfinished a moment ago.
     /// </summary>
-    private readonly Dictionary<string, bool> _lastSeenCompleted = new();
-
-    /// <summary>
-    /// DS16's pop for the row whose task was just completed (tasks 787c7aa5, 4717a2fd).
-    /// </summary>
-    /// <remarks>
-    /// The mark cannot tell on its own: the completed row arrives as a new item, so its mark is
-    /// built already ticked and never sees the tick arrive (see <see cref="PriorityMark.PopWhenLoaded"/>).
-    /// What tells a finished task from a done row scrolling into view or a list reloading is what
-    /// this list last drew for that task — unfinished then and finished now is the one that pops.
-    /// The re-sort that sinks the row realises it again, already seen done, so it pops once.
-    /// </remarks>
-    private void PopIfJustCompleted(TaskRow row, PriorityMark mark)
-    {
-        var wasOpen = _lastSeenCompleted.TryGetValue(row.Id, out var was) && !was;
-        _lastSeenCompleted[row.Id] = row.Completed;
-        if (wasOpen && row.Completed)
-        {
-            mark.PopWhenLoaded();
-        }
-    }
+    private readonly CompletionPopTracker _completionPops = new();
 
     /// <summary>
     /// The setting changed, so the rows already on screen have to be re-measured — the handler
