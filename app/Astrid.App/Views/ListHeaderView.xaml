@@ -17,6 +17,26 @@
         where astrid-web keeps them — see SidebarView.xaml.
     -->
 
+    <UserControl.Resources>
+        <!-- One filter group and its picks, for both tiers of the filter popover (task fdd8ef7f). -->
+        <DataTemplate x:Key="FilterGroupTemplate" x:DataType="bindings:FilterGroup">
+            <StackPanel Margin="0,0,0,12">
+                <TextBlock Text="{x:Bind TitleKey, Converter={StaticResource PickTitle}}"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <ItemsControl ItemsSource="{x:Bind Picks}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="bindings:FilterPick">
+                            <RadioButton Content="{x:Bind TitleKey, Converter={StaticResource PickTitle}}"
+                                         IsChecked="{x:Bind IsSelected}"
+                                         GroupName="{x:Bind Field}"
+                                         Checked="OnFilterChosen" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
     <Grid Margin="20,16,20,8" ColumnSpacing="12">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
@@ -78,29 +98,22 @@
                     Foreground="{x:Bind Shell.Tasks.IsFiltered, Mode=OneWay, Converter={StaticResource FilterTint}}">
                 <Button.Flyout>
                     <Flyout Opening="OnFiltersOpening">
+                        <!--
+                            Two tiers from one source (task fdd8ef7f, Option 3): sort, show tasks and
+                            assignee lead, one click from the list; everything rarer is behind All
+                            filters. Both are the core's groups, so the tiers cannot drift apart.
+                        -->
                         <ScrollViewer MaxHeight="480" VerticalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{x:Bind Shell.Tasks.FilterGroups, Mode=OneWay}"
-                                          MinWidth="240">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="bindings:FilterGroup">
-                                        <StackPanel Margin="0,0,0,12">
-                                            <TextBlock Text="{x:Bind TitleKey, Converter={StaticResource PickTitle}}"
-                                                       Style="{ThemeResource CaptionTextBlockStyle}"
-                                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                            <ItemsControl ItemsSource="{x:Bind Picks}">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate x:DataType="bindings:FilterPick">
-                                                        <RadioButton Content="{x:Bind TitleKey, Converter={StaticResource PickTitle}}"
-                                                                     IsChecked="{x:Bind IsSelected}"
-                                                                     GroupName="{x:Bind Field}"
-                                                                     Checked="OnFilterChosen" />
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                            <StackPanel MinWidth="240">
+                                <ItemsControl ItemsSource="{x:Bind Shell.Tasks.FrequentFilterGroups, Mode=OneWay}"
+                                              ItemTemplate="{StaticResource FilterGroupTemplate}" />
+                                <Expander x:Uid="all_filters" Header="All filters"
+                                          HorizontalAlignment="Stretch"
+                                          HorizontalContentAlignment="Stretch">
+                                    <ItemsControl ItemsSource="{x:Bind Shell.Tasks.OtherFilterGroups, Mode=OneWay}"
+                                                  ItemTemplate="{StaticResource FilterGroupTemplate}" />
+                                </Expander>
+                            </StackPanel>
                         </ScrollViewer>
                     </Flyout>
                 </Button.Flyout>

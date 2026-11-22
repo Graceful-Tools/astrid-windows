@@ -364,11 +364,41 @@ public sealed class TaskListViewModel : ObservableObject
         }
         IsFiltered = options.IsFiltered;
         FilterGroups.Clear();
+        FrequentFilterGroups.Clear();
+        OtherFilterGroups.Clear();
         foreach (var group in options.Groups)
         {
             FilterGroups.Add(group);
         }
+        foreach (var field in FrequentFields)
+        {
+            if (options.Groups.FirstOrDefault(group => group.Field == field) is { } frequent)
+            {
+                FrequentFilterGroups.Add(frequent);
+            }
+        }
+        foreach (var group in options.Groups.Where(group => !FrequentFields.Contains(group.Field)))
+        {
+            OtherFilterGroups.Add(group);
+        }
     }
+
+    /// <summary>
+    /// The filters people reach for most, in the order the popover leads with them (task fdd8ef7f).
+    /// </summary>
+    /// <remarks>
+    /// Option 3 of the list-panel proposal: sort, show tasks, assignee, which is web's own
+    /// frequency ordering (AWTD-1271). Which groups EXIST, and what each pick means, stays the
+    /// core's; this only says which of them lead. It is a presentation order, written once here,
+    /// and belongs in the core as a group property when a second client adopts the two tiers.
+    /// </remarks>
+    private static readonly string[] FrequentFields = ["sortBy", "filterCompletion", "filterAssignee"];
+
+    /// <summary>The popover's first tier: sort, show tasks, assignee, when the core sent them.</summary>
+    public ObservableCollection<FilterGroup> FrequentFilterGroups { get; } = [];
+
+    /// <summary>Everything else the core sent, in its order, behind "All filters".</summary>
+    public ObservableCollection<FilterGroup> OtherFilterGroups { get; } = [];
 
     /// <summary>
     /// Whether the rows can be dragged into an order of their own (task 7883f710).

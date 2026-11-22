@@ -369,6 +369,16 @@ public sealed class ShellSmokeTests
 
         app.Invoke("Filters");
         Assert.True(app.Sees("Sort by"), "the filter sheet did not open");
+        // Two tiers (task fdd8ef7f): the frequent groups open, the rest behind All filters.
+        Assert.True(app.Sees("All filters"), "the second tier's expander is not drawn");
+        Assert.False(app.Sees("Assigned by", 500), "a rare filter is showing before All filters is opened");
+        app.Expand("All filters");
+        Assert.True(app.Sees("Assigned by"), "All filters did not open the rest");
+        using (var shot = Capture.Window(new IntPtr(app.Window.Current.NativeWindowHandle)))
+        {
+            Console.WriteLine("screenshot: " + shot.SavePng(Path.Combine(
+                Path.GetTempPath(), $"astrid-filters-{Environment.ProcessId}.png")));
+        }
         Dismiss(app);
 
         app.Invoke("List settings");

@@ -2431,4 +2431,7 @@
   <data name="projectMode_goals_title" xml:space="preserve">
     <value>Goals &amp; guardrails</value>
   </data>
+  <data name="all_filters.Header" xml:space="preserve">
+    <value>All filters</value>
+  </data>
 </root>

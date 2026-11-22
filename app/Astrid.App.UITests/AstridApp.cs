@@ -277,6 +277,14 @@ public sealed class AstridApp : IDisposable
         Thread.Sleep(800);
     }
 
+    /// <summary>Open an expander, which has neither Invoke nor Toggle — it expands (task fdd8ef7f).</summary>
+    public void Expand(string name)
+    {
+        var pattern = (ExpandCollapsePattern)Require(name).GetCurrentPattern(ExpandCollapsePattern.Pattern);
+        pattern.Expand();
+        Thread.Sleep(600);
+    }
+
     /// <summary>Type into a box, replacing what is there.</summary>
     public void Type(string name, string text)
     {
