@@ -30,7 +30,7 @@
             core judges what is a chord and the window registers
             what it accepts.
         -->
-        <StackPanel Spacing="4">
+        <StackPanel Spacing="{StaticResource AstridSpace4}">
             <TextBox x:Uid="hotkey_box" x:Name="HotkeyBox"
                      Header="Quick-add shortcut"
                      AutomationProperties.Name="Quick-add shortcut"

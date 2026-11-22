@@ -43,7 +43,7 @@ public sealed class TaskRowsAlignmentTests
     private static double Number(string? value)
     {
         Assert.False(string.IsNullOrWhiteSpace(value));
-        return double.Parse(value!, CultureInfo.InvariantCulture);
+        return DesignLayoutScaleTests.Number(value!);
     }
 
     /// <summary>The quick-add card: the Border that holds the task-settings button.</summary>

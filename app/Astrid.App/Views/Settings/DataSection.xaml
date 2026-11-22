@@ -10,7 +10,7 @@
     xmlns:viewmodels="using:Astrid.App.ViewModels">
 
     <StackPanel Spacing="10">
-        <StackPanel Orientation="Horizontal" Spacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}">
             <Button x:Uid="export_as_json" Content="Export as JSON" Tag="json"
                     Click="OnExportAccount" />
             <Button x:Uid="export_as_csv" Content="Export as CSV" Tag="csv"

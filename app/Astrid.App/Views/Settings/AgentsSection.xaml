@@ -16,8 +16,8 @@
             My Tasks and private lists. "Let Astrid choose" is the web's cleared state.
         -->
         <!-- The character beside the heading, as the web's Agent Hub card has it (24px, round). -->
-        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,4">
-            <Border Width="24" Height="24" CornerRadius="12" VerticalAlignment="Center">
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}" Margin="0,0,0,4">
+            <Border Width="24" Height="24" CornerRadius="{StaticResource AstridRadiusLarge}" VerticalAlignment="Center">
                 <Image x:Uid="title_mark"
                        Source="{x:Bind local:Brand.SmallMark}"
                        Stretch="UniformToFill"
@@ -33,7 +33,7 @@
                    TextWrapping="Wrap"
                    Foreground="{ThemeResource AstridTextMuted}"
                    Visibility="{x:Bind Shell.Settings.Agents.NoAstridModels, Mode=OneWay, Converter={StaticResource Visible}}" />
-        <StackPanel Spacing="2"
+        <StackPanel Spacing="{StaticResource AstridSpace2}"
                     Visibility="{x:Bind Shell.Settings.Agents.HasAstridModels, Mode=OneWay, Converter={StaticResource Visible}}">
             <RadioButton Content="{x:Bind local:BrandCopy.AgentModelAuto}"
                          GroupName="AstridModel"
@@ -78,7 +78,7 @@
         <ItemsControl ItemsSource="{x:Bind Shell.Settings.Agents.Agents, Mode=OneWay}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="bindings:AgentSummary">
-                    <Grid ColumnSpacing="8" Padding="0,2">
+                    <Grid ColumnSpacing="{StaticResource AstridSpace8}" Padding="0,2">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
@@ -98,7 +98,7 @@
         <ItemsControl ItemsSource="{x:Bind Shell.Settings.Agents.Credentials, Mode=OneWay}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="bindings:AgentCredential">
-                    <Grid ColumnSpacing="8" Padding="0,2">
+                    <Grid ColumnSpacing="{StaticResource AstridSpace8}" Padding="0,2">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
@@ -139,7 +139,7 @@
                  AutomationProperties.Name="Webhook URL"
                  PlaceholderText="https://your-server.com/webhook"
                  Text="{x:Bind Shell.Settings.Agents.WebhookUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-        <StackPanel Orientation="Horizontal" Spacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}">
             <Button x:Uid="save" Content="Save" Click="OnSaveWebhook" />
             <Button x:Uid="new_secret" Content="New secret" Click="OnRegenerateWebhookSecret" />
             <Button x:Uid="send_a_test" Content="Send a test" Click="OnTestWebhook"
@@ -172,7 +172,7 @@
                    Foreground="{ThemeResource AstridTextMuted}"
                    Text="Your webhook server calls back with a client-credentials pair as well as the signing secret. Mint one here; it is shown once." />
         <Button x:Uid="create_credentials" Content="Create credentials" Click="OnMintWebhookCredentials" />
-        <Border CornerRadius="8"
+        <Border CornerRadius="{StaticResource AstridRadiusMedium}"
                 Padding="10,8"
                 Background="{ThemeResource AstridSurfaceHover}"
                 Visibility="{x:Bind Shell.Settings.Agents.HasWebhookCredentials, Mode=OneWay, Converter={StaticResource Visible}}">
@@ -206,7 +206,7 @@
         <ItemsControl ItemsSource="{x:Bind Shell.Settings.Agents.CustomAgents, Mode=OneWay}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="bindings:CustomAgent">
-                    <Grid ColumnSpacing="8" Padding="0,2">
+                    <Grid ColumnSpacing="{StaticResource AstridSpace8}" Padding="0,2">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
@@ -220,7 +220,7 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <StackPanel Orientation="Horizontal" Spacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}">
             <TextBox x:Uid="new_agent_name_box" x:Name="NewAgentNameBox"
                      AutomationProperties.Name="New agent name"
                      PlaceholderText="a name, lowercase"

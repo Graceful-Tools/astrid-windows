@@ -29,7 +29,7 @@
             <x:String>all_bidirectional</x:String>
         </ComboBox>
 
-        <StackPanel Orientation="Horizontal" Spacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}">
             <Button x:Uid="connect_copilot" Content="Connect Copilot"
                     Click="OnConnectCopilot"
                     Visibility="{x:Bind Shell.Settings.Agents.CopilotConnected, Mode=OneWay, Converter={StaticResource NotVisible}}" />
@@ -55,7 +55,7 @@
                        Text="Copilot's cloud agent needs a token to act as your account. Mint one here; it is shown once." />
             <Button x:Uid="mint_copilot_token" Content="Mint cloud-agent token"
                     Click="OnMintCopilotToken" />
-            <Border CornerRadius="8"
+            <Border CornerRadius="{StaticResource AstridRadiusMedium}"
                     Padding="10,8"
                     Background="{ThemeResource AstridSurfaceHover}"
                     Visibility="{x:Bind Shell.Settings.Agents.HasCopilotToken, Mode=OneWay, Converter={StaticResource Visible}}">
@@ -127,7 +127,7 @@
                 Google list of the same name rather than
                 making a second one.
             -->
-            <StackPanel Orientation="Horizontal" Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}">
                 <ComboBox x:Uid="new_google_list_box" x:Name="NewGoogleListBox"
                           Header="Make a Google list for"
                           AutomationProperties.Name="List to make a Google list for"

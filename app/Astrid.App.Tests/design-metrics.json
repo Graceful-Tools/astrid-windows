@@ -3,9 +3,9 @@
   "counts": {
     "xaml.hex-colours": 0,
     "code.hex-colours": 0,
-    "xaml.corner-radius": 44,
+    "xaml.corner-radius": 18,
     "xaml.font-size": 157,
-    "xaml.spacing": 385,
+    "xaml.spacing": 234,
     "code.strings": 243,
     "motion.durations": 1
   }

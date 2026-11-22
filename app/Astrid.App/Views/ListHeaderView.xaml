@@ -37,7 +37,7 @@
             </StackPanel>
         </DataTemplate>
     </UserControl.Resources>
-    <Grid Margin="20,16,20,8" ColumnSpacing="12">
+    <Grid Margin="20,16,20,8" ColumnSpacing="{StaticResource AstridSpace12}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
@@ -52,7 +52,7 @@
             lets the list name truncate, which is the thing on that row that can afford
             to.
         -->
-        <Grid Grid.Column="0" ColumnSpacing="12" VerticalAlignment="Center">
+        <Grid Grid.Column="0" ColumnSpacing="{StaticResource AstridSpace12}" VerticalAlignment="Center">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" MinWidth="0" />
@@ -76,7 +76,7 @@
                        TextTrimming="CharacterEllipsis"
                        TextWrapping="NoWrap"
                        VerticalAlignment="Center" />
-            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8"
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}"
                         VerticalAlignment="Center">
             <!--
                 Search replaces what the list shows rather than opening a screen of its
@@ -224,7 +224,7 @@
             again, which is exactly what a machine waking from sleep needs: the core's backoff
             was chosen for a network that has since come back.
         -->
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}"
                     VerticalAlignment="Center">
             <TextBlock x:Uid="not_synced_yet"
                        Text="Not synced yet"

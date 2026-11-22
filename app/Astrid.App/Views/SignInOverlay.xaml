@@ -44,29 +44,29 @@
         <Border VerticalAlignment="Center" HorizontalAlignment="Center"
                 MaxWidth="420"
                 Padding="40,36"
-                CornerRadius="12"
+                CornerRadius="{StaticResource AstridRadiusLarge}"
                 Background="{ThemeResource AstridSurface}"
                 BorderThickness="1"
                 BorderBrush="{ThemeResource AstridBorder}">
-            <StackPanel Spacing="20">
+            <StackPanel Spacing="{StaticResource AstridSpace20}">
                 <!--
                     The character beside the name, as astrid-web's sign-in page has it
                     (auth/signin/signin-client.tsx: the 88px mark, rounded, with the wordmark
                     and the line beside it). It used to be a glyph in an accent square.
                 -->
-                <Grid ColumnSpacing="16" HorizontalAlignment="Center">
+                <Grid ColumnSpacing="{StaticResource AstridSpace16}" HorizontalAlignment="Center">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Width="88" Height="88" CornerRadius="16"
+                    <Border Grid.Column="0" Width="88" Height="88" CornerRadius="{StaticResource AstridRadiusXLarge}"
                             VerticalAlignment="Center">
                         <Image x:Uid="title_mark"
                                Source="{x:Bind local:Brand.Mark}"
                                Stretch="Uniform"
                                AutomationProperties.Name="{x:Bind local:BrandCopy.AppName}" />
                     </Border>
-                    <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="1" Spacing="{StaticResource AstridSpace4}" VerticalAlignment="Center">
                         <TextBlock Text="{x:Bind local:BrandCopy.AppName}"
                                    Style="{ThemeResource TitleLargeTextBlockStyle}"
                                    Foreground="{ThemeResource AstridTextPrimary}" />
@@ -90,7 +90,7 @@
                            Foreground="{ThemeResource AstridTextMuted}"
                            Text="{x:Bind local:BrandCopy.SignInMethods}" />
 
-                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center"
+                <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}" HorizontalAlignment="Center"
                             Visibility="{x:Bind Shell.SignIn.IsWaitingForBrowser, Mode=OneWay, Converter={StaticResource Visible}}">
                     <ProgressRing IsActive="True" Width="16" Height="16" />
                     <TextBlock x:Uid="waiting_for_your_browser" Text="Waiting for your browser…"

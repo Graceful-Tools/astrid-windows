@@ -98,8 +98,10 @@ public sealed class ListInsightsPanelTests
     public void The_panels_converters_are_declared_and_the_picker_is_wired_task_48c624ad()
     {
         var panel = Panel();
+        // The shell's own resources, and the generated dictionary's scales (task a7f56c04).
         var shared = File.ReadAllText(Path.Combine(
-            LocalisationTests.AppDirectory(), "Views", "ShellResources.xaml"));
+                LocalisationTests.AppDirectory(), "Views", "ShellResources.xaml"))
+            + File.ReadAllText(DesignTokenTests.TokenDictionaryPath());
 
         var undeclared = Regex.Matches(panel.ToString(), @"\{StaticResource (\w+)\}")
             .Select(match => match.Groups[1].Value)

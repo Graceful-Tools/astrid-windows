@@ -12,7 +12,7 @@
     <UserControl.Resources>
         <!-- One row of the comment box's popup: the sigil, the name, and what tells it apart. -->
         <DataTemplate x:Key="SuggestionTemplate" x:DataType="bindings:Suggestion">
-            <StackPanel Orientation="Horizontal" Spacing="8" Padding="4,2">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}" Padding="4,2">
                 <TextBlock Text="{x:Bind Sigil}" Width="14" TextAlignment="Center"
                            Foreground="{ThemeResource AstridTextMuted}" />
                 <TextBlock Text="{x:Bind Label}" />
@@ -219,7 +219,7 @@
             above it, a short window left the conversation a couple of lines to live in.
         -->
         <ScrollViewer Grid.Row="1" Padding="16,12,16,0">
-            <StackPanel Spacing="12">
+            <StackPanel Spacing="{StaticResource AstridSpace12}">
 
             <!--
                 The body is grouped into rounded cards, as the Mac groups it (task 77d17dc8):
@@ -239,7 +239,7 @@
                     Background="{ThemeResource AstridSurfaceHover}"
                     BorderThickness="1"
                     BorderBrush="{ThemeResource AstridBorder}">
-            <StackPanel Spacing="2">
+            <StackPanel Spacing="{StaticResource AstridSpace2}">
 
             <!--
                 The task itself, at the top of its own card — the mark, the title and the
@@ -289,7 +289,7 @@
                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                 </Button>
-                <StackPanel Grid.Column="1" Spacing="2">
+                <StackPanel Grid.Column="1" Spacing="{StaticResource AstridSpace2}">
                     <TextBox x:Uid="detail_title_box" x:Name="DetailTitleBox"
                              AutomationProperties.Name="Title"
                              Text="{x:Bind Shell.Detail.Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -385,7 +385,7 @@
                                             HorizontalContentAlignment="Left"
                                             Tag="{x:Bind UserId}"
                                             Click="OnAssigneeChosen">
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}">
                                             <TextBlock Text="{x:Bind Glyph}"
                                                        Width="24" TextAlignment="Center" />
                                             <TextBlock Text="{x:Bind TitleKey, Converter={StaticResource PickTitle}}" />
@@ -423,7 +423,7 @@
                 </Grid>
                 <Button.Flyout>
                     <Flyout>
-                        <StackPanel Spacing="4" MinWidth="200">
+                        <StackPanel Spacing="{StaticResource AstridSpace4}" MinWidth="200">
                             <TextBlock x:Uid="when_2" Text="When" Style="{ThemeResource CaptionTextBlockStyle}" />
                             <ItemsControl ItemsSource="{x:Bind Shell.Detail.DatePicks, Mode=OneWay}">
                                 <ItemsControl.ItemTemplate>
@@ -582,7 +582,7 @@
                 </Grid>
                 <Button.Flyout>
                     <Flyout Opening="OnRepeatFlyoutOpening">
-                        <StackPanel Spacing="4" MinWidth="260">
+                        <StackPanel Spacing="{StaticResource AstridSpace4}" MinWidth="260">
                             <ItemsControl ItemsSource="{x:Bind Shell.Detail.RepeatPresets, Mode=OneWay}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="bindings:RepeatPreset">
@@ -601,7 +601,7 @@
                                           Toggled="OnRepeatFromToggled" />
                             <TextBlock x:Uid="custom" Text="Custom" Style="{ThemeResource CaptionTextBlockStyle}"
                                        Margin="0,8,0,0" />
-                            <StackPanel Orientation="Horizontal" Spacing="8">
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}">
                                 <NumberBox x:Uid="repeat_interval" x:Name="RepeatInterval" Value="1" Minimum="1" Maximum="365"
                                            Width="96" AutomationProperties.Name="Every" />
                                 <ComboBox x:Uid="repeat_unit" x:Name="RepeatUnit" SelectedIndex="0"
@@ -613,7 +613,7 @@
                                     <ComboBoxItem x:Uid="years" Content="years" Tag="years" />
                                 </ComboBox>
                             </StackPanel>
-                            <StackPanel x:Name="RepeatWeekdays" Orientation="Horizontal" Spacing="2"
+                            <StackPanel x:Name="RepeatWeekdays" Orientation="Horizontal" Spacing="{StaticResource AstridSpace2}"
                                         Visibility="Collapsed">
                                 <ToggleButton x:Uid="m" Content="M" Tag="monday" MinWidth="32" />
                                 <ToggleButton x:Uid="t" Content="T" Tag="tuesday" MinWidth="32" />
@@ -654,7 +654,7 @@
                                        Value="1" Minimum="1" Maximum="31" Width="96"
                                        Visibility="Collapsed"
                                        AutomationProperties.Name="Day of the month" />
-                            <StackPanel x:Name="RepeatMonthWeekdayRow" Orientation="Horizontal" Spacing="8"
+                            <StackPanel x:Name="RepeatMonthWeekdayRow" Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}"
                                         Visibility="Collapsed">
                                 <ComboBox x:Uid="repeat_month_week" x:Name="RepeatMonthWeek" SelectedIndex="0"
                                           AutomationProperties.Name="Week of the month">
@@ -676,7 +676,7 @@
                                     <ComboBoxItem x:Uid="weekday_sunday" Content="Sunday" Tag="sunday" />
                                 </ComboBox>
                             </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}">
                                 <ComboBox x:Uid="repeat_end" x:Name="RepeatEnd" SelectedIndex="0"
                                           AutomationProperties.Name="Ends">
                                     <ComboBoxItem x:Uid="never_ends" Content="never ends" Tag="never" />
@@ -802,7 +802,7 @@
                 </Grid>
                 <Button.Flyout>
                     <Flyout Opening="OnListsFlyoutOpening" Closed="OnListsFlyoutClosed">
-                        <StackPanel Spacing="8" MinWidth="260" MaxWidth="320">
+                        <StackPanel Spacing="{StaticResource AstridSpace8}" MinWidth="260" MaxWidth="320">
                             <!-- The lists it is in, each with its ×. -->
                             <ScrollViewer HorizontalScrollMode="Auto"
                                           HorizontalScrollBarVisibility="Hidden"
@@ -818,7 +818,7 @@
                                         <DataTemplate x:DataType="bindings:ListPick">
                                             <Border CornerRadius="{StaticResource AstridRadiusSmall}" Padding="8,2,4,2"
                                                     Background="{x:Bind Color, Converter={StaticResource ChipColour}}">
-                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}">
                                                     <TextBlock Text="{x:Bind Name}"
                                                                FontSize="12"
                                                                VerticalAlignment="Center"
@@ -851,7 +851,7 @@
                                                 Tag="{x:Bind Id}"
                                                 AutomationProperties.Name="{x:Bind Name}"
                                                 Click="OnAddToList">
-                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}">
                                                 <Ellipse Width="10" Height="10"
                                                          VerticalAlignment="Center"
                                                          Fill="{x:Bind Color, Converter={StaticResource ChipColour}}" />
@@ -867,7 +867,7 @@
                                     AutomationProperties.Name="Create list"
                                     Visibility="{x:Bind Shell.Detail.CanCreateList, Mode=OneWay, Converter={StaticResource Visible}}"
                                     Click="OnCreateListForTask">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}">
                                     <FontIcon Glyph="&#xE710;" FontSize="12" VerticalAlignment="Center" />
                                     <TextBlock>
                                         <Run x:Uid="create_quot" Text="Create &quot;" /><Run Text="{x:Bind Shell.Detail.CreateListName, Mode=OneWay}" /><Run Text="&quot;" />
@@ -991,7 +991,7 @@
                     waiting on nine things, and a count that hid some of them would be the one
                     number nobody could act on.
                 -->
-                <StackPanel Grid.Column="1" Orientation="Vertical" Spacing="4">
+                <StackPanel Grid.Column="1" Orientation="Vertical" Spacing="{StaticResource AstridSpace4}">
                     <ItemsControl ItemsSource="{x:Bind Shell.Detail.WaitingOnChips, Mode=OneWay}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -1003,7 +1003,7 @@
                                 <Border Background="{ThemeResource AstridBgSelected}"
                                         BorderBrush="{ThemeResource AstridBorder}" BorderThickness="1"
                                         CornerRadius="{StaticResource AstridRadiusSmall}" Padding="8,2,4,2">
-                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}">
                                         <!--
                                             A blocker the reader may not see shows neither title
                                             nor id, only that something they cannot see is
@@ -1193,7 +1193,7 @@
                 <ItemsControl ItemsSource="{x:Bind Shell.Detail.Subtasks, Mode=OneWay}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="viewmodels:SubtaskSummary">
-                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,3">
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}" Margin="0,3">
                                 <TextBlock Text="&#xECCA;"
                                            FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                            FontSize="13"
@@ -1303,7 +1303,7 @@
                             AutomationProperties.Name="Refresh comments"
                             ToolTipService.ToolTip="Refresh comments"
                             Click="OnRefreshComments">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}">
                             <TextBlock Text="&#xE72C;"
                                        FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                        FontSize="11"
@@ -1334,7 +1334,7 @@
                                            Visibility="{x:Bind IsSystem, Converter={StaticResource Visible}}" />
 
                                 <!-- The editor, in the bubble's place. -->
-                                <StackPanel Spacing="4" MinWidth="220" MaxWidth="260"
+                                <StackPanel Spacing="{StaticResource AstridSpace4}" MinWidth="220" MaxWidth="260"
                                             Visibility="{x:Bind IsEditing, Converter={StaticResource Visible}}">
                                     <TextBox x:Uid="edit_comment" Text="{x:Bind Content}"
                                              Tag="{x:Bind Id}"
@@ -1434,7 +1434,7 @@
                                                                 Tag="{x:Bind Id}"
                                                                 Click="OnOpenCommentFile"
                                                                 Visibility="{x:Bind ShowsChip, Converter={StaticResource Visible}}">
-                                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}">
                                                                 <FontIcon FontSize="12"
                                                                           Glyph="{x:Bind RendersInline, Converter={StaticResource FileGlyph}}" />
                                                                 <TextBlock Text="{x:Bind Name}"
@@ -1456,7 +1456,7 @@
                                     </StackPanel>
                                 </Border>
                                                                 <!-- The quiet words. Delete asks first: there is no undo for it on any client. -->
-                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="4,2,4,0"
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}" Margin="4,2,4,0"
                                             HorizontalAlignment="{x:Bind IsMine, Converter={StaticResource BubbleAlign}}"
                                             Visibility="{x:Bind ShowsBubble, Converter={StaticResource Visible}}">
                                     <Button x:Uid="reply" Content="Reply" Style="{StaticResource BubbleAction}"
@@ -1525,7 +1525,7 @@
                 Padding="12"
                 BorderThickness="0,1,0,0"
                 BorderBrush="{ThemeResource AstridBorder}">
-            <StackPanel Spacing="8">
+            <StackPanel Spacing="{StaticResource AstridSpace8}">
                 <Grid ColumnSpacing="6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />

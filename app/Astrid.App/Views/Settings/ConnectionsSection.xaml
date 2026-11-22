@@ -66,17 +66,17 @@
                         <ItemsControl ItemsSource="{x:Bind Rows}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="bindings:Connection">
-                                    <Border CornerRadius="8"
+                                    <Border CornerRadius="{StaticResource AstridRadiusMedium}"
                                             Padding="10,8"
                                             Margin="0,0,0,6"
                                             Background="{ThemeResource AstridSurfaceHover}"
                                             Opacity="{x:Bind IsActive, Converter={StaticResource RowOpacity}}">
-                                        <Grid ColumnSpacing="8">
+                                        <Grid ColumnSpacing="{StaticResource AstridSpace8}">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <StackPanel Grid.Column="0" Spacing="2">
+                                            <StackPanel Grid.Column="0" Spacing="{StaticResource AstridSpace2}">
                                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                                     <TextBlock Text="{x:Bind Name}"
                                                                FontWeight="SemiBold"
@@ -128,7 +128,7 @@
                                                            Foreground="{ThemeResource AstridTextMuted}"
                                                            Visibility="{x:Bind ManagedOnAgentsPage, Converter={StaticResource Visible}}" />
                                             </StackPanel>
-                                            <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Top">
+                                            <StackPanel Grid.Column="1" Spacing="{StaticResource AstridSpace4}" VerticalAlignment="Top">
                                                 <Button x:Uid="edit_client" Content="Edit"
                                                         Tag="{x:Bind EditableClientId}"
                                                         Visibility="{x:Bind IsEditable, Converter={StaticResource Visible}}"
@@ -162,7 +162,7 @@
         <Button x:Uid="new_client" Content="New client"
                 Click="OnBeginCreate"
                 Visibility="{x:Bind Shell.Settings.Connections.IsEditorOpen, Mode=OneWay, Converter={StaticResource NotVisible}}" />
-        <StackPanel Spacing="8"
+        <StackPanel Spacing="{StaticResource AstridSpace8}"
                     Visibility="{x:Bind Shell.Settings.Connections.IsEditorOpen, Mode=OneWay, Converter={StaticResource Visible}}">
             <TextBox x:Uid="what_it_is_for" x:Name="DraftNameBox"
                      AutomationProperties.Name="New client name"
@@ -235,7 +235,7 @@
                        TextWrapping="Wrap"
                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                        Visibility="{x:Bind Shell.Settings.Connections.HasDraftProblem, Mode=OneWay, Converter={StaticResource Visible}}" />
-            <StackPanel Orientation="Horizontal" Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}">
                 <Button x:Uid="save" Content="Save"
                         Style="{ThemeResource AccentButtonStyle}"
                         IsEnabled="{x:Bind Shell.Settings.Connections.CanSend, Mode=OneWay}"
@@ -248,7 +248,7 @@
             and never written down: the server stores a hash
             and shows the secret once.
         -->
-        <Border CornerRadius="8"
+        <Border CornerRadius="{StaticResource AstridRadiusMedium}"
                 Padding="10,8"
                 Background="{ThemeResource AstridSurfaceHover}"
                 Visibility="{x:Bind Shell.Settings.Connections.HasMintedClient, Mode=OneWay, Converter={StaticResource Visible}}">

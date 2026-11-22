@@ -78,7 +78,7 @@
         <!-- The bar: the way back, and what this is. -->
         <Grid Grid.Row="0"
               Padding="12,8"
-              ColumnSpacing="8"
+              ColumnSpacing="{StaticResource AstridSpace8}"
               BorderThickness="0,0,0,1"
               BorderBrush="{ThemeResource AstridBorder}">
             <Grid.ColumnDefinitions>
@@ -116,17 +116,17 @@
                 </Grid.RowDefinitions>
 
                 <!-- The web's header: the brand square, the word, and what the page is for. -->
-                <Grid Grid.Row="0" ColumnSpacing="12" Margin="0,0,0,16">
+                <Grid Grid.Row="0" ColumnSpacing="{StaticResource AstridSpace12}" Margin="0,0,0,16">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Width="32" Height="32" CornerRadius="8"
+                    <Border Grid.Column="0" Width="32" Height="32" CornerRadius="{StaticResource AstridRadiusMedium}"
                             VerticalAlignment="Top" Margin="0,4,0,0"
                             Background="{ThemeResource AstridAccentBrush}">
                         <Border Width="14" Height="14" CornerRadius="3" Background="White" />
                     </Border>
-                    <StackPanel Grid.Column="1" Spacing="2">
+                    <StackPanel Grid.Column="1" Spacing="{StaticResource AstridSpace2}">
                         <TextBlock x:Uid="settings_heading" Text="Settings"
                                    FontSize="22" FontWeight="Bold"
                                    Foreground="{ThemeResource AstridTextPrimary}" />
@@ -137,7 +137,7 @@
                 </Grid>
 
                 <!-- Whose settings: the name, the address, and the three numbers from the server. -->
-                <StackPanel Grid.Row="1" Spacing="2" Margin="0,0,0,16">
+                <StackPanel Grid.Row="1" Spacing="{StaticResource AstridSpace2}" Margin="0,0,0,16">
                     <TextBlock Text="{x:Bind Shell.Settings.Account.DisplayName, Mode=OneWay}"
                                FontSize="14"
                                FontWeight="SemiBold"
@@ -152,7 +152,7 @@
                         across every device, so a client counting its own cache would answer
                         with whatever it happens to hold.
                     -->
-                    <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,0">
+                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace12}" Margin="0,4,0,0">
                         <TextBlock Text="{x:Bind Shell.Settings.Account.Stats, Mode=OneWay, Converter={StaticResource StatFinished}}"
                                    FontSize="11"
                                    Foreground="{ThemeResource AstridTextMuted}" />
@@ -178,7 +178,7 @@
                           ItemContainerStyle="{StaticResource SettingsCardStyle}"
                           SelectionChanged="OnSettingsSectionChosen">
                     <ListViewItem x:Uid="account" Tag="Account" AutomationProperties.Name="Account">
-                        <Grid ColumnSpacing="12">
+                        <Grid ColumnSpacing="{StaticResource AstridSpace12}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
@@ -187,7 +187,7 @@
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
                                 <FontIcon Glyph="&#xE77B;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridCategoryBlue}" />
                             </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="{StaticResource AstridSpace2}">
                                 <TextBlock x:Uid="account_2" Text="Account" Style="{StaticResource CardTitle}" />
                                 <TextBlock x:Name="AccountCardLine" Style="{StaticResource CardLine}" />
                             </StackPanel>
@@ -195,7 +195,7 @@
                         </Grid>
                     </ListViewItem>
                     <ListViewItem x:Uid="reminders" Tag="Reminders" AutomationProperties.Name="Reminders">
-                        <Grid ColumnSpacing="12">
+                        <Grid ColumnSpacing="{StaticResource AstridSpace12}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
@@ -204,7 +204,7 @@
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
                                 <FontIcon Glyph="&#xEA8F;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridCategoryOrange}" />
                             </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="{StaticResource AstridSpace2}">
                                 <TextBlock x:Uid="reminders_2" Text="Reminders" Style="{StaticResource CardTitle}" />
                                 <TextBlock x:Name="RemindersCardLine" Style="{StaticResource CardLine}" />
                             </StackPanel>
@@ -212,7 +212,7 @@
                         </Grid>
                     </ListViewItem>
                     <ListViewItem x:Uid="tasks" Tag="Tasks" AutomationProperties.Name="Tasks">
-                        <Grid ColumnSpacing="12">
+                        <Grid ColumnSpacing="{StaticResource AstridSpace12}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
@@ -221,7 +221,7 @@
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
                                 <FontIcon Glyph="&#xE73A;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridCategoryBlue}" />
                             </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="{StaticResource AstridSpace2}">
                                 <TextBlock x:Uid="tasks_nav_label" x:Name="TasksNavLabel" Text="Tasks" Style="{StaticResource CardTitle}" />
                                 <TextBlock x:Name="TasksCardLine" Style="{StaticResource CardLine}" />
                             </StackPanel>
@@ -229,7 +229,7 @@
                         </Grid>
                     </ListViewItem>
                     <ListViewItem x:Uid="ai_agents" Tag="Agents" AutomationProperties.Name="AI agents">
-                        <Grid ColumnSpacing="12">
+                        <Grid ColumnSpacing="{StaticResource AstridSpace12}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
@@ -238,7 +238,7 @@
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
                                 <FontIcon Glyph="&#xE99A;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridAgent}" />
                             </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="{StaticResource AstridSpace2}">
                                 <TextBlock x:Uid="ai_agents_2" Text="AI agents" Style="{StaticResource CardTitle}" />
                                 <TextBlock x:Name="AgentsCardLine" Style="{StaticResource CardLine}" />
                             </StackPanel>
@@ -246,7 +246,7 @@
                         </Grid>
                     </ListViewItem>
                     <ListViewItem x:Uid="connections" Tag="Connections" AutomationProperties.Name="Connections">
-                        <Grid ColumnSpacing="12">
+                        <Grid ColumnSpacing="{StaticResource AstridSpace12}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
@@ -255,7 +255,7 @@
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
                                 <FontIcon Glyph="&#xE71B;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridAccent}" />
                             </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="{StaticResource AstridSpace2}">
                                 <TextBlock x:Uid="connections_2" Text="Connections" Style="{StaticResource CardTitle}" />
                                 <TextBlock x:Name="ConnectionsCardLine" Style="{StaticResource CardLine}" />
                             </StackPanel>
@@ -263,7 +263,7 @@
                         </Grid>
                     </ListViewItem>
                     <ListViewItem x:Uid="contacts" Tag="Contacts" AutomationProperties.Name="Contacts">
-                        <Grid ColumnSpacing="12">
+                        <Grid ColumnSpacing="{StaticResource AstridSpace12}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
@@ -272,7 +272,7 @@
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
                                 <FontIcon Glyph="&#xE716;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridCategoryTeal}" />
                             </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="{StaticResource AstridSpace2}">
                                 <TextBlock x:Uid="contacts_nav_label" x:Name="ContactsNavLabel" Text="Contacts" Style="{StaticResource CardTitle}" />
                                 <TextBlock x:Name="ContactsCardLine" Style="{StaticResource CardLine}" />
                             </StackPanel>
@@ -280,7 +280,7 @@
                         </Grid>
                     </ListViewItem>
                     <ListViewItem x:Uid="appearance" Tag="Appearance" AutomationProperties.Name="Appearance">
-                        <Grid ColumnSpacing="12">
+                        <Grid ColumnSpacing="{StaticResource AstridSpace12}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
@@ -289,7 +289,7 @@
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
                                 <FontIcon Glyph="&#xE790;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridCategoryPink}" />
                             </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="{StaticResource AstridSpace2}">
                                 <TextBlock x:Uid="appearance_2" Text="Appearance" Style="{StaticResource CardTitle}" />
                                 <TextBlock x:Name="AppearanceCardLine" Style="{StaticResource CardLine}" />
                             </StackPanel>
@@ -297,7 +297,7 @@
                         </Grid>
                     </ListViewItem>
                     <ListViewItem x:Uid="integrations" Tag="Integrations" AutomationProperties.Name="Integrations">
-                        <Grid ColumnSpacing="12">
+                        <Grid ColumnSpacing="{StaticResource AstridSpace12}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
@@ -306,7 +306,7 @@
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
                                 <FontIcon Glyph="&#xE704;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridCategoryGreen}" />
                             </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="{StaticResource AstridSpace2}">
                                 <TextBlock x:Uid="integrations_2" Text="Integrations" Style="{StaticResource CardTitle}" />
                                 <TextBlock x:Name="IntegrationsCardLine" Style="{StaticResource CardLine}" />
                             </StackPanel>
@@ -314,7 +314,7 @@
                         </Grid>
                     </ListViewItem>
                     <ListViewItem x:Uid="your_data" Tag="Data" AutomationProperties.Name="Your data">
-                        <Grid ColumnSpacing="12">
+                        <Grid ColumnSpacing="{StaticResource AstridSpace12}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
@@ -323,7 +323,7 @@
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
                                 <FontIcon Glyph="&#xE8B7;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridCategoryGreenInk}" />
                             </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="{StaticResource AstridSpace2}">
                                 <TextBlock x:Uid="your_data_2" Text="Your data" Style="{StaticResource CardTitle}" />
                                 <TextBlock x:Name="DataCardLine" Style="{StaticResource CardLine}" />
                             </StackPanel>
@@ -338,7 +338,7 @@
                         pages.
                     -->
                     <ListViewItem x:Uid="help_and_support" Tag="Help" AutomationProperties.Name="Help and support">
-                        <Grid ColumnSpacing="12">
+                        <Grid ColumnSpacing="{StaticResource AstridSpace12}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
@@ -347,7 +347,7 @@
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
                                 <FontIcon Glyph="&#xE897;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridInfo}" />
                             </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="{StaticResource AstridSpace2}">
                                 <TextBlock x:Uid="help_nav_label" x:Name="HelpNavLabel" Text="Help &amp; Support" Style="{StaticResource CardTitle}" />
                                 <TextBlock x:Name="HelpCardLine" Style="{StaticResource CardLine}" />
                             </StackPanel>
@@ -362,7 +362,7 @@
                         bug task a4352b30 fixed.
                     -->
                     <ListViewItem x:Uid="report_an_issue" Tag="Feedback" AutomationProperties.Name="Report an issue">
-                        <Grid ColumnSpacing="12">
+                        <Grid ColumnSpacing="{StaticResource AstridSpace12}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
@@ -371,7 +371,7 @@
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
                                 <FontIcon Glyph="&#xED15;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridCategoryRed}" />
                             </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="{StaticResource AstridSpace2}">
                                 <TextBlock x:Uid="feedback_nav_label" x:Name="FeedbackNavLabel" Text="Report an Issue" Style="{StaticResource CardTitle}" />
                                 <TextBlock x:Name="FeedbackCardLine" Style="{StaticResource CardLine}" />
                             </StackPanel>
@@ -379,7 +379,7 @@
                         </Grid>
                     </ListViewItem>
                     <ListViewItem x:Uid="privacy_policy" Tag="Privacy" AutomationProperties.Name="Privacy policy">
-                        <Grid ColumnSpacing="12">
+                        <Grid ColumnSpacing="{StaticResource AstridSpace12}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
@@ -388,7 +388,7 @@
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
                                 <FontIcon Glyph="&#xE72E;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridTextMuted}" />
                             </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="{StaticResource AstridSpace2}">
                                 <TextBlock x:Uid="privacy_nav_label" x:Name="PrivacyNavLabel" Text="Privacy Policy" Style="{StaticResource CardTitle}" />
                                 <TextBlock x:Name="PrivacyCardLine" Style="{StaticResource CardLine}" />
                             </StackPanel>
@@ -396,7 +396,7 @@
                         </Grid>
                     </ListViewItem>
                     <ListViewItem x:Uid="terms_of_service" Tag="Terms" AutomationProperties.Name="Terms of service">
-                        <Grid ColumnSpacing="12">
+                        <Grid ColumnSpacing="{StaticResource AstridSpace12}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
@@ -405,7 +405,7 @@
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
                                 <FontIcon Glyph="&#xE8A5;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridTextMuted}" />
                             </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="{StaticResource AstridSpace2}">
                                 <TextBlock x:Uid="terms_nav_label" x:Name="TermsNavLabel" Text="Terms of Service" Style="{StaticResource CardTitle}" />
                                 <TextBlock x:Name="TermsCardLine" Style="{StaticResource CardLine}" />
                             </StackPanel>
@@ -430,7 +430,7 @@
                                   Glyph="&#xE77B;" FontSize="28"
                                   VerticalAlignment="Center"
                                   Foreground="{ThemeResource AstridCategoryBlue}" />
-                        <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                        <StackPanel Grid.Column="1" Spacing="{StaticResource AstridSpace2}" VerticalAlignment="Center">
                             <TextBlock x:Uid="settings_section_title" x:Name="SettingsSectionTitle"
                                        Text="Account"
                                        FontSize="22"

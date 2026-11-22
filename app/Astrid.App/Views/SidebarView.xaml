@@ -16,7 +16,7 @@
                 row a target rather than only its text; which rows accept, and what a drop writes,
                 is answered in the code-behind and the view model.
             -->
-            <Grid ColumnSpacing="8"
+            <Grid ColumnSpacing="{StaticResource AstridSpace8}"
                   Background="Transparent"
                   AllowDrop="True"
                   DragOver="OnListDragOver"
@@ -92,7 +92,7 @@
         <StackPanel Grid.Row="0"
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
-                    Spacing="4"
+                    Spacing="{StaticResource AstridSpace4}"
                     Margin="0,8,12,0">
             <!--
                 The bell: what happened to work you are involved in - assigned, mentioned,
@@ -117,7 +117,7 @@
                     <TextBlock Text="&#xEA8F;" FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                FontSize="14" />
                     <Border Background="{ThemeResource AccentFillColorDefaultBrush}"
-                            CornerRadius="8" MinWidth="16" Height="16" Padding="4,0"
+                            CornerRadius="{StaticResource AstridRadiusMedium}" MinWidth="16" Height="16" Padding="4,0"
                             HorizontalAlignment="Right" VerticalAlignment="Top"
                             Margin="0,-6,-6,0"
                             Visibility="{x:Bind Shell.Notifications.HasUnread, Mode=OneWay, Converter={StaticResource Visible}}">
@@ -133,7 +133,7 @@
                         align="start" says about the same bell.
                     -->
                     <Flyout x:Name="NotificationsFlyout" Opening="OnNotificationsOpening" Placement="BottomEdgeAlignedLeft">
-                        <StackPanel Spacing="8" Width="360">
+                        <StackPanel Spacing="{StaticResource AstridSpace8}" Width="360">
                             <Grid>
                                 <TextBlock x:Uid="notifications_heading" Text="Notifications"
                                            Style="{ThemeResource BodyStrongTextBlockStyle}"
@@ -154,7 +154,7 @@
                                       MaxHeight="420">
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="bindings:NotificationItem">
-                                        <StackPanel Spacing="2" Margin="0,6"
+                                        <StackPanel Spacing="{StaticResource AstridSpace2}" Margin="0,6"
                                                     Opacity="{x:Bind IsRead, Converter={StaticResource CompletedOpacity}}">
                                             <TextBlock Text="{x:Bind LabelKey, Converter={StaticResource PickTitle}}"
                                                        Style="{ThemeResource CaptionTextBlockStyle}"
@@ -186,7 +186,7 @@
         </StackPanel>
 
         <ScrollViewer Grid.Row="1">
-            <StackPanel Margin="12,8,12,8" Spacing="4">
+            <StackPanel Margin="12,8,12,8" Spacing="{StaticResource AstridSpace4}">
                 <!--
                     Selection is no longer stated here (astrid-core DS5, task 787c7aa5).
 
@@ -326,7 +326,7 @@
         </ScrollViewer>
 
         <!-- The same shape as quick add, because it is the same gesture one column over. -->
-        <Grid Grid.Row="2" Margin="12" ColumnSpacing="8">
+        <Grid Grid.Row="2" Margin="12" ColumnSpacing="{StaticResource AstridSpace8}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -340,13 +340,13 @@
             <Button x:Uid="public_lists_button" Grid.Column="2"
                     Width="32" Height="32"
                     Padding="0"
-                    CornerRadius="8"
+                    CornerRadius="{StaticResource AstridRadiusMedium}"
                     AutomationProperties.Name="Public lists"
                     ToolTipService.ToolTip="Browse public lists">
                 <FontIcon FontSize="14" Glyph="&#xE774;" />
                 <Button.Flyout>
                     <Flyout x:Name="PublicListsFlyout" Opening="OnPublicListsOpening" Placement="Right">
-                        <StackPanel Spacing="8" Width="360">
+                        <StackPanel Spacing="{StaticResource AstridSpace8}" Width="360">
                             <TextBlock x:Uid="public_lists_heading" Text="Public lists"
                                        Style="{ThemeResource BodyStrongTextBlockStyle}" />
                             <ProgressRing Width="20" Height="20" HorizontalAlignment="Left"
@@ -364,12 +364,12 @@
                                       MaxHeight="420">
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="bindings:PublicListSummary">
-                                        <Grid ColumnSpacing="8" Padding="0,6">
+                                        <Grid ColumnSpacing="{StaticResource AstridSpace8}" Padding="0,6">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <StackPanel Grid.Column="0" Spacing="2">
+                                            <StackPanel Grid.Column="0" Spacing="{StaticResource AstridSpace2}">
                                                 <TextBlock Text="{x:Bind Name}"
                                                            TextTrimming="CharacterEllipsis"
                                                            Foreground="{ThemeResource AstridTextPrimary}" />
@@ -417,7 +417,7 @@
                      Background="{ThemeResource AstridSurface}"
                      BorderThickness="1"
                      BorderBrush="{ThemeResource AstridBorder}"
-                     CornerRadius="8"
+                     CornerRadius="{StaticResource AstridRadiusMedium}"
                      Padding="10,6"
                      KeyDown="OnNewListKeyDown" />
             <!-- The other "Add" — see AddTaskButton in TaskRowsView.xaml (task e785bbf3). -->
@@ -425,7 +425,7 @@
                     AutomationProperties.AutomationId="AddListButton"
                     Width="32" Height="32"
                     Padding="0"
-                    CornerRadius="8"
+                    CornerRadius="{StaticResource AstridRadiusMedium}"
                     AutomationProperties.Name="Add"
                     ToolTipService.ToolTip="New list"
                     Click="OnAddList">
