@@ -315,21 +315,54 @@
                                               HorizontalScrollMode="Disabled">
                                     <StackPanel Padding="8">
                                         <!--
-                                            An empty column says so. A column that is
-                                            simply blank looks the same as one whose cards
-                                            did not arrive.
+                                            An empty column says so, as DS36's empty state
+                                            (task e0692268): the art beside a speech bubble
+                                            whose tail points at it. A column that is simply
+                                            blank looks the same as one whose cards did not
+                                            arrive.
+
+                                            The art is the brand mark until the core hands the
+                                            shell the column's empathy frame, and the message
+                                            is web's generic one until it hands the column's
+                                            own — both are the core's rules, filed on the
+                                            Astrid Web board.
                                         -->
-                                        <Border MinHeight="72"
-                                                CornerRadius="{StaticResource AstridRadiusSmall}"
-                                                BorderThickness="1"
-                                                BorderBrush="{ThemeResource AstridBorder}"
-                                                Visibility="{x:Bind Cards.Count, Converter={StaticResource CountVisible}, ConverterParameter=empty}">
-                                            <TextBlock x:Uid="nothing_here_yet" Text="Nothing here yet"
-                                                       FontSize="11"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"
-                                                       Foreground="{ThemeResource AstridTextMuted}" />
-                                        </Border>
+                                        <Grid Visibility="{x:Bind Cards.Count, Converter={StaticResource CountVisible}, ConverterParameter=empty}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Image Grid.Column="0"
+                                                   Width="{StaticResource AstridEmptyArt}"
+                                                   VerticalAlignment="Top"
+                                                   Source="{x:Bind local:Brand.SmallMark}"
+                                                   AutomationProperties.AccessibilityView="Raw" />
+                                            <Grid Grid.Column="1">
+                                                <Border Style="{StaticResource BoardEmptyBubbleStyle}"
+                                                        VerticalAlignment="Top">
+                                                    <TextBlock x:Uid="board_empty_custom"
+                                                               Text="Nothing here yet! Drag a task in to move it along."
+                                                               Style="{StaticResource BoardEmptyMessageStyle}" />
+                                                </Border>
+                                                <!--
+                                                    The tail, in the bubble's left margin: a fill
+                                                    that covers the bubble's border where it joins,
+                                                    then the two outer edges in the border's brush.
+                                                    Web's .speech-bubble-tail, 24 down.
+                                                -->
+                                                <Canvas x:Name="EmptyBubbleTail"
+                                                        HorizontalAlignment="Left"
+                                                        VerticalAlignment="Top"
+                                                        IsHitTestVisible="False">
+                                                    <Polygon Points="19,25.5 3,36 19,46.5"
+                                                             Fill="{ThemeResource AstridBgSecondary}" />
+                                                    <Polyline Points="18,24 1,36 18,48"
+                                                              Stroke="{ThemeResource AstridBorder}"
+                                                              StrokeThickness="2"
+                                                              StrokeLineJoin="Round" />
+                                                </Canvas>
+                                            </Grid>
+                                        </Grid>
 
                                         <!--
                                             Just the cards. The open one's detail is a CALLOUT

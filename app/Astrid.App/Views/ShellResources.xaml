@@ -415,6 +415,34 @@
         <Setter Property="FontSize" Value="12" />
         <Setter Property="Foreground" Value="{ThemeResource AstridTextSecondary}" />
     </Style>
+    <!--
+        An empty board column (astrid-core DS36, task e0692268): the art beside a speech bubble
+        whose tail points at it, as iOS and the Mac draw it since ADEV-166 and web's
+        AstridEmptyState. The art is `layout.compact.empty-art` (this shell takes the compact steps,
+        as the selection outline does); the bubble pads 12 compact, radius 16, a 2 border, on web's
+        `theme-bg-secondary`; the message is semibold `body`. The compact layer has no step called
+        body, so it takes `type.compact.detail-body`, 13 — the Mac's body, the compact layout this
+        shell follows. The comfortable 17 was tried first and wrapped two words a line in a 288
+        column (task e0692268's capture).
+
+        The bubble's left margin is the tail's room: the tail in BoardView is drawn in that margin
+        and overlaps the bubble's border by its own width, so the border opens where the tail joins.
+    -->
+    <x:Double x:Key="AstridEmptyArt">96</x:Double>
+    <Style x:Key="BoardEmptyBubbleStyle" TargetType="Border">
+        <Setter Property="Margin" Value="16,0,0,0" />
+        <Setter Property="Padding" Value="12" />
+        <Setter Property="CornerRadius" Value="{StaticResource AstridRadiusXLarge}" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="BorderBrush" Value="{ThemeResource AstridBorder}" />
+        <Setter Property="Background" Value="{ThemeResource AstridBgSecondary}" />
+    </Style>
+    <Style x:Key="BoardEmptyMessageStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="Foreground" Value="{ThemeResource AstridTextPrimary}" />
+    </Style>
     <Style x:Key="DonePillTextStyle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="12" />
         <Setter Property="Foreground" Value="{ThemeResource AstridAccentInk}" />
