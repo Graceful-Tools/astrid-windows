@@ -1099,6 +1099,15 @@
   <data name="list_settings.Text" xml:space="preserve">
     <value>List settings</value>
   </data>
+  <data name="list_settings_tab_admin.Text" xml:space="preserve">
+    <value>Admin</value>
+  </data>
+  <data name="list_settings_tab_list.Text" xml:space="preserve">
+    <value>List</value>
+  </data>
+  <data name="list_settings_tab_members.Text" xml:space="preserve">
+    <value>Members</value>
+  </data>
   <data name="list_settings_button.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>List settings</value>
   </data>

@@ -383,6 +383,19 @@ public sealed class ShellSmokeTests
 
         app.Invoke("List settings");
         Assert.True(app.Sees("List settings"), "the list settings did not open");
+        // Three sections, one drawn at a time (task 83ca5cd9): List opens first, and Members and
+        // Admin each replace it rather than adding to one long scroll.
+        Assert.True(app.Sees("List name"), "the List section is not what opens first");
+        Assert.False(app.Sees("Mirrored to", 500), "Admin's mirroring is drawn on the List tab");
+        Shoot(app, "list-settings-list");
+        app.Select("Members");
+        Assert.True(app.Sees("Shared with"), "the Members tab did not show who the list is shared with");
+        Assert.False(app.Sees("List name", 500), "the List section is still drawn on the Members tab");
+        Shoot(app, "list-settings-members");
+        app.Select("Admin");
+        Assert.True(app.Sees("Mirrored to"), "the Admin tab did not show where the list is mirrored");
+        Assert.False(app.Sees("Shared with", 500), "the Members section is still drawn on the Admin tab");
+        Shoot(app, "list-settings-admin");
         Dismiss(app);
 
         Assert.False(File.Exists(app.CrashLogPath), Crash(app));
@@ -565,6 +578,14 @@ public sealed class ShellSmokeTests
     }
 
     /// <summary>Close whatever flyout is open.</summary>
+    /// <summary>Save the window to a temp PNG and print where, for the by-eye half of a check.</summary>
+    private static void Shoot(AstridApp app, string what)
+    {
+        using var shot = Capture.Window(new IntPtr(app.Window.Current.NativeWindowHandle));
+        Console.WriteLine("screenshot: " + shot.SavePng(Path.Combine(
+            Path.GetTempPath(), $"astrid-{what}-{Environment.ProcessId}.png")));
+    }
+
     private static void Dismiss(AstridApp app)
     {
         // A real click only reaches the window in front, same as a drag — but best-effort here, so

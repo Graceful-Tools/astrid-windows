@@ -285,6 +285,23 @@ public sealed class AstridApp : IDisposable
         Thread.Sleep(600);
     }
 
+    /// <summary>Choose a tab, which is selected rather than pressed (task 83ca5cd9).</summary>
+    /// <remarks>
+    /// Matched on the name AND on offering selection, because a tab's word is short — "List" —
+    /// and the first element in tree order with that name is not necessarily the tab.
+    /// </remarks>
+    public void Select(string name)
+    {
+        var tab = Window.FindAll(TreeScope.Descendants,
+                new PropertyCondition(AutomationElement.NameProperty, name))
+            .Cast<AutomationElement>()
+            .FirstOrDefault(element => element.GetSupportedPatterns().Contains(SelectionItemPattern.Pattern))
+            ?? throw new InvalidOperationException(
+                $"no selectable element named '{name}' on screen. Saw: {string.Join(", ", Names())}");
+        ((SelectionItemPattern)tab.GetCurrentPattern(SelectionItemPattern.Pattern)).Select();
+        Thread.Sleep(600);
+    }
+
     /// <summary>Type into a box, replacing what is there.</summary>
     public void Type(string name, string text)
     {

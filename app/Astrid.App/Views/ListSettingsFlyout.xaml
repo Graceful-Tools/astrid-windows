@@ -10,654 +10,672 @@
     xmlns:viewmodels="using:Astrid.App.ViewModels">
 
     <!--
-        The list's own settings: its name, how it looks, who can see it, its board's columns, the
-        coding agent, the defaults for new tasks, where it is mirrored, who it is shared with, and
-        the way out of it. The content of the flyout behind the gear in the list header.
+        The list's own settings, the content of the flyout behind the gear in the list header, in
+        three sections as the Mac and web split them (task 83ca5cd9): List is the list itself and
+        what its tasks start as, Members is who it is shared with, and Admin is what it is wired to
+        and the ways out of it. One flyout rather than three, so the gear is still one place; the
+        sections only decide what is drawn, and every rule behind them is still the core's.
     -->
-
-    <!-- Taller than a short window now that it carries the
-         defaults, so it scrolls rather than losing its bottom
-         — Delete is the last thing in it and the one that must
-         not vanish off the edge. -->
-    <ScrollViewer MaxHeight="640" VerticalScrollBarVisibility="Auto">
     <StackPanel Spacing="{StaticResource AstridSpace8}" MinWidth="320">
         <TextBlock x:Uid="list_settings" Text="List settings"
                    Style="{ThemeResource BodyStrongTextBlockStyle}" />
-        <TextBox x:Uid="list_name_box" x:Name="ListNameBox"
-                 Header="Name"
-                 AutomationProperties.Name="List name"
-                 Text="{x:Bind Shell.ListSettings.Name, Mode=OneWay}"
-                 LostFocus="OnListRenamed" />
+        <SelectorBar x:Name="SectionBar" SelectionChanged="OnSectionChanged">
+            <SelectorBarItem x:Uid="list_settings_tab_list" x:Name="ListTab" Text="List" IsSelected="True" />
+            <SelectorBarItem x:Uid="list_settings_tab_members" x:Name="MembersTab" Text="Members" />
+            <SelectorBarItem x:Uid="list_settings_tab_admin" x:Name="AdminTab" Text="Admin" />
+        </SelectorBar>
         <!--
-            How the list looks and who can see it (task 53780e75):
-            the web's admin tab lets an owner set a colour, mark
-            a favourite and choose the privacy. The colour reaches
-            every screen — the sidebar mark, the row chips, the
-            detail chips all draw list.color — and the swatches
-            are the web's own palette. A favourite is this
-            account's, so it is offered to every member; the
-            colour and the privacy are the list's, so they wait
-            for somebody who may manage it.
+            Still scrolls: the List section carries the defaults and the insights and is taller
+            than a short window. Delete is now at the foot of a short Admin section rather than of
+            the whole flyout, so it cannot fall off the edge either.
         -->
-        <TextBlock x:Uid="colour" Text="Colour"
-                   Style="{ThemeResource CaptionTextBlockStyle}"
-                   Margin="0,8,0,0"
-                   Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
-        <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.ColorChoices, Mode=OneWay}"
-                      Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <StackPanel Orientation="Horizontal" Spacing="6" />
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="viewmodels:ColorSwatch">
-                    <!-- The chosen one wears a ring; the rest are plain discs. -->
-                    <Button Width="28" Height="28" Padding="0"
-                            CornerRadius="14"
-                            BorderThickness="{x:Bind IsSelected, Converter={StaticResource SwatchRing}}"
-                            BorderBrush="{ThemeResource AstridTextPrimary}"
-                            Background="{x:Bind Hex, Converter={StaticResource ChipColour}}"
-                            Tag="{x:Bind Hex}"
-                            AutomationProperties.Name="{x:Bind ActionName}"
-                            ToolTipService.ToolTip="{x:Bind Hex}"
-                            Click="OnListColourChosen" />
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-        <!--
-            The list's picture (task 3a913e52). The web's admin tab shows it and opens a picker
-            with placeholders, default icons and an upload; here it is chosen from disk and sent
-            through the same secure-upload route, or removed. Drawn from wherever the core says —
-            a secure file it fetched into its cache, or an address.
-        -->
-        <TextBlock x:Uid="list_image_caption" Text="Image"
-                   Style="{ThemeResource CaptionTextBlockStyle}"
-                   Margin="0,8,0,0"
-                   Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
-        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}"
-                    Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
-            <Border Width="48" Height="48" CornerRadius="10"
-                    Background="{ThemeResource AstridSurfaceHover}">
-                <Image x:Uid="list_image" Stretch="UniformToFill"
-                       AutomationProperties.Name="List image"
-                       Source="{x:Bind Shell.ListSettings.ImageSource, Mode=OneWay, Converter={StaticResource RemoteImage}}" />
-            </Border>
-            <Button x:Uid="choose_list_image" Content="Choose an image…"
-                    AutomationProperties.Name="Choose list image"
-                    VerticalAlignment="Center"
-                    Click="OnChooseListImage" />
-            <Button x:Uid="remove_list_image" Content="Remove image"
-                    AutomationProperties.Name="Remove list image"
-                    VerticalAlignment="Center"
-                    Visibility="{x:Bind Shell.ListSettings.HasImage, Mode=OneWay, Converter={StaticResource Visible}}"
-                    Click="OnRemoveListImage" />
-        </StackPanel>
-        <ToggleSwitch x:Uid="list_favorite_switch" x:Name="ListFavoriteSwitch"
-                      Header="Favourite"
-                      AutomationProperties.Name="Favourite"
-                      OnContent="In Favourites"
-                      OffContent="Not a favourite"
-                      Margin="0,4,0,0"
-                      IsOn="{x:Bind Shell.ListSettings.IsFavorite, Mode=OneWay}"
-                      Toggled="OnListFavoriteToggled" />
-        <TextBlock x:Uid="privacy" Text="Privacy"
-                   Style="{ThemeResource CaptionTextBlockStyle}"
-                   Margin="0,4,0,0"
-                   Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
-        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace12}"
-                    Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
-            <RadioButton x:Uid="private" Content="Private" GroupName="ListPrivacy" Tag="PRIVATE"
-                         MinWidth="0"
-                         IsChecked="{x:Bind Shell.ListSettings.IsPrivate, Mode=OneWay}"
-                         Click="OnListPrivacyChosen" />
-            <RadioButton x:Uid="shared" Content="Shared" GroupName="ListPrivacy" Tag="SHARED"
-                         MinWidth="0"
-                         IsChecked="{x:Bind Shell.ListSettings.IsShared, Mode=OneWay}"
-                         Click="OnListPrivacyChosen" />
-            <RadioButton x:Uid="public" Content="Public" GroupName="ListPrivacy" Tag="PUBLIC"
-                         MinWidth="0"
-                         IsChecked="{x:Bind Shell.ListSettings.IsPublic, Mode=OneWay}"
-                         Click="OnListPrivacyChosen" />
-        </StackPanel>
-        <!--
-            Where this list is mirrored. Google and GitHub work
-            differently and the rows say so, because "linked" means
-            something different for each: GitHub is synced by the
-            server whether or not this app runs, Google by this app
-            when it does.
-        -->
-        <!--
-            The board's columns (task e5214fba), when the list has
-            a board: the web's Statuses tab. Rename in place, move
-            a custom column up or down, remove it, or add one. The
-            three defaults can be renamed and nothing else — a
-            fixed order shared by every board — so their other
-            buttons are not offered. What is allowed is the core's
-            rule; a refusal shows the web's own message below.
-        -->
-        <TextBlock x:Uid="statuses" Text="Statuses"
-                   Style="{ThemeResource CaptionTextBlockStyle}"
-                   Margin="0,8,0,0"
-                   Visibility="{x:Bind Shell.ListSettings.HasBoard, Mode=OneWay, Converter={StaticResource Visible}}" />
-        <StackPanel Spacing="{StaticResource AstridSpace4}"
-                    Visibility="{x:Bind Shell.ListSettings.HasBoard, Mode=OneWay, Converter={StaticResource Visible}}">
-            <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.Statuses, Mode=OneWay}">
+        <ScrollViewer MaxHeight="560" VerticalScrollBarVisibility="Auto">
+        <Grid>
+        <StackPanel x:Name="ListSection" Spacing="{StaticResource AstridSpace8}">
+            <TextBox x:Uid="list_name_box" x:Name="ListNameBox"
+                     Header="Name"
+                     AutomationProperties.Name="List name"
+                     Text="{x:Bind Shell.ListSettings.Name, Mode=OneWay}"
+                     LostFocus="OnListRenamed" />
+            <!--
+                How the list looks and who can see it (task 53780e75):
+                the web's admin tab lets an owner set a colour, mark
+                a favourite and choose the privacy. The colour reaches
+                every screen — the sidebar mark, the row chips, the
+                detail chips all draw list.color — and the swatches
+                are the web's own palette. A favourite is this
+                account's, so it is offered to every member; the
+                colour and the privacy are the list's, so they wait
+                for somebody who may manage it.
+            -->
+            <TextBlock x:Uid="colour" Text="Colour"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Margin="0,8,0,0"
+                       Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
+            <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.ColorChoices, Mode=OneWay}"
+                          Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="6" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="bindings:BoardStatus">
-                        <Grid ColumnSpacing="{StaticResource AstridSpace4}" Padding="0,1">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox Grid.Column="0"
-                                     Text="{x:Bind Name}"
-                                     Tag="{x:Bind Id}"
-                                     AutomationProperties.Name="{x:Bind RenameActionName}"
-                                     LostFocus="OnStatusRenamed"
-                                     KeyDown="OnStatusNameKeyDown" />
-                            <Button Grid.Column="1" Padding="6"
-                                    Tag="{x:Bind Id}"
-                                    AutomationProperties.Name="{x:Bind MoveUpActionName}"
-                                    ToolTipService.ToolTip="{x:Bind MoveUpActionName}"
-                                    Visibility="{x:Bind IsCustom, Converter={StaticResource Visible}}"
-                                    Click="OnStatusMovedUp">
-                                <FontIcon Glyph="&#xE70E;" FontSize="12" />
-                            </Button>
-                            <Button Grid.Column="2" Padding="6"
-                                    Tag="{x:Bind Id}"
-                                    AutomationProperties.Name="{x:Bind MoveDownActionName}"
-                                    ToolTipService.ToolTip="{x:Bind MoveDownActionName}"
-                                    Visibility="{x:Bind IsCustom, Converter={StaticResource Visible}}"
-                                    Click="OnStatusMovedDown">
-                                <FontIcon Glyph="&#xE70D;" FontSize="12" />
-                            </Button>
-                            <Button Grid.Column="3" Padding="6"
-                                    Tag="{x:Bind Id}"
-                                    AutomationProperties.Name="{x:Bind RemoveActionName}"
-                                    ToolTipService.ToolTip="{x:Bind RemoveActionName}"
-                                    Visibility="{x:Bind IsCustom, Converter={StaticResource Visible}}"
-                                    Click="OnStatusRemoved">
-                                <FontIcon Glyph="&#xE74D;" FontSize="12" />
-                            </Button>
-                        </Grid>
+                    <DataTemplate x:DataType="viewmodels:ColorSwatch">
+                        <!-- The chosen one wears a ring; the rest are plain discs. -->
+                        <Button Width="28" Height="28" Padding="0"
+                                CornerRadius="14"
+                                BorderThickness="{x:Bind IsSelected, Converter={StaticResource SwatchRing}}"
+                                BorderBrush="{ThemeResource AstridTextPrimary}"
+                                Background="{x:Bind Hex, Converter={StaticResource ChipColour}}"
+                                Tag="{x:Bind Hex}"
+                                AutomationProperties.Name="{x:Bind ActionName}"
+                                ToolTipService.ToolTip="{x:Bind Hex}"
+                                Click="OnListColourChosen" />
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <Grid ColumnSpacing="{StaticResource AstridSpace8}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBox x:Uid="new_status_box" x:Name="NewStatusBox" Grid.Column="0"
-                         PlaceholderText="New status name"
-                         AutomationProperties.Name="New status name"
-                         KeyDown="OnNewStatusKeyDown" />
-                <Button x:Uid="add" Grid.Column="1" Content="Add"
-                        AutomationProperties.Name="Add status"
-                        Click="OnAddStatus" />
-            </Grid>
-        </StackPanel>
-        <!--
-            The coding agent (task f44b4a0c): the web's AI Agent
-            picker and "Repository the coding agent works in".
-            Which agent picks this list's tasks up, and which
-            repository it commits to — the binding that turns a
-            board into something a fixall loop can act on. The
-            choices are the account's agents and its GitHub
-            repositories, fetched as the flyout opens.
-        -->
-        <TextBlock x:Uid="coding_agent" Text="Coding agent"
-                   Style="{ThemeResource CaptionTextBlockStyle}"
-                   Margin="0,8,0,0"
-                   Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
-        <Grid ColumnSpacing="{StaticResource AstridSpace8}"
-              Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <ComboBox x:Uid="agent" Grid.Column="0" Header="Agent"
-                      HorizontalAlignment="Stretch"
-                      AutomationProperties.Name="List agent"
-                      ItemsSource="{x:Bind Shell.ListSettings.AgentChoices, Mode=OneWay}"
-                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
-                      SelectedItem="{x:Bind Shell.ListSettings.SelectedAgent, Mode=OneWay}"
-                      SelectionChanged="OnDefaultChosen" />
-            <ComboBox x:Uid="repository" Grid.Column="1" Header="Repository"
-                      HorizontalAlignment="Stretch"
-                      AutomationProperties.Name="Coding agent repository"
-                      ItemsSource="{x:Bind Shell.ListSettings.RepositoryChoices, Mode=OneWay}"
-                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
-                      SelectedItem="{x:Bind Shell.ListSettings.SelectedRepository, Mode=OneWay}"
-                      SelectionChanged="OnDefaultChosen" />
-        </Grid>
-        <TextBlock x:Uid="connect_github_under_mirrored_to_below" Text="Connect GitHub under Mirrored to, below, to choose a repository."
-                   Style="{ThemeResource CaptionTextBlockStyle}"
-                   TextWrapping="Wrap"
-                   Foreground="{ThemeResource AstridTextMuted}"
-                   Visibility="{x:Bind Shell.ListSettings.NeedsGithub, Mode=OneWay, Converter={StaticResource Visible}}" />
-        <!--
-            What a task added to this list starts as
-            (task c4102c67): the web's Default Priority, Assignee,
-            Repeating, When and When Time. The core applies them
-            to quick-add on both clients; this only writes the
-            one picked. A combo's selection also moves when the
-            binding sets it, so the code-behind writes only a
-            choice that is not the current one.
-        -->
-        <TextBlock x:Uid="defaults_for_new_tasks" Text="Defaults for new tasks"
-                   Style="{ThemeResource CaptionTextBlockStyle}"
-                   Margin="0,8,0,0"
-                   Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
-        <Grid ColumnSpacing="{StaticResource AstridSpace8}" RowSpacing="6"
-              Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
             <!--
-                Priority, When and When time are gated on the list's own supports (task 897e25c5):
-                a GitHub board with no Priority or date field mapped has nowhere for the default to
-                land, so the choice is not offered. The core decides; these only draw its answer.
+                The list's picture (task 3a913e52). The web's admin tab shows it and opens a picker
+                with placeholders, default icons and an upload; here it is chosen from disk and sent
+                through the same secure-upload route, or removed. Drawn from wherever the core says —
+                a secure file it fetched into its cache, or an address.
             -->
-            <ComboBox x:Uid="priority" Grid.Row="0" Grid.Column="0" Header="Priority"
-                      HorizontalAlignment="Stretch"
-                      Visibility="{x:Bind Shell.ListSettings.ShowsDefaultPriority, Mode=OneWay, Converter={StaticResource Visible}}"
-                      AutomationProperties.Name="Default priority"
-                      ItemsSource="{x:Bind Shell.ListSettings.DefaultPriorityChoices, Mode=OneWay}"
-                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
-                      SelectedItem="{x:Bind Shell.ListSettings.SelectedDefaultPriority, Mode=OneWay}"
-                      SelectionChanged="OnDefaultChosen" />
-            <ComboBox x:Uid="assignee" Grid.Row="0" Grid.Column="1" Header="Assignee"
-                      HorizontalAlignment="Stretch"
-                      AutomationProperties.Name="Default assignee"
-                      ItemsSource="{x:Bind Shell.ListSettings.DefaultAssigneeChoices, Mode=OneWay}"
-                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
-                      SelectedItem="{x:Bind Shell.ListSettings.SelectedDefaultAssignee, Mode=OneWay}"
-                      SelectionChanged="OnDefaultChosen" />
-            <ComboBox x:Uid="repeat" Grid.Row="1" Grid.Column="0" Header="Repeat"
-                      HorizontalAlignment="Stretch"
-                      AutomationProperties.Name="Default repeat"
-                      ItemsSource="{x:Bind Shell.ListSettings.DefaultRepeatChoices, Mode=OneWay}"
-                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
-                      SelectedItem="{x:Bind Shell.ListSettings.SelectedDefaultRepeat, Mode=OneWay}"
-                      SelectionChanged="OnDefaultChosen" />
-            <ComboBox x:Uid="when" Grid.Row="1" Grid.Column="1" Header="When"
-                      HorizontalAlignment="Stretch"
-                      Visibility="{x:Bind Shell.ListSettings.ShowsDefaultDueDate, Mode=OneWay, Converter={StaticResource Visible}}"
-                      AutomationProperties.Name="Default when"
-                      ItemsSource="{x:Bind Shell.ListSettings.DefaultWhenChoices, Mode=OneWay}"
-                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
-                      SelectedItem="{x:Bind Shell.ListSettings.SelectedDefaultWhen, Mode=OneWay}"
-                      SelectionChanged="OnDefaultChosen" />
-            <ComboBox x:Uid="when_time" Grid.Row="2" Grid.Column="0" Header="When time"
-                      HorizontalAlignment="Stretch"
-                      Visibility="{x:Bind Shell.ListSettings.ShowsDefaultDueDate, Mode=OneWay, Converter={StaticResource Visible}}"
-                      AutomationProperties.Name="Default when time"
-                      ItemsSource="{x:Bind Shell.ListSettings.DefaultTimeChoices, Mode=OneWay}"
-                      ItemTemplate="{StaticResource DefaultChoiceTemplate}"
-                      SelectedItem="{x:Bind Shell.ListSettings.SelectedDefaultTime, Mode=OneWay}"
-                      SelectionChanged="OnDefaultChosen" />
-        </Grid>
-        <TextBlock x:Uid="mirrored_to" Text="Mirrored to"
-                   Style="{ThemeResource CaptionTextBlockStyle}"
-                   Margin="0,8,0,0" />
-        <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.Providers, Mode=OneWay}">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="bindings:ExternalProvider">
-                    <Grid ColumnSpacing="{StaticResource AstridSpace8}" Padding="0,2">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0"
-                                   Text="{x:Bind Name}"
-                                   VerticalAlignment="Center" />
-                        <ComboBox x:Uid="not_mirrored" Grid.Column="1"
-                                  HorizontalAlignment="Stretch"
-                                  PlaceholderText="Not mirrored"
-                                  AutomationProperties.Name="{x:Bind Name}"
-                                  Tag="{x:Bind Provider}"
-                                  ItemsSource="{x:Bind Containers}"
-                                  SelectionChanged="OnMirrorChosen"
-                                  Visibility="{x:Bind Connected, Converter={StaticResource Visible}}" />
-                        <Button x:Uid="connect" Grid.Column="2"
-                                Content="Connect"
-                                Tag="{x:Bind Provider}"
-                                Click="OnConnectProvider"
-                                Visibility="{x:Bind Connected, Converter={StaticResource NotVisible}}" />
-                    </Grid>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-
-        <TextBlock x:Uid="shared_with" Text="Shared with"
-                   Style="{ThemeResource CaptionTextBlockStyle}"
-                   Margin="0,8,0,0" />
-        <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.Members, Mode=OneWay}">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="viewmodels:ListMemberRow">
-                    <Grid ColumnSpacing="{StaticResource AstridSpace8}" Padding="0,2">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0"
-                                   Text="{x:Bind DisplayName}"
-                                   VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="1"
-                                   Text="{x:Bind RoleKey, Converter={StaticResource PickTitle}}"
-                                   VerticalAlignment="Center"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                   Style="{ThemeResource CaptionTextBlockStyle}" />
-                        <!--
-                            Who is on the list is worth seeing wherever it is shown; taking
-                            somebody off it is not always offered. A viewer, and a GitHub-backed
-                            board whose roster is the project's, both used to get a Remove that
-                            403s (task 93ffa9ea).
-                        -->
-                        <Button x:Uid="remove" Grid.Column="2"
-                                Content="Remove"
-                                Tag="{x:Bind UserId}"
-                                Visibility="{x:Bind CanRemove, Converter={StaticResource Visible}}"
-                                Click="OnRemoveMember" />
-                    </Grid>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}"
-                    Visibility="{x:Bind Shell.ListSettings.CanManageMembers, Mode=OneWay, Converter={StaticResource Visible}}">
-            <TextBox x:Uid="invite_box" x:Name="InviteBox"
-                     Width="200"
-                     PlaceholderText="Invite by email"
-                     AutomationProperties.Name="Invite by email"
-                     KeyDown="OnInviteKeyDown" />
-            <Button x:Uid="invite" Content="Invite" Click="OnInvite" />
-        </StackPanel>
-        <!--
-            What this list has been doing lately (task 48c624ad; web AWTD-1329, AWTD-1333). The
-            web's Insights tab, as an expander: every number is the server's, computed once in
-            lib/list-insights.ts from history this device does not hold, so the panel only draws
-            them. Collapsed by default — it is a round trip, and the flyout's other sections are
-            what somebody opened the gear for.
-        -->
-        <Expander x:Uid="list_insights" Header="Insights"
-                  Margin="0,8,0,0"
-                  HorizontalAlignment="Stretch"
-                  HorizontalContentAlignment="Left"
-                  Expanding="OnInsightsExpanding">
-            <StackPanel x:Name="InsightsPanel" Spacing="{StaticResource AstridSpace8}" Width="288">
-                <!--
-                    7 / 30 / 90, from the view model rather than three buttons here: the route
-                    answers 400 to a fourth window, so which three exist is the core's answer.
-                -->
-                <ItemsControl ItemsSource="{x:Bind Shell.Insights.WindowChoices, Mode=OneWay}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
+            <TextBlock x:Uid="list_image_caption" Text="Image"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Margin="0,8,0,0"
+                       Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}"
+                        Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
+                <Border Width="48" Height="48" CornerRadius="10"
+                        Background="{ThemeResource AstridSurfaceHover}">
+                    <Image x:Uid="list_image" Stretch="UniformToFill"
+                           AutomationProperties.Name="List image"
+                           Source="{x:Bind Shell.ListSettings.ImageSource, Mode=OneWay, Converter={StaticResource RemoteImage}}" />
+                </Border>
+                <Button x:Uid="choose_list_image" Content="Choose an image…"
+                        AutomationProperties.Name="Choose list image"
+                        VerticalAlignment="Center"
+                        Click="OnChooseListImage" />
+                <Button x:Uid="remove_list_image" Content="Remove image"
+                        AutomationProperties.Name="Remove list image"
+                        VerticalAlignment="Center"
+                        Visibility="{x:Bind Shell.ListSettings.HasImage, Mode=OneWay, Converter={StaticResource Visible}}"
+                        Click="OnRemoveListImage" />
+            </StackPanel>
+            <ToggleSwitch x:Uid="list_favorite_switch" x:Name="ListFavoriteSwitch"
+                          Header="Favourite"
+                          AutomationProperties.Name="Favourite"
+                          OnContent="In Favourites"
+                          OffContent="Not a favourite"
+                          Margin="0,4,0,0"
+                          IsOn="{x:Bind Shell.ListSettings.IsFavorite, Mode=OneWay}"
+                          Toggled="OnListFavoriteToggled" />
+            <TextBlock x:Uid="privacy" Text="Privacy"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Margin="0,4,0,0"
+                       Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace12}"
+                        Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
+                <RadioButton x:Uid="private" Content="Private" GroupName="ListPrivacy" Tag="PRIVATE"
+                             MinWidth="0"
+                             IsChecked="{x:Bind Shell.ListSettings.IsPrivate, Mode=OneWay}"
+                             Click="OnListPrivacyChosen" />
+                <RadioButton x:Uid="shared" Content="Shared" GroupName="ListPrivacy" Tag="SHARED"
+                             MinWidth="0"
+                             IsChecked="{x:Bind Shell.ListSettings.IsShared, Mode=OneWay}"
+                             Click="OnListPrivacyChosen" />
+                <RadioButton x:Uid="public" Content="Public" GroupName="ListPrivacy" Tag="PUBLIC"
+                             MinWidth="0"
+                             IsChecked="{x:Bind Shell.ListSettings.IsPublic, Mode=OneWay}"
+                             Click="OnListPrivacyChosen" />
+            </StackPanel>
+            <!--
+                The board's columns (task e5214fba), when the list has
+                a board: the web's Statuses tab. Rename in place, move
+                a custom column up or down, remove it, or add one. The
+                three defaults can be renamed and nothing else — a
+                fixed order shared by every board — so their other
+                buttons are not offered. What is allowed is the core's
+                rule; a refusal shows the web's own message below.
+            -->
+            <TextBlock x:Uid="statuses" Text="Statuses"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Margin="0,8,0,0"
+                       Visibility="{x:Bind Shell.ListSettings.HasBoard, Mode=OneWay, Converter={StaticResource Visible}}" />
+            <StackPanel Spacing="{StaticResource AstridSpace4}"
+                        Visibility="{x:Bind Shell.ListSettings.HasBoard, Mode=OneWay, Converter={StaticResource Visible}}">
+                <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.Statuses, Mode=OneWay}">
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="viewmodels:InsightWindowChoice">
-                            <Button Padding="8,2" MinWidth="0"
-                                    Tag="{x:Bind Days}"
-                                    Content="{x:Bind Days, Converter={StaticResource InsightWindow}}"
-                                    AutomationProperties.Name="{x:Bind Days, Converter={StaticResource InsightWindow}}"
-                                    Foreground="{x:Bind IsSelected, Converter={StaticResource FilterTint}}"
-                                    Click="OnInsightWindowChosen" />
+                        <DataTemplate x:DataType="bindings:BoardStatus">
+                            <Grid ColumnSpacing="{StaticResource AstridSpace4}" Padding="0,1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0"
+                                         Text="{x:Bind Name}"
+                                         Tag="{x:Bind Id}"
+                                         AutomationProperties.Name="{x:Bind RenameActionName}"
+                                         LostFocus="OnStatusRenamed"
+                                         KeyDown="OnStatusNameKeyDown" />
+                                <Button Grid.Column="1" Padding="6"
+                                        Tag="{x:Bind Id}"
+                                        AutomationProperties.Name="{x:Bind MoveUpActionName}"
+                                        ToolTipService.ToolTip="{x:Bind MoveUpActionName}"
+                                        Visibility="{x:Bind IsCustom, Converter={StaticResource Visible}}"
+                                        Click="OnStatusMovedUp">
+                                    <FontIcon Glyph="&#xE70E;" FontSize="12" />
+                                </Button>
+                                <Button Grid.Column="2" Padding="6"
+                                        Tag="{x:Bind Id}"
+                                        AutomationProperties.Name="{x:Bind MoveDownActionName}"
+                                        ToolTipService.ToolTip="{x:Bind MoveDownActionName}"
+                                        Visibility="{x:Bind IsCustom, Converter={StaticResource Visible}}"
+                                        Click="OnStatusMovedDown">
+                                    <FontIcon Glyph="&#xE70D;" FontSize="12" />
+                                </Button>
+                                <Button Grid.Column="3" Padding="6"
+                                        Tag="{x:Bind Id}"
+                                        AutomationProperties.Name="{x:Bind RemoveActionName}"
+                                        ToolTipService.ToolTip="{x:Bind RemoveActionName}"
+                                        Visibility="{x:Bind IsCustom, Converter={StaticResource Visible}}"
+                                        Click="OnStatusRemoved">
+                                    <FontIcon Glyph="&#xE74D;" FontSize="12" />
+                                </Button>
+                            </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <TextBlock x:Uid="insights_loading" Text="Loading insights…"
-                           Style="{ThemeResource CaptionTextBlockStyle}"
-                           Foreground="{ThemeResource AstridTextMuted}"
-                           Visibility="{x:Bind Shell.Insights.IsLoading, Mode=OneWay, Converter={StaticResource Visible}}" />
-                <TextBlock x:Uid="insights_failed" Text="Couldn't load insights"
-                           Style="{ThemeResource CaptionTextBlockStyle}"
-                           Foreground="{ThemeResource AstridTextMuted}"
-                           Visibility="{x:Bind Shell.Insights.Failed, Mode=OneWay, Converter={StaticResource Visible}}" />
-                <StackPanel Spacing="6"
-                            Visibility="{x:Bind Shell.Insights.HasInsights, Mode=OneWay, Converter={StaticResource Visible}}">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock x:Uid="insights_activity" Grid.Column="0" Text="Activity"
-                                   Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}"
-                                    VerticalAlignment="Bottom">
-                            <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                                       Foreground="{ThemeResource AstridTextMuted}"
-                                       Text="{x:Bind Shell.Insights.CreatedTotal, Mode=OneWay, Converter={StaticResource InsightNewTotal}}" />
-                            <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                                       Foreground="{ThemeResource AstridTextMuted}"
-                                       Text="·" />
-                            <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                                       Foreground="{ThemeResource AstridTextMuted}"
-                                       Text="{x:Bind Shell.Insights.CompletedTotal, Mode=OneWay, Converter={StaticResource InsightDoneTotal}}" />
-                        </StackPanel>
-                    </Grid>
+                <Grid ColumnSpacing="{StaticResource AstridSpace8}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Uid="new_status_box" x:Name="NewStatusBox" Grid.Column="0"
+                             PlaceholderText="New status name"
+                             AutomationProperties.Name="New status name"
+                             KeyDown="OnNewStatusKeyDown" />
+                    <Button x:Uid="add" Grid.Column="1" Content="Add"
+                            AutomationProperties.Name="Add status"
+                            Click="OnAddStatus" />
+                </Grid>
+            </StackPanel>
+            <!--
+                What a task added to this list starts as
+                (task c4102c67): the web's Default Priority, Assignee,
+                Repeating, When and When Time. The core applies them
+                to quick-add on both clients; this only writes the
+                one picked. A combo's selection also moves when the
+                binding sets it, so the code-behind writes only a
+                choice that is not the current one.
+            -->
+            <TextBlock x:Uid="defaults_for_new_tasks" Text="Defaults for new tasks"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Margin="0,8,0,0"
+                       Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
+            <Grid ColumnSpacing="{StaticResource AstridSpace8}" RowSpacing="6"
+                  Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <!--
+                    Priority, When and When time are gated on the list's own supports (task 897e25c5):
+                    a GitHub board with no Priority or date field mapped has nowhere for the default to
+                    land, so the choice is not offered. The core decides; these only draw its answer.
+                -->
+                <ComboBox x:Uid="priority" Grid.Row="0" Grid.Column="0" Header="Priority"
+                          HorizontalAlignment="Stretch"
+                          Visibility="{x:Bind Shell.ListSettings.ShowsDefaultPriority, Mode=OneWay, Converter={StaticResource Visible}}"
+                          AutomationProperties.Name="Default priority"
+                          ItemsSource="{x:Bind Shell.ListSettings.DefaultPriorityChoices, Mode=OneWay}"
+                          ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                          SelectedItem="{x:Bind Shell.ListSettings.SelectedDefaultPriority, Mode=OneWay}"
+                          SelectionChanged="OnDefaultChosen" />
+                <ComboBox x:Uid="assignee" Grid.Row="0" Grid.Column="1" Header="Assignee"
+                          HorizontalAlignment="Stretch"
+                          AutomationProperties.Name="Default assignee"
+                          ItemsSource="{x:Bind Shell.ListSettings.DefaultAssigneeChoices, Mode=OneWay}"
+                          ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                          SelectedItem="{x:Bind Shell.ListSettings.SelectedDefaultAssignee, Mode=OneWay}"
+                          SelectionChanged="OnDefaultChosen" />
+                <ComboBox x:Uid="repeat" Grid.Row="1" Grid.Column="0" Header="Repeat"
+                          HorizontalAlignment="Stretch"
+                          AutomationProperties.Name="Default repeat"
+                          ItemsSource="{x:Bind Shell.ListSettings.DefaultRepeatChoices, Mode=OneWay}"
+                          ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                          SelectedItem="{x:Bind Shell.ListSettings.SelectedDefaultRepeat, Mode=OneWay}"
+                          SelectionChanged="OnDefaultChosen" />
+                <ComboBox x:Uid="when" Grid.Row="1" Grid.Column="1" Header="When"
+                          HorizontalAlignment="Stretch"
+                          Visibility="{x:Bind Shell.ListSettings.ShowsDefaultDueDate, Mode=OneWay, Converter={StaticResource Visible}}"
+                          AutomationProperties.Name="Default when"
+                          ItemsSource="{x:Bind Shell.ListSettings.DefaultWhenChoices, Mode=OneWay}"
+                          ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                          SelectedItem="{x:Bind Shell.ListSettings.SelectedDefaultWhen, Mode=OneWay}"
+                          SelectionChanged="OnDefaultChosen" />
+                <ComboBox x:Uid="when_time" Grid.Row="2" Grid.Column="0" Header="When time"
+                          HorizontalAlignment="Stretch"
+                          Visibility="{x:Bind Shell.ListSettings.ShowsDefaultDueDate, Mode=OneWay, Converter={StaticResource Visible}}"
+                          AutomationProperties.Name="Default when time"
+                          ItemsSource="{x:Bind Shell.ListSettings.DefaultTimeChoices, Mode=OneWay}"
+                          ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                          SelectedItem="{x:Bind Shell.ListSettings.SelectedDefaultTime, Mode=OneWay}"
+                          SelectionChanged="OnDefaultChosen" />
+            </Grid>
+            <!--
+                What this list has been doing lately (task 48c624ad; web AWTD-1329, AWTD-1333). The
+                web's Insights tab, as an expander: every number is the server's, computed once in
+                lib/list-insights.ts from history this device does not hold, so the panel only draws
+                them. Collapsed by default — it is a round trip, and the flyout's other sections are
+                what somebody opened the gear for.
+            -->
+            <Expander x:Uid="list_insights" Header="Insights"
+                      Margin="0,8,0,0"
+                      HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Left"
+                      Expanding="OnInsightsExpanding">
+                <StackPanel x:Name="InsightsPanel" Spacing="{StaticResource AstridSpace8}" Width="288">
                     <!--
-                        Two lines on one scale, stacked in a Grid so they share the plot. The view
-                        model hands over fractions and InsightLineConverter states the size once,
-                        which is what stops the pair becoming two charts drawn on top of each other.
-                        The series take the category blue and green, astrid-web's CHART_SERIES_COLORS
-                        order, not the accent, which would vanish on a branded surface (c4174b14).
+                        7 / 30 / 90, from the view model rather than three buttons here: the route
+                        answers 400 to a fourth window, so which three exist is the core's answer.
                     -->
-                    <Border Width="288" Height="120" CornerRadius="4"
-                            Background="{ThemeResource AstridSurfaceHover}">
+                    <ItemsControl ItemsSource="{x:Bind Shell.Insights.WindowChoices, Mode=OneWay}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="viewmodels:InsightWindowChoice">
+                                <Button Padding="8,2" MinWidth="0"
+                                        Tag="{x:Bind Days}"
+                                        Content="{x:Bind Days, Converter={StaticResource InsightWindow}}"
+                                        AutomationProperties.Name="{x:Bind Days, Converter={StaticResource InsightWindow}}"
+                                        Foreground="{x:Bind IsSelected, Converter={StaticResource FilterTint}}"
+                                        Click="OnInsightWindowChosen" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock x:Uid="insights_loading" Text="Loading insights…"
+                               Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource AstridTextMuted}"
+                               Visibility="{x:Bind Shell.Insights.IsLoading, Mode=OneWay, Converter={StaticResource Visible}}" />
+                    <TextBlock x:Uid="insights_failed" Text="Couldn't load insights"
+                               Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource AstridTextMuted}"
+                               Visibility="{x:Bind Shell.Insights.Failed, Mode=OneWay, Converter={StaticResource Visible}}" />
+                    <StackPanel Spacing="6"
+                                Visibility="{x:Bind Shell.Insights.HasInsights, Mode=OneWay, Converter={StaticResource Visible}}">
                         <Grid>
-                            <Polyline StrokeThickness="2"
-                                      Stroke="{ThemeResource AstridCategoryBlue}"
-                                      Points="{x:Bind Shell.Insights.CreatedSeries, Mode=OneWay, Converter={StaticResource InsightLine}}" />
-                            <Polyline StrokeThickness="2"
-                                      Stroke="{ThemeResource AstridCategoryGreen}"
-                                      Points="{x:Bind Shell.Insights.CompletedSeries, Mode=OneWay, Converter={StaticResource InsightLine}}" />
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Uid="insights_activity" Grid.Column="0" Text="Activity"
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}"
+                                        VerticalAlignment="Bottom">
+                                <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource AstridTextMuted}"
+                                           Text="{x:Bind Shell.Insights.CreatedTotal, Mode=OneWay, Converter={StaticResource InsightNewTotal}}" />
+                                <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource AstridTextMuted}"
+                                           Text="·" />
+                                <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource AstridTextMuted}"
+                                           Text="{x:Bind Shell.Insights.CompletedTotal, Mode=OneWay, Converter={StaticResource InsightDoneTotal}}" />
+                            </StackPanel>
                         </Grid>
-                    </Border>
-                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace12}">
-                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}">
-                            <Rectangle Width="10" Height="2" VerticalAlignment="Center"
-                                       Fill="{ThemeResource AstridCategoryBlue}" />
-                            <TextBlock x:Uid="insights_new" Text="New"
-                                       Style="{ThemeResource CaptionTextBlockStyle}" />
+                        <!--
+                            Two lines on one scale, stacked in a Grid so they share the plot. The view
+                            model hands over fractions and InsightLineConverter states the size once,
+                            which is what stops the pair becoming two charts drawn on top of each other.
+                            The series take the category blue and green, astrid-web's CHART_SERIES_COLORS
+                            order, not the accent, which would vanish on a branded surface (c4174b14).
+                        -->
+                        <Border Width="288" Height="120" CornerRadius="4"
+                                Background="{ThemeResource AstridSurfaceHover}">
+                            <Grid>
+                                <Polyline StrokeThickness="2"
+                                          Stroke="{ThemeResource AstridCategoryBlue}"
+                                          Points="{x:Bind Shell.Insights.CreatedSeries, Mode=OneWay, Converter={StaticResource InsightLine}}" />
+                                <Polyline StrokeThickness="2"
+                                          Stroke="{ThemeResource AstridCategoryGreen}"
+                                          Points="{x:Bind Shell.Insights.CompletedSeries, Mode=OneWay, Converter={StaticResource InsightLine}}" />
+                            </Grid>
+                        </Border>
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace12}">
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}">
+                                <Rectangle Width="10" Height="2" VerticalAlignment="Center"
+                                           Fill="{ThemeResource AstridCategoryBlue}" />
+                                <TextBlock x:Uid="insights_new" Text="New"
+                                           Style="{ThemeResource CaptionTextBlockStyle}" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}">
+                                <Rectangle Width="10" Height="2" VerticalAlignment="Center"
+                                           Fill="{ThemeResource AstridCategoryGreen}" />
+                                <TextBlock x:Uid="insights_completed" Text="Completed"
+                                           Style="{ThemeResource CaptionTextBlockStyle}" />
+                            </StackPanel>
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}">
-                            <Rectangle Width="10" Height="2" VerticalAlignment="Center"
-                                       Fill="{ThemeResource AstridCategoryGreen}" />
-                            <TextBlock x:Uid="insights_completed" Text="Completed"
+                        <Grid ColumnSpacing="{StaticResource AstridSpace8}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Uid="insights_time_to_complete" Grid.Column="0"
+                                       Text="Median time to complete"
+                                       TextWrapping="Wrap"
                                        Style="{ThemeResource CaptionTextBlockStyle}" />
-                        </StackPanel>
-                    </StackPanel>
-                    <Grid ColumnSpacing="{StaticResource AstridSpace8}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock x:Uid="insights_time_to_complete" Grid.Column="0"
-                                   Text="Median time to complete"
-                                   TextWrapping="Wrap"
-                                   Style="{ThemeResource CaptionTextBlockStyle}" />
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}">
-                            <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                                       Text="{x:Bind Shell.Insights.TimeToComplete, Mode=OneWay, Converter={StaticResource InsightMedian}}" />
-                            <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}">
+                                <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                                           Text="{x:Bind Shell.Insights.TimeToComplete, Mode=OneWay, Converter={StaticResource InsightMedian}}" />
+                                <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource AstridTextMuted}"
+                                           Text="{x:Bind Shell.Insights.TimeToComplete, Mode=OneWay, Converter={StaticResource InsightSample}}" />
+                            </StackPanel>
+                        </Grid>
+                        <!--
+                            Only a board has columns, and a board whose every column has nothing to
+                            measure gets a sentence rather than a row of dashes: lane moves are
+                            recorded from the AWTD-1329 deploy onward, so it fills in as cards move.
+                        -->
+                        <StackPanel Spacing="{StaticResource AstridSpace2}"
+                                    Visibility="{x:Bind Shell.Insights.HasLanes, Mode=OneWay, Converter={StaticResource Visible}}">
+                            <TextBlock x:Uid="insights_time_in_lane" Text="Median time in each column"
+                                       TextWrapping="Wrap"
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                            <TextBlock x:Uid="insights_not_enough_history" Text="Not enough history yet"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Visibility="{x:Bind Shell.Insights.LanesNeedHistory, Mode=OneWay, Converter={StaticResource Visible}}" />
+                            <TextBlock x:Uid="insights_lane_history_note"
+                                       Text="Column moves are recorded from now on, so this fills in as cards move."
+                                       TextWrapping="Wrap"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
                                        Foreground="{ThemeResource AstridTextMuted}"
-                                       Text="{x:Bind Shell.Insights.TimeToComplete, Mode=OneWay, Converter={StaticResource InsightSample}}" />
+                                       Visibility="{x:Bind Shell.Insights.LanesNeedHistory, Mode=OneWay, Converter={StaticResource Visible}}" />
+                            <ItemsControl ItemsSource="{x:Bind Shell.Insights.Lanes, Mode=OneWay}"
+                                          Visibility="{x:Bind Shell.Insights.LanesNeedHistory, Mode=OneWay, Converter={StaticResource NotVisible}}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="viewmodels:InsightLaneRow">
+                                        <Grid ColumnSpacing="{StaticResource AstridSpace8}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{x:Bind Name}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Style="{ThemeResource CaptionTextBlockStyle}" />
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}">
+                                                <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                                                           Text="{x:Bind Median, Converter={StaticResource InsightMedian}}" />
+                                                <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                                                           Foreground="{ThemeResource AstridTextMuted}"
+                                                           Text="{x:Bind Median, Converter={StaticResource InsightSample}}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
-                    </Grid>
-                    <!--
-                        Only a board has columns, and a board whose every column has nothing to
-                        measure gets a sentence rather than a row of dashes: lane moves are
-                        recorded from the AWTD-1329 deploy onward, so it fills in as cards move.
-                    -->
-                    <StackPanel Spacing="{StaticResource AstridSpace2}"
-                                Visibility="{x:Bind Shell.Insights.HasLanes, Mode=OneWay, Converter={StaticResource Visible}}">
-                        <TextBlock x:Uid="insights_time_in_lane" Text="Median time in each column"
-                                   TextWrapping="Wrap"
+                        <TextBlock x:Uid="insights_contributors" Text="Top contributors"
                                    Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                        <TextBlock x:Uid="insights_not_enough_history" Text="Not enough history yet"
-                                   Style="{ThemeResource CaptionTextBlockStyle}"
-                                   Visibility="{x:Bind Shell.Insights.LanesNeedHistory, Mode=OneWay, Converter={StaticResource Visible}}" />
-                        <TextBlock x:Uid="insights_lane_history_note"
-                                   Text="Column moves are recorded from now on, so this fills in as cards move."
-                                   TextWrapping="Wrap"
+                        <TextBlock x:Uid="insights_no_activity" Text="No activity in this period"
                                    Style="{ThemeResource CaptionTextBlockStyle}"
                                    Foreground="{ThemeResource AstridTextMuted}"
-                                   Visibility="{x:Bind Shell.Insights.LanesNeedHistory, Mode=OneWay, Converter={StaticResource Visible}}" />
-                        <ItemsControl ItemsSource="{x:Bind Shell.Insights.Lanes, Mode=OneWay}"
-                                      Visibility="{x:Bind Shell.Insights.LanesNeedHistory, Mode=OneWay, Converter={StaticResource NotVisible}}">
+                                   Visibility="{x:Bind Shell.Insights.NoActivity, Mode=OneWay, Converter={StaticResource Visible}}" />
+                        <ItemsControl ItemsSource="{x:Bind Shell.Insights.Contributors, Mode=OneWay}">
                             <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="viewmodels:InsightLaneRow">
-                                    <Grid ColumnSpacing="{StaticResource AstridSpace8}">
+                                <DataTemplate x:DataType="viewmodels:InsightContributorRow">
+                                    <Grid ColumnSpacing="{StaticResource AstridSpace8}" Padding="0,2">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Text="{x:Bind Name}"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   Style="{ThemeResource CaptionTextBlockStyle}" />
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}">
+                                        <Border Grid.Column="0" Width="20" Height="20" CornerRadius="10"
+                                                VerticalAlignment="Top"
+                                                Background="{ThemeResource AstridSurfaceHover}">
+                                            <Image Stretch="UniformToFill"
+                                                   Source="{x:Bind Image, Converter={StaticResource RemoteImage}}" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1">
+                                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}">
+                                                <TextBlock TextTrimming="CharacterEllipsis"
+                                                           Text="{x:Bind Name, Converter={StaticResource Dashed}}" />
+                                                <!--
+                                                    The agent badge web draws beside a bot's name: who
+                                                    did the work is worth knowing when some of it was
+                                                    not done by a person.
+                                                -->
+                                                <FontIcon x:Uid="insights_agent_badge" Glyph="&#xE99A;"
+                                                          FontSize="10"
+                                                          VerticalAlignment="Center"
+                                                          Foreground="{ThemeResource AstridTextMuted}"
+                                                          ToolTipService.ToolTip="AI agent"
+                                                          Visibility="{x:Bind IsAIAgent, Converter={StaticResource Visible}}" />
+                                            </StackPanel>
                                             <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                                                       Text="{x:Bind Median, Converter={StaticResource InsightMedian}}" />
+                                                       Text="{x:Bind Person, Converter={StaticResource InsightProfileCounts}}" />
                                             <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
                                                        Foreground="{ThemeResource AstridTextMuted}"
-                                                       Text="{x:Bind Median, Converter={StaticResource InsightSample}}" />
+                                                       Text="{x:Bind Person, Converter={StaticResource InsightActivityCounts}}" />
                                         </StackPanel>
                                     </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </StackPanel>
-                    <TextBlock x:Uid="insights_contributors" Text="Top contributors"
-                               Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                    <TextBlock x:Uid="insights_no_activity" Text="No activity in this period"
-                               Style="{ThemeResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource AstridTextMuted}"
-                               Visibility="{x:Bind Shell.Insights.NoActivity, Mode=OneWay, Converter={StaticResource Visible}}" />
-                    <ItemsControl ItemsSource="{x:Bind Shell.Insights.Contributors, Mode=OneWay}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="viewmodels:InsightContributorRow">
-                                <Grid ColumnSpacing="{StaticResource AstridSpace8}" Padding="0,2">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Border Grid.Column="0" Width="20" Height="20" CornerRadius="10"
-                                            VerticalAlignment="Top"
-                                            Background="{ThemeResource AstridSurfaceHover}">
-                                        <Image Stretch="UniformToFill"
-                                               Source="{x:Bind Image, Converter={StaticResource RemoteImage}}" />
-                                    </Border>
-                                    <StackPanel Grid.Column="1">
-                                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}">
-                                            <TextBlock TextTrimming="CharacterEllipsis"
-                                                       Text="{x:Bind Name, Converter={StaticResource Dashed}}" />
-                                            <!--
-                                                The agent badge web draws beside a bot's name: who
-                                                did the work is worth knowing when some of it was
-                                                not done by a person.
-                                            -->
-                                            <FontIcon x:Uid="insights_agent_badge" Glyph="&#xE99A;"
-                                                      FontSize="10"
-                                                      VerticalAlignment="Center"
-                                                      Foreground="{ThemeResource AstridTextMuted}"
-                                                      ToolTipService.ToolTip="AI agent"
-                                                      Visibility="{x:Bind IsAIAgent, Converter={StaticResource Visible}}" />
-                                        </StackPanel>
-                                        <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                                                   Text="{x:Bind Person, Converter={StaticResource InsightProfileCounts}}" />
-                                        <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                                                   Foreground="{ThemeResource AstridTextMuted}"
-                                                   Text="{x:Bind Person, Converter={StaticResource InsightActivityCounts}}" />
-                                    </StackPanel>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
                 </StackPanel>
-            </StackPanel>
-        </Expander>
-        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}" Margin="0,8,0,0">
-            <Button x:Uid="leave_list" Content="Leave list"
-                    Click="OnLeaveList"
-                    Visibility="{x:Bind Shell.ListSettings.CanLeave, Mode=OneWay, Converter={StaticResource Visible}}" />
-            <!--
-                The owner is offered a handover where a member is
-                offered Leave (Apple AITD-392): ownership is what
-                deleting keys on, so it goes to someone by name.
-                Who is eligible is the server's answer, asked when
-                this opens, and its four states are drawn as four.
-            -->
-            <Button x:Uid="transfer_ownership" Content="Transfer ownership"
-                    Visibility="{x:Bind Shell.ListSettings.CanTransferOwnership, Mode=OneWay, Converter={StaticResource Visible}}">
-                <Button.Flyout>
-                    <Flyout Opening="OnTransferFlyoutOpening">
-                        <StackPanel Spacing="{StaticResource AstridSpace8}" MinWidth="240" MaxWidth="320">
-                            <TextBlock x:Uid="transfer_ownership_line" TextWrapping="Wrap"
-                                       FontSize="12"
-                                       Foreground="{ThemeResource AstridTextMuted}"
-                                       Text="Hand this list to another member. You leave it at the same time." />
-                            <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.EligibleOwners, Mode=OneWay}"
-                                          Visibility="{x:Bind Shell.ListSettings.HasEligibleOwners, Mode=OneWay, Converter={StaticResource Visible}}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="bindings:UserSummary">
-                                        <Button Content="{x:Bind DisplayName}"
-                                                Tag="{x:Bind}"
-                                                HorizontalAlignment="Stretch"
-                                                HorizontalContentAlignment="Left"
-                                                Margin="0,0,0,4"
-                                                Click="OnTransferTo" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            <TextBlock x:Uid="transfer_nobody" Text="Nobody to hand it to yet - invite someone first."
-                                       TextWrapping="Wrap" FontSize="12"
-                                       Foreground="{ThemeResource AstridTextMuted}"
-                                       Visibility="{x:Bind Shell.ListSettings.NoEligibleOwners, Mode=OneWay, Converter={StaticResource Visible}}" />
-                            <TextBlock x:Uid="transfer_unavailable" Text="Not available from here yet - use the web app."
-                                       TextWrapping="Wrap" FontSize="12"
-                                       Foreground="{ThemeResource AstridTextMuted}"
-                                       Visibility="{x:Bind Shell.ListSettings.TransferUnavailable, Mode=OneWay, Converter={StaticResource Visible}}" />
-                        </StackPanel>
-                    </Flyout>
-                </Button.Flyout>
-            </Button>
-            <!--
-                Deleting asks first. It takes the list away from
-                everybody it is shared with, and there is no undo
-                for that on any client.
-            -->
-            <Button x:Uid="delete_list" Content="Delete list"
-                    Visibility="{x:Bind Shell.ListSettings.CanDeleteList, Mode=OneWay, Converter={StaticResource Visible}}">
-                <Button.Flyout>
-                    <Flyout>
-                        <StackPanel Spacing="{StaticResource AstridSpace8}" MaxWidth="260">
-                            <TextBlock x:Uid="delete_this_list_and_its_tasks" TextWrapping="Wrap"
-                                       Text="Delete this list and its tasks, for everybody it is shared with?" />
-                            <Button x:Uid="delete_it" Content="Delete it"
-                                    Click="OnDeleteList"
-                                    Style="{ThemeResource AccentButtonStyle}" />
-                        </StackPanel>
-                    </Flyout>
-                </Button.Flyout>
-            </Button>
+            </Expander>
         </StackPanel>
+
+        <StackPanel x:Name="MembersSection" Spacing="{StaticResource AstridSpace8}" Visibility="Collapsed">
+            <TextBlock x:Uid="shared_with" Text="Shared with"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Margin="0,8,0,0" />
+            <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.Members, Mode=OneWay}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="viewmodels:ListMemberRow">
+                        <Grid ColumnSpacing="{StaticResource AstridSpace8}" Padding="0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       Text="{x:Bind DisplayName}"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{x:Bind RoleKey, Converter={StaticResource PickTitle}}"
+                                       VerticalAlignment="Center"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Style="{ThemeResource CaptionTextBlockStyle}" />
+                            <!--
+                                Who is on the list is worth seeing wherever it is shown; taking
+                                somebody off it is not always offered. A viewer, and a GitHub-backed
+                                board whose roster is the project's, both used to get a Remove that
+                                403s (task 93ffa9ea).
+                            -->
+                            <Button x:Uid="remove" Grid.Column="2"
+                                    Content="Remove"
+                                    Tag="{x:Bind UserId}"
+                                    Visibility="{x:Bind CanRemove, Converter={StaticResource Visible}}"
+                                    Click="OnRemoveMember" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}"
+                        Visibility="{x:Bind Shell.ListSettings.CanManageMembers, Mode=OneWay, Converter={StaticResource Visible}}">
+                <TextBox x:Uid="invite_box" x:Name="InviteBox"
+                         Width="200"
+                         PlaceholderText="Invite by email"
+                         AutomationProperties.Name="Invite by email"
+                         KeyDown="OnInviteKeyDown" />
+                <Button x:Uid="invite" Content="Invite" Click="OnInvite" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}">
+                <Button x:Uid="leave_list" Content="Leave list"
+                        Click="OnLeaveList"
+                        Visibility="{x:Bind Shell.ListSettings.CanLeave, Mode=OneWay, Converter={StaticResource Visible}}" />
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel x:Name="AdminSection" Spacing="{StaticResource AstridSpace8}" Visibility="Collapsed">
+            <!--
+                The coding agent (task f44b4a0c): the web's AI Agent
+                picker and "Repository the coding agent works in".
+                Which agent picks this list's tasks up, and which
+                repository it commits to — the binding that turns a
+                board into something a fixall loop can act on. The
+                choices are the account's agents and its GitHub
+                repositories, fetched as the flyout opens.
+            -->
+            <TextBlock x:Uid="coding_agent" Text="Coding agent"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Margin="0,8,0,0"
+                       Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
+            <Grid ColumnSpacing="{StaticResource AstridSpace8}"
+                  Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <ComboBox x:Uid="agent" Grid.Column="0" Header="Agent"
+                          HorizontalAlignment="Stretch"
+                          AutomationProperties.Name="List agent"
+                          ItemsSource="{x:Bind Shell.ListSettings.AgentChoices, Mode=OneWay}"
+                          ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                          SelectedItem="{x:Bind Shell.ListSettings.SelectedAgent, Mode=OneWay}"
+                          SelectionChanged="OnDefaultChosen" />
+                <ComboBox x:Uid="repository" Grid.Column="1" Header="Repository"
+                          HorizontalAlignment="Stretch"
+                          AutomationProperties.Name="Coding agent repository"
+                          ItemsSource="{x:Bind Shell.ListSettings.RepositoryChoices, Mode=OneWay}"
+                          ItemTemplate="{StaticResource DefaultChoiceTemplate}"
+                          SelectedItem="{x:Bind Shell.ListSettings.SelectedRepository, Mode=OneWay}"
+                          SelectionChanged="OnDefaultChosen" />
+            </Grid>
+            <TextBlock x:Uid="connect_github_under_mirrored_to_below" Text="Connect GitHub under Mirrored to, below, to choose a repository."
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       TextWrapping="Wrap"
+                       Foreground="{ThemeResource AstridTextMuted}"
+                       Visibility="{x:Bind Shell.ListSettings.NeedsGithub, Mode=OneWay, Converter={StaticResource Visible}}" />
+            <!--
+                Where this list is mirrored. Google and GitHub work
+                differently and the rows say so, because "linked" means
+                something different for each: GitHub is synced by the
+                server whether or not this app runs, Google by this app
+                when it does.
+            -->
+            <TextBlock x:Uid="mirrored_to" Text="Mirrored to"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Margin="0,8,0,0" />
+            <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.Providers, Mode=OneWay}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="bindings:ExternalProvider">
+                        <Grid ColumnSpacing="{StaticResource AstridSpace8}" Padding="0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       Text="{x:Bind Name}"
+                                       VerticalAlignment="Center" />
+                            <ComboBox x:Uid="not_mirrored" Grid.Column="1"
+                                      HorizontalAlignment="Stretch"
+                                      PlaceholderText="Not mirrored"
+                                      AutomationProperties.Name="{x:Bind Name}"
+                                      Tag="{x:Bind Provider}"
+                                      ItemsSource="{x:Bind Containers}"
+                                      SelectionChanged="OnMirrorChosen"
+                                      Visibility="{x:Bind Connected, Converter={StaticResource Visible}}" />
+                            <Button x:Uid="connect" Grid.Column="2"
+                                    Content="Connect"
+                                    Tag="{x:Bind Provider}"
+                                    Click="OnConnectProvider"
+                                    Visibility="{x:Bind Connected, Converter={StaticResource NotVisible}}" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}" Margin="0,8,0,0">
+                <!--
+                    The owner is offered a handover where a member is
+                    offered Leave (Apple AITD-392): ownership is what
+                    deleting keys on, so it goes to someone by name.
+                    Who is eligible is the server's answer, asked when
+                    this opens, and its four states are drawn as four.
+                -->
+                <Button x:Uid="transfer_ownership" Content="Transfer ownership"
+                        Visibility="{x:Bind Shell.ListSettings.CanTransferOwnership, Mode=OneWay, Converter={StaticResource Visible}}">
+                    <Button.Flyout>
+                        <Flyout Opening="OnTransferFlyoutOpening">
+                            <StackPanel Spacing="{StaticResource AstridSpace8}" MinWidth="240" MaxWidth="320">
+                                <TextBlock x:Uid="transfer_ownership_line" TextWrapping="Wrap"
+                                           FontSize="12"
+                                           Foreground="{ThemeResource AstridTextMuted}"
+                                           Text="Hand this list to another member. You leave it at the same time." />
+                                <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.EligibleOwners, Mode=OneWay}"
+                                              Visibility="{x:Bind Shell.ListSettings.HasEligibleOwners, Mode=OneWay, Converter={StaticResource Visible}}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="bindings:UserSummary">
+                                            <Button Content="{x:Bind DisplayName}"
+                                                    Tag="{x:Bind}"
+                                                    HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Left"
+                                                    Margin="0,0,0,4"
+                                                    Click="OnTransferTo" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock x:Uid="transfer_nobody" Text="Nobody to hand it to yet - invite someone first."
+                                           TextWrapping="Wrap" FontSize="12"
+                                           Foreground="{ThemeResource AstridTextMuted}"
+                                           Visibility="{x:Bind Shell.ListSettings.NoEligibleOwners, Mode=OneWay, Converter={StaticResource Visible}}" />
+                                <TextBlock x:Uid="transfer_unavailable" Text="Not available from here yet - use the web app."
+                                           TextWrapping="Wrap" FontSize="12"
+                                           Foreground="{ThemeResource AstridTextMuted}"
+                                           Visibility="{x:Bind Shell.ListSettings.TransferUnavailable, Mode=OneWay, Converter={StaticResource Visible}}" />
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+                <!--
+                    Deleting asks first. It takes the list away from
+                    everybody it is shared with, and there is no undo
+                    for that on any client.
+                -->
+                <Button x:Uid="delete_list" Content="Delete list"
+                        Visibility="{x:Bind Shell.ListSettings.CanDeleteList, Mode=OneWay, Converter={StaticResource Visible}}">
+                    <Button.Flyout>
+                        <Flyout>
+                            <StackPanel Spacing="{StaticResource AstridSpace8}" MaxWidth="260">
+                                <TextBlock x:Uid="delete_this_list_and_its_tasks" TextWrapping="Wrap"
+                                           Text="Delete this list and its tasks, for everybody it is shared with?" />
+                                <Button x:Uid="delete_it" Content="Delete it"
+                                        Click="OnDeleteList"
+                                        Style="{ThemeResource AccentButtonStyle}" />
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+            </StackPanel>
+        </StackPanel>
+        </Grid>
+        </ScrollViewer>
         <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                    TextWrapping="Wrap"
                    Text="{x:Bind Shell.ListSettings.ErrorMessage, Mode=OneWay}"
                    Visibility="{x:Bind Shell.ListSettings.ErrorMessage, Mode=OneWay, Converter={StaticResource Visible}}" />
     </StackPanel>
-    </ScrollViewer>
 </UserControl>
