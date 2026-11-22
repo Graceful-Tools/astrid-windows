@@ -1179,8 +1179,8 @@
   <data name="add_card_to_column.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Aufgabe hinzufügen</value>
   </data>
-  <data name="nothing_here_yet.Text" xml:space="preserve">
-    <value>Noch nichts hier</value>
+  <data name="board_empty_custom.Text" xml:space="preserve">
+    <value>Noch nichts hier! Ziehe eine Aufgabe hinein, um sie voranzubringen.</value>
   </data>
   <data name="open_task.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Aufgabe öffnen</value>
