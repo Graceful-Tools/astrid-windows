@@ -31,6 +31,14 @@ internal static class DesignMetrics
         new(@"TimeSpan\.From(?:Milliseconds|Seconds)\(\s*[0-9][0-9_.]*\s*\)");
 
     /// <summary>
+    /// A colour built from four numbers typed into code, <c>Color.FromArgb(255, 59, 130, 246)</c>.
+    /// A call over computed channels — parsing a list's hex, tinting one — is not counted: that
+    /// colour came from somewhere else. Task c4174b14.
+    /// </summary>
+    private static readonly Regex CodeColour =
+        new(@"Color\.FromArgb\(\s*(?:0x[0-9A-Fa-f]+|[0-9]+)(?:\s*,\s*(?:0x[0-9A-Fa-f]+|[0-9]+)){3}\s*\)");
+
+    /// <summary>
     /// An attribute whose value is a literal — <c>Margin="8"</c> and not
     /// <c>Margin="{StaticResource …}"</c> or a binding, which are the forms that DO come from the
     /// design system and must not be counted against it.
@@ -42,6 +50,7 @@ internal static class DesignMetrics
     internal static readonly string[] Names =
     [
         "xaml.hex-colours",
+        "code.hex-colours",
         "xaml.corner-radius",
         "xaml.font-size",
         "xaml.spacing",
@@ -114,9 +123,20 @@ internal static class DesignMetrics
         {
             var file = Path.GetFileName(path);
             var source = File.ReadAllText(path);
-            foreach (var literal in StringLiterals(source).Where(IsProse))
+            foreach (var literal in StringLiterals(source))
             {
-                Add("code.strings", $"{file}: \"{literal}\"");
+                if (IsProse(literal))
+                {
+                    Add("code.strings", $"{file}: \"{literal}\"");
+                }
+                foreach (Match match in HexColour.Matches(literal))
+                {
+                    Add("code.hex-colours", $"{file}: \"{match.Value}\"");
+                }
+            }
+            foreach (Match match in CodeColour.Matches(source))
+            {
+                Add("code.hex-colours", $"{file}: {match.Value}");
             }
             // Program.cs waits on a process: a timeout, not motion.
             if (!file.Equals("Program.cs", StringComparison.Ordinal))

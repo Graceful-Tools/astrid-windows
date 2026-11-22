@@ -38,7 +38,7 @@ public sealed partial class PriorityBrushConverter : IValueConverter
     /// Read <c>#rrggbb</c> or <c>#aarrggbb</c>.
     /// </summary>
     /// <remarks>
-    /// Anything unreadable falls back to the brand blue rather than throwing. A list colour comes
+    /// Anything unreadable falls back to <see cref="Colours.ListDefault"/> rather than throwing. A list colour comes
     /// from the server and from other clients; one bad value must not take the window down.
     /// </remarks>
     private static Color Parse(string hex)
@@ -52,7 +52,7 @@ public sealed partial class PriorityBrushConverter : IValueConverter
         {
             return Color.FromArgb((byte)(argb >> 24), (byte)(argb >> 16), (byte)(argb >> 8), (byte)argb);
         }
-        return Color.FromArgb(0xFF, 0x3B, 0x82, 0xF6);
+        return Colours.ListDefault;
     }
 }
 
@@ -238,7 +238,7 @@ public sealed partial class ChipTintConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language)
     {
-        var colour = Colours.Parse(value as string) ?? Windows.UI.Color.FromArgb(255, 59, 130, 246);
+        var colour = Colours.Parse(value as string) ?? Colours.ListDefault;
         return new SolidColorBrush(
             Windows.UI.Color.FromArgb(0x15, colour.R, colour.G, colour.B));
     }
@@ -314,6 +314,13 @@ public sealed partial class CompletedStrikeConverter : IValueConverter
 /// <summary>Reading a `#rrggbb` from the core into a colour.</summary>
 internal static class Colours
 {
+    /// <summary>
+    /// What a list with no readable colour is drawn in: <c>AstridListDefaultColor</c> in
+    /// <c>App.xaml</c>, the list palette's blue (task c4174b14).
+    /// </summary>
+    public static Windows.UI.Color ListDefault =>
+        (Windows.UI.Color)Microsoft.UI.Xaml.Application.Current.Resources["AstridListDefaultColor"];
+
     public static Windows.UI.Color? Parse(string? hex)
     {
         if (string.IsNullOrWhiteSpace(hex))
@@ -733,7 +740,7 @@ public sealed partial class ChipColourConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language) =>
         new SolidColorBrush(
-            Colours.Parse(value as string) ?? Windows.UI.Color.FromArgb(255, 59, 130, 246));
+            Colours.Parse(value as string) ?? Colours.ListDefault);
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("a chip's colour is not a value to read back");

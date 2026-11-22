@@ -85,13 +85,6 @@
     <local:InsightCountsConverter x:Key="InsightProfileCounts" Key="listInsights.profileCounts" />
     <local:InsightCountsConverter x:Key="InsightActivityCounts" Key="listInsights.activityCounts" />
     <local:InsightLineConverter x:Key="InsightLine" PlotWidth="288" PlotHeight="120" />
-    <!--
-        The chart's two series, in astrid-web's own categorical order — CHART_SERIES_COLORS in
-        lib/brand/colors.ts. Not the accent: the first series would be invisible on a branded
-        surface, which is the comment that palette carries.
-    -->
-    <SolidColorBrush x:Key="InsightNewBrush" Color="#3b82f6" />
-    <SolidColorBrush x:Key="InsightDoneBrush" Color="#22c55e" />
 
     <!--
         One sidebar row, shared by My Tasks, the favourites and the lists.

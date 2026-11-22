@@ -838,8 +838,7 @@ public sealed partial class TaskDetailPane : UserControl
         var renderer = new MarkdownRenderer(
             ThemedBrush,
             reference => _ = FollowReferenceAsync(reference),
-            link => _ = FollowLinkAsync(link),
-            ActualTheme == ElementTheme.Dark);
+            link => _ = FollowLinkAsync(link));
         foreach (var element in renderer.Render(Shell.Detail.DescriptionBlocks))
         {
             DetailDescriptionBlocks.Children.Add(element);

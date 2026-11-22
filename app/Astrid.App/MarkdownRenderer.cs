@@ -33,19 +33,16 @@ internal sealed class MarkdownRenderer
     private readonly Func<string, Brush> _brush;
     private readonly Action<MarkdownInline> _onReference;
     private readonly Action<string> _onLink;
-    private readonly bool _dark;
 
     /// <param name="brush">A themed brush by its resource key.</param>
     /// <param name="onReference">A pill was clicked: a person, a list or a task.</param>
     /// <param name="onLink">A link was clicked, with the address the core kept.</param>
-    /// <param name="dark">Whether the pills take their dark-theme colours.</param>
     public MarkdownRenderer(Func<string, Brush> brush, Action<MarkdownInline> onReference,
-        Action<string> onLink, bool dark)
+        Action<string> onLink)
     {
         _brush = brush;
         _onReference = onReference;
         _onLink = onLink;
-        _dark = dark;
     }
 
     /// <summary>One element per block, top to bottom.</summary>
@@ -139,17 +136,21 @@ internal sealed class MarkdownRenderer
     }
 
     /// <summary>A person, a list or a task, in the web's three pill colours.</summary>
+    /// <remarks>
+    /// The category inks, which are the text-weight blue, green and amber and lighten on dark. They
+    /// were six hexes here, three per theme, until task c4174b14.
+    /// </remarks>
     private Hyperlink Pill(MarkdownInline inline)
     {
-        var (sigil, light, dark) = inline.Reference switch
+        var (sigil, ink) = inline.Reference switch
         {
-            "user" => ("@", "#1D4ED8", "#93C5FD"),
-            "list" => ("#", "#15803D", "#86EFAC"),
-            _ => ("!", "#B45309", "#FCD34D"),
+            "user" => ("@", "AstridCategoryBlueInk"),
+            "list" => ("#", "AstridCategoryGreenInk"),
+            _ => ("!", "AstridCategoryAmberInk"),
         };
         var hyperlink = new Hyperlink
         {
-            Foreground = new SolidColorBrush(Colours.Parse(_dark ? dark : light) ?? Colors.Gray),
+            Foreground = _brush(ink),
             UnderlineStyle = UnderlineStyle.None,
             Inlines =
             {

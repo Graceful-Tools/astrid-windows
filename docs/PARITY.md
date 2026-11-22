@@ -143,8 +143,8 @@ named exceptions: they match web's `styles/themes/*.css` to the byte and the tok
 drift is web-to-token and web's to resolve when it vendors. astrid-core's register names Light's two
 selection tints among the values DS26 leaves alone.
 
-**The priority colours follow the checkbox art, not the tokens** (astrid-core's register, DS21,
-accepted by Jon on 2026-11-10). `PriorityPalette` is sampled from `Assets/Checkboxes/check_box_*.png`
-and pinned to those files, because a swatch that disagrees with the mark beside it on the same row
-is the bug task `204c9d98` fixed. So low priority stays `#328ACC` here while the token is the darker
-accent `#2563EB`. Changing it means re-drawing the art, which is a design job and not a code one.
+**The priority colours are the tokens** (task `82e4ad32`). The mark is the shared vector art
+(`design/AstridCheckbox.xaml`) stroked in `AstridPriority*`, so the row and the picker cannot disagree
+— the bug task `204c9d98` fixed — and low priority is the accent `#2563EB` on light and its ink on
+dark. No colour is written by hand anywhere in the shell: `DesignMetricsTests` holds
+`xaml.hex-colours` and `code.hex-colours` at zero (task `c4174b14`).

@@ -53,6 +53,7 @@ public sealed class ThemedBrushReadsTests
     {
         ["AstridAccentBrush"] = "App.xaml's root dictionary: the brand accent, one value in every appearance",
         ["AstridOceanBrush"] = "App.xaml's root dictionary: the Ocean wash, which is what Ocean IS",
+        ["AstridListDefaultColor"] = "App.xaml's root dictionary: a list palette colour, the same in every appearance (c4174b14)",
         ["AccentButtonStyle"] = "a WinUI Style, not a brush; its own setters resolve per theme",
     };
 

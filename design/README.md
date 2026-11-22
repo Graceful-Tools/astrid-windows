@@ -88,20 +88,16 @@ at the next bump.
 
 ## What does not follow the tokens, and why
 
-Two things, and neither is a themed brush in `App.xaml` — `DesignTokenTests` has no exception list,
-because a brush that is listed is a brush nobody is checking. Adding one back means deleting an
-assertion, which is a reviewable act; the reason then belongs in astrid-core's register, not here.
+One thing — `DesignTokenTests` has no exception list, because a brush that is listed is a brush
+nobody is checking. Adding one back means deleting an assertion, which is a reviewable act; the
+reason then belongs in astrid-core's register, not here.
 
-- **The priority palette** (`PriorityPalette`, `Priority*Brush`) is sampled from
-  `app/Astrid.App/Assets/Checkboxes/check_box_{0..3}.png` and pinned to those files by
-  `PriorityPaletteTests`. The images win *for now*: they are pixels this shell cannot restyle, and a
-  swatch that disagrees with the mark beside it is the bug task `204c9d98` fixed. astrid-core carries
-  it as DS2 and DS21, and both rows read **open on Windows**. The art is now vendored here, so the
-  remaining step is to merge `AstridCheckbox.xaml` into `App.xaml`, draw it in the priority tokens
-  and drop the sampled values — the two halves have to move together, because retyping the palette
-  to the token values while the rows still draw the PNGs puts the row and the picker in two
-  different blues, which is exactly the bug `204c9d98` fixed. Under a partner accent, low priority
-  stays Astrid blue until then.
+The priority palette used to be the other exception, sampled from checkbox PNGs. Task `82e4ad32`
+drew the mark from `AstridCheckbox.xaml` in the `AstridPriority*` tokens, and task `c4174b14` took
+the last hand-written colours out of the views and the code: `DesignMetricsTests` holds
+`xaml.hex-colours` and `code.hex-colours` at zero. A colour the tokens do not have is a question for
+astrid-core's register, not a hex in a view.
+
 - **Ocean** has no theme dictionary here. In the tokens it differs from Light in the page
   background and its border, and this shell paints that as a surface behind the chrome. One set of
   brushes, two appearances.

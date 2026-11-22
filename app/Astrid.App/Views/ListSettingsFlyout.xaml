@@ -452,28 +452,30 @@
                         Two lines on one scale, stacked in a Grid so they share the plot. The view
                         model hands over fractions and InsightLineConverter states the size once,
                         which is what stops the pair becoming two charts drawn on top of each other.
+                        The series take the category blue and green, astrid-web's CHART_SERIES_COLORS
+                        order, not the accent, which would vanish on a branded surface (c4174b14).
                     -->
                     <Border Width="288" Height="120" CornerRadius="4"
                             Background="{ThemeResource AstridSurfaceHover}">
                         <Grid>
                             <Polyline StrokeThickness="2"
-                                      Stroke="{StaticResource InsightNewBrush}"
+                                      Stroke="{ThemeResource AstridCategoryBlue}"
                                       Points="{x:Bind Shell.Insights.CreatedSeries, Mode=OneWay, Converter={StaticResource InsightLine}}" />
                             <Polyline StrokeThickness="2"
-                                      Stroke="{StaticResource InsightDoneBrush}"
+                                      Stroke="{ThemeResource AstridCategoryGreen}"
                                       Points="{x:Bind Shell.Insights.CompletedSeries, Mode=OneWay, Converter={StaticResource InsightLine}}" />
                         </Grid>
                     </Border>
                     <StackPanel Orientation="Horizontal" Spacing="12">
                         <StackPanel Orientation="Horizontal" Spacing="4">
                             <Rectangle Width="10" Height="2" VerticalAlignment="Center"
-                                       Fill="{StaticResource InsightNewBrush}" />
+                                       Fill="{ThemeResource AstridCategoryBlue}" />
                             <TextBlock x:Uid="insights_new" Text="New"
                                        Style="{ThemeResource CaptionTextBlockStyle}" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="4">
                             <Rectangle Width="10" Height="2" VerticalAlignment="Center"
-                                       Fill="{StaticResource InsightDoneBrush}" />
+                                       Fill="{ThemeResource AstridCategoryGreen}" />
                             <TextBlock x:Uid="insights_completed" Text="Completed"
                                        Style="{ThemeResource CaptionTextBlockStyle}" />
                         </StackPanel>

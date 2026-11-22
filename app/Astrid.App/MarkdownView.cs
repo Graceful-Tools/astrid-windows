@@ -51,8 +51,7 @@ public sealed partial class MarkdownView : ContentControl
             var renderer = new MarkdownRenderer(
                 ThemedBrush,
                 reference => ReferenceFollowed?.Invoke(reference),
-                link => LinkFollowed?.Invoke(link),
-                ActualTheme == ElementTheme.Dark);
+                link => LinkFollowed?.Invoke(link));
             foreach (var element in renderer.Render(blocks))
             {
                 panel.Children.Add(element);
