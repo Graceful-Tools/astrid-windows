@@ -389,11 +389,11 @@ internal static class Strings
         // The trade-off grid's rating words, under the core's own spelling — the registry's, which
         // `Strings.Get` flattens to `tasks_tradeoffRatings_veryGood`. This shell had them under an
         // invented `tradeoff_very_good` until task b63d8679, and no fallback at all.
-        ["tasks.tradeoffRatings.veryPoor"] = "Very poor",
+        ["tasks.tradeoffRatings.veryPoor"] = "Disqualifying",
         ["tasks.tradeoffRatings.poor"] = "Poor",
         ["tasks.tradeoffRatings.mixed"] = "Mixed",
         ["tasks.tradeoffRatings.good"] = "Good",
-        ["tasks.tradeoffRatings.veryGood"] = "Very good",
+        ["tasks.tradeoffRatings.veryGood"] = "Decisive",
         // The first letter of the reader's word for "unassigned": U here, 未 in Japanese, Н in
         // Russian (PRODUCT_CONTRACT.md §4). A translator changes this, not the code.
         ["tasks.unassigned_mark"] = "U",

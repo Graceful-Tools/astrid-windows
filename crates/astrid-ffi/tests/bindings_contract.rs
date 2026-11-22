@@ -181,6 +181,21 @@ const NOT_BOUND: &[(&str, &str)] = &[
          `createProject` and `deleteProject`.",
     ),
     (
+        "getProjectGoals",
+        "A board's goals and guardrails (core ADEV-187). Not drawn here yet: binding them is \
+         board task ec11e539, which this entry is waiting for.",
+    ),
+    (
+        "getListGoals",
+        "The goals of the board a list belongs to (core ADEV-187). Same as `getProjectGoals`: \
+         board task ec11e539.",
+    ),
+    (
+        "setProjectGoals",
+        "Editing a board's goals and guardrails (core ADEV-187). Same as `getProjectGoals`: \
+         board task ec11e539.",
+    ),
+    (
         "deleteProject",
         "Deleting a board detaches its lists rather than deleting them, which needs explaining on          screen before it is offered. No such screen here yet.",
     ),

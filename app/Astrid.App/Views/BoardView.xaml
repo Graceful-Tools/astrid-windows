@@ -216,14 +216,16 @@
             with nothing to scroll it. Each column scrolls its own cards instead, as the
             web's do — which is also what makes room for a card opened in place.
         -->
-        <ScrollViewer Grid.Row="0" Grid.RowSpan="2"
+        <ScrollViewer x:Name="ColumnsScroller"
+                      Grid.Row="0" Grid.RowSpan="2"
                       HorizontalScrollBarVisibility="Auto"
                       HorizontalScrollMode="Enabled"
                       VerticalScrollBarVisibility="Disabled"
                       VerticalScrollMode="Disabled"
                       Margin="12,0,12,8"
                       Visibility="{x:Bind Shell.IsBoardView, Mode=OneWay, Converter={StaticResource Visible}}">
-            <ItemsControl ItemsSource="{x:Bind Shell.Board.Columns, Mode=OneWay}">
+            <ItemsControl x:Name="ColumnsHost"
+                          ItemsSource="{x:Bind Shell.Board.Columns, Mode=OneWay}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <StackPanel Orientation="Horizontal" Spacing="12" />

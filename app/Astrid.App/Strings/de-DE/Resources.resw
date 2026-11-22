@@ -2281,7 +2281,7 @@
     <value>Kommentare (0)</value>
   </data>
   <data name="tasks_tradeoffRatings_veryPoor" xml:space="preserve">
-    <value>Sehr schlecht</value>
+    <value>Ausschlusskriterium</value>
   </data>
   <data name="tasks_tradeoffRatings_poor" xml:space="preserve">
     <value>Schlecht</value>
@@ -2293,7 +2293,7 @@
     <value>Gut</value>
   </data>
   <data name="tasks_tradeoffRatings_veryGood" xml:space="preserve">
-    <value>Sehr gut</value>
+    <value>Entscheidend</value>
   </data>
   <data name="add_card_settings.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Karteneinstellungen</value>

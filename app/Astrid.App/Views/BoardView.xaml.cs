@@ -50,6 +50,42 @@ public sealed partial class BoardView : UserControl
         // which is the case the core's clamping exists to prevent — so a resize re-asks.
         SizeChanged += (_, _) => PlaceCardCallout();
         Loaded += (_, _) => WatchExpandedCard();
+        // A board drawn while hidden has no width to scroll; it is opened when it is first shown.
+        ColumnsScroller.SizeChanged += (_, _) => StartAtTheInbox();
+    }
+
+    /// <summary>The list whose board has been opened at its inbox column; null until one has.</summary>
+    private string? _startedAtInboxFor;
+
+    /// <summary>
+    /// Open a board scrolled to its inbox column when it does not fit (task 8c543a42).
+    /// </summary>
+    /// <remarks>
+    /// Waiting leads the board since core ADEV-128, ahead of the inbox. On a window wide enough
+    /// for every column nothing moves; on a narrower one the board starts at the inbox, so Waiting
+    /// is a scroll back rather than the first thing on screen. Once per board opened, never on a
+    /// refresh: a reader who scrolled back to Waiting stays there.
+    /// </remarks>
+    private void StartAtTheInbox()
+    {
+        if (Shell is null || Shell.Board.ListId == _startedAtInboxFor
+            || ColumnsScroller.ActualWidth <= 0 || Shell.Board.Columns.Count == 0)
+        {
+            return;
+        }
+        var inbox = Shell.Board.Columns.FirstOrDefault(column => column.Kind == "inbox");
+        if (inbox is null || ColumnsHost.ContainerFromItem(inbox) is not FrameworkElement container
+            || container.ActualWidth <= 0)
+        {
+            return;
+        }
+        _startedAtInboxFor = Shell.Board.ListId;
+        if (ColumnsScroller.ScrollableWidth <= 0)
+        {
+            return;
+        }
+        var left = container.TransformToVisual(ColumnsHost).TransformPoint(default).X;
+        ColumnsScroller.ChangeView(Math.Min(left, ColumnsScroller.ScrollableWidth), null, null, true);
     }
 
     private ShellViewModel? _watched;
@@ -72,6 +108,12 @@ public sealed partial class BoardView : UserControl
                 DispatcherQueue.TryEnqueue(
                     Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
                     PlaceCardCallout);
+            }
+            if (changed.PropertyName is nameof(BoardViewModel.Columns))
+            {
+                DispatcherQueue.TryEnqueue(
+                    Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+                    StartAtTheInbox);
             }
         };
         PlaceCardCallout();

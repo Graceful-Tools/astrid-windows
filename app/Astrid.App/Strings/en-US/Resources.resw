@@ -2291,7 +2291,7 @@
     <value>Comments (0)</value>
   </data>
   <data name="tasks_tradeoffRatings_veryPoor" xml:space="preserve">
-    <value>Very poor</value>
+    <value>Disqualifying</value>
   </data>
   <data name="tasks_tradeoffRatings_poor" xml:space="preserve">
     <value>Poor</value>
@@ -2303,7 +2303,7 @@
     <value>Good</value>
   </data>
   <data name="tasks_tradeoffRatings_veryGood" xml:space="preserve">
-    <value>Very good</value>
+    <value>Decisive</value>
   </data>
   <data name="add_card_settings.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Card settings</value>
