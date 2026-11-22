@@ -576,6 +576,44 @@ public sealed class TaskListViewModelTests
     }
 
     /// <summary>
+    /// Two tiers, one source (task fdd8ef7f, Option 3): sort, show tasks and assignee lead the
+    /// popover; everything rarer is behind "All filters". Both are the core's own groups in the
+    /// core's order, so the tiers cannot offer a pick the core did not send.
+    /// </summary>
+    [Fact]
+    public async Task The_frequent_filters_lead_and_the_rest_are_behind_all_filters_task_fdd8ef7f()
+    {
+        static object Group(string field) => new
+        {
+            field,
+            titleKey = field,
+            picks = new[] { new { field, value = "all", titleKey = "filter.any", isSelected = true } },
+        };
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Window(1, "Buy milk"))
+            .AnswerOk("filterOptions", new
+            {
+                isFiltered = false,
+                groups = new[]
+                {
+                    Group("filterCompletion"), Group("filterPriority"), Group("filterDueDate"),
+                    Group("filterAssignee"), Group("filterRepeating"), Group("filterAssignedBy"),
+                    Group("filterInLists"), Group("sortBy"),
+                },
+            });
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Home");
+
+        await view.LoadFiltersAsync();
+
+        Assert.Equal(["sortBy", "filterCompletion", "filterAssignee"],
+            view.FrequentFilterGroups.Select(group => group.Field));
+        Assert.Equal(["filterPriority", "filterDueDate", "filterRepeating", "filterAssignedBy", "filterInLists"],
+            view.OtherFilterGroups.Select(group => group.Field));
+        Assert.Equal(8, view.FilterGroups.Count);
+    }
+
+    /// <summary>
     /// Choosing one writes the field the core named, then redraws — the list is what changed, and
     /// the sheet has to agree with it afterwards.
     /// </summary>

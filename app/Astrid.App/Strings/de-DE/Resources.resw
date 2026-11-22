@@ -2421,4 +2421,7 @@
   <data name="projectMode_goals_title" xml:space="preserve">
     <value>Ziele &amp; Leitplanken</value>
   </data>
+  <data name="all_filters.Header" xml:space="preserve">
+    <value>Alle Filter</value>
+  </data>
 </root>
