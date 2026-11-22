@@ -197,6 +197,26 @@ public sealed partial class BoardView : UserControl
     /// Which, on a board, is almost always "open the picker" — a card's mark sets the task's
     /// column, and finishing it outright from here is the trapdoor task 3c0dfb73 closed.
     /// </remarks>
+    /// <summary>
+    /// DS16's pop for the card whose task was just completed (task 27c773f5).
+    /// </summary>
+    /// <remarks>
+    /// Finishing a card rebuilds the columns, so the card comes back in Done with a new mark that
+    /// was ticked before it loaded, and the mark's own check rightly stays still. Only this board
+    /// remembers that it drew the task unfinished a moment ago. The board's columns are an
+    /// <c>ItemsControl</c>, which has no container event to hang this on, so it is the mark's own
+    /// <c>Loaded</c> — after its bindings, so the row it reads is the one it draws.
+    /// </remarks>
+    private void OnCardMarkLoaded(object sender, RoutedEventArgs args)
+    {
+        if (sender is PriorityMark { DataContext: TaskRow row } mark)
+        {
+            _completionPops.Drawn(row, mark);
+        }
+    }
+
+    private readonly CompletionPopTracker _completionPops = new();
+
     private async void OnCardMarkClicked(object sender, RoutedEventArgs args)
     {
         if (sender is not FrameworkElement { Tag: string taskId } mark)

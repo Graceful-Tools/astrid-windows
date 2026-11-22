@@ -149,15 +149,17 @@ public sealed partial class PriorityMark : Grid
     }
 
     /// <summary>
-    /// The pop for a mark that was built for a task already done — a list row (task 4717a2fd).
+    /// The pop for a mark that was built for a task already done — a list row or a board card
+    /// (tasks 4717a2fd, 27c773f5).
     /// </summary>
     /// <remarks>
     /// <para>
     /// Completing a row replaces its item in the list (the view-models' rows are records), and the
-    /// ListView answers a replace with a <b>new</b> mark: its tick goes false → true before it is
-    /// loaded, which <see cref="OnTickChanged"/> rightly reads as a row being realised and leaves
-    /// alone. Only the list knows that this realisation is the task it just saw unfinished, so it
-    /// asks for the pop here, and the pop waits for the mark to have a size to centre on.
+    /// ListView answers a replace with a <b>new</b> mark; a board rebuilds its columns and does the
+    /// same. The tick goes false → true before the mark is loaded, which
+    /// <see cref="OnTickChanged"/> rightly reads as a row being realised and leaves alone. Only the
+    /// view knows that this is the task it just drew unfinished (<see cref="CompletionPopTracker"/>),
+    /// so it asks for the pop here, and the pop waits for the mark to have a size to centre on.
     /// </para>
     /// </remarks>
     internal void PopWhenLoaded()
