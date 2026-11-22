@@ -37,16 +37,19 @@ public sealed class BoardBadgeTests
         Thread.Sleep(1200);
         BoardCardMarkTests.OpenTheBoard(app);
 
-        // Done is the last column, past the window's edge at the harness's size: scroll the board
-        // to its end so the pill is inside the capture.
+        // Done is the last column. Since DS34 (task 9fedf44e) the columns share the board's width,
+        // so at the harness's size they may all fit; when they do not, scroll the board to its end
+        // so the pill is inside the capture.
         var board = app.Window.FindAll(TreeScope.Descendants, Condition.TrueCondition)
             .Cast<AutomationElement>()
             .Select(element => element.TryGetCurrentPattern(ScrollPattern.Pattern, out var pattern)
                 ? (ScrollPattern)pattern : null)
             .FirstOrDefault(scroll => scroll is { Current.HorizontallyScrollable: true });
-        Assert.True(board is not null, "found no horizontally scrollable board");
-        board!.SetScrollPercent(100, ScrollPattern.NoScroll);
-        Thread.Sleep(700);
+        if (board is not null)
+        {
+            board.SetScrollPercent(100, ScrollPattern.NoScroll);
+            Thread.Sleep(700);
+        }
 
         using var shot = Capture.Window(new IntPtr(app.Window.Current.NativeWindowHandle));
         var saved = shot.SavePng(Path.Combine(Path.GetTempPath(), "astrid-uitests", "board-badges-ec8cab8a.png"));

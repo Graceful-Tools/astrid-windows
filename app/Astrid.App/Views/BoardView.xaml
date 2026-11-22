@@ -33,7 +33,7 @@
             -->
             <views:BoardCard HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Left"
-                    Margin="0,0,0,6"
+                    Margin="0,0,0,8"
                     Padding="10,8"
                     CornerRadius="10"
                     BorderThickness="1"
@@ -234,13 +234,16 @@
                       HorizontalScrollMode="Enabled"
                       VerticalScrollBarVisibility="Disabled"
                       VerticalScrollMode="Disabled"
-                      Margin="12,0,12,8"
+                      Margin="{StaticResource AstridBoardInset}"
                       Visibility="{x:Bind Shell.IsBoardView, Mode=OneWay, Converter={StaticResource Visible}}">
             <ItemsControl x:Name="ColumnsHost"
                           ItemsSource="{x:Bind Shell.Board.Columns, Mode=OneWay}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace12}" />
+                        <!-- DS34 compact: the columns share the board's width, none under
+                             the minimum; past that the board scrolls (task 9fedf44e). -->
+                        <views:BoardColumnsPanel MinColumnWidth="{StaticResource AstridBoardColumnMinWidth}"
+                                                 Spacing="{StaticResource AstridBoardColumnGap}" />
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
@@ -250,19 +253,13 @@
                             same thing and is what a keyboard can reach; the drag is what
                             everybody expects from a board.
 
-                            The column holding the expanded card is wider, as the web's
-                            grows towards its upper bound, so the detail's rows keep the
-                            layout they have in the side pane.
+                            Its width is the panel's: every column the same, sharing the board.
                         -->
-                        <Border Width="288"
-                                CornerRadius="{StaticResource AstridRadiusMedium}"
+                        <Border Style="{StaticResource BoardColumnStyle}"
                                 AllowDrop="True"
                                 Tag="{x:Bind Id}"
                                 DragOver="OnCardDragOver"
-                                Drop="OnCardDropped"
-                                BorderThickness="1"
-                                BorderBrush="{ThemeResource AstridBorder}"
-                                Background="{ThemeResource AstridSurfaceHover}">
+                                Drop="OnCardDropped">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
@@ -270,14 +267,12 @@
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <!--
-                                    The column head, as astrid-web draws it: the name, the
-                                    number in it as a pill on the right, the description
-                                    under both, and a rule below the lot.
+                                    The column head: the name, the number in it as the DS37
+                                    badge on the right, the description under both. No rule
+                                    below - compact DS34 is one surface (task 9fedf44e).
                                 -->
                                 <Border Grid.Row="0"
-                                        Padding="12,8"
-                                        BorderThickness="0,0,0,1"
-                                        BorderBrush="{ThemeResource AstridBorder}">
+                                        Style="{StaticResource BoardColumnHeaderStyle}">
                                     <Grid ColumnSpacing="{StaticResource AstridSpace8}">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
@@ -313,7 +308,7 @@
                                 <ScrollViewer Grid.Row="1"
                                               VerticalScrollBarVisibility="Auto"
                                               HorizontalScrollMode="Disabled">
-                                    <StackPanel Padding="8">
+                                    <StackPanel Padding="{StaticResource AstridBoardColumnBodyPadding}">
                                         <!--
                                             An empty column says so, as DS36's empty state
                                             (task e0692268): the art beside a speech bubble
@@ -392,7 +387,7 @@
                                     tag read out of the sentence would be fighting it.
                                 -->
                                 <Border Grid.Row="2"
-                                        Padding="8"
+                                        Padding="10,8"
                                         BorderThickness="0,1,0,0"
                                         BorderBrush="{ThemeResource AstridBorder}">
                                     <Grid ColumnSpacing="6">
