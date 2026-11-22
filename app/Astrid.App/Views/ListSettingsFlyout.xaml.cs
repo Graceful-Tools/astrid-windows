@@ -34,6 +34,26 @@ public sealed partial class ListSettingsFlyout : UserControl
     }
 
     /// <summary>
+    /// Show the section whose tab was chosen: List, Members or Admin (task 83ca5cd9).
+    /// </summary>
+    /// <remarks>
+    /// Only which panel is drawn changes; nothing is loaded or decided here. A tab chosen again is
+    /// not a deselection — <see cref="SelectorBar"/> can report none selected, and an empty
+    /// flyout would be the one wrong answer, so that keeps whatever is showing.
+    /// </remarks>
+    private void OnSectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
+    {
+        var chosen = sender.SelectedItem;
+        if (chosen is null)
+        {
+            return;
+        }
+        ListSection.Visibility = chosen == ListTab ? Visibility.Visible : Visibility.Collapsed;
+        MembersSection.Visibility = chosen == MembersTab ? Visibility.Visible : Visibility.Collapsed;
+        AdminSection.Visibility = chosen == AdminTab ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>
     /// Connect a provider, in the browser.
     /// </summary>
     /// <remarks>
