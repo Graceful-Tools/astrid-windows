@@ -140,10 +140,12 @@ public sealed class RepeatingLeadingMarkTests
     /// arrows' stroke and the mark read as a circle sitting on a red bracket.
     /// </para>
     /// <para>
-    /// The reason is in the art, not in the ratio. <c>check_box_repeat_N.png</c> is a 56px canvas
-    /// whose ink is inset, so a 32px render draws a frame about 22 wide with a hollow of about 17
-    /// — and 0.6 of 32 is 20, three more than will fit. So the test measures the hollow in the
-    /// shipped image rather than restating a number, and a redrawn asset moves the limit with it.
+    /// The reason was in the art, not in the ratio. The old <c>check_box_repeat_N.png</c> was a 56px
+    /// canvas whose ink was inset, so a 32px render drew a frame about 22 wide with a hollow of about
+    /// 17 — and 0.6 of 32 is 20, three more than will fit. So the test measures the hollow in the
+    /// shipped art rather than restating a number, and redrawn art moves the limit with it. (The
+    /// PNGs were replaced by <c>design/AstridCheckbox.xaml</c> in task 82e4ad32 and deleted in task
+    /// f92a7192.)
     /// </para>
     /// </remarks>
     [Theory]

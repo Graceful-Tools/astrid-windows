@@ -9,7 +9,8 @@ namespace Astrid.App.Tests;
 /// </summary>
 /// <remarks>
 /// <para>
-/// These tests used to read <c>Assets/Checkboxes/check_box_{0..3}.png</c> and assert that
+/// These tests used to read <c>Assets/Checkboxes/check_box_{0..3}.png</c> (deleted in task
+/// f92a7192) and assert that
 /// <see cref="PriorityPalette"/>'s four hexes matched the border pixel. That was the right test for
 /// task 204c9d98, where the bug was the picker saying green while every row said blue, and the
 /// images were the thing neither side could restyle. It is the wrong test now: the images were

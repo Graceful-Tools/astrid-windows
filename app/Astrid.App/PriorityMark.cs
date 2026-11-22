@@ -11,7 +11,8 @@ namespace Astrid.App;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This used to be sixteen PNGs — <c>check_box{_repeat}{_checked}_{0..3}.png</c> — one picture
+/// This used to be sixteen PNGs — <c>check_box{_repeat}{_checked}_{0..3}.png</c>, deleted in task
+/// f92a7192 — one picture
 /// saying three things at once, which is why the view-models answered with a file name rather than
 /// with three properties. The pictures carried their colours with them, so a priority token could
 /// not reach the mark on a row: changing <c>priority-low</c> in astrid-core would have changed the
