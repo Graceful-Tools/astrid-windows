@@ -5,6 +5,7 @@
     "xaml.corner-radius": 44,
     "xaml.font-size": 157,
     "xaml.spacing": 385,
-    "code.strings": 243
+    "code.strings": 243,
+    "motion.durations": 1
   }
 }

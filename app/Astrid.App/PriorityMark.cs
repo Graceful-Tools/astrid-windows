@@ -128,6 +128,12 @@ public sealed partial class PriorityMark : Grid
     /// </remarks>
     private void Pop()
     {
+        // Windows' "Animation effects" off is the reader asking for no motion (DS17 names this
+        // shell, task c2c185cb). The tick still lands; only the pop is left out.
+        if (!Motion.Allowed)
+        {
+            return;
+        }
         var pop = (float)Number("AstridCompletePopScale", 1);
         var visual = ElementCompositionPreview.GetElementVisual(this);
 
