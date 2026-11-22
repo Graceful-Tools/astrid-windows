@@ -267,12 +267,21 @@ public sealed class ProjectBoardTests
         // passed; their BoundingRectangle was Empty, which is what offscreen looks like, and
         // the only way to remove a row with a mouse was invisible.
         //
-        // The row head spans the board's FIRST column, which is Waiting since core ADEV-128 (task
-        // 8c543a42), not the inbox the cards above are in.
-        var first = HeaderBounds(app, "Waiting");
-        _output.WriteLine($"Waiting header {first}");
-        Assert.False(first.IsEmpty, "the first column's name is on the strip");
-        Assert.True(first.Right <= inbox.X, "Waiting leads the board, ahead of the inbox");
+        // Waiting leads the board since core ADEV-128, but at this window's size not every column
+        // fits, so the board OPENS at the inbox, as the list board does (task 7d1436a5): Waiting
+        // is a scroll back, not half the board. Scrolled out of view it is either not reported or
+        // reported to the left of the inbox — never on screen beside it.
+        var waiting = HeaderBounds(app, "Waiting");
+        _output.WriteLine($"Waiting header {waiting}");
+        Assert.True(waiting.IsEmpty || waiting.Right <= inbox.X,
+            "Waiting leads the board, ahead of the inbox");
+        var board = BoardBounds(app);
+        _output.WriteLine($"board {board}");
+        Assert.False(board.IsEmpty, "the board surface is on screen");
+        Assert.True(inbox.X - board.X <= 24,
+            $"the board opens at its inbox column: the inbox ({inbox.X}) starts at the board's left edge ({board.X}) - task 7d1436a5");
+        // The row heads are PINNED to the board's left edge, so scrolling past Waiting does not
+        // take the crosses with it: each is on screen, over the first column in view.
         foreach (var cross in app.Window
             .FindAll(TreeScope.Descendants,
                 new PropertyCondition(AutomationElement.NameProperty, "Remove this row"))
@@ -281,7 +290,7 @@ public sealed class ProjectBoardTests
             var at = cross.Current.BoundingRectangle;
             _output.WriteLine("cross: " + at);
             Assert.False(at.IsEmpty, "a row cross is offscreen, so nothing can click it");
-            Assert.InRange(at.X, first.X, first.Right);
+            Assert.InRange(at.X, inbox.X - 24, inbox.Right);
         }
         // A picture of the board, for the half of "does this look right" that is not a rectangle.
         // Left in the system temp directory, named by this run, as the sidebar's one is.
@@ -300,6 +309,10 @@ public sealed class ProjectBoardTests
     /// </remarks>
     private static System.Windows.Rect CardBounds(AstridApp app, string title) =>
         Bounds(app, title);
+
+    /// <summary>The project board's scrolling surface, by its automation id.</summary>
+    private static System.Windows.Rect BoardBounds(AstridApp app) =>
+        app.FindById("ProjectBoardSurface")?.Current.BoundingRectangle ?? System.Windows.Rect.Empty;
 
     /// <summary>A column name on the strip above the rows.</summary>
     private static System.Windows.Rect HeaderBounds(AstridApp app, string name)

@@ -61,6 +61,119 @@ public sealed partial class ProjectBoardView : UserControl
     public ProjectBoardView()
     {
         InitializeComponent();
+        Loaded += (_, _) => WatchColumns();
+        // A board drawn while hidden has no width to scroll; it is opened when it is first shown.
+        BoardScroller.SizeChanged += (_, _) => StartAtTheInbox();
+    }
+
+    // ── Opening at the inbox ────────────────────────────────────────────────────────────────────
+
+    /// <summary>The project whose board has been opened at its inbox column; null until one has.</summary>
+    private string? _startedAtInboxFor;
+
+    private ProjectBoardViewModel? _watched;
+
+    private void WatchColumns()
+    {
+        if (Shell is null || ReferenceEquals(_watched, Shell.ProjectBoard))
+        {
+            return;
+        }
+        _watched = Shell.ProjectBoard;
+        _watched.PropertyChanged += (_, changed) =>
+        {
+            if (changed.PropertyName is nameof(ProjectBoardViewModel.Columns))
+            {
+                // Queued at Low, as on the list board: the columns are raised before the strip
+                // has laid them out, and a column not yet realised cannot be measured.
+                DispatcherQueue.TryEnqueue(
+                    Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+                    StartAtTheInbox);
+            }
+        };
+        StartAtTheInbox();
+    }
+
+    /// <summary>
+    /// Open a project board scrolled to its inbox column when it does not fit (task 7d1436a5).
+    /// </summary>
+    /// <remarks>
+    /// The same rule as <see cref="BoardView"/>'s (task 8c543a42): Waiting leads every board since
+    /// core ADEV-128, so on a window too narrow for every column the board starts at the inbox and
+    /// Waiting is a scroll back. Once per project opened, never on a refresh: a reader who
+    /// scrolled back to Waiting stays there. The header strip and the cells are one scrolling
+    /// surface, so moving it moves both; the row heads are pinned (<see cref="PinRowHeads"/>).
+    /// </remarks>
+    private void StartAtTheInbox()
+    {
+        if (Shell is null || Shell.ProjectBoard.ProjectId == _startedAtInboxFor
+            || BoardScroller.ActualWidth <= 0 || Shell.ProjectBoard.Columns.Count == 0)
+        {
+            return;
+        }
+        var inbox = Shell.ProjectBoard.Columns.FirstOrDefault(column => column.Kind == "inbox");
+        if (inbox is null || HeadStrip.ContainerFromItem(inbox) is not FrameworkElement container
+            || container.ActualWidth <= 0)
+        {
+            return;
+        }
+        _startedAtInboxFor = Shell.ProjectBoard.ProjectId;
+        if (BoardScroller.ScrollableWidth <= 0)
+        {
+            return;
+        }
+        var left = container.TransformToVisual(HeadStrip).TransformPoint(default).X;
+        BoardScroller.ChangeView(Math.Min(left, BoardScroller.ScrollableWidth), null, null, true);
+    }
+
+    // ── Pinning the row heads ───────────────────────────────────────────────────────────────────
+
+    /// <summary>The row heads on screen, each moved by the board's horizontal offset.</summary>
+    private readonly HashSet<FrameworkElement> _rowHeads = [];
+
+    private void OnRowHeadLoaded(object sender, RoutedEventArgs args)
+    {
+        if (sender is FrameworkElement head)
+        {
+            _rowHeads.Add(head);
+            Pin(head);
+        }
+    }
+
+    private void OnRowHeadUnloaded(object sender, RoutedEventArgs args)
+    {
+        if (sender is FrameworkElement head)
+        {
+            _rowHeads.Remove(head);
+        }
+    }
+
+    private void OnBoardScrolled(object? sender, ScrollViewerViewChangedEventArgs args) =>
+        PinRowHeads();
+
+    /// <summary>
+    /// Keep every row head at the board's left edge, whichever column is scrolled to it.
+    /// </summary>
+    /// <remarks>
+    /// A render transform rather than a layout change: the head moves with the view, and the
+    /// cells under it — which are what scroll — keep their places, so rows stay level.
+    /// </remarks>
+    private void PinRowHeads()
+    {
+        foreach (var head in _rowHeads)
+        {
+            Pin(head);
+        }
+    }
+
+    private void Pin(FrameworkElement head)
+    {
+        if (head.RenderTransform is not TranslateTransform shift)
+        {
+            shift = new TranslateTransform();
+            head.RenderTransform = shift;
+        }
+        shift.X = BoardScroller.HorizontalOffset;
     }
 
     // ── Dragging a card between cells ───────────────────────────────────────────────────────────
