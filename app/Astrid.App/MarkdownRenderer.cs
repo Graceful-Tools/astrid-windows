@@ -51,7 +51,7 @@ internal sealed class MarkdownRenderer
 
     private UIElement Block(MarkdownBlock block) => block.Kind switch
     {
-        "heading" => Paragraph(block.Inlines, HeadingSize(block.Level), FontWeights.SemiBold,
+        "heading" => Paragraph(block.Inlines, MarkdownTypeScale.Heading(block.Level),
             new Thickness(0, block.Level <= 2 ? 6 : 4, 0, 0)),
         "code" => CodeBlock(block.Text),
         "list" => List(block),
@@ -64,16 +64,13 @@ internal sealed class MarkdownRenderer
         },
         "table" => Table(block),
         "tradeoffGrid" => TradeoffGrid(block),
-        _ => Paragraph(block.Inlines, 14, FontWeights.Normal, new Thickness(0)),
+        _ => Paragraph(block.Inlines, MarkdownTypeScale.Body, new Thickness(0)),
     };
 
-    private static double HeadingSize(int level) => level switch
-    {
-        1 => 20,
-        2 => 17,
-        3 => 15,
-        _ => 14,
-    };
+    /// <summary>A paragraph in one of <see cref="MarkdownTypeScale"/>'s steps.</summary>
+    private RichTextBlock Paragraph(IReadOnlyList<MarkdownInline> inlines,
+        (double Size, int Weight) step, Thickness margin) =>
+        Paragraph(inlines, step.Size, new FontWeight { Weight = (ushort)step.Weight }, margin);
 
     private RichTextBlock Paragraph(IReadOnlyList<MarkdownInline> inlines, double size,
         FontWeight weight, Thickness margin)
