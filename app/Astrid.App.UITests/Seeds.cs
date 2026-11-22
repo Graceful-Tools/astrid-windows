@@ -102,6 +102,30 @@ internal static class Seeds
         transaction.Commit();
     }
 
+    internal const string DoneCardTitle = "Send the save-the-date";
+
+    /// <summary>
+    /// <see cref="BoardWithEveryMark"/> plus a card finished just now, so the Done column draws the
+    /// finished-on pill (task ec8cab8a).
+    /// </summary>
+    internal static void BoardWithADoneCard(string cachePath)
+    {
+        BoardWithEveryMark(cachePath);
+        using var connection = new SqliteConnection($"Data Source={cachePath}");
+        connection.Open();
+        var now = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ", System.Globalization.CultureInfo.InvariantCulture);
+        var json = "{\"id\":\"t5\",\"title\":\"" + DoneCardTitle + "\",\"priority\":1"
+            + ",\"assigneeId\":\"" + OwnerId + "\",\"completed\":true"
+            + ",\"completedAt\":\"" + now + "\",\"updatedAt\":\"" + now + "\""
+            + ",\"lists\":[{\"id\":\"l1\",\"name\":\"" + BoardListName + "\"}]}";
+        Execute(connection,
+            "INSERT OR REPLACE INTO tasks (id, title, json) VALUES ('t5', $title, $json)",
+            ("$title", DoneCardTitle),
+            ("$json", json));
+        Execute(connection,
+            "INSERT OR REPLACE INTO task_lists_membership (task_id, list_id) VALUES ('t5', 'l1')");
+    }
+
     /// <summary>One card on the board's list, with whatever makes its mark.</summary>
     private static void AddBoardCard(
         SqliteConnection connection, string id, string title, string? assignee, int priority, bool repeating)
