@@ -52,8 +52,13 @@ public sealed class CompletionPopTests
     /// <summary>How long to watch for, comfortably past the token's 280 ms spring.</summary>
     private const int WatchMs = 900;
 
+    /// <remarks>
+    /// Came to read 64 at every sample after it landed (task 4717a2fd): the completed row arrives as
+    /// a new item, so its mark is built already ticked and the mark's own false → true check never
+    /// fires. The list now asks for the pop when it realises a row it last drew unfinished.
+    /// </remarks>
     [Fact]
-    public void Completing_a_task_pops_its_mark_and_the_pop_settles_task_787c7aa5()
+    public void Completing_a_task_pops_its_mark_and_the_pop_settles_task_787c7aa5_4717a2fd()
     {
         var title = Seeds.PriorityTitles[2];
         using var app = AstridApp.Launch(

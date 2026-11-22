@@ -271,12 +271,43 @@ public sealed partial class TaskRowsView : UserControl
         ContainerContentChangingEventArgs args)
     {
         if (args.InRecycleQueue
-            || args.ItemContainer?.ContentTemplateRoot is not FrameworkElement root
-            || root.FindName("RowTitle") is not TextBlock title)
+            || args.ItemContainer?.ContentTemplateRoot is not FrameworkElement root)
         {
             return;
         }
-        title.MaxLines = Shell?.Settings.Appearance.TitleMaxLines ?? 0;
+        if (root.FindName("RowTitle") is TextBlock title)
+        {
+            title.MaxLines = Shell?.Settings.Appearance.TitleMaxLines ?? 0;
+        }
+        if (args.Item is TaskRow row && root.FindName("RowMark") is PriorityMark mark)
+        {
+            PopIfJustCompleted(row, mark);
+        }
+    }
+
+    /// <summary>
+    /// Whether each task was done the last time a row for it was realised (task 4717a2fd).
+    /// </summary>
+    private readonly Dictionary<string, bool> _lastSeenCompleted = new();
+
+    /// <summary>
+    /// DS16's pop for the row whose task was just completed (tasks 787c7aa5, 4717a2fd).
+    /// </summary>
+    /// <remarks>
+    /// The mark cannot tell on its own: the completed row arrives as a new item, so its mark is
+    /// built already ticked and never sees the tick arrive (see <see cref="PriorityMark.PopWhenLoaded"/>).
+    /// What tells a finished task from a done row scrolling into view or a list reloading is what
+    /// this list last drew for that task — unfinished then and finished now is the one that pops.
+    /// The re-sort that sinks the row realises it again, already seen done, so it pops once.
+    /// </remarks>
+    private void PopIfJustCompleted(TaskRow row, PriorityMark mark)
+    {
+        var wasOpen = _lastSeenCompleted.TryGetValue(row.Id, out var was) && !was;
+        _lastSeenCompleted[row.Id] = row.Completed;
+        if (wasOpen && row.Completed)
+        {
+            mark.PopWhenLoaded();
+        }
     }
 
     /// <summary>

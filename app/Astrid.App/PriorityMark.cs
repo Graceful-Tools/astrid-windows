@@ -127,7 +127,7 @@ public sealed partial class PriorityMark : Grid
     /// the mark, or it would grow away from its own corner and shove the title.
     /// </para>
     /// </remarks>
-    private void Pop()
+    internal void Pop()
     {
         // Windows' "Animation effects" off is the reader asking for no motion (DS17 names this
         // shell, task c2c185cb). The tick still lands; only the pop is left out.
@@ -146,6 +146,34 @@ public sealed partial class PriorityMark : Grid
         spring.Period = TimeSpan.FromMilliseconds(Number("AstridSpringMs", 0));
         spring.FinalValue = Vector3.One;
         visual.StartAnimation("Scale", spring);
+    }
+
+    /// <summary>
+    /// The pop for a mark that was built for a task already done — a list row (task 4717a2fd).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Completing a row replaces its item in the list (the view-models' rows are records), and the
+    /// ListView answers a replace with a <b>new</b> mark: its tick goes false → true before it is
+    /// loaded, which <see cref="OnTickChanged"/> rightly reads as a row being realised and leaves
+    /// alone. Only the list knows that this realisation is the task it just saw unfinished, so it
+    /// asks for the pop here, and the pop waits for the mark to have a size to centre on.
+    /// </para>
+    /// </remarks>
+    internal void PopWhenLoaded()
+    {
+        if (IsLoaded)
+        {
+            Pop();
+            return;
+        }
+        Loaded += PopOnce;
+
+        void PopOnce(object sender, RoutedEventArgs args)
+        {
+            Loaded -= PopOnce;
+            Pop();
+        }
     }
 
     /// <summary>
