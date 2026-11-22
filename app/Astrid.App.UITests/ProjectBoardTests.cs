@@ -240,7 +240,7 @@ public sealed class ProjectBoardTests
         // 4. And the cells sit under the one header strip: the first column's name is above the
         //    first row and spans the column its cards are in. This is what fails if the strip and
         //    the cells ever stop sharing a width.
-        var inbox = HeaderBounds(app, "Inbox");
+        var inbox = HeaderBounds(app, "Ideas/Inbox");
         _output.WriteLine($"Inbox header {inbox}");
         Assert.False(inbox.IsEmpty, "the column header strip is drawn");
         Assert.True(inbox.Y < ios.Y, "the strip is above the first row");

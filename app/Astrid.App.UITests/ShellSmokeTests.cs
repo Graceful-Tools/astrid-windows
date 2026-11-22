@@ -442,7 +442,7 @@ public sealed class ShellSmokeTests
 
         Select(app, Seeds.BoardListName);
         app.Toggle("Board view");
-        Assert.True(app.Sees("Inbox"), $"the board did not open; saw: {string.Join(", ", app.Names())}");
+        Assert.True(app.Sees("Ideas/Inbox"), $"the board did not open; saw: {string.Join(", ", app.Names())}");
         Assert.True(app.Sees(Seeds.BoardCardTitle), "the seeded card is not on the board");
 
         // A real mouse reaches only the window in front, and UIA gave no sign that it was not.
