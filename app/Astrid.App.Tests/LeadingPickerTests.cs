@@ -22,12 +22,13 @@ namespace Astrid.App.Tests;
 public sealed class LeadingPickerTests
 {
     private static object Row(string id, string title, string action, string leadingKind,
-        bool pickerShowsProjectState = false, bool completed = false, string? assigneeId = null) => new
+        bool pickerShowsProjectState = false, bool completed = false, string? assigneeId = null,
+        int priority = 0, bool isRepeating = false) => new
         {
             id,
             title,
             completed,
-            priority = 0,
+            priority,
             due = new { key = "none" },
             isOverdue = false,
             leading = assigneeId is null
@@ -38,7 +39,7 @@ public sealed class LeadingPickerTests
             depth = 0,
             isPending = false,
             isPrivate = false,
-            isRepeating = false,
+            isRepeating,
             hasDescription = false,
             commentCount = 0,
             attachmentCount = 0,
@@ -265,5 +266,35 @@ public sealed class LeadingPickerTests
         Assert.Equal(LeadingOutcome.Gone, await view.ActivateLeadingAsync("vanished"));
 
         Assert.DoesNotContain(core.Sent, json => json.Contains("\"kind\":\"completeTask\""));
+    }
+
+    /// <summary>
+    /// The picker ends in "Mark as done", or "Mark as to-do" on a finished task, beside the task's
+    /// own checkbox: its priority colour, its repeat arrows, ticked when done (task 8cf2d10d,
+    /// ADEV-146/148). The words are web's registry keys, not a Windows-invented pair.
+    /// </summary>
+    [Theory]
+    [InlineData(false, "tasks.markAsDone")]
+    [InlineData(true, "tasks.markAsTodo")]
+    public async Task The_picker_ends_in_mark_as_done_beside_the_tasks_own_checkbox_task_8cf2d10d(
+        bool completed, string key)
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Rows(Row("t8", "Water roses", "openPicker", "checkbox",
+                completed: completed, assigneeId: "them", priority: 3, isRepeating: true)))
+            .AnswerOk("assigneeOptions", new
+            {
+                assigneeId = (string?)"them",
+                options = new[] { new { userId = (string?)"me", name = (string?)"Jon", initials = "J" } },
+            });
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Garden");
+
+        Assert.Equal(LeadingOutcome.OpenPicker, await view.ActivateLeadingAsync("t8"));
+
+        Assert.Equal(key, view.LeadingPicker.CompletionKey);
+        Assert.Equal(completed, view.LeadingPicker.Completed);
+        Assert.Equal(3, view.LeadingPicker.Priority);
+        Assert.True(view.LeadingPicker.IsRepeating);
     }
 }

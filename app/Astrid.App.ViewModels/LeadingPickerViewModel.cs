@@ -56,6 +56,7 @@ public sealed class LeadingPickerViewModel : ObservableObject
     private int _priority;
     private bool _showsProjectState;
     private bool _completed;
+    private bool _isRepeating;
     private bool _isLoading;
 
     /// <param name="core">The boundary. Every option and every pick is a command.</param>
@@ -97,12 +98,31 @@ public sealed class LeadingPickerViewModel : ObservableObject
         private set => Set(ref _showsProjectState, value);
     }
 
-    /// <summary>Whether the task is already done, which is what the Complete row says.</summary>
+    /// <summary>Whether the task is already done, which is what the completion row says.</summary>
     public bool Completed
     {
         get => _completed;
-        private set => Set(ref _completed, value);
+        private set
+        {
+            if (Set(ref _completed, value))
+            {
+                Raise(nameof(CompletionKey));
+            }
+        }
     }
+
+    /// <summary>Whether the task repeats, so the completion row's checkbox carries the arrows.</summary>
+    public bool IsRepeating
+    {
+        get => _isRepeating;
+        private set => Set(ref _isRepeating, value);
+    }
+
+    /// <summary>
+    /// The completion row's word: "Mark as done", or "Mark as to-do" on a finished task
+    /// (task 8cf2d10d, ADEV-146). Web's registry keys, so every client says the same thing.
+    /// </summary>
+    public string CompletionKey => Completed ? "tasks.markAsTodo" : "tasks.markAsDone";
 
     /// <summary>True while the options are being fetched.</summary>
     public bool IsLoading
@@ -134,6 +154,7 @@ public sealed class LeadingPickerViewModel : ObservableObject
         Title = row.Title;
         Priority = row.Priority;
         Completed = row.Completed;
+        IsRepeating = row.IsRepeating;
         ShowsProjectState = row.PickerShowsProjectState;
         Assignees.Clear();
         StatusChoices.Clear();
