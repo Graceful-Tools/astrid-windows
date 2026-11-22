@@ -155,6 +155,15 @@
             <SolidColorBrush x:Key="AstridTradeoffVeryGood" Color="#38761D" />
             <SolidColorBrush x:Key="AstridTradeoffVeryGoodInk" Color="#FFFFFF" />
 
+            <!--
+                A list with no readable colour: `palette/list`'s blue, the colour a new list is
+                given. Not the accent - DS26 darkened that and left the list palette alone. Stated
+                once here for the three converters that fall back to it (task c4174b14), and
+                `The_list_fallback_is_the_list_palettes_blue_task_c4174b14` checks it is in the
+                palette.
+            -->
+            <Color x:Key="AstridListDefaultColor">#3B82F6</Color>
+
             <!-- The Ocean surface, so the wash is stated once rather than per screen. -->
             <LinearGradientBrush x:Key="AstridOceanBrush" StartPoint="0,0" EndPoint="0.35,1">
                 <GradientStop Color="#88DCF8" Offset="0" />

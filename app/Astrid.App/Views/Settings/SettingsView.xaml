@@ -185,7 +185,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
-                                <FontIcon Glyph="&#xE77B;" Style="{StaticResource CardIcon}" Foreground="#3B82F6" />
+                                <FontIcon Glyph="&#xE77B;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridCategoryBlue}" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                                 <TextBlock x:Uid="account_2" Text="Account" Style="{StaticResource CardTitle}" />
@@ -202,7 +202,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
-                                <FontIcon Glyph="&#xEA8F;" Style="{StaticResource CardIcon}" Foreground="#F97316" />
+                                <FontIcon Glyph="&#xEA8F;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridCategoryOrange}" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                                 <TextBlock x:Uid="reminders_2" Text="Reminders" Style="{StaticResource CardTitle}" />
@@ -219,7 +219,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
-                                <FontIcon Glyph="&#xE73A;" Style="{StaticResource CardIcon}" Foreground="#3B82F6" />
+                                <FontIcon Glyph="&#xE73A;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridCategoryBlue}" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                                 <TextBlock x:Uid="tasks_nav_label" x:Name="TasksNavLabel" Text="Tasks" Style="{StaticResource CardTitle}" />
@@ -236,7 +236,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
-                                <FontIcon Glyph="&#xE99A;" Style="{StaticResource CardIcon}" Foreground="#A855F7" />
+                                <FontIcon Glyph="&#xE99A;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridAgent}" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                                 <TextBlock x:Uid="ai_agents_2" Text="AI agents" Style="{StaticResource CardTitle}" />
@@ -253,7 +253,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
-                                <FontIcon Glyph="&#xE71B;" Style="{StaticResource CardIcon}" Foreground="#2563EB" />
+                                <FontIcon Glyph="&#xE71B;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridAccent}" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                                 <TextBlock x:Uid="connections_2" Text="Connections" Style="{StaticResource CardTitle}" />
@@ -270,7 +270,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
-                                <FontIcon Glyph="&#xE716;" Style="{StaticResource CardIcon}" Foreground="#14B8A6" />
+                                <FontIcon Glyph="&#xE716;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridCategoryTeal}" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                                 <TextBlock x:Uid="contacts_nav_label" x:Name="ContactsNavLabel" Text="Contacts" Style="{StaticResource CardTitle}" />
@@ -287,7 +287,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
-                                <FontIcon Glyph="&#xE790;" Style="{StaticResource CardIcon}" Foreground="#EC4899" />
+                                <FontIcon Glyph="&#xE790;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridCategoryPink}" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                                 <TextBlock x:Uid="appearance_2" Text="Appearance" Style="{StaticResource CardTitle}" />
@@ -304,7 +304,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
-                                <FontIcon Glyph="&#xE704;" Style="{StaticResource CardIcon}" Foreground="#10B981" />
+                                <FontIcon Glyph="&#xE704;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridCategoryGreen}" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                                 <TextBlock x:Uid="integrations_2" Text="Integrations" Style="{StaticResource CardTitle}" />
@@ -321,7 +321,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
-                                <FontIcon Glyph="&#xE8B7;" Style="{StaticResource CardIcon}" Foreground="#059669" />
+                                <FontIcon Glyph="&#xE8B7;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridCategoryGreenInk}" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                                 <TextBlock x:Uid="your_data_2" Text="Your data" Style="{StaticResource CardTitle}" />
@@ -345,7 +345,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
-                                <FontIcon Glyph="&#xE897;" Style="{StaticResource CardIcon}" Foreground="#06B6D4" />
+                                <FontIcon Glyph="&#xE897;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridInfo}" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                                 <TextBlock x:Uid="help_nav_label" x:Name="HelpNavLabel" Text="Help &amp; Support" Style="{StaticResource CardTitle}" />
@@ -369,7 +369,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
-                                <FontIcon Glyph="&#xED15;" Style="{StaticResource CardIcon}" Foreground="#F43F5E" />
+                                <FontIcon Glyph="&#xED15;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridCategoryRed}" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                                 <TextBlock x:Uid="feedback_nav_label" x:Name="FeedbackNavLabel" Text="Report an Issue" Style="{StaticResource CardTitle}" />
@@ -386,7 +386,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
-                                <FontIcon Glyph="&#xE72E;" Style="{StaticResource CardIcon}" Foreground="#6B7280" />
+                                <FontIcon Glyph="&#xE72E;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridTextMuted}" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                                 <TextBlock x:Uid="privacy_nav_label" x:Name="PrivacyNavLabel" Text="Privacy Policy" Style="{StaticResource CardTitle}" />
@@ -403,7 +403,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Border Grid.Column="0" Style="{StaticResource CardIconWell}">
-                                <FontIcon Glyph="&#xE8A5;" Style="{StaticResource CardIcon}" Foreground="#6B7280" />
+                                <FontIcon Glyph="&#xE8A5;" Style="{StaticResource CardIcon}" Foreground="{ThemeResource AstridTextMuted}" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                                 <TextBlock x:Uid="terms_nav_label" x:Name="TermsNavLabel" Text="Terms of Service" Style="{StaticResource CardTitle}" />
@@ -429,7 +429,7 @@
                         <FontIcon Grid.Column="0" x:Name="SettingsSectionIcon"
                                   Glyph="&#xE77B;" FontSize="28"
                                   VerticalAlignment="Center"
-                                  Foreground="#3B82F6" />
+                                  Foreground="{ThemeResource AstridCategoryBlue}" />
                         <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                             <TextBlock x:Uid="settings_section_title" x:Name="SettingsSectionTitle"
                                        Text="Account"

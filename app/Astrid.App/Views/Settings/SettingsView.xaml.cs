@@ -2,7 +2,6 @@ using Astrid.App.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using Windows.UI;
 
 namespace Astrid.App.Views.Settings;
 
@@ -24,29 +23,37 @@ public sealed partial class SettingsView : UserControl
 
     /// <summary>
     /// What each page is, as the web's hub says it: the line under the card and under the page's
-    /// title, the icon, and its colour. One table, so the card and the page cannot disagree.
+    /// title, the icon, and the token brush it is drawn in. One table, so the card and the page cannot disagree.
     /// </summary>
-    private static readonly Dictionary<string, (string TitleKey, string LineKey, string Glyph, string Colour)> Pages =
+    private static readonly Dictionary<string, (string TitleKey, string LineKey, string Glyph, string Brush)> Pages =
         new(StringComparer.Ordinal)
         {
-            ["Account"] = ("settings.account", "settings.account_line", "", "#3B82F6"),
-            ["Reminders"] = ("settings.reminders", "settings.reminders_line", "", "#F97316"),
-            ["Tasks"] = ("smart.title", "settings.tasks_line", "", "#3B82F6"),
-            ["Agents"] = ("settings.agents", "settings.agents_line", "", "#A855F7"),
-            ["Connections"] = ("settings.connections", "settings.connections_line", "", "#2563EB"),
-            ["Contacts"] = ("contacts.title", "settings.contacts_line", "", "#14B8A6"),
-            ["Appearance"] = ("settings.appearance", "settings.appearance_line", "", "#EC4899"),
-            ["Integrations"] = ("settings.integrations", "settings.integrations_line", "", "#10B981"),
-            ["Data"] = ("settings.data", "settings.data_line", "", "#059669"),
-            ["Help"] = ("help.title", "settings.help_line", "", "#06B6D4"),
-            ["Feedback"] = ("feedback.title", "settings.feedback_line", "", "#F43F5E"),
-            ["Privacy"] = ("privacy.title", "settings.privacy_line", "", "#6B7280"),
-            ["Terms"] = ("terms.title", "settings.terms_line", "", "#6B7280"),
+            ["Account"] = ("settings.account", "settings.account_line", "", "AstridCategoryBlue"),
+            ["Reminders"] = ("settings.reminders", "settings.reminders_line", "", "AstridCategoryOrange"),
+            ["Tasks"] = ("smart.title", "settings.tasks_line", "", "AstridCategoryBlue"),
+            ["Agents"] = ("settings.agents", "settings.agents_line", "", "AstridAgent"),
+            ["Connections"] = ("settings.connections", "settings.connections_line", "", "AstridAccent"),
+            ["Contacts"] = ("contacts.title", "settings.contacts_line", "", "AstridCategoryTeal"),
+            ["Appearance"] = ("settings.appearance", "settings.appearance_line", "", "AstridCategoryPink"),
+            ["Integrations"] = ("settings.integrations", "settings.integrations_line", "", "AstridCategoryGreen"),
+            ["Data"] = ("settings.data", "settings.data_line", "", "AstridCategoryGreenInk"),
+            ["Help"] = ("help.title", "settings.help_line", "", "AstridInfo"),
+            ["Feedback"] = ("feedback.title", "settings.feedback_line", "", "AstridCategoryRed"),
+            ["Privacy"] = ("privacy.title", "settings.privacy_line", "", "AstridTextMuted"),
+            ["Terms"] = ("terms.title", "settings.terms_line", "", "AstridTextMuted"),
         };
+
+    /// <summary>
+    /// The brush the open page's icon is drawn in, kept so a theme change can redraw it: a brush
+    /// set from code is resolved once, where a XAML <c>ThemeResource</c> follows the theme.
+    /// </summary>
+    private string _sectionBrush = Pages["Account"].Brush;
 
     public SettingsView()
     {
         InitializeComponent();
+        SettingsSectionIcon.ActualThemeChanged += (_, _) =>
+            SettingsSectionIcon.Foreground = ThemeBrushes.For(SettingsSectionIcon, _sectionBrush);
         // The hub's own words, from the strings table like everything else (tasks c0f3db19, 438494c7).
         TasksNavLabel.Text = Strings.Get("smart.title");
         ContactsNavLabel.Text = Strings.Get("contacts.title");
@@ -229,7 +236,8 @@ public sealed partial class SettingsView : UserControl
         SettingsSectionTitle.Text = Strings.Get(page.TitleKey);
         SettingsSectionLine.Text = Strings.Get(page.LineKey);
         SettingsSectionIcon.Glyph = page.Glyph;
-        SettingsSectionIcon.Foreground = new SolidColorBrush(ColorOf(page.Colour));
+        _sectionBrush = page.Brush;
+        SettingsSectionIcon.Foreground = ThemeBrushes.For(SettingsSectionIcon, _sectionBrush);
 
         AccountSection.Visibility = Visible("Account");
         TasksSection.Visibility = Visible("Tasks");
@@ -244,12 +252,4 @@ public sealed partial class SettingsView : UserControl
         Visibility Visible(string name) =>
             name == section ? Visibility.Visible : Visibility.Collapsed;
     }
-
-    /// <summary>A <c>#RRGGBB</c> from the table, as a colour.</summary>
-    private static Color ColorOf(string hex) =>
-        Color.FromArgb(
-            255,
-            Convert.ToByte(hex.Substring(1, 2), 16),
-            Convert.ToByte(hex.Substring(3, 2), 16),
-            Convert.ToByte(hex.Substring(5, 2), 16));
 }

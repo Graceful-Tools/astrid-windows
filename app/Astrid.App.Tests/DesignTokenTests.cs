@@ -325,6 +325,29 @@ public sealed class DesignTokenTests
     }
 
     /// <summary>
+    /// A list with no colour, or one that cannot be read, is drawn in the list palette's blue
+    /// (task <c>c4174b14</c>).
+    /// </summary>
+    /// <remarks>
+    /// Three converters each typed <c>Color.FromArgb(255, 59, 130, 246)</c> for this. It is the
+    /// palette's blue rather than the accent on purpose: astrid-core's register leaves the list
+    /// palette out of DS26, so a list keeps the colour it was picked in when the accent darkened.
+    /// </remarks>
+    [Fact]
+    public void The_list_fallback_is_the_list_palettes_blue_task_c4174b14()
+    {
+        var app = XDocument.Load(Path.Combine(LocalisationTests.AppDirectory(), "App.xaml")).Root!;
+        var colour = app.Descendants(Ui + "Color")
+            .Single(entry => (string?)entry.Attribute(Xaml + "Key") == "AstridListDefaultColor");
+        var palette = Tokens().GetProperty("palette").GetProperty("list").EnumerateArray()
+            .Select(entry => entry.GetString()!.ToUpperInvariant())
+            .ToArray();
+
+        Assert.Contains(colour.Value.Trim().ToUpperInvariant(), palette);
+        Assert.Equal("#3B82F6", colour.Value.Trim().ToUpperInvariant());
+    }
+
+    /// <summary>
     /// The accent fill is the same in every theme (DS26), so it is stated once outside the theme
     /// dictionaries — and it is the fill, not the old blue and not the ink.
     /// </summary>

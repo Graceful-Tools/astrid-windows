@@ -151,6 +151,26 @@ public sealed class DesignMetricsTests
     }
 
     /// <summary>
+    /// No view and no line of C# spells a colour: every one comes from an <c>Astrid*</c> brush.
+    /// </summary>
+    /// <remarks>
+    /// Stronger than the ratchet on purpose. A budget of zero can be raised in the same commit that
+    /// adds the colour, and the diff reads as bookkeeping; this assertion has to be deleted, which
+    /// reads as what it is. The settings hub's thirteen icons were the bulk of it — each one a hex
+    /// typed twice, once in the XAML and once in the code-behind's table, with no dark variant.
+    /// </remarks>
+    [Fact]
+    public void No_hand_written_colours_are_left_in_the_shell_task_c4174b14()
+    {
+        var sites = DesignMetrics.Sites(LocalisationTests.AppDirectory());
+
+        Assert.True(
+            sites["xaml.hex-colours"].Count == 0 && sites["code.hex-colours"].Count == 0,
+            "draw these from an Astrid* brush (ThemeResource in XAML, ThemeBrushes.For in code):\n    "
+            + string.Join("\n    ", sites["xaml.hex-colours"].Concat(sites["code.hex-colours"])));
+    }
+
+    /// <summary>
     /// The budget names these metrics and no others, so a metric cannot be retired by deleting its
     /// line.
     /// </summary>
