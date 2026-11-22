@@ -24,6 +24,13 @@ internal static class DesignMetrics
     private static readonly Regex HexColour = new(@"#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?\b");
 
     /// <summary>
+    /// A duration typed into code, <c>TimeSpan.FromMilliseconds(150)</c>, rather than one read
+    /// from the motion tokens (<c>AstridFastMs</c> and the rest). Task c2c185cb.
+    /// </summary>
+    private static readonly Regex CodeDuration =
+        new(@"TimeSpan\.From(?:Milliseconds|Seconds)\(\s*[0-9][0-9_.]*\s*\)");
+
+    /// <summary>
     /// An attribute whose value is a literal — <c>Margin="8"</c> and not
     /// <c>Margin="{StaticResource …}"</c> or a binding, which are the forms that DO come from the
     /// design system and must not be counted against it.
@@ -39,6 +46,7 @@ internal static class DesignMetrics
         "xaml.font-size",
         "xaml.spacing",
         "code.strings",
+        "motion.durations",
     ];
 
     /// <summary>
@@ -86,6 +94,13 @@ internal static class DesignMetrics
             {
                 Add("xaml.font-size", $"{file}: FontSize=\"{match.Groups["value"].Value}\"");
             }
+            foreach (var property in (string[])["Duration", "KeyTime", "BeginTime"])
+            {
+                foreach (Match match in Literal(property).Matches(text))
+                {
+                    Add("motion.durations", $"{file}: {property}=\"{match.Groups["value"].Value}\"");
+                }
+            }
             foreach (var property in (string[])["Margin", "Padding", "Spacing"])
             {
                 foreach (Match match in Literal(property).Matches(text))
@@ -98,9 +113,18 @@ internal static class DesignMetrics
         foreach (var path in Code(app))
         {
             var file = Path.GetFileName(path);
-            foreach (var literal in StringLiterals(File.ReadAllText(path)).Where(IsProse))
+            var source = File.ReadAllText(path);
+            foreach (var literal in StringLiterals(source).Where(IsProse))
             {
                 Add("code.strings", $"{file}: \"{literal}\"");
+            }
+            // Program.cs waits on a process: a timeout, not motion.
+            if (!file.Equals("Program.cs", StringComparison.Ordinal))
+            {
+                foreach (Match match in CodeDuration.Matches(source))
+                {
+                    Add("motion.durations", $"{file}: {match.Value}");
+                }
             }
         }
 

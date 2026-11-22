@@ -82,11 +82,9 @@ The sha to take is normally whatever `crates/astrid-ffi/Cargo.toml` pins, since 
 it. Taking a *newer* design revision than the pin is allowed — nothing here compiles — but say so
 in the commit, because the next person to read `REVISION` will assume it is the pin.
 
-**`REVISION` is currently ahead of the pin, and deliberately so.** Task `fdd8ef7f` took
-`2b503487` for `AstridTokens.xaml`, which does not exist at the pinned `b0947e82` — that pin names
-a branch-side commit from a change merged after the emitter landed, so it is not an ancestor of it.
-Nothing here compiles, so this needed no pin bump; the next pin bump should close the gap rather
-than open a second one.
+**`REVISION` equals the pin** (`a8d279a`, task `c2c185cb`, after the bump in task `8c543a42`). A
+copy taken ahead of the pin is still allowed. When that happens, say so here and close the gap
+at the next bump.
 
 ## What does not follow the tokens, and why
 
