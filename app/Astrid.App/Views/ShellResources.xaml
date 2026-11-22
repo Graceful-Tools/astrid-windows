@@ -416,6 +416,31 @@
         <Setter Property="Foreground" Value="{ThemeResource AstridTextSecondary}" />
     </Style>
     <!--
+        A board column (astrid-core DS34, task 9fedf44e), in the compact form this pointer shell
+        takes: the board inset 16 (`board-padding`), columns at least `board-column-min-width` 250
+        sharing the rest (BoardColumnsPanel), 12 apart, the header 10 across, 10 above and 8 below,
+        the body 10 across and none down, radius `board-column-radius` 8. Compact is ONE surface, so
+        no rule under the header. The values are in tokens.resolved.json's `layout.compact` but the
+        Windows emitter does not write them yet; BoardColumnLayoutTests holds each to it.
+
+        Decided (agent, 2026-11-22): the column sits on `bg-secondary`, as web's board-column.tsx
+        does (`theme-bg-secondary`). It was AstridSurfaceHover, which is `bg-tertiary` in Light and
+        Dark alike - the DS37 badge's own colour - so the count read as plain caption text.
+    -->
+    <x:Double x:Key="AstridBoardColumnMinWidth">250</x:Double>
+    <x:Double x:Key="AstridBoardColumnGap">12</x:Double>
+    <Thickness x:Key="AstridBoardInset">16,0,16,16</Thickness>
+    <Thickness x:Key="AstridBoardColumnBodyPadding">10,0</Thickness>
+    <Style x:Key="BoardColumnStyle" TargetType="Border">
+        <Setter Property="CornerRadius" Value="{StaticResource AstridRadiusMedium}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="{ThemeResource AstridBorder}" />
+        <Setter Property="Background" Value="{ThemeResource AstridBgSecondary}" />
+    </Style>
+    <Style x:Key="BoardColumnHeaderStyle" TargetType="Border">
+        <Setter Property="Padding" Value="10,10,10,8" />
+    </Style>
+    <!--
         An empty board column (astrid-core DS36, task e0692268): the art beside a speech bubble
         whose tail points at it, as iOS and the Mac draw it since ADEV-166 and web's
         AstridEmptyState. The art is `layout.compact.empty-art` (this shell takes the compact steps,
