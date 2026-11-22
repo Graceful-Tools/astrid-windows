@@ -156,21 +156,24 @@
             board rather than a particular spot, because the core appends a row wherever it was
             dropped.
         -->
-        <ScrollViewer Grid.Row="1"
+        <ScrollViewer x:Name="BoardScroller" Grid.Row="1"
+                      AutomationProperties.AutomationId="ProjectBoardSurface"
                       Style="{StaticResource BoardSurfaceStyle}"
                       HorizontalScrollBarVisibility="Auto"
                       HorizontalScrollMode="Enabled"
                       VerticalScrollBarVisibility="Auto"
                       AllowDrop="True"
                       DragOver="OnListDragOver"
-                      Drop="OnListDropped">
+                      Drop="OnListDropped"
+                      ViewChanged="OnBoardScrolled">
             <StackPanel Style="{StaticResource BoardStackStyle}">
                 <!--
                     The column names, once, above every row. Every row answers under the same
                     columns — that is what makes this one board rather than several — so a strip
                     per row would be the same words repeated down the screen.
                 -->
-                <ItemsControl ItemsSource="{x:Bind Shell.ProjectBoard.Columns, Mode=OneWay}">
+                <ItemsControl x:Name="HeadStrip"
+                              ItemsSource="{x:Bind Shell.ProjectBoard.Columns, Mode=OneWay}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <StackPanel Style="{StaticResource SwimlaneStripStyle}" />
@@ -195,8 +198,15 @@
                                     off the board. The dot is the list's colour, as the sidebar
                                     draws it, because a swimlane IS a list and should be
                                     recognisable as the same one.
+
+                                    Pinned to the board's left edge (task 7d1436a5): the board
+                                    opens at its inbox, past Waiting, and a head that scrolled with
+                                    the cells would take its cross off screen. The code-behind
+                                    moves it by the horizontal offset.
                                 -->
-                                <Grid Style="{StaticResource SwimlaneRowHeadStyle}">
+                                <Grid Style="{StaticResource SwimlaneRowHeadStyle}"
+                                      Loaded="OnRowHeadLoaded"
+                                      Unloaded="OnRowHeadUnloaded">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="Auto" />
