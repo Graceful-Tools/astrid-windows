@@ -399,6 +399,22 @@
     <Style x:Key="SwimlaneDonePillStyle" TargetType="Border" BasedOn="{StaticResource DonePillStyle}">
         <Setter Property="Margin" Value="0,3,0,0" />
     </Style>
+    <!--
+        A board column's count (astrid-core DS37, task ec8cab8a): iOS's `BoardHeaderBadge`, one
+        capsule for the count and, when Windows grows one, the Done-since trigger. `caption1` in
+        the secondary text on the tertiary background, NO stroke - unlike the DS33 pill, a count
+        has no meaning to colour - and 8 across, 4 down.
+    -->
+    <Style x:Key="BoardHeaderBadgeStyle" TargetType="Border">
+        <Setter Property="VerticalAlignment" Value="Top" />
+        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="CornerRadius" Value="{StaticResource AstridRadiusXLarge}" />
+        <Setter Property="Background" Value="{ThemeResource AstridBgTertiary}" />
+    </Style>
+    <Style x:Key="BoardHeaderBadgeTextStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{ThemeResource AstridTextSecondary}" />
+    </Style>
     <Style x:Key="DonePillTextStyle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="12" />
         <Setter Property="Foreground" Value="{ThemeResource AstridAccentInk}" />
