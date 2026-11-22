@@ -49,7 +49,7 @@
                       AutomationProperties.Name="Quiet hours"
                       IsOn="{x:Bind Shell.Settings.Reminders.QuietHoursEnabled, Mode=OneWay}"
                       Toggled="OnQuietHoursToggled" />
-        <StackPanel Orientation="Horizontal" Spacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}">
             <TimePicker x:Uid="quiet_start_box" x:Name="QuietStartBox" Header="From"
                         AutomationProperties.Name="Quiet from"
                         SelectedTimeChanged="OnQuietHoursChanged" />
@@ -83,9 +83,9 @@
             <TextBlock FontSize="11" TextWrapping="Wrap"
                        Foreground="{ThemeResource AstridTextMuted}"
                        Text="{x:Bind Shell.Settings.Reminders.CalendarSyncDescriptionKey, Mode=OneWay, Converter={StaticResource Words}}" />
-            <StackPanel Spacing="4"
+            <StackPanel Spacing="{StaticResource AstridSpace4}"
                         Visibility="{x:Bind Shell.Settings.Reminders.HasCalendarFeed, Mode=OneWay, Converter={StaticResource Visible}}">
-                <Grid ColumnSpacing="8">
+                <Grid ColumnSpacing="{StaticResource AstridSpace8}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />

@@ -22,12 +22,12 @@
         <Border Width="420"
                 VerticalAlignment="Center"
                 HorizontalAlignment="Center"
-                CornerRadius="8"
+                CornerRadius="{StaticResource AstridRadiusMedium}"
                 Padding="24"
                 Background="{ThemeResource LayerFillColorAltBrush}"
                 BorderThickness="1"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
-            <StackPanel Spacing="12">
+            <StackPanel Spacing="{StaticResource AstridSpace12}">
                 <TextBlock x:Uid="three_things_worth_knowing" Text="Three things worth knowing"
                            Style="{ThemeResource SubtitleTextBlockStyle}" />
                 <TextBlock TextWrapping="Wrap"

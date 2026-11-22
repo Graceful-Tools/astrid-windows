@@ -16,7 +16,7 @@
             toolbar room to exist. astrid-web has one
             control up there too.
         -->
-        <StackPanel Orientation="Horizontal" Spacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}">
             <Button x:Uid="sync_now" Content="Sync now" Click="OnSync" />
             <Button x:Uid="sign_out" Content="Sign out" Click="OnSignOut" />
         </StackPanel>
@@ -30,20 +30,20 @@
         <TextBlock x:Name="ProfileTitle" Margin="0,10,0,0"
                    FontWeight="SemiBold"
                    Foreground="{ThemeResource AstridTextPrimary}" />
-        <StackPanel Orientation="Horizontal" Spacing="12">
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace12}">
             <Border Width="56" Height="56" CornerRadius="28"
                     Background="{ThemeResource AstridBorder}">
                 <Image x:Uid="profile_photo" Source="{x:Bind Shell.Settings.Account.PhotoUrl, Mode=OneWay, Converter={StaticResource RemoteImage}}"
                        Stretch="UniformToFill"
                        AutomationProperties.Name="Profile photo" />
             </Border>
-            <StackPanel Spacing="4" VerticalAlignment="Center">
+            <StackPanel Spacing="{StaticResource AstridSpace4}" VerticalAlignment="Center">
                 <Button x:Name="ChangePhotoButton" Click="OnChangePhoto" />
                 <TextBlock x:Name="PhotoHint" FontSize="11"
                            Foreground="{ThemeResource AstridTextMuted}" />
             </StackPanel>
         </StackPanel>
-        <StackPanel Orientation="Horizontal" Spacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}">
             <TextBox x:Uid="display_name_box" x:Name="DisplayNameBox" Width="260"
                      AutomationProperties.Name="Display name"
                      Text="{x:Bind Shell.Settings.Account.NameDraft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
@@ -61,7 +61,7 @@
             the link, so nothing here changes until it is
             answered.
         -->
-        <StackPanel Orientation="Horizontal" Spacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}">
             <TextBox x:Uid="change_email_box" x:Name="ChangeEmailBox" Width="260"
                      AutomationProperties.Name="New email address"
                      Text="{x:Bind Shell.Settings.Account.EmailDraft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
@@ -98,7 +98,7 @@
         <TextBlock x:Name="InfoTitle" Margin="0,10,0,0"
                    FontWeight="SemiBold"
                    Foreground="{ThemeResource AstridTextPrimary}" />
-        <Grid ColumnSpacing="16" RowSpacing="4">
+        <Grid ColumnSpacing="{StaticResource AstridSpace16}" RowSpacing="{StaticResource AstridSpace4}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -145,7 +145,7 @@
         <ItemsControl ItemsSource="{x:Bind Shell.Settings.Account.Passkeys, Mode=OneWay}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="bindings:PasskeySummary">
-                    <Grid ColumnSpacing="8" Padding="0,3">
+                    <Grid ColumnSpacing="{StaticResource AstridSpace8}" Padding="0,3">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
@@ -169,7 +169,7 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <StackPanel Orientation="Horizontal" Spacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}">
             <Button x:Name="AddPasskeyButton" Click="OnAddPasskey"
                     IsEnabled="{x:Bind Shell.Settings.Account.CanPressAddPasskey, Mode=OneWay}"
                     Visibility="{x:Bind Shell.Settings.Account.CanAddPasskey, Converter={StaticResource Visible}}" />

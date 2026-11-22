@@ -53,7 +53,7 @@
                     reason. This is that shape, 32px mark and a 12px gap, without pulling the
                     row's second line onto a card.
                 -->
-                <Grid ColumnSpacing="12">
+                <Grid ColumnSpacing="{StaticResource AstridSpace12}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
@@ -79,7 +79,7 @@
                                                 Width="32" Height="32"
                                                 Visibility="{x:Bind LeadingIsCheckbox, Converter={StaticResource Visible}}" />
                             <!-- A task in a public list the reader cannot edit: the tap copies. -->
-                            <Border Width="24" Height="24" CornerRadius="6"
+                            <Border Width="24" Height="24" CornerRadius="{StaticResource AstridRadiusSmall}"
                                     BorderThickness="2"
                                     BorderBrush="{ThemeResource AstridTextMuted}"
                                     Visibility="{x:Bind LeadingIsCopy, Converter={StaticResource Visible}}">
@@ -87,7 +87,7 @@
                                           Foreground="{ThemeResource AstridTextSecondary}"
                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
-                            <Border Width="24" Height="24" CornerRadius="6"
+                            <Border Width="24" Height="24" CornerRadius="{StaticResource AstridRadiusSmall}"
                                     BorderThickness="2"
                                     local:PriorityOutline.Priority="{x:Bind Priority}"
                                     Visibility="{x:Bind LeadingIsPlainSquare, Converter={StaticResource Visible}}">
@@ -240,7 +240,7 @@
                           ItemsSource="{x:Bind Shell.Board.Columns, Mode=OneWay}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal" Spacing="12" />
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace12}" />
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
@@ -255,7 +255,7 @@
                             layout they have in the side pane.
                         -->
                         <Border Width="288"
-                                CornerRadius="8"
+                                CornerRadius="{StaticResource AstridRadiusMedium}"
                                 AllowDrop="True"
                                 Tag="{x:Bind Id}"
                                 DragOver="OnCardDragOver"
@@ -278,12 +278,12 @@
                                         Padding="12,8"
                                         BorderThickness="0,0,0,1"
                                         BorderBrush="{ThemeResource AstridBorder}">
-                                    <Grid ColumnSpacing="8">
+                                    <Grid ColumnSpacing="{StaticResource AstridSpace8}">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0" Spacing="2">
+                                        <StackPanel Grid.Column="0" Spacing="{StaticResource AstridSpace2}">
                                             <!-- The name alone: the count is the pill
                                                  beside it, and saying it twice is how a
                                                  column comes to read "Inbox (15) 15". -->
@@ -323,7 +323,7 @@
                                             did not arrive.
                                         -->
                                         <Border MinHeight="72"
-                                                CornerRadius="6"
+                                                CornerRadius="{StaticResource AstridRadiusSmall}"
                                                 BorderThickness="1"
                                                 BorderBrush="{ThemeResource AstridBorder}"
                                                 Visibility="{x:Bind Cards.Count, Converter={StaticResource CountVisible}, ConverterParameter=empty}">
@@ -437,7 +437,7 @@
                                                                             HorizontalContentAlignment="Left"
                                                                             Tag="{x:Bind UserId}"
                                                                             Click="OnColumnAssigneeChosen">
-                                                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}">
                                                                             <TextBlock Text="{x:Bind Glyph}"
                                                                                        Width="24" TextAlignment="Center" />
                                                                             <TextBlock Text="{x:Bind TitleKey, Converter={StaticResource PickTitle}}" />

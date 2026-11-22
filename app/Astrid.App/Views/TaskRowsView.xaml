@@ -39,12 +39,12 @@
                 VerticalAlignment="Top"
                 Visibility="{x:Bind Shell.ShowsListRows, Mode=OneWay, Converter={StaticResource Visible}}"
                 Padding="12,10"
-                CornerRadius="12"
+                CornerRadius="{StaticResource AstridRadiusLarge}"
                 Background="{ThemeResource AstridSurface}"
                 BorderThickness="1"
                 BorderBrush="{ThemeResource AstridBorder}">
             <!-- 12, the gap a row uses between its checkbox and its title (task 90d0306e). -->
-            <Grid ColumnSpacing="12">
+            <Grid ColumnSpacing="{StaticResource AstridSpace12}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
@@ -74,7 +74,7 @@
                         <local:PriorityMark Priority="{x:Bind Shell.Tasks.QuickAddPriority, Mode=OneWay}"
                                             Width="32" Height="32"
                                             Visibility="{x:Bind Shell.Tasks.QuickAddIsCheckbox, Mode=OneWay, Converter={StaticResource Visible}}" />
-                        <Border Width="24" Height="24" CornerRadius="6"
+                        <Border Width="24" Height="24" CornerRadius="{StaticResource AstridRadiusSmall}"
                                 BorderThickness="2"
                                 local:PriorityOutline.Priority="{x:Bind Shell.Tasks.QuickAddPriority, Mode=OneWay}"
                                 Visibility="{x:Bind Shell.Tasks.QuickAddIsSquare, Mode=OneWay, Converter={StaticResource Visible}}">
@@ -117,7 +117,7 @@
                                                     HorizontalContentAlignment="Left"
                                                     Tag="{x:Bind UserId}"
                                                     Click="OnQuickAddAssigneeChosen">
-                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}">
                                                     <TextBlock Text="{x:Bind Glyph}"
                                                                Width="24" TextAlignment="Center" />
                                                     <TextBlock Text="{x:Bind TitleKey, Converter={StaticResource PickTitle}}" />
@@ -135,7 +135,7 @@
                          PlaceholderText="Add a task"
                          Background="{ThemeResource AstridSurfaceHover}"
                          BorderThickness="0"
-                         CornerRadius="8"
+                         CornerRadius="{StaticResource AstridRadiusMedium}"
                          Padding="12,7"
                          KeyDown="OnQuickAddKeyDown" />
                 <!--
@@ -149,7 +149,7 @@
                         AutomationProperties.AutomationId="AddTaskButton"
                         Width="36" Height="36"
                         Padding="0"
-                        CornerRadius="8"
+                        CornerRadius="{StaticResource AstridRadiusMedium}"
                         AutomationProperties.Name="Add"
                         ToolTipService.ToolTip="Add a task"
                         Click="OnQuickAdd"
@@ -198,7 +198,7 @@
               Canvas.ZIndex="1"
               MaxWidth="560"
               Margin="32,40,32,0"
-              ColumnSpacing="16"
+              ColumnSpacing="{StaticResource AstridSpace16}"
               VerticalAlignment="Top"
               HorizontalAlignment="Center"
               Visibility="{x:Bind Shell.ShowsEmptyList, Mode=OneWay, Converter={StaticResource Visible}}">
@@ -212,7 +212,7 @@
                    VerticalAlignment="Top"
                    AutomationProperties.Name="{x:Bind local:BrandCopy.AppName}" />
             <Grid Grid.Column="1" VerticalAlignment="Top" Margin="0,10,0,0">
-                <Border CornerRadius="16"
+                <Border CornerRadius="{StaticResource AstridRadiusXLarge}"
                         Padding="16"
                         BorderThickness="2"
                         BorderBrush="{ThemeResource AstridBorderHover}"
@@ -368,7 +368,7 @@
             </ListView.ItemContainerStyle>
             <ListView.ItemTemplate>
                 <DataTemplate x:DataType="bindings:TaskRow">
-                    <Grid ColumnSpacing="12"
+                    <Grid ColumnSpacing="{StaticResource AstridSpace12}"
                           Margin="{x:Bind Depth, Converter={StaticResource DepthIndent}}"
                           Opacity="{x:Bind Completed, Converter={StaticResource CompletedOpacity}}">
                         <Grid.ColumnDefinitions>
@@ -407,7 +407,7 @@
                                     reader cannot edit can only be copied, so the mark is the
                                     web's copy control and the tap copies it to their own tasks.
                                 -->
-                                <Border Width="24" Height="24" CornerRadius="6"
+                                <Border Width="24" Height="24" CornerRadius="{StaticResource AstridRadiusSmall}"
                                         BorderThickness="2"
                                         BorderBrush="{ThemeResource AstridTextMuted}"
                                         Visibility="{x:Bind LeadingIsCopy, Converter={StaticResource Visible}}">
@@ -415,7 +415,7 @@
                                               Foreground="{ThemeResource AstridTextSecondary}"
                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
-                                <Border Width="24" Height="24" CornerRadius="6"
+                                <Border Width="24" Height="24" CornerRadius="{StaticResource AstridRadiusSmall}"
                                         BorderThickness="2"
                                         local:PriorityOutline.Priority="{x:Bind Priority}"
                                         Visibility="{x:Bind LeadingIsPlainSquare, Converter={StaticResource Visible}}">
@@ -458,7 +458,7 @@
                             </Grid>
                         </Button>
 
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="{StaticResource AstridSpace4}">
                             <Grid ColumnSpacing="6">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
@@ -496,7 +496,7 @@
                             </Grid>
 
                             <!-- The second line only exists when there is something on it. -->
-                            <StackPanel Orientation="Horizontal" Spacing="8"
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}"
                                         Visibility="{x:Bind HasSecondLine, Converter={StaticResource Visible}}">
                                 <TextBlock Text="{x:Bind Due, Converter={StaticResource DueText}}"
                                            Style="{ThemeResource CaptionTextBlockStyle}"
@@ -506,7 +506,7 @@
                                 <ItemsControl ItemsSource="{x:Bind ListChips}">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
-                                            <StackPanel Orientation="Horizontal" Spacing="4" />
+                                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}" />
                                         </ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
@@ -515,7 +515,7 @@
                                             <Border CornerRadius="4"
                                                     Padding="6,1"
                                                     Background="{x:Bind Color, Converter={StaticResource ChipTint}}">
-                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}">
                                                     <TextBlock Text="{x:Bind IsLabel, Converter={StaticResource ChipGlyph}}"
                                                                FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                                                FontSize="10"

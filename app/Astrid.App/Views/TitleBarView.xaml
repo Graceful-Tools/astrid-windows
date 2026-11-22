@@ -42,7 +42,7 @@
         <Grid Grid.Column="0"
               Width="260"
               Padding="14,0,6,0"
-              ColumnSpacing="8">
+              ColumnSpacing="{StaticResource AstridSpace8}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />

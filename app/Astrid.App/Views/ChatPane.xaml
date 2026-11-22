@@ -44,7 +44,7 @@
                 That symmetry is the whole request (task ab4cb9ee): one pair of controls that
                 close the window's two side panels towards the work in the middle.
             -->
-            <StackPanel Orientation="Horizontal" Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}">
                 <Button x:Uid="hide_messages"
                         AutomationProperties.Name="Hide messages"
                         ToolTipService.ToolTip="Hide messages"
@@ -97,7 +97,7 @@
                                         MaxWidth="240"
                                         Background="{x:Bind IsMine, Converter={StaticResource BubbleBrush}}"
                                         Visibility="{x:Bind IsSystem, Converter={StaticResource NotVisible}}">
-                                    <StackPanel Spacing="4">
+                                    <StackPanel Spacing="{StaticResource AstridSpace4}">
                                         <TextBlock Text="{x:Bind Converter={StaticResource Byline}}"
                                                    FontSize="11"
                                                    FontWeight="SemiBold"
@@ -127,7 +127,7 @@
                 Padding="12"
                 BorderThickness="0,1,0,0"
                 BorderBrush="{ThemeResource AstridBorder}">
-            <StackPanel Spacing="8">
+            <StackPanel Spacing="{StaticResource AstridSpace8}">
                 <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                            TextWrapping="Wrap"
                            Text="{x:Bind Shell.Chat.ErrorMessage, Mode=OneWay}"
@@ -143,7 +143,7 @@
                              AutomationProperties.Name="Message"
                              Background="{ThemeResource AstridSurfaceHover}"
                              BorderThickness="0"
-                             CornerRadius="12"
+                             CornerRadius="{StaticResource AstridRadiusLarge}"
                              Padding="12,7"
                              IsEnabled="{x:Bind Shell.Chat.HasChannel, Mode=OneWay}"
                              KeyDown="OnChatKeyDown" />

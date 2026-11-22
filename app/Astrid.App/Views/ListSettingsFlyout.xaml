@@ -20,7 +20,7 @@
          — Delete is the last thing in it and the one that must
          not vanish off the edge. -->
     <ScrollViewer MaxHeight="640" VerticalScrollBarVisibility="Auto">
-    <StackPanel Spacing="8" MinWidth="320">
+    <StackPanel Spacing="{StaticResource AstridSpace8}" MinWidth="320">
         <TextBlock x:Uid="list_settings" Text="List settings"
                    Style="{ThemeResource BodyStrongTextBlockStyle}" />
         <TextBox x:Uid="list_name_box" x:Name="ListNameBox"
@@ -75,7 +75,7 @@
                    Style="{ThemeResource CaptionTextBlockStyle}"
                    Margin="0,8,0,0"
                    Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
-        <StackPanel Orientation="Horizontal" Spacing="8"
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}"
                     Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
             <Border Width="48" Height="48" CornerRadius="10"
                     Background="{ThemeResource AstridSurfaceHover}">
@@ -105,7 +105,7 @@
                    Style="{ThemeResource CaptionTextBlockStyle}"
                    Margin="0,4,0,0"
                    Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
-        <StackPanel Orientation="Horizontal" Spacing="12"
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace12}"
                     Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
             <RadioButton x:Uid="private" Content="Private" GroupName="ListPrivacy" Tag="PRIVATE"
                          MinWidth="0"
@@ -140,12 +140,12 @@
                    Style="{ThemeResource CaptionTextBlockStyle}"
                    Margin="0,8,0,0"
                    Visibility="{x:Bind Shell.ListSettings.HasBoard, Mode=OneWay, Converter={StaticResource Visible}}" />
-        <StackPanel Spacing="4"
+        <StackPanel Spacing="{StaticResource AstridSpace4}"
                     Visibility="{x:Bind Shell.ListSettings.HasBoard, Mode=OneWay, Converter={StaticResource Visible}}">
             <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.Statuses, Mode=OneWay}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="bindings:BoardStatus">
-                        <Grid ColumnSpacing="4" Padding="0,1">
+                        <Grid ColumnSpacing="{StaticResource AstridSpace4}" Padding="0,1">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
@@ -186,7 +186,7 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <Grid ColumnSpacing="8">
+            <Grid ColumnSpacing="{StaticResource AstridSpace8}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -213,7 +213,7 @@
                    Style="{ThemeResource CaptionTextBlockStyle}"
                    Margin="0,8,0,0"
                    Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
-        <Grid ColumnSpacing="8"
+        <Grid ColumnSpacing="{StaticResource AstridSpace8}"
               Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -252,7 +252,7 @@
                    Style="{ThemeResource CaptionTextBlockStyle}"
                    Margin="0,8,0,0"
                    Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}" />
-        <Grid ColumnSpacing="8" RowSpacing="6"
+        <Grid ColumnSpacing="{StaticResource AstridSpace8}" RowSpacing="6"
               Visibility="{x:Bind Shell.ListSettings.CanManageList, Mode=OneWay, Converter={StaticResource Visible}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -313,7 +313,7 @@
         <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.Providers, Mode=OneWay}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="bindings:ExternalProvider">
-                    <Grid ColumnSpacing="8" Padding="0,2">
+                    <Grid ColumnSpacing="{StaticResource AstridSpace8}" Padding="0,2">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
@@ -346,7 +346,7 @@
         <ItemsControl ItemsSource="{x:Bind Shell.ListSettings.Members, Mode=OneWay}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="viewmodels:ListMemberRow">
-                    <Grid ColumnSpacing="8" Padding="0,2">
+                    <Grid ColumnSpacing="{StaticResource AstridSpace8}" Padding="0,2">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
@@ -375,7 +375,7 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <StackPanel Orientation="Horizontal" Spacing="8"
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}"
                     Visibility="{x:Bind Shell.ListSettings.CanManageMembers, Mode=OneWay, Converter={StaticResource Visible}}">
             <TextBox x:Uid="invite_box" x:Name="InviteBox"
                      Width="200"
@@ -396,7 +396,7 @@
                   HorizontalAlignment="Stretch"
                   HorizontalContentAlignment="Left"
                   Expanding="OnInsightsExpanding">
-            <StackPanel x:Name="InsightsPanel" Spacing="8" Width="288">
+            <StackPanel x:Name="InsightsPanel" Spacing="{StaticResource AstridSpace8}" Width="288">
                 <!--
                     7 / 30 / 90, from the view model rather than three buttons here: the route
                     answers 400 to a fourth window, so which three exist is the core's answer.
@@ -404,7 +404,7 @@
                 <ItemsControl ItemsSource="{x:Bind Shell.Insights.WindowChoices, Mode=OneWay}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" Spacing="4" />
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
@@ -435,7 +435,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock x:Uid="insights_activity" Grid.Column="0" Text="Activity"
                                    Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4"
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}"
                                     VerticalAlignment="Bottom">
                             <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
                                        Foreground="{ThemeResource AstridTextMuted}"
@@ -466,21 +466,21 @@
                                       Points="{x:Bind Shell.Insights.CompletedSeries, Mode=OneWay, Converter={StaticResource InsightLine}}" />
                         </Grid>
                     </Border>
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
+                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace12}">
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}">
                             <Rectangle Width="10" Height="2" VerticalAlignment="Center"
                                        Fill="{ThemeResource AstridCategoryBlue}" />
                             <TextBlock x:Uid="insights_new" Text="New"
                                        Style="{ThemeResource CaptionTextBlockStyle}" />
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal" Spacing="4">
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}">
                             <Rectangle Width="10" Height="2" VerticalAlignment="Center"
                                        Fill="{ThemeResource AstridCategoryGreen}" />
                             <TextBlock x:Uid="insights_completed" Text="Completed"
                                        Style="{ThemeResource CaptionTextBlockStyle}" />
                         </StackPanel>
                     </StackPanel>
-                    <Grid ColumnSpacing="8">
+                    <Grid ColumnSpacing="{StaticResource AstridSpace8}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
@@ -489,7 +489,7 @@
                                    Text="Median time to complete"
                                    TextWrapping="Wrap"
                                    Style="{ThemeResource CaptionTextBlockStyle}" />
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}">
                             <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
                                        Text="{x:Bind Shell.Insights.TimeToComplete, Mode=OneWay, Converter={StaticResource InsightMedian}}" />
                             <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
@@ -502,7 +502,7 @@
                         measure gets a sentence rather than a row of dashes: lane moves are
                         recorded from the AWTD-1329 deploy onward, so it fills in as cards move.
                     -->
-                    <StackPanel Spacing="2"
+                    <StackPanel Spacing="{StaticResource AstridSpace2}"
                                 Visibility="{x:Bind Shell.Insights.HasLanes, Mode=OneWay, Converter={StaticResource Visible}}">
                         <TextBlock x:Uid="insights_time_in_lane" Text="Median time in each column"
                                    TextWrapping="Wrap"
@@ -520,7 +520,7 @@
                                       Visibility="{x:Bind Shell.Insights.LanesNeedHistory, Mode=OneWay, Converter={StaticResource NotVisible}}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="viewmodels:InsightLaneRow">
-                                    <Grid ColumnSpacing="8">
+                                    <Grid ColumnSpacing="{StaticResource AstridSpace8}">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
@@ -528,7 +528,7 @@
                                         <TextBlock Grid.Column="0" Text="{x:Bind Name}"
                                                    TextTrimming="CharacterEllipsis"
                                                    Style="{ThemeResource CaptionTextBlockStyle}" />
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}">
                                             <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
                                                        Text="{x:Bind Median, Converter={StaticResource InsightMedian}}" />
                                             <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
@@ -549,7 +549,7 @@
                     <ItemsControl ItemsSource="{x:Bind Shell.Insights.Contributors, Mode=OneWay}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="viewmodels:InsightContributorRow">
-                                <Grid ColumnSpacing="8" Padding="0,2">
+                                <Grid ColumnSpacing="{StaticResource AstridSpace8}" Padding="0,2">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
@@ -561,7 +561,7 @@
                                                Source="{x:Bind Image, Converter={StaticResource RemoteImage}}" />
                                     </Border>
                                     <StackPanel Grid.Column="1">
-                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace4}">
                                             <TextBlock TextTrimming="CharacterEllipsis"
                                                        Text="{x:Bind Name, Converter={StaticResource Dashed}}" />
                                             <!--
@@ -589,7 +589,7 @@
                 </StackPanel>
             </StackPanel>
         </Expander>
-        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace8}" Margin="0,8,0,0">
             <Button x:Uid="leave_list" Content="Leave list"
                     Click="OnLeaveList"
                     Visibility="{x:Bind Shell.ListSettings.CanLeave, Mode=OneWay, Converter={StaticResource Visible}}" />
@@ -604,7 +604,7 @@
                     Visibility="{x:Bind Shell.ListSettings.CanTransferOwnership, Mode=OneWay, Converter={StaticResource Visible}}">
                 <Button.Flyout>
                     <Flyout Opening="OnTransferFlyoutOpening">
-                        <StackPanel Spacing="8" MinWidth="240" MaxWidth="320">
+                        <StackPanel Spacing="{StaticResource AstridSpace8}" MinWidth="240" MaxWidth="320">
                             <TextBlock x:Uid="transfer_ownership_line" TextWrapping="Wrap"
                                        FontSize="12"
                                        Foreground="{ThemeResource AstridTextMuted}"
@@ -643,7 +643,7 @@
                     Visibility="{x:Bind Shell.ListSettings.CanDeleteList, Mode=OneWay, Converter={StaticResource Visible}}">
                 <Button.Flyout>
                     <Flyout>
-                        <StackPanel Spacing="8" MaxWidth="260">
+                        <StackPanel Spacing="{StaticResource AstridSpace8}" MaxWidth="260">
                             <TextBlock x:Uid="delete_this_list_and_its_tasks" TextWrapping="Wrap"
                                        Text="Delete this list and its tasks, for everybody it is shared with?" />
                             <Button x:Uid="delete_it" Content="Delete it"

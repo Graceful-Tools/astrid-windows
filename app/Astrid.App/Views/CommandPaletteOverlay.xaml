@@ -27,18 +27,18 @@
                 Margin="0,80,0,0"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Center"
-                CornerRadius="12"
+                CornerRadius="{StaticResource AstridRadiusLarge}"
                 Padding="12"
                 Background="{ThemeResource AstridSurface}"
                 BorderThickness="1"
                 BorderBrush="{ThemeResource AstridBorder}">
-            <Grid RowSpacing="8">
+            <Grid RowSpacing="{StaticResource AstridSpace8}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 <!-- A magnifier beside the box, as astrid-web's palette wears one. -->
-                <Grid Grid.Row="0" ColumnSpacing="8">
+                <Grid Grid.Row="0" ColumnSpacing="{StaticResource AstridSpace8}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
@@ -80,7 +80,7 @@
                           ItemsSource="{x:Bind Shell.PaletteRows, Mode=OneWay}">
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="bindings:PaletteRow">
-                            <Grid ColumnSpacing="12" Padding="0,4">
+                            <Grid ColumnSpacing="{StaticResource AstridSpace12}" Padding="0,4">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
