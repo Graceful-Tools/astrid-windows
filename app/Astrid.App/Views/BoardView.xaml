@@ -185,7 +185,7 @@
             behind it reads as a board that failed to load rather than one that was never
             there.
         -->
-        <StackPanel Grid.Row="0"
+        <StackPanel Grid.Row="0" Grid.RowSpan="2"
                     Spacing="6"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
@@ -216,8 +216,20 @@
             with nothing to scroll it. Each column scrolls its own cards instead, as the
             web's do — which is also what makes room for a card opened in place.
         -->
+        <!--
+            The board's goals and guardrails (task ec11e539), in the row above the columns. It
+            draws nothing for a board with none, so the columns keep the whole height then.
+        -->
+        <Grid Grid.Row="0"
+              Visibility="{x:Bind Shell.IsBoardView, Mode=OneWay, Converter={StaticResource Visible}}">
+            <Grid Style="{StaticResource BoardToolbarStyle}"
+                  Visibility="{x:Bind Shell.Board.Goals.IsShown, Mode=OneWay, Converter={StaticResource Visible}}">
+                <views:GoalsButton HorizontalAlignment="Left" Goals="{x:Bind Shell.Board.Goals}" />
+            </Grid>
+        </Grid>
+
         <ScrollViewer x:Name="ColumnsScroller"
-                      Grid.Row="0" Grid.RowSpan="2"
+                      Grid.Row="1"
                       HorizontalScrollBarVisibility="Auto"
                       HorizontalScrollMode="Enabled"
                       VerticalScrollBarVisibility="Disabled"

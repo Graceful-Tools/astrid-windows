@@ -2358,4 +2358,67 @@
   <data name="expand_project.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Listen des Projekts anzeigen</value>
   </data>
+  <data name="projectMode_goals_addGoal" xml:space="preserve">
+    <value>Ziel hinzufügen</value>
+  </data>
+  <data name="projectMode_goals_addGuardrail" xml:space="preserve">
+    <value>Leitplanke hinzufügen</value>
+  </data>
+  <data name="projectMode_goals_counts" xml:space="preserve">
+    <value>Ziele: {0} · Leitplanken: {1}</value>
+  </data>
+  <data name="projectMode_goals_currentPlaceholder" xml:space="preserve">
+    <value>Aktuell</value>
+  </data>
+  <data name="projectMode_goals_currentValue" xml:space="preserve">
+    <value>Aktuell: {0}</value>
+  </data>
+  <data name="projectMode_goals_edit" xml:space="preserve">
+    <value>Bearbeiten</value>
+  </data>
+  <data name="projectMode_goals_goalPlaceholder" xml:space="preserve">
+    <value>Ein Ziel, z. B. Langfristige Rendite maximieren</value>
+  </data>
+  <data name="projectMode_goals_goalsHeading" xml:space="preserve">
+    <value>Ziele</value>
+  </data>
+  <data name="projectMode_goals_guardrailPlaceholder" xml:space="preserve">
+    <value>Eine Leitplanke, z. B. Keine geltenden Gesetze brechen</value>
+  </data>
+  <data name="projectMode_goals_guardrailsHeading" xml:space="preserve">
+    <value>Leitplanken</value>
+  </data>
+  <data name="projectMode_goals_intro" xml:space="preserve">
+    <value>Wofür dieses Projekt da ist und was es nicht tun darf. Alle, die hier arbeiten, Menschen wie Agenten, lesen beides, damit Anweisungen kurz bleiben können.</value>
+  </data>
+  <data name="projectMode_goals_kindEnforced" xml:space="preserve">
+    <value>Erzwungen</value>
+  </data>
+  <data name="projectMode_goals_kindHint" xml:space="preserve">
+    <value>Formuliert: Menschen und Agenten beurteilen sie. Erzwungen: ein Programm prüft sie.</value>
+  </data>
+  <data name="projectMode_goals_kindLabel" xml:space="preserve">
+    <value>Wie sie geprüft wird</value>
+  </data>
+  <data name="projectMode_goals_kindStated" xml:space="preserve">
+    <value>Formuliert</value>
+  </data>
+  <data name="projectMode_goals_measurePlaceholder" xml:space="preserve">
+    <value>Kennzahl</value>
+  </data>
+  <data name="projectMode_goals_remove" xml:space="preserve">
+    <value>Entfernen</value>
+  </data>
+  <data name="projectMode_goals_saveFailed" xml:space="preserve">
+    <value>Ziele und Leitplanken konnten nicht gespeichert werden. Bitte erneut versuchen.</value>
+  </data>
+  <data name="projectMode_goals_targetPlaceholder" xml:space="preserve">
+    <value>Zielwert</value>
+  </data>
+  <data name="projectMode_goals_targetValue" xml:space="preserve">
+    <value>Zielwert: {0}</value>
+  </data>
+  <data name="projectMode_goals_title" xml:space="preserve">
+    <value>Ziele &amp; Leitplanken</value>
+  </data>
 </root>

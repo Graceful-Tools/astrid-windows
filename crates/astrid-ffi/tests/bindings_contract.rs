@@ -181,21 +181,6 @@ const NOT_BOUND: &[(&str, &str)] = &[
          `createProject` and `deleteProject`.",
     ),
     (
-        "getProjectGoals",
-        "A board's goals and guardrails (core ADEV-187). Not drawn here yet: binding them is \
-         board task ec11e539, which this entry is waiting for.",
-    ),
-    (
-        "getListGoals",
-        "The goals of the board a list belongs to (core ADEV-187). Same as `getProjectGoals`: \
-         board task ec11e539.",
-    ),
-    (
-        "setProjectGoals",
-        "Editing a board's goals and guardrails (core ADEV-187). Same as `getProjectGoals`: \
-         board task ec11e539.",
-    ),
-    (
         "deleteProject",
         "Deleting a board detaches its lists rather than deleting them, which needs explaining on          screen before it is offered. No such screen here yet.",
     ),
@@ -575,6 +560,8 @@ const SCHEMA_BACKED_MODELS: &[(&str, &str)] = &[
     ("DefaultPick", "DefaultPick"),
     ("FilterGroup", "FilterGroup"),
     ("FilterPick", "FilterPick"),
+    ("Goal", "Goal"),
+    ("Guardrail", "Guardrail"),
     ("ListDefaultPicks", "ListDefaultPicks"),
     ("ListMember", "ListMember"),
     ("ListPick", "ListPick"),
@@ -586,6 +573,7 @@ const SCHEMA_BACKED_MODELS: &[(&str, &str)] = &[
     ("MarkdownInline", "Inline"),
     ("MarkdownListItem", "ListItem"),
     ("MessageRow", "MessageRow"),
+    ("ProjectGoals", "ProjectGoals"),
     ("PublicListOwner", "User"),
     ("ReminderPick", "ReminderPick"),
     ("RepeatPreset", "RepeatPreset"),

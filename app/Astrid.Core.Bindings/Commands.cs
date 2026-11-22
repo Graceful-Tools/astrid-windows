@@ -653,6 +653,25 @@ public static class Commands
     /// parameters disappear when they are not the one being used.
     /// </para>
     /// </remarks>
+    /// <summary>A board's goals and guardrails, cached; the round trip refreshes the cache (core ADEV-187).</summary>
+    public static object GetProjectGoals(string projectId) =>
+        new ProjectGoalsRequest("getProjectGoals", projectId);
+
+    /// <summary>The goals of the board a list is on. Read-only: there is no list write.</summary>
+    public static object GetListGoals(string listId) =>
+        new ListGoalsRequest("getListGoals", listId);
+
+    /// <summary>
+    /// Replace a board's goals and guardrails, the whole value (core ADEV-187).
+    /// </summary>
+    /// <remarks>
+    /// A row with no id is new and the server assigns it one; a blank row is dropped there. Sent
+    /// at once and journalled through the Outbox only when offline.
+    /// </remarks>
+    public static object SetProjectGoals(string projectId, IReadOnlyList<GoalDraft> goals,
+        IReadOnlyList<GuardrailDraft> guardrails) =>
+        new SetProjectGoalsRequest("setProjectGoals", projectId, goals, guardrails);
+
     public static object SaveProjectBoardRows(string projectId,
         IReadOnlyList<string>? listIds = null, string? addListId = null,
         string? removeListId = null) =>
@@ -1599,4 +1618,32 @@ public static class Commands
         [property: JsonPropertyName("listId")] string ListId,
         [property: JsonPropertyName("limit")] int? Limit,
         [property: JsonPropertyName("idsOnly")] bool? IdsOnly);
+
+    private sealed record ProjectGoalsRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("projectId")] string ProjectId);
+
+    private sealed record ListGoalsRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("listId")] string ListId);
+
+    private sealed record SetProjectGoalsRequest(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("projectId")] string ProjectId,
+        [property: JsonPropertyName("goals")] IReadOnlyList<GoalDraft> Goals,
+        [property: JsonPropertyName("guardrails")] IReadOnlyList<GuardrailDraft> Guardrails);
 }
+
+/// <summary>One goal as it is sent: no <c>Id</c> on a new row (core <c>GoalDraft</c>).</summary>
+public sealed record GoalDraft(
+    [property: JsonPropertyName("id")] string? Id,
+    [property: JsonPropertyName("statement")] string Statement,
+    [property: JsonPropertyName("measure")] string? Measure,
+    [property: JsonPropertyName("target")] string? Target,
+    [property: JsonPropertyName("current")] string? Current);
+
+/// <summary>One guardrail as it is sent: <c>stated</c> or <c>enforced</c> (core <c>GuardrailDraft</c>).</summary>
+public sealed record GuardrailDraft(
+    [property: JsonPropertyName("id")] string? Id,
+    [property: JsonPropertyName("statement")] string Statement,
+    [property: JsonPropertyName("kind")] string Kind);

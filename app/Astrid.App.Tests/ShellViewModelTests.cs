@@ -1830,6 +1830,39 @@ public sealed class ShellViewModelTests
     }
 
     /// <summary>
+    /// The project board reads its goals with it, and a <c>projectGoals</c> change re-reads them —
+    /// for the board on screen only (task ec11e539).
+    /// </summary>
+    [Fact]
+    public async Task A_goals_change_rereads_the_open_boards_goals_only_task_ec11e539()
+    {
+        var core = WithProjectBoard(
+            StartedCoreWith(Lists(("p1", "Launch", "proj-1"))), "p1");
+        using var shell = new ShellViewModel(core, RunInline);
+        await shell.StartAsync();
+        await shell.ShowProjectBoardAsync(true);
+        Assert.Contains(core.Sent, json => json.Contains("\"kind\":\"getProjectGoals\"")
+                                           && json.Contains("\"projectId\":\"proj-1\""));
+        Assert.False(shell.ProjectBoard.Goals.HasAny);
+
+        var asked = core.Sent.Count(json => json.Contains("\"kind\":\"getProjectGoals\""));
+        core.Notify("projectGoals", "some-other-board");
+        Assert.Equal(asked, core.Sent.Count(json => json.Contains("\"kind\":\"getProjectGoals\"")));
+
+        core.AnswerOk("getProjectGoals", new
+        {
+            projectId = "proj-1",
+            projectName = "Launch",
+            goals = new[] { new { id = "g1", statement = "Ship by spring" } },
+            guardrails = Array.Empty<object>(),
+            canEdit = false,
+        });
+        core.Notify("projectGoals", "proj-1");
+
+        Assert.Equal("g1", Assert.Single(shell.ProjectBoard.Goals.Goals).Id);
+    }
+
+    /// <summary>
     /// A list with no project has no project board, so the toggle that would reach one is not
     /// drawn — the trade task a66f0a16 made for the single-list board, for the same reason.
     /// </summary>

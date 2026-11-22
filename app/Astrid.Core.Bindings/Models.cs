@@ -2463,3 +2463,57 @@ public sealed record CalloutPlacement
     [JsonIgnore]
     public bool OpensLeft => Side == "left";
 }
+
+/// <summary>
+/// A board's goals and guardrails: what <c>getProjectGoals</c> and <c>getListGoals</c> answer
+/// (core ADEV-187, web ADEV-179).
+/// </summary>
+/// <remarks>
+/// Both lists empty means draw nothing. <see cref="ProjectId"/> is null for a list on no board.
+/// <see cref="CanEdit"/> is the server's answer (owner or admin, and not an agent); this shell
+/// offers the editor on it and decides nothing else.
+/// </remarks>
+public sealed record ProjectGoals
+{
+    [JsonPropertyName("listId")] public string? ListId { get; init; }
+
+    [JsonPropertyName("projectId")] public string? ProjectId { get; init; }
+
+    [JsonPropertyName("projectName")] public string? ProjectName { get; init; }
+
+    [JsonPropertyName("goals")] public IReadOnlyList<Goal> Goals { get; init; } = [];
+
+    [JsonPropertyName("guardrails")] public IReadOnlyList<Guardrail> Guardrails { get; init; } = [];
+
+    [JsonPropertyName("canEdit")] public bool CanEdit { get; init; }
+}
+
+/// <summary>One goal, as the server answers it: a statement, and optionally how it is measured.</summary>
+public sealed record Goal
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("statement")] public string Statement { get; init; } = string.Empty;
+
+    /// <summary>What is measured, e.g. "IRR".</summary>
+    [JsonPropertyName("measure")] public string? Measure { get; init; }
+
+    /// <summary>Where it should get to, e.g. "8%".</summary>
+    [JsonPropertyName("target")] public string? Target { get; init; }
+
+    /// <summary>Where it is now, e.g. "6.1%".</summary>
+    [JsonPropertyName("current")] public string? Current { get; init; }
+}
+
+/// <summary>One guardrail: what must not happen, and whether a person or a program checks it.</summary>
+public sealed record Guardrail
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("statement")] public string Statement { get; init; } = string.Empty;
+
+    /// <summary><c>stated</c> (people and agents judge it) or <c>enforced</c> (a program checks it).</summary>
+    [JsonPropertyName("kind")] public string Kind { get; init; } = "stated";
+
+    [JsonIgnore] public bool IsEnforced => Kind == "enforced";
+}

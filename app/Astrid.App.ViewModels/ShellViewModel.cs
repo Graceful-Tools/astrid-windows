@@ -1577,6 +1577,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         /// board, on exactly the machines that had never opened the other one.
         /// </remarks>
         ProjectBoard = 1 << 10,
+        /// <summary>A board's goals and guardrails moved in the cache (task ec11e539).</summary>
+        Goals = 1 << 11,
 
         /// <summary>
         /// Everything on screen, for a change that brought work in without saying — or without
@@ -1679,6 +1681,12 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 return Pending.Sidebar;
             case "chat":
                 return Pending.Chat;
+            case "projectGoals":
+                // Only the board on screen, and only when it is the board these goals belong to.
+                return notification.Id is { } project
+                       && (project == Board.Goals.ProjectId || project == ProjectBoard.ProjectId)
+                    ? Pending.Goals
+                    : Pending.None;
             case "remindersDue":
                 return Pending.Reminders;
             case "needsSync":
@@ -1759,6 +1767,17 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         if (pending.HasFlag(Pending.ProjectBoard) && IsProjectBoardView)
         {
             await ProjectBoard.RefreshAsync();
+        }
+        if (pending.HasFlag(Pending.Goals))
+        {
+            if (IsBoardView && !string.IsNullOrEmpty(Board.ListId))
+            {
+                await Board.Goals.LoadForListAsync(Board.ListId);
+            }
+            if (IsProjectBoardView && !string.IsNullOrEmpty(ProjectBoard.ProjectId))
+            {
+                await ProjectBoard.Goals.LoadForProjectAsync(ProjectBoard.ProjectId);
+            }
         }
         if (pending.HasFlag(Pending.Detail) && Detail.IsOpen)
         {

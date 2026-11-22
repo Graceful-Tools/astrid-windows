@@ -120,7 +120,7 @@ public sealed class BoardViewModelTests
 
         Assert.True(await view.MoveAsync("ready-0", "doing"));
 
-        Assert.Equal(["board", "moveTaskToColumn", "board"], core.SentKinds());
+        Assert.Equal(["board", "getListGoals", "moveTaskToColumn", "board"], core.SentKinds());
         Assert.Equal("doing", view.Columns[0].Id);
     }
 
@@ -148,7 +148,7 @@ public sealed class BoardViewModelTests
         var sent = core.Sent.First(json => json.Contains("completeTask"));
         Assert.Contains("\"taskId\":\"ready-0\"", sent);
         Assert.Contains("\"completed\":true", sent);
-        Assert.Equal(["board", "completeTask", "board"], core.SentKinds());
+        Assert.Equal(["board", "getListGoals", "completeTask", "board"], core.SentKinds());
     }
 
     /// <summary>
@@ -230,7 +230,7 @@ public sealed class BoardViewModelTests
         Assert.Contains("\"title\":\"Write it down\"", added);
         Assert.DoesNotContain("moveTaskToColumn", string.Join(" ", core.SentKinds()));
         // The board is reloaded, so the card appears without the view placing it itself.
-        Assert.Equal(["board", "addBoardCard", "board"], core.SentKinds());
+        Assert.Equal(["board", "getListGoals", "addBoardCard", "board"], core.SentKinds());
         Assert.Equal("Write it down", view.Columns[0].Cards[0].Title);
     }
 
@@ -249,7 +249,7 @@ public sealed class BoardViewModelTests
 
         view.Columns[0].Draft = "   ";
         Assert.False(await view.Columns[0].AddCardAsync());
-        Assert.Equal(["board"], core.SentKinds());
+        Assert.Equal(["board", "getListGoals"], core.SentKinds());
 
         view.Columns[0].Draft = "Write it down";
         await view.Columns[0].AddCardAsync();

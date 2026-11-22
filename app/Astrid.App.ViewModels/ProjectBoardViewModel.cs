@@ -54,7 +54,11 @@ public sealed class ProjectBoardViewModel : ObservableObject
     {
         _core = core;
         _pendingWait = new PendingWait(() => Raise(nameof(WaitPrompt)));
+        Goals = new GoalsViewModel(core);
     }
+
+    /// <summary>The board's goals and guardrails, above its columns (task ec11e539).</summary>
+    public GoalsViewModel Goals { get; }
 
     /// <summary>The rows, in the order the core gave them.</summary>
     public ObservableCollection<ProjectBoardRowView> Rows { get; } = [];
@@ -137,6 +141,7 @@ public sealed class ProjectBoardViewModel : ObservableObject
         {
             await LoadListNamesAsync(cancellationToken);
             await ReloadRowsAsync(cancellationToken);
+            await Goals.LoadForProjectAsync(projectId, cancellationToken);
         }
         finally
         {
