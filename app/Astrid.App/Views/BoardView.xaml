@@ -298,17 +298,14 @@
                                                        Foreground="{ThemeResource AstridTextMuted}"
                                                        Visibility="{x:Bind Description, Converter={StaticResource Visible}}" />
                                         </StackPanel>
+                                        <!-- The header badge, DS37 (task ec8cab8a). -->
                                         <Border Grid.Column="1"
-                                                CornerRadius="10"
-                                                Padding="8,1"
-                                                VerticalAlignment="Top"
-                                                Background="{ThemeResource AstridSurface}">
+                                                Style="{StaticResource BoardHeaderBadgeStyle}">
                                             <!-- Every card in the column, not just the
                                                  ones loaded — the same distinction the
                                                  list's own total makes. -->
                                             <TextBlock Text="{x:Bind Total}"
-                                                       FontSize="11"
-                                                       Foreground="{ThemeResource AstridTextSecondary}" />
+                                                       Style="{StaticResource BoardHeaderBadgeTextStyle}" />
                                         </Border>
                                     </Grid>
                                 </Border>

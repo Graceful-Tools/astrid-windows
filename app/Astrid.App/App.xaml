@@ -128,6 +128,21 @@
                              Opacity="0.55" />
 
             <!--
+                The Done pill's wash and stroke (astrid-core DS33, task ec8cab8a): Done's meaning,
+                which `pill.states` maps to the accent, at `pill.fill-opacity` and
+                `pill.stroke-opacity`. Stated here for the selection outline's reason - the accent
+                does not follow the theme, so neither does a tint of it. The label is
+                `AstridAccentInk`, which does. `BoardBadgeStyleTests` holds both opacities to the
+                vendored tokens.
+            -->
+            <SolidColorBrush x:Key="AstridDonePillFill"
+                             Color="{StaticResource AstridAccentColor}"
+                             Opacity="0.15" />
+            <SolidColorBrush x:Key="AstridDonePillStroke"
+                             Color="{StaticResource AstridAccentColor}"
+                             Opacity="0.4" />
+
+            <!--
                 A trade-off grid's five ratings, worst to best (task cca2483d).
 
                 Outside the theme dictionaries on purpose, like the accent above and for a stronger

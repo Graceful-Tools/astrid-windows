@@ -116,7 +116,7 @@ public sealed class BoardCardMarkTests
         Assert.True(blank.Count == 0, string.Join("; ", blank));
     }
 
-    private static void OpenTheBoard(AstridApp app)
+    internal static void OpenTheBoard(AstridApp app)
     {
         var walker = TreeWalker.ControlViewWalker;
         var element = app.Require(Seeds.BoardListName);
