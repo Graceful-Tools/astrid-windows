@@ -309,6 +309,47 @@ public sealed class ProjectBoardTests
     }
 
     /// <summary>Open a list that belongs to the seeded project, which is what offers the toggle.</summary>
+    /// <summary>
+    /// A project board shows "Goals: 2 · Guardrails: 1", and opening it shows each goal with its
+    /// measure, target and current value, and the guardrail a program checks as Enforced (task
+    /// ec11e539, following web ADEV-179).
+    /// </summary>
+    [Fact]
+    public void A_project_boards_goals_open_to_their_lists_task_ec11e539()
+    {
+        using var server = StubServer.Start()
+            .Route("/api/v1/projects/p1/board-rows", """{"listIds":["lios","lweb"]}""")
+            .Route("/api/v1/projects/p1/goals", """
+                {"projectId":"p1","projectName":"Launch",
+                 "goals":[{"id":"g1","statement":"Ship by spring","measure":"Release","target":"March","current":"Beta"},
+                          {"id":"g2","statement":"Keep the store rating high"}],
+                 "guardrails":[{"id":"r1","statement":"Break no applicable laws","kind":"enforced"}],
+                 "canEdit":true}
+                """);
+        using var app = AstridApp.Launch(
+            signedIn: true, seed: Seeds.ProjectWithTwoLists, server: server);
+        Thread.Sleep(1200);
+        SelectAProjectList(app);
+        app.Toggle("Project board");
+        Thread.Sleep(2000);
+        _output.WriteLine("unanswered: " + string.Join(", ", server.Unanswered()));
+
+        const string counts = "Goals: 2 · Guardrails: 1";
+        Assert.True(app.Sees(counts), $"no goals control; saw: {string.Join(", ", app.Names())}");
+        app.Invoke(counts);
+        Thread.Sleep(600);
+
+        Assert.True(app.Sees("Ship by spring"), "the first goal is listed");
+        Assert.True(app.Sees("Release · Target: March · Now: Beta"), "its measure, target and now");
+        Assert.True(app.Sees("Break no applicable laws"), "the guardrail is listed");
+        Assert.True(app.Sees("Enforced"), "an enforced guardrail says so");
+        Assert.True(app.Sees("Edit"), "an owner is offered the editor");
+
+        using var shot = Capture.Window(new IntPtr(app.Window.Current.NativeWindowHandle));
+        _output.WriteLine("screenshot: " + shot.SavePng(Path.Combine(
+            Path.GetTempPath(), $"astrid-project-goals-{Environment.ProcessId}.png")));
+    }
+
     private static void SelectAProjectList(AstridApp app)
     {
         var walker = TreeWalker.ControlViewWalker;

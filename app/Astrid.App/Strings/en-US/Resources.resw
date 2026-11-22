@@ -2368,4 +2368,67 @@
   <data name="expand_project.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Show the project's lists</value>
   </data>
+  <data name="projectMode_goals_addGoal" xml:space="preserve">
+    <value>Add goal</value>
+  </data>
+  <data name="projectMode_goals_addGuardrail" xml:space="preserve">
+    <value>Add guardrail</value>
+  </data>
+  <data name="projectMode_goals_counts" xml:space="preserve">
+    <value>Goals: {0} · Guardrails: {1}</value>
+  </data>
+  <data name="projectMode_goals_currentPlaceholder" xml:space="preserve">
+    <value>Current</value>
+  </data>
+  <data name="projectMode_goals_currentValue" xml:space="preserve">
+    <value>Now: {0}</value>
+  </data>
+  <data name="projectMode_goals_edit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="projectMode_goals_goalPlaceholder" xml:space="preserve">
+    <value>A goal, e.g. Maximise long-term returns</value>
+  </data>
+  <data name="projectMode_goals_goalsHeading" xml:space="preserve">
+    <value>Goals</value>
+  </data>
+  <data name="projectMode_goals_guardrailPlaceholder" xml:space="preserve">
+    <value>A guardrail, e.g. Break no applicable laws</value>
+  </data>
+  <data name="projectMode_goals_guardrailsHeading" xml:space="preserve">
+    <value>Guardrails</value>
+  </data>
+  <data name="projectMode_goals_intro" xml:space="preserve">
+    <value>What this project is for, and what it must not do. Everyone working here, people and agents, reads both, so instructions can stay short.</value>
+  </data>
+  <data name="projectMode_goals_kindEnforced" xml:space="preserve">
+    <value>Enforced</value>
+  </data>
+  <data name="projectMode_goals_kindHint" xml:space="preserve">
+    <value>Stated: people and agents judge it. Enforced: a program checks it.</value>
+  </data>
+  <data name="projectMode_goals_kindLabel" xml:space="preserve">
+    <value>How it is checked</value>
+  </data>
+  <data name="projectMode_goals_kindStated" xml:space="preserve">
+    <value>Stated</value>
+  </data>
+  <data name="projectMode_goals_measurePlaceholder" xml:space="preserve">
+    <value>Measure</value>
+  </data>
+  <data name="projectMode_goals_remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="projectMode_goals_saveFailed" xml:space="preserve">
+    <value>Could not save the goals and guardrails. Try again.</value>
+  </data>
+  <data name="projectMode_goals_targetPlaceholder" xml:space="preserve">
+    <value>Target</value>
+  </data>
+  <data name="projectMode_goals_targetValue" xml:space="preserve">
+    <value>Target: {0}</value>
+  </data>
+  <data name="projectMode_goals_title" xml:space="preserve">
+    <value>Goals &amp; guardrails</value>
+  </data>
 </root>

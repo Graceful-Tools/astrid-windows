@@ -122,6 +122,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <DropDownButton x:Uid="add_board_row" Grid.Column="0"
                             Content="Add list"
@@ -140,6 +141,9 @@
             <TextBlock x:Uid="project_board_hint" Grid.Column="1"
                        Style="{StaticResource BoardHintStyle}"
                        Text="Drag a list from the sidebar to add a row" />
+            <!-- The board's goals and guardrails (task ec11e539); nothing when it has none. -->
+            <views:GoalsButton Grid.Column="2"
+                               Goals="{x:Bind Shell.ProjectBoard.Goals}" />
         </Grid>
 
         <!--

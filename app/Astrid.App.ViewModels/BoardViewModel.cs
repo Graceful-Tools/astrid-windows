@@ -44,12 +44,17 @@ public sealed class BoardViewModel : ObservableObject
     private bool _isLoading;
     private string? _errorMessage;
     private string? _expandedTaskId;
+    private string? _goalsListId;
 
     public BoardViewModel(IAstridCore core)
     {
         _core = core;
         _pendingWait = new PendingWait(() => Raise(nameof(WaitPrompt)));
+        Goals = new GoalsViewModel(core);
     }
+
+    /// <summary>The board's goals and guardrails, above its columns (task ec11e539).</summary>
+    public GoalsViewModel Goals { get; }
 
     /// <summary>The columns, in the order the board shows them.</summary>
     public ObservableCollection<BoardColumnView> Columns { get; } = [];
@@ -116,10 +121,25 @@ public sealed class BoardViewModel : ObservableObject
                     : null;
                 _board = null;
                 Rebuild();
+                Goals.Clear();
+                _goalsListId = null;
                 return;
             }
             _board = response.Read<Board>();
             Rebuild();
+            // Only a list on a board has goals to show, and they are read once per list opened:
+            // a refresh after every drag is not a reason to ask again. A goals change re-reads them
+            // through the shell instead.
+            if (!HasBoard)
+            {
+                Goals.Clear();
+                _goalsListId = null;
+            }
+            else if (_goalsListId != listId)
+            {
+                _goalsListId = listId;
+                await Goals.LoadForListAsync(listId, cancellationToken);
+            }
         }
         finally
         {
