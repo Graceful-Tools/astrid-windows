@@ -12,7 +12,7 @@ namespace Astrid.App.Views;
 /// <remarks>
 /// <para>
 /// Priority, who it goes to, and — when <see cref="LeadingPickerViewModel.ShowsProjectState"/> —
-/// the board column, with Complete at the foot. Web's options sheet behind
+/// the board column, with "Mark as done" at the foot. Web's options sheet behind
 /// <c>leadingControlOpensOptions</c> is the same control; iOS's is the quick changer.
 /// </para>
 /// <para>
@@ -148,12 +148,32 @@ internal static class LeadingPickerFlyout
         return columns;
     }
 
+    /// <summary>
+    /// "Mark as done", or "Mark as to-do", beside the task's own checkbox (task 8cf2d10d).
+    /// </summary>
+    /// <remarks>
+    /// ADEV-146/148: a plain row rather than an accent button, and its glyph is the row's own
+    /// checkbox, not a bare tick: the task's priority colour, its repeat arrows, unticked beside
+    /// "Mark as done" and ticked beside "Mark as to-do". So the row shows what the click will
+    /// leave behind on the list, the way web's <c>MarkDoneQuickSetRow</c> and iOS's do.
+    /// </remarks>
     private static UIElement CompleteButton(LeadingPickerViewModel picker)
     {
-        var word = Strings.Get(picker.Completed ? "detail.reopen" : "picker.complete");
+        const double markSize = 32; // the list row's own mark, TaskRowsView.xaml
+        var word = Strings.Get(picker.CompletionKey);
+        var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        content.Children.Add(new PriorityMark
+        {
+            Priority = picker.Priority,
+            IsRepeating = picker.IsRepeating,
+            ShowTick = picker.Completed,
+            Width = markSize,
+            Height = markSize,
+        });
+        content.Children.Add(new TextBlock { Text = word, VerticalAlignment = VerticalAlignment.Center });
         var finish = new Button
         {
-            Content = word,
+            Content = content,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Left,
         };

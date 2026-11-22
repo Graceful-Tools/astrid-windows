@@ -282,7 +282,7 @@ public sealed class ShellSmokeTests
         // the picker landed, and nothing caught it: the UI suite is `predeploy:full`, not
         // `predeploy`, so the gate on that change was green with this test broken.
         app.Invoke("Options for Buy oat milk");
-        app.Invoke("Complete");
+        app.Invoke("Mark as done");
 
         // The list hides finished tasks after a moment; what matters is that nothing fell over.
         Assert.False(File.Exists(app.CrashLogPath), Crash(app));

@@ -266,6 +266,13 @@ public sealed class ProjectBoardTests
         // thousand pixels off the right of the window. UIA reported both buttons and the count
         // passed; their BoundingRectangle was Empty, which is what offscreen looks like, and
         // the only way to remove a row with a mouse was invisible.
+        //
+        // The row head spans the board's FIRST column, which is Waiting since core ADEV-128 (task
+        // 8c543a42), not the inbox the cards above are in.
+        var first = HeaderBounds(app, "Waiting");
+        _output.WriteLine($"Waiting header {first}");
+        Assert.False(first.IsEmpty, "the first column's name is on the strip");
+        Assert.True(first.Right <= inbox.X, "Waiting leads the board, ahead of the inbox");
         foreach (var cross in app.Window
             .FindAll(TreeScope.Descendants,
                 new PropertyCondition(AutomationElement.NameProperty, "Remove this row"))
@@ -274,7 +281,7 @@ public sealed class ProjectBoardTests
             var at = cross.Current.BoundingRectangle;
             _output.WriteLine("cross: " + at);
             Assert.False(at.IsEmpty, "a row cross is offscreen, so nothing can click it");
-            Assert.InRange(at.X, inbox.X, inbox.Right);
+            Assert.InRange(at.X, first.X, first.Right);
         }
         // A picture of the board, for the half of "does this look right" that is not a rectangle.
         // Left in the system temp directory, named by this run, as the sidebar's one is.

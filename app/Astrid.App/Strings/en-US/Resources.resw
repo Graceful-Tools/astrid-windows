@@ -328,8 +328,11 @@
   <data name="picker_status" xml:space="preserve">
     <value>Status</value>
   </data>
-  <data name="picker_complete" xml:space="preserve">
-    <value>Complete</value>
+  <data name="tasks_markAsDone" xml:space="preserve">
+    <value>Mark as done</value>
+  </data>
+  <data name="tasks_markAsTodo" xml:space="preserve">
+    <value>Mark as to-do</value>
   </data>
   <data name="picker_options_for" xml:space="preserve">
     <value>Options for {0}</value>
