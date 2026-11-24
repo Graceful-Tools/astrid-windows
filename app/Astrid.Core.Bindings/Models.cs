@@ -89,6 +89,16 @@ public sealed record TaskRow
     /// </remarks>
     [JsonPropertyName("pickerShowsProjectState")] public bool PickerShowsProjectState { get; init; }
 
+    /// <summary>
+    /// Whether completing this task from the picker asks first: someone else's task, or nobody's
+    /// (task d02d76e4, web ADEV-71).
+    /// </summary>
+    /// <remarks>
+    /// <c>astrid_rules::rows::LeadingControl::completion_needs_confirmation</c>, carried per row
+    /// (ADEV-201). Reopening never asks. Read, never computed.
+    /// </remarks>
+    [JsonPropertyName("completionNeedsConfirmation")] public bool CompletionNeedsConfirmation { get; init; }
+
     /// <summary>How far to indent, from the subtask chain.</summary>
     [JsonPropertyName("depth")] public int Depth { get; init; }
 

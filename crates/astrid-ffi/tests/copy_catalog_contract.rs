@@ -115,6 +115,18 @@ const NOT_SAID: &[(&str, &str)] = &[
         "As `tasks.addNewTask`, and it interpolates a list name — `Add a task to {list}` — which \
          the resw's positional `{0}` would have to be matched to at the same time.",
     ),
+    (
+        "board.empty.custom",
+        "A board column's own empty message (ADEV-221), which `BoardColumn.empty_message_key` \
+         carries since core 79e4c5f. This shell does not read that field yet: every empty column \
+         draws the `board_empty_custom` x:Uid literal in `BoardView.xaml`. Binding it is task \
+         `4ac294ab` on the Astrid Windows To-do, which removes these six rows.",
+    ),
+    ("board.empty.doing", "As `board.empty.custom`: task `4ac294ab` binds it."),
+    ("board.empty.done", "As `board.empty.custom`: task `4ac294ab` binds it."),
+    ("board.empty.inbox", "As `board.empty.custom`: task `4ac294ab` binds it."),
+    ("board.empty.ready", "As `board.empty.custom`: task `4ac294ab` binds it."),
+    ("board.empty.waiting", "As `board.empty.custom`: task `4ac294ab` binds it."),
 ];
 
 /// The key or keys a shell must actually hold a word for.

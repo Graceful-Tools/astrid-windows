@@ -333,6 +333,18 @@
   <data name="tasks_markAsTodo" xml:space="preserve">
     <value>Als To-do markieren</value>
   </data>
+  <data name="tasks_confirmCompleteAssigned" xml:space="preserve">
+    <value>Zugewiesen an {0}</value>
+  </data>
+  <data name="tasks_confirmCompleteUnassigned" xml:space="preserve">
+    <value>Niemandem zugewiesen</value>
+  </data>
+  <data name="common_cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="common_complete" xml:space="preserve">
+    <value>Abschließen</value>
+  </data>
   <data name="picker_options_for" xml:space="preserve">
     <value>Optionen für {0}</value>
   </data>

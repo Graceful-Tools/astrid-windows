@@ -20,7 +20,7 @@ dependencies = [
 [[package]]
 name = "astrid-core"
 version = "0.1.0"
-source = "git+https://github.com/Graceful-Tools/astrid-core.git?rev=a8d279a2798bdde077888564cc916a06b1b58366#a8d279a2798bdde077888564cc916a06b1b58366"
+source = "git+https://github.com/Graceful-Tools/astrid-core.git?rev=79e4c5f039854da2e45edd1b011ea06c5f83c414#79e4c5f039854da2e45edd1b011ea06c5f83c414"
 dependencies = [
  "astrid-rules",
  "async-trait",
@@ -61,7 +61,7 @@ dependencies = [
 [[package]]
 name = "astrid-rules"
 version = "0.1.0"
-source = "git+https://github.com/Graceful-Tools/astrid-core.git?rev=a8d279a2798bdde077888564cc916a06b1b58366#a8d279a2798bdde077888564cc916a06b1b58366"
+source = "git+https://github.com/Graceful-Tools/astrid-core.git?rev=79e4c5f039854da2e45edd1b011ea06c5f83c414#79e4c5f039854da2e45edd1b011ea06c5f83c414"
 dependencies = [
  "jiff",
  "pulldown-cmark",

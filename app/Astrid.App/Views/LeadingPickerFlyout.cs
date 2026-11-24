@@ -53,7 +53,9 @@ internal static class LeadingPickerFlyout
             body.Children.Add(Heading("picker.status"));
             body.Children.Add(StatusList(picker));
         }
-        body.Children.Add(CompleteButton(picker));
+        body.Children.Add(picker.AsksBeforeCompleting
+            ? CompleteQuestion(picker)
+            : CompleteButton(picker));
 
         var flyout = new Flyout
         {
@@ -180,6 +182,52 @@ internal static class LeadingPickerFlyout
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(finish, word);
         finish.Click += async (_, _) => await picker.CompleteAsync();
         return finish;
+    }
+
+    /// <summary>
+    /// Someone else's task, or nobody's: the completion row is the question itself — who holds it,
+    /// then Cancel and Complete (task d02d76e4, web's <c>MarkDoneQuickSetRow</c> with
+    /// <c>asksBeforeCompleting</c>, ADEV-71).
+    /// </summary>
+    /// <remarks>
+    /// Cancel writes nothing; like every button here it closes the popover. Whether to ask is
+    /// <see cref="LeadingPickerViewModel.AsksBeforeCompleting"/>, the core's answer.
+    /// </remarks>
+    private static UIElement CompleteQuestion(LeadingPickerViewModel picker)
+    {
+        var question = new StackPanel { Spacing = 8 };
+        var holder = picker.HolderName is { } name
+            ? Strings.Get(picker.HolderLineKey, name)
+            : Strings.Get(picker.HolderLineKey);
+        question.Children.Add(new TextBlock
+        {
+            Text = holder,
+            FontSize = 12,
+            Opacity = 0.7,
+            TextWrapping = TextWrapping.Wrap,
+        });
+
+        var buttons = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            HorizontalAlignment = HorizontalAlignment.Right,
+        };
+        var cancelWord = Strings.Get("common.cancel");
+        var cancel = new Button { Content = cancelWord };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(cancel, cancelWord);
+        var completeWord = Strings.Get("common.complete");
+        var complete = new Button
+        {
+            Content = completeWord,
+            Style = (Style)Application.Current.Resources["AccentButtonStyle"],
+        };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(complete, completeWord);
+        complete.Click += async (_, _) => await picker.CompleteAsync();
+        buttons.Children.Add(cancel);
+        buttons.Children.Add(complete);
+        question.Children.Add(buttons);
+        return question;
     }
 
     /// <summary>Every button in the popover, so one pick closes it.</summary>
