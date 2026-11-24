@@ -1532,13 +1532,34 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <Button x:Uid="attach_a_file" Grid.Column="0"
+                    <!--
+                        The "+" menu, as on iOS (task b0f521c6): a file, or a decision with
+                        traffic lights. A decision is not a comment either, so like the file it
+                        stays offered where the comment box is gated away and posts into the
+                        description instead.
+                    -->
+                    <Button x:Uid="attach_a_file" x:Name="CommentAddButton" Grid.Column="0"
                             Style="{StaticResource CommentBarButton}"
-                            AutomationProperties.Name="Attach a file"
-                            ToolTipService.ToolTip="Attach a file"
-                            Click="OnAttachFile">
-                        <FontIcon FontSize="16" Glyph="&#xE723;"
+                            AutomationProperties.Name="Add"
+                            ToolTipService.ToolTip="Add">
+                        <FontIcon FontSize="16" Glyph="&#xE710;"
                                   Foreground="{ThemeResource AstridTextMuted}" />
+                        <Button.Flyout>
+                            <MenuFlyout Placement="TopEdgeAlignedLeft">
+                                <MenuFlyoutItem x:Uid="comment_attach_file" Text="Attach a file"
+                                                Click="OnAttachFile">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE723;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem x:Uid="comment_ask_decision" Text="Ask for a decision"
+                                                Click="OnAskForDecision">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE9D5;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                            </MenuFlyout>
+                        </Button.Flyout>
                     </Button>
                     <!--
                         The composer, and only the composer, is gated on supports.comments (task

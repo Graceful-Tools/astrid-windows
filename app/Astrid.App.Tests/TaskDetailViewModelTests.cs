@@ -2020,6 +2020,30 @@ public sealed class TaskDetailViewModelTests
     }
 
     /// <summary>
+    /// A decision from the composer posts as a comment or goes into the description, and a draft
+    /// with a problem posts nothing (task b0f521c6).
+    /// </summary>
+    [Fact]
+    public async Task A_decision_posts_as_a_comment_or_into_the_description_task_b0f521c6()
+    {
+        var core = new FakeCore().AnswerOk("postComment").AnswerOk("updateTask").AnswerOk("taskDetail", Detail());
+        var view = new TaskDetailViewModel(core);
+        await view.OpenAsync("t1");
+
+        var draft = new DecisionDraft { Question = "Which?" };
+        draft.Options[0].Text = "A";
+        Assert.False(await view.PostDecisionAsync(draft, inDescription: false));
+        Assert.DoesNotContain(core.Sent, sent => sent.Contains("postComment"));
+
+        draft.Options[1].Text = "B";
+        Assert.True(await view.PostDecisionAsync(draft, inDescription: false));
+        Assert.Contains("**Decision:** Which?", core.Sent.First(sent => sent.Contains("postComment")));
+
+        await view.PostDecisionAsync(draft, inDescription: true);
+        Assert.Contains(core.Sent, sent => sent.Contains("\"description\"") && sent.Contains("**Decision:** Which?"));
+    }
+
+    /// <summary>
     /// The Send button and the Return key have to agree about whether there is anything to send —
     /// an offered Send that does nothing when clicked is worse than no Send at all.
     /// </summary>

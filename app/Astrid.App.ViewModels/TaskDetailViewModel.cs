@@ -1873,6 +1873,27 @@ public sealed class TaskDetailViewModel : ObservableObject
         return true;
     }
 
+    /// <summary>
+    /// Post a decision written in the composer (task b0f521c6): as a comment, or after what the
+    /// description already says. Nothing is posted while the draft has a problem.
+    /// </summary>
+    /// <remarks>
+    /// The description is appended to as it was last saved, not as an open editor holds it, so a
+    /// half-typed edit is neither saved behind the writer's back nor thrown away.
+    /// </remarks>
+    public Task<bool> PostDecisionAsync(DecisionDraft draft, bool inDescription,
+        CancellationToken cancellationToken = default)
+    {
+        if (draft.CurrentProblem is not null)
+        {
+            return Task.FromResult(false);
+        }
+        return inDescription
+            ? UpdateAsync(new Dictionary<string, object?> { ["description"] = draft.AppendedTo(_savedDescription) },
+                cancellationToken)
+            : AddCommentAsync(draft.Markdown, cancellationToken);
+    }
+
     // ── @person, #list, !task (task 3271a0c5) ───────────────────────────────────────────────
     //
     // The comment box and the reply box share one popup. When a popup opens, what is offered,

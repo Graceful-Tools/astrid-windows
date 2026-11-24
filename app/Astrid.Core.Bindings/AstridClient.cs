@@ -134,6 +134,45 @@ public sealed class AstridClient : IAstridCore, IDisposable
         return answer.Ok ? answer.ValueAs<string>() ?? "other" : "other";
     }
 
+    /// <summary>
+    /// Markdown drawn as the core draws a description or a comment — the <c>renderMarkdown</c>
+    /// rule (task b0f521c6).
+    /// </summary>
+    /// <remarks>
+    /// For text that is not saved yet: the decision composer's preview. A saved description or
+    /// comment arrives already rendered, so nothing else needs this. A refusal draws nothing,
+    /// because an empty preview is a better failure than an exception while typing.
+    /// </remarks>
+    public static IReadOnlyList<MarkdownBlock> RenderMarkdown(string text)
+    {
+        var request = JsonSerializer.Serialize(new RenderMarkdownRequest { Text = text });
+        var answer = AstridResponse.Parse(Rule(request));
+        return answer.Ok ? answer.ValueAs<List<MarkdownBlock>>() ?? [] : [];
+    }
+
+    /// <summary>
+    /// Every rating token and what it means, worst to best — the core's <c>ratingKey</c> rule
+    /// (task b0f521c6).
+    /// </summary>
+    /// <remarks>
+    /// The tokens are a contract with web (<c>PRODUCT_CONTRACT.md</c> §8), so a picker offering
+    /// them asks rather than lists them.
+    /// </remarks>
+    public static IReadOnlyList<RatingKeyEntry> RatingKey()
+    {
+        var answer = AstridResponse.Parse(Rule("{\"kind\":\"ratingKey\"}"));
+        return answer.Ok ? answer.ValueAs<List<RatingKeyEntry>>() ?? [] : [];
+    }
+
+    private sealed record RenderMarkdownRequest
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("kind")]
+        public string Kind { get; init; } = "renderMarkdown";
+
+        [System.Text.Json.Serialization.JsonPropertyName("text")]
+        public string Text { get; init; } = string.Empty;
+    }
+
     private sealed record PluralCategoryRequest
     {
         [System.Text.Json.Serialization.JsonPropertyName("kind")]
@@ -411,6 +450,17 @@ public sealed class AstridClient : IAstridCore, IDisposable
         }
     }
 }
+
+/// <summary>
+/// One row of the core's rating key: a token and the rating it means (task b0f521c6).
+/// </summary>
+/// <param name="Token">As written in a grid cell: <c>++</c>, <c>~</c>, <c>🟢</c>.</param>
+/// <param name="LabelKey"><c>veryPoor</c> … <c>veryGood</c>, which names the colour too.</param>
+/// <param name="Rank">0 (worst) to 4 (best).</param>
+public sealed record RatingKeyEntry(
+    [property: System.Text.Json.Serialization.JsonPropertyName("token")] string Token,
+    [property: System.Text.Json.Serialization.JsonPropertyName("labelKey")] string LabelKey,
+    [property: System.Text.Json.Serialization.JsonPropertyName("rank")] int Rank);
 
 /// <summary>The core would not start.</summary>
 public sealed class AstridStartupException(string message) : Exception(message);
