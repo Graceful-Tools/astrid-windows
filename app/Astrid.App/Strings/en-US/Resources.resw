@@ -752,10 +752,10 @@
     <value>Assignee</value>
   </data>
   <data name="attach_a_file.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
-    <value>Attach a file</value>
+    <value>Add</value>
   </data>
   <data name="attach_a_file.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
-    <value>Attach a file</value>
+    <value>Add</value>
   </data>
   <data name="attachments.Text" xml:space="preserve">
     <value>Attachments</value>
@@ -2442,5 +2442,83 @@
   </data>
   <data name="all_filters.Header" xml:space="preserve">
     <value>All filters</value>
+  </data>
+  <data name="decision_composer_title" xml:space="preserve">
+    <value>Ask for a decision</value>
+  </data>
+  <data name="decision_composer_question" xml:space="preserve">
+    <value>Question</value>
+  </data>
+  <data name="decision_composer_question_placeholder" xml:space="preserve">
+    <value>What needs deciding?</value>
+  </data>
+  <data name="decision_composer_options" xml:space="preserve">
+    <value>Options</value>
+  </data>
+  <data name="decision_composer_option_placeholder" xml:space="preserve">
+    <value>Option</value>
+  </data>
+  <data name="decision_composer_add_option" xml:space="preserve">
+    <value>Add option</value>
+  </data>
+  <data name="decision_composer_needs_two_options" xml:space="preserve">
+    <value>Write at least two options.</value>
+  </data>
+  <data name="decision_composer_recommend_hint" xml:space="preserve">
+    <value>Click the star to recommend one.</value>
+  </data>
+  <data name="decision_composer_criteria" xml:space="preserve">
+    <value>Trade-offs (optional)</value>
+  </data>
+  <data name="decision_composer_criterion_placeholder" xml:space="preserve">
+    <value>Criterion, e.g. Cost</value>
+  </data>
+  <data name="decision_composer_criterion_detail_placeholder" xml:space="preserve">
+    <value>What it means (optional)</value>
+  </data>
+  <data name="decision_composer_add_criterion" xml:space="preserve">
+    <value>Add criterion</value>
+  </data>
+  <data name="decision_composer_criteria_hint" xml:space="preserve">
+    <value>Rate each option from red to green on each criterion. There is no score: you decide.</value>
+  </data>
+  <data name="decision_composer_reason_placeholder" xml:space="preserve">
+    <value>Note (optional), e.g. 2 days of work</value>
+  </data>
+  <data name="decision_composer_reason_needs_colour" xml:space="preserve">
+    <value>Pick a colour for every reason you write.</value>
+  </data>
+  <data name="decision_composer_post_to" xml:space="preserve">
+    <value>Post to</value>
+  </data>
+  <data name="decision_composer_as_comment" xml:space="preserve">
+    <value>Comment</value>
+  </data>
+  <data name="decision_composer_in_description" xml:space="preserve">
+    <value>Description</value>
+  </data>
+  <data name="decision_composer_comment_hint" xml:space="preserve">
+    <value>Posted as a comment. Clicking an option answers it in the thread.</value>
+  </data>
+  <data name="decision_composer_description_hint" xml:space="preserve">
+    <value>Added to the end of the description.</value>
+  </data>
+  <data name="decision_composer_preview" xml:space="preserve">
+    <value>Preview</value>
+  </data>
+  <data name="decision_composer_post" xml:space="preserve">
+    <value>Post</value>
+  </data>
+  <data name="decision_composer_remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="decision_recommended" xml:space="preserve">
+    <value>Recommended</value>
+  </data>
+  <data name="comment_attach_file.Text" xml:space="preserve">
+    <value>Attach a file</value>
+  </data>
+  <data name="comment_ask_decision.Text" xml:space="preserve">
+    <value>Ask for a decision</value>
   </data>
 </root>

@@ -570,6 +570,19 @@ public sealed partial class TaskDetailPane : UserControl
         }
     }
 
+    /// <summary>
+    /// Ask for a decision (task b0f521c6): the composer writes it, the view model posts it.
+    /// </summary>
+    private async void OnAskForDecision(object sender, RoutedEventArgs args)
+    {
+        var answer = await DecisionComposerDialog.AskAsync(XamlRoot, ThemedBrush,
+            postsAsComment: Shell.Detail.ShowsCommentComposer);
+        if (answer is { } chosen)
+        {
+            await Shell.Detail.PostDecisionAsync(chosen.Draft, chosen.InDescription);
+        }
+    }
+
     private async void OnReminderFlyoutOpening(object sender, object args)
     {
         await Shell.Detail.LoadReminderPicksAsync();
