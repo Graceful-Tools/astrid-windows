@@ -297,4 +297,84 @@ public sealed class LeadingPickerTests
         Assert.Equal(3, view.LeadingPicker.Priority);
         Assert.True(view.LeadingPicker.IsRepeating);
     }
+
+    /// <summary>A row carrying the core's <c>completionNeedsConfirmation</c> and its holder.</summary>
+    private static object AskingRow(string id, bool asks, string? holderName, bool completed = false)
+        => new
+        {
+            id,
+            title = "Water roses",
+            completed,
+            priority = 0,
+            due = new { key = "none" },
+            isOverdue = false,
+            leading = new { kind = holderName is null ? "unassigned" : "avatar", userId = holderName is null ? null : "them" },
+            action = "openPicker",
+            completionNeedsConfirmation = asks,
+            assignee = holderName is null ? null : new { id = "them", name = holderName },
+            depth = 0,
+            listChips = Array.Empty<object>(),
+        };
+
+    private static async Task<(FakeCore Core, TaskListViewModel View)> OpenPickerOn(object row)
+    {
+        var core = new FakeCore()
+            .AnswerOk("rowsForList", Rows(row))
+            .AnswerOk("assigneeOptions", new
+            {
+                assigneeId = (string?)null,
+                options = new[] { new { userId = (string?)"me", name = (string?)"Jon", initials = "J" } },
+            })
+            .AnswerOk("completeTask", new { });
+        var view = new TaskListViewModel(core);
+        await view.OpenAsync("l1", "Garden");
+        Assert.Equal(LeadingOutcome.OpenPicker, await view.ActivateLeadingAsync("t9"));
+        return (core, view);
+    }
+
+    /// <summary>
+    /// Someone else's task: the picker's completion row becomes the question — "Assigned to Ana",
+    /// then Cancel / Complete — and only Complete writes (task d02d76e4, web ADEV-71). The flag is
+    /// the core's <c>completionNeedsConfirmation</c>, read off the row, never worked out here.
+    /// </summary>
+    [Fact]
+    public async Task Completing_someone_elses_task_asks_first_task_d02d76e4()
+    {
+        var (core, view) = await OpenPickerOn(AskingRow("t9", asks: true, holderName: "Ana"));
+        var picker = view.LeadingPicker;
+
+        Assert.True(picker.AsksBeforeCompleting);
+        Assert.Equal("tasks.confirmCompleteAssigned", picker.HolderLineKey);
+        Assert.Equal("Ana", picker.HolderName);
+        Assert.DoesNotContain(core.Sent, json => json.Contains("\"kind\":\"completeTask\""));
+
+        Assert.True(await picker.CompleteAsync());
+        Assert.Contains(core.Sent, json => json.Contains("\"kind\":\"completeTask\""));
+    }
+
+    /// <summary>Nobody's task asks too, and its holder line says nobody holds it (task d02d76e4).</summary>
+    [Fact]
+    public async Task Completing_an_unassigned_task_asks_first_task_d02d76e4()
+    {
+        var (_, view) = await OpenPickerOn(AskingRow("t9", asks: true, holderName: null));
+
+        Assert.True(view.LeadingPicker.AsksBeforeCompleting);
+        Assert.Equal("tasks.confirmCompleteUnassigned", view.LeadingPicker.HolderLineKey);
+        Assert.Null(view.LeadingPicker.HolderName);
+    }
+
+    /// <summary>
+    /// When the core says not to ask — reopening a finished task, or the reader's own — the picker
+    /// keeps its plain "Mark as done" row (task d02d76e4).
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task The_picker_does_not_ask_when_the_core_says_not_to_task_d02d76e4(bool completed)
+    {
+        var (_, view) = await OpenPickerOn(
+            AskingRow("t9", asks: false, holderName: "Ana", completed: completed));
+
+        Assert.False(view.LeadingPicker.AsksBeforeCompleting);
+    }
 }

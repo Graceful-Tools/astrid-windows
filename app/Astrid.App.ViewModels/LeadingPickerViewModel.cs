@@ -57,6 +57,8 @@ public sealed class LeadingPickerViewModel : ObservableObject
     private bool _showsProjectState;
     private bool _completed;
     private bool _isRepeating;
+    private bool _asksBeforeCompleting;
+    private string? _holderName;
     private bool _isLoading;
 
     /// <param name="core">The boundary. Every option and every pick is a command.</param>
@@ -124,6 +126,40 @@ public sealed class LeadingPickerViewModel : ObservableObject
     /// </summary>
     public string CompletionKey => Completed ? "tasks.markAsTodo" : "tasks.markAsDone";
 
+    /// <summary>
+    /// Whether the completion row is a question rather than a click: the holder line, then Cancel
+    /// and Complete (task d02d76e4, web ADEV-71).
+    /// </summary>
+    /// <remarks>
+    /// The row's <see cref="TaskRow.CompletionNeedsConfirmation"/> — the core's answer for someone
+    /// else's task or nobody's. Reopening never asks; the core already says false for it.
+    /// </remarks>
+    public bool AsksBeforeCompleting
+    {
+        get => _asksBeforeCompleting;
+        private set => Set(ref _asksBeforeCompleting, value);
+    }
+
+    /// <summary>Who holds the task, for the question's holder line; null when nobody does.</summary>
+    public string? HolderName
+    {
+        get => _holderName;
+        private set
+        {
+            if (Set(ref _holderName, value))
+            {
+                Raise(nameof(HolderLineKey));
+            }
+        }
+    }
+
+    /// <summary>
+    /// The holder line's word: "Assigned to {0}", or "Not assigned to anyone". Web's keys.
+    /// </summary>
+    public string HolderLineKey => HolderName is null
+        ? "tasks.confirmCompleteUnassigned"
+        : "tasks.confirmCompleteAssigned";
+
     /// <summary>True while the options are being fetched.</summary>
     public bool IsLoading
     {
@@ -155,6 +191,10 @@ public sealed class LeadingPickerViewModel : ObservableObject
         Priority = row.Priority;
         Completed = row.Completed;
         IsRepeating = row.IsRepeating;
+        AsksBeforeCompleting = row.CompletionNeedsConfirmation;
+        HolderName = row.Assignee is { } holder
+            ? holder.Name is { Length: > 0 } name ? name : holder.Email ?? holder.Id
+            : null;
         ShowsProjectState = row.PickerShowsProjectState;
         Assignees.Clear();
         StatusChoices.Clear();

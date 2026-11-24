@@ -281,8 +281,12 @@ public sealed class ShellSmokeTests
         // This test used to invoke "Complete Buy oat milk" directly. That stopped existing when
         // the picker landed, and nothing caught it: the UI suite is `predeploy:full`, not
         // `predeploy`, so the gate on that change was green with this test broken.
+        //
+        // And since task d02d76e4 the picker asks before completing a task that is not the
+        // reader's (the core's completionNeedsConfirmation, web ADEV-71), so an unassigned task's
+        // completion row is "Not assigned to anyone" with Cancel / Complete, not "Mark as done".
         app.Invoke("Options for Buy oat milk");
-        app.Invoke("Mark as done");
+        app.Invoke("Complete");
 
         // The list hides finished tasks after a moment; what matters is that nothing fell over.
         Assert.False(File.Exists(app.CrashLogPath), Crash(app));
