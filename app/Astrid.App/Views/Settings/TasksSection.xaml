@@ -30,7 +30,7 @@
                   ItemTemplate="{StaticResource DefaultChoiceTemplate}"
                   SelectedItem="{x:Bind Shell.Settings.Tasks.SelectedDueOffset, Mode=OneWay}"
                   SelectionChanged="OnSmartTaskChoiceChosen" />
-        <TextBlock x:Name="DueOffsetHint" FontSize="11" TextWrapping="Wrap"
+        <TextBlock x:Name="DueOffsetHint" FontSize="{StaticResource AstridTypeCompactLabelSize}" TextWrapping="Wrap"
                    Foreground="{ThemeResource AstridTextMuted}" />
         <ComboBox x:Uid="due_time_box" x:Name="DueTimeBox"
                   HorizontalAlignment="Stretch"
@@ -39,7 +39,7 @@
                   ItemTemplate="{StaticResource DefaultChoiceTemplate}"
                   SelectedItem="{x:Bind Shell.Settings.Tasks.SelectedDueTime, Mode=OneWay}"
                   SelectionChanged="OnSmartTaskChoiceChosen" />
-        <TextBlock x:Name="DueTimeHint" FontSize="11" TextWrapping="Wrap"
+        <TextBlock x:Name="DueTimeHint" FontSize="{StaticResource AstridTypeCompactLabelSize}" TextWrapping="Wrap"
                    Foreground="{ThemeResource AstridTextMuted}" />
     </StackPanel>
 </UserControl>

@@ -363,6 +363,33 @@ public sealed class ShellSmokeTests
         }
     }
 
+    /// <summary>
+    /// Settings opens and every section loads (task 737b31a8).
+    /// </summary>
+    /// <remarks>
+    /// No UI test reached the settings page before, and a <c>{StaticResource}</c> that does not
+    /// resolve compiles and then throws when the page loads — the type-scale sweep put one in nine
+    /// of these sections. So each section is selected and must draw without a crash log.
+    /// </remarks>
+    [Fact]
+    public void Settings_opens_and_every_section_loads()
+    {
+        using var app = AstridApp.Launch(signedIn: true);
+        app.Invoke("Account");
+        Assert.True(app.Sees("Settings"), "the settings page did not open");
+        foreach (var section in new[]
+                 {
+                     "Account", "Reminders", "Tasks", "AI agents", "Connections", "Contacts",
+                     "Appearance", "Integrations", "Your data",
+                 })
+        {
+            app.Select(section);
+            Assert.False(File.Exists(app.CrashLogPath), $"{section}: {Crash(app)}");
+        }
+        Shoot(app, "settings-your-data");
+        Assert.False(File.Exists(app.CrashLogPath), Crash(app));
+    }
+
     /// <summary>The screens reached from the header: filters, chat, the list's own settings.</summary>
     [Fact]
     public void The_header_panels_all_open()

@@ -66,7 +66,7 @@
                       AutomationProperties.Name="Smart task creation"
                       IsOn="{x:Bind Shell.Settings.Tasks.SmartParsingEnabled, Mode=OneWay}"
                       Toggled="OnSmartParsingToggled" />
-        <TextBlock x:Name="SmartParsingHint" FontSize="11" TextWrapping="Wrap"
+        <TextBlock x:Name="SmartParsingHint" FontSize="{StaticResource AstridTypeCompactLabelSize}" TextWrapping="Wrap"
                    Foreground="{ThemeResource AstridTextMuted}" />
         <ComboBox x:Uid="subtasks_box" x:Name="SubtasksBox" Margin="0,8,0,0"
                   HorizontalAlignment="Stretch"
@@ -75,7 +75,7 @@
                   ItemTemplate="{StaticResource DefaultChoiceTemplate}"
                   SelectedItem="{x:Bind Shell.Settings.Tasks.SelectedSubtaskDisplay, Mode=OneWay}"
                   SelectionChanged="OnSmartTaskChoiceChosen" />
-        <TextBlock x:Name="SubtasksHint" FontSize="11" TextWrapping="Wrap"
+        <TextBlock x:Name="SubtasksHint" FontSize="{StaticResource AstridTypeCompactLabelSize}" TextWrapping="Wrap"
                    Foreground="{ThemeResource AstridTextMuted}" />
     </StackPanel>
 </UserControl>

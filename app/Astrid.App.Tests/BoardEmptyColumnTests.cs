@@ -62,7 +62,9 @@ public sealed class BoardEmptyColumnTests
     public void TaskE0692268_the_message_is_semibold_body_in_the_primary_text()
     {
         var message = Setters("BoardEmptyMessageStyle");
-        Assert.Equal(Num(Body()), message["FontSize"]);
+        // The generated detail-body step, through ShellResources' own copy (task 737b31a8).
+        Assert.Equal("{StaticResource AstridTypeCompactDetailBodySize}", message["FontSize"]);
+        Assert.Equal(Num(Body()), Double("AstridTypeCompactDetailBodySize"));
         Assert.Equal("SemiBold", message["FontWeight"]);
         Assert.Equal("{ThemeResource AstridTextPrimary}", message["Foreground"]);
         Assert.Equal("Wrap", message["TextWrapping"]);

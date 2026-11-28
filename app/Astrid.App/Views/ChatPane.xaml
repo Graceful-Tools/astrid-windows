@@ -86,7 +86,7 @@
                                         HorizontalAlignment="{x:Bind IsMine, Converter={StaticResource BubbleAlign}}">
                                 <!-- "Dana joined the list" is nobody's voice, so it takes no side. -->
                                 <TextBlock Text="{x:Bind Content}"
-                                           FontSize="11"
+                                           FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                            TextWrapping="Wrap"
                                            TextAlignment="Center"
                                            Foreground="{ThemeResource AstridTextMuted}"
@@ -99,7 +99,7 @@
                                         Visibility="{x:Bind IsSystem, Converter={StaticResource NotVisible}}">
                                     <StackPanel Spacing="{StaticResource AstridSpace4}">
                                         <TextBlock Text="{x:Bind Converter={StaticResource Byline}}"
-                                                   FontSize="11"
+                                                   FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                                    FontWeight="SemiBold"
                                                    Foreground="{ThemeResource AstridTextMuted}" />
                                         <!--

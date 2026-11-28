@@ -103,28 +103,28 @@
                                                                    Foreground="{ThemeResource AstridTextMuted}" />
                                                     </Border>
                                                 </StackPanel>
-                                                <TextBlock FontSize="11" Foreground="{ThemeResource AstridTextMuted}">
+                                                <TextBlock FontSize="{StaticResource AstridTypeCompactLabelSize}" Foreground="{ThemeResource AstridTextMuted}">
                                                     <Run x:Uid="acts_as" Text="Acts as " /><Run Text="{x:Bind ActsAs, Converter={StaticResource ActsAs}}" FontFamily="Consolas" />
                                                 </TextBlock>
                                                 <TextBlock Text="{x:Bind ScopeLabel}"
-                                                           FontSize="11"
+                                                           FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                                            FontFamily="Consolas"
                                                            TextWrapping="Wrap"
                                                            Foreground="{ThemeResource AstridTextMuted}"
                                                            Visibility="{x:Bind HasScopes, Converter={StaticResource Visible}}" />
-                                                <TextBlock FontSize="11" Foreground="{ThemeResource AstridTextMuted}">
+                                                <TextBlock FontSize="{StaticResource AstridTypeCompactLabelSize}" Foreground="{ThemeResource AstridTextMuted}">
                                                     <Run x:Uid="created" Text="Created " /><Run Text="{x:Bind CreatedAt, Converter={StaticResource IsoDay}}" /><Run Text=" · " /><Run x:Uid="last_used" Text="Last used " /><Run Text="{x:Bind LastUsedAt, Converter={StaticResource IsoDay}}" />
                                                 </TextBlock>
-                                                <TextBlock FontSize="11" Foreground="{ThemeResource AstridTextMuted}"
+                                                <TextBlock FontSize="{StaticResource AstridTypeCompactLabelSize}" Foreground="{ThemeResource AstridTextMuted}"
                                                            Visibility="{x:Bind HasExpiry, Converter={StaticResource Visible}}">
                                                     <Run x:Uid="expires" Text="Expires " /><Run Text="{x:Bind ExpiresAt, Converter={StaticResource IsoDay}}" />
                                                 </TextBlock>
                                                 <TextBlock Text="{x:Bind Review, Converter={StaticResource ReviewLine}}"
-                                                           FontSize="11"
+                                                           FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                                            Foreground="{ThemeResource SystemFillColorCautionBrush}"
                                                            Visibility="{x:Bind HasReview, Converter={StaticResource Visible}}" />
                                                 <TextBlock x:Uid="manage_in_agents" Text="Managed on the AI agents page"
-                                                           FontSize="11"
+                                                           FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                                            Foreground="{ThemeResource AstridTextMuted}"
                                                            Visibility="{x:Bind ManagedOnAgentsPage, Converter={StaticResource Visible}}" />
                                             </StackPanel>
@@ -194,7 +194,7 @@
                             <StackPanel>
                                 <TextBlock Text="{x:Bind LabelKey, Converter={StaticResource Words}}" />
                                 <TextBlock Text="{x:Bind HintKey, Converter={StaticResource Words}}"
-                                           FontSize="11"
+                                           FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                            Foreground="{ThemeResource AstridTextMuted}" />
                             </StackPanel>
                         </CheckBox>
@@ -231,7 +231,7 @@
                      TextChanged="OnDraftTextChanged" />
             <!-- The first thing to fix, worded in code-behind from the core's key. -->
             <TextBlock x:Name="DraftProblemText"
-                       FontSize="11"
+                       FontSize="{StaticResource AstridTypeCompactLabelSize}"
                        TextWrapping="Wrap"
                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                        Visibility="{x:Bind Shell.Settings.Connections.HasDraftProblem, Mode=OneWay, Converter={StaticResource Visible}}" />
@@ -254,7 +254,7 @@
                 Visibility="{x:Bind Shell.Settings.Connections.HasMintedClient, Mode=OneWay, Converter={StaticResource Visible}}">
             <StackPanel Spacing="6">
                 <TextBlock x:Uid="copy_the_secret_now_it_is" Text="Copy the secret now - it is not shown again."
-                           FontSize="11"
+                           FontSize="{StaticResource AstridTypeCompactLabelSize}"
                            Foreground="{ThemeResource AstridTextMuted}" />
                 <TextBox x:Uid="client_id" Text="{x:Bind Shell.Settings.Connections.MintedClient.ClientId, Mode=OneWay}"
                          AutomationProperties.Name="Client id"

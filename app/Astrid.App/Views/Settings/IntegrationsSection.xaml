@@ -61,7 +61,7 @@
                     Visibility="{x:Bind Shell.Settings.Agents.HasCopilotToken, Mode=OneWay, Converter={StaticResource Visible}}">
                 <StackPanel Spacing="6">
                     <TextBlock x:Uid="copy_the_token_now_it_is" Text="Copy the token now - it is not shown again."
-                               FontSize="11"
+                               FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                Foreground="{ThemeResource AstridTextMuted}" />
                     <TextBox x:Uid="cloud_agent_token" Text="{x:Bind Shell.Settings.Agents.CopilotToken.Token, Mode=OneWay}"
                              AutomationProperties.Name="Cloud-agent token"

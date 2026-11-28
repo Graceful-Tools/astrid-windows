@@ -144,7 +144,7 @@
                                TextTrimming="CharacterEllipsis"
                                Foreground="{ThemeResource AstridTextPrimary}" />
                     <TextBlock Text="{x:Bind Shell.Settings.Account.Email, Mode=OneWay}"
-                               FontSize="11"
+                               FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                TextTrimming="CharacterEllipsis"
                                Foreground="{ThemeResource AstridTextMuted}" />
                     <!--
@@ -154,13 +154,13 @@
                     -->
                     <StackPanel Orientation="Horizontal" Spacing="{StaticResource AstridSpace12}" Margin="0,4,0,0">
                         <TextBlock Text="{x:Bind Shell.Settings.Account.Stats, Mode=OneWay, Converter={StaticResource StatFinished}}"
-                                   FontSize="11"
+                                   FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                    Foreground="{ThemeResource AstridTextMuted}" />
                         <TextBlock Text="{x:Bind Shell.Settings.Account.Stats, Mode=OneWay, Converter={StaticResource StatInspired}}"
-                                   FontSize="11"
+                                   FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                    Foreground="{ThemeResource AstridTextMuted}" />
                         <TextBlock Text="{x:Bind Shell.Settings.Account.Stats, Mode=OneWay, Converter={StaticResource StatSupported}}"
-                                   FontSize="11"
+                                   FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                    Foreground="{ThemeResource AstridTextMuted}" />
                     </StackPanel>
                 </StackPanel>

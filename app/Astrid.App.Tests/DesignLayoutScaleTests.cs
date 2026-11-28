@@ -169,6 +169,75 @@ public sealed class DesignLayoutScaleTests
         }
     }
 
+    /// <summary>
+    /// The general compact type steps — label, detail body, row meta, row title — by size, each
+    /// with the generated key a view names instead (task 737b31a8).
+    /// </summary>
+    /// <remarks>
+    /// Not the Markdown headings: a 15 in a view is not an h2, and naming it one would be a lie the
+    /// next re-vendor acts on. Where two steps share a size (label and row meta are both 11) the
+    /// label is the general one. Row title's 14 is left out on purpose: every 14 in the shell today
+    /// is a glyph or a heading the register gives no step, so mapping it would only mislabel them.
+    /// </remarks>
+    private static Dictionary<string, string> TypeSteps()
+    {
+        var compact = DesignTokenTests.Tokens().GetProperty("type").GetProperty("compact");
+        string Size(string step) =>
+            compact.GetProperty(step).GetProperty("size").GetDouble().ToString(CultureInfo.InvariantCulture);
+        return new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [Size("label")] = "AstridTypeCompactLabelSize",
+            [Size("detail-body")] = "AstridTypeCompactDetailBodySize",
+        };
+    }
+
+    /// <summary>
+    /// No text in a view writes, by hand, a size that is a general compact type step (task 737b31a8).
+    /// </summary>
+    /// <remarks>
+    /// A glyph's size is an icon's, not type: a <c>FontIcon</c>, a <c>FontIcon</c> style's setter,
+    /// and a text element in the symbol font are skipped. An off-scale size (a 12, a 15) is left for
+    /// a by-eye pass, as the radius and space checks above leave theirs.
+    /// </remarks>
+    [Fact]
+    public void No_text_restates_a_compact_type_step_task_737b31a8()
+    {
+        var steps = TypeSteps();
+        var restated = new List<string>();
+        foreach (var (file, text) in ViewTexts().Append(("ShellResources.xaml",
+                     File.ReadAllText(Path.Combine(LocalisationTests.AppDirectory(), "Views", "ShellResources.xaml")))))
+        {
+            foreach (Match tag in Regex.Matches(text, @"<(?<name>[\w:.]+)\b(?<attrs>[^>]*?)>", RegexOptions.Singleline))
+            {
+                var attrs = tag.Groups["attrs"].Value;
+                if (tag.Groups["name"].Value == "FontIcon" || Regex.IsMatch(attrs, "SymbolThemeFontFamily|Segoe Fluent Icons|Segoe MDL2"))
+                {
+                    continue;
+                }
+                var size = Regex.Match(attrs, @"\bFontSize=""(?<value>[0-9.]+)""");
+                if (size.Success && steps.TryGetValue(size.Groups["value"].Value, out var key))
+                {
+                    restated.Add($"{file}: <{tag.Groups["name"].Value} {size.Value}> is {{StaticResource {key}}}");
+                }
+            }
+            foreach (Match style in Regex.Matches(text, @"<Style\b[^>]*?TargetType=""(?<target>[^""]+)""[^>]*>.*?</Style>", RegexOptions.Singleline))
+            {
+                if (style.Groups["target"].Value.Contains("FontIcon", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+                foreach (Match setter in Regex.Matches(style.Value, @"<Setter Property=""FontSize"" Value=""(?<value>[0-9.]+)"""))
+                {
+                    if (steps.TryGetValue(setter.Groups["value"].Value, out var key))
+                    {
+                        restated.Add($"{file}: {setter.Value} is {{StaticResource {key}}}");
+                    }
+                }
+            }
+        }
+        Assert.True(restated.Count == 0, string.Join(Environment.NewLine, restated.Distinct()));
+    }
+
     /// <summary>The generated <c>layout.*</c> keys: rows, board, detail panel, subtask indent.</summary>
     private static IEnumerable<string> LayoutKeys() =>
         GeneratedKeys().Where(key => Regex.IsMatch(key, "^Astrid(Board|Row|Detail|Subtask)"));
@@ -242,7 +311,10 @@ public sealed class DesignLayoutScaleTests
         var path = Path.Combine(LocalisationTests.AppDirectory(), "Views", "ShellResources.xaml");
         var shell = XDocument.Load(path).Root!;
         var text = File.ReadAllText(path);
-        var layout = LayoutKeys().ToHashSet(StringComparer.Ordinal);
+        // The type steps too (task 737b31a8): the same load-order reason, the same two rules.
+        var layout = LayoutKeys()
+            .Concat(GeneratedKeys().Where(key => key.StartsWith("AstridType", StringComparison.Ordinal)))
+            .ToHashSet(StringComparer.Ordinal);
 
         var wrong = new List<string>();
         foreach (var copy in shell.Elements())

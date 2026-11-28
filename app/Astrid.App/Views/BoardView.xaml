@@ -138,7 +138,7 @@
                             cannot disagree about one task.
                         -->
                         <TextBlock Text="{x:Bind Identifier}"
-                                   FontSize="11"
+                                   FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                    Foreground="{ThemeResource AstridTextMuted}"
                                    Visibility="{x:Bind ShowsIdentifier, Converter={StaticResource Visible}}" />
                         <TextBlock Text="{x:Bind Title}"
@@ -160,7 +160,7 @@
                                        Style="{StaticResource DonePillTextStyle}" />
                         </Border>
                         <TextBlock Text="{x:Bind Due, Converter={StaticResource DueText}}"
-                                   FontSize="11"
+                                   FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                    Foreground="{ThemeResource AstridTextMuted}" />
                     </StackPanel>
                 </Grid>
@@ -283,13 +283,13 @@
                                                  beside it, and saying it twice is how a
                                                  column comes to read "Inbox (15) 15". -->
                                             <TextBlock Text="{x:Bind Name}"
-                                                       FontSize="13"
+                                                       FontSize="{StaticResource AstridTypeCompactDetailBodySize}"
                                                        FontWeight="SemiBold"
                                                        TextTrimming="CharacterEllipsis"
                                                        Foreground="{ThemeResource AstridTextPrimary}" />
                                             <TextBlock Text="{x:Bind Description}"
                                                        TextWrapping="Wrap"
-                                                       FontSize="11"
+                                                       FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                                        Foreground="{ThemeResource AstridTextMuted}"
                                                        Visibility="{x:Bind Description, Converter={StaticResource Visible}}" />
                                         </StackPanel>
@@ -431,7 +431,7 @@
                                                         local:PriorityOutline.Priority="{x:Bind QuickAddPriority, Mode=OneWay}"
                                                         Visibility="{x:Bind QuickAddIsSquare, Mode=OneWay, Converter={StaticResource Visible}}">
                                                     <TextBlock Text="{x:Bind QuickAddMark, Mode=OneWay}"
-                                                               FontSize="11" FontWeight="SemiBold"
+                                                               FontSize="{StaticResource AstridTypeCompactLabelSize}" FontWeight="SemiBold"
                                                                local:PriorityOutline.Priority="{x:Bind QuickAddPriority, Mode=OneWay}"
                                                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                 </Border>

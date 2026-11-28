@@ -80,7 +80,7 @@
                       ItemTemplate="{StaticResource DefaultChoiceTemplate}"
                       SelectedItem="{x:Bind Shell.Settings.Reminders.SelectedCalendarSyncChoice, Mode=OneWay}"
                       SelectionChanged="OnCalendarSyncTypeChosen" />
-            <TextBlock FontSize="11" TextWrapping="Wrap"
+            <TextBlock FontSize="{StaticResource AstridTypeCompactLabelSize}" TextWrapping="Wrap"
                        Foreground="{ThemeResource AstridTextMuted}"
                        Text="{x:Bind Shell.Settings.Reminders.CalendarSyncDescriptionKey, Mode=OneWay, Converter={StaticResource Words}}" />
             <StackPanel Spacing="{StaticResource AstridSpace4}"
@@ -101,7 +101,7 @@
                             VerticalAlignment="Bottom"
                             Click="OnCopyCalendarFeed" />
                 </Grid>
-                <TextBlock x:Uid="calendar_feed_hint" FontSize="11" TextWrapping="Wrap"
+                <TextBlock x:Uid="calendar_feed_hint" FontSize="{StaticResource AstridTypeCompactLabelSize}" TextWrapping="Wrap"
                            Foreground="{ThemeResource AstridTextMuted}"
                            Text="Paste this address into your calendar app to subscribe. It updates as your tasks change." />
             </StackPanel>

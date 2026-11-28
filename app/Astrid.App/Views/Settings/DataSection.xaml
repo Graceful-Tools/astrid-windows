@@ -16,7 +16,7 @@
             <Button x:Uid="export_as_csv" Content="Export as CSV" Tag="csv"
                     Click="OnExportAccount" />
         </StackPanel>
-        <TextBlock FontSize="11"
+        <TextBlock FontSize="{StaticResource AstridTypeCompactLabelSize}"
                    TextWrapping="Wrap"
                    Foreground="{ThemeResource AstridTextMuted}"
                    Text="{x:Bind Shell.Settings.Data.LastExportPath, Mode=OneWay}"

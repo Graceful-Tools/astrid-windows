@@ -11,10 +11,11 @@ namespace Astrid.App.ViewModels;
 /// takes the compact steps — the Mac's sizes — over <c>type.compact.detail-body</c>.
 /// </para>
 /// <para>
-/// The numbers are written here only because the generated <c>design/AstridTokens.xaml</c> has no
-/// type scale yet: astrid-core's Windows emitter writes none. <c>MarkdownTypeScaleTests</c> holds
-/// every one to the vendored <c>tokens.resolved.json</c>, so a re-vendor that moves a step fails
-/// until this follows. It lives outside the WinUI assembly so that test can reach it.
+/// The generated <c>design/AstridTokens.xaml</c> carries these steps since ADEV-217 (task
+/// <c>737b31a8</c>), so the renderer draws the dictionary's values through <see cref="BodyKeys"/> and
+/// <see cref="HeadingKeys"/>. The numbers stay as the fallback for a renderer used before the
+/// application's resources exist, and because this assembly cannot reach WinUI resources at all;
+/// <c>MarkdownTypeScaleTests</c> holds both the numbers and the keys to the vendored dictionary.
 /// </para>
 /// </remarks>
 public static class MarkdownTypeScale
@@ -32,4 +33,15 @@ public static class MarkdownTypeScale
         2 => (15, 600),
         _ => (13, 600),
     };
+
+    /// <summary>The generated keys holding <see cref="Body"/>.</summary>
+    public static (string Size, string Weight) BodyKeys { get; } =
+        ("AstridTypeCompactDetailBodySize", "AstridTypeCompactDetailBodyWeight");
+
+    /// <summary>The generated keys holding <see cref="Heading"/> at this level.</summary>
+    public static (string Size, string Weight) HeadingKeys(int level)
+    {
+        var step = Math.Clamp(level, 1, 4);
+        return ($"AstridTypeCompactMarkdownH{step}Size", $"AstridTypeCompactMarkdownH{step}Weight");
+    }
 }
