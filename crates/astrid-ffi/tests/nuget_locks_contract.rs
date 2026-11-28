@@ -78,7 +78,11 @@ fn adev_353_every_project_restores_with_a_lockfile_and_ci_restores_locked() {
 #[test]
 fn adev_353_every_project_commits_a_lockfile_that_matches_its_references() {
     let projects = projects();
-    assert!(projects.len() >= 5, "found only {} projects under app/", projects.len());
+    assert!(
+        projects.len() >= 5,
+        "found only {} projects under app/",
+        projects.len()
+    );
     for csproj in projects {
         let dir = csproj.parent().unwrap();
         let lock_path = dir.join("packages.lock.json");
@@ -88,7 +92,11 @@ fn adev_353_every_project_commits_a_lockfile_that_matches_its_references() {
                 csproj.display()
             )
         });
-        assert!(lock.contains("\"dependencies\""), "{} is not a NuGet lockfile", lock_path.display());
+        assert!(
+            lock.contains("\"dependencies\""),
+            "{} is not a NuGet lockfile",
+            lock_path.display()
+        );
         let text = fs::read_to_string(&csproj).unwrap();
         for (name, version) in package_references(&text) {
             assert!(
@@ -103,8 +111,20 @@ fn adev_353_every_project_commits_a_lockfile_that_matches_its_references() {
 
 #[test]
 fn adev_353_windows_checks_the_lockfiles_against_every_ci_restore() {
-    assert!(LOCKS_YML.contains("--locked-mode"), "nuget-locks.yml must restore in locked mode");
-    for restore in ["app/Astrid.sln --locked-mode", "-r $rid", "SelfContained=true", "Astrid.App.UITests", "rewrote"] {
-        assert!(LOCKS_YML.contains(restore), "nuget-locks.yml must cover the restore with {restore}");
+    assert!(
+        LOCKS_YML.contains("--locked-mode"),
+        "nuget-locks.yml must restore in locked mode"
+    );
+    for restore in [
+        "app/Astrid.sln --locked-mode",
+        "-r $rid",
+        "SelfContained=true",
+        "Astrid.App.UITests",
+        "rewrote",
+    ] {
+        assert!(
+            LOCKS_YML.contains(restore),
+            "nuget-locks.yml must cover the restore with {restore}"
+        );
     }
 }
