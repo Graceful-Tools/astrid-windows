@@ -15,7 +15,7 @@
     was given (`dotnet restore -r` sets RuntimeIdentifiers, `dotnet build -r` RuntimeIdentifier,
     both as global properties that win over the line above), which locked mode reports as NU1004 against a two-runtime lockfile, and which would
     rewrite the lockfile with one runtime on every local build. So -r restores neither check nor
-    write it. They resolve the same versions, because no reference floats, and `dotnet test` on the
+    write it: they use a lockfile under obj/. They resolve the same versions, because no reference floats, and `dotnet test` on the
     solution, which every gate runs, is the locked restore that proves it.
   -->
   <PropertyGroup>
@@ -23,10 +23,11 @@
   </PropertyGroup>
   <PropertyGroup>
     <_AstridAllRuntimes Condition="'$(RuntimeIdentifier)' == '' and '$(RuntimeIdentifiers)' == 'win-x64;win-arm64'">true</_AstridAllRuntimes>
-    <RestorePackagesWithLockFile>$(_AstridAllRuntimes)</RestorePackagesWithLockFile>
-    <!-- NuGet uses a packages.lock.json that exists unless this is false, not merely unset. -->
-    <RestorePackagesWithLockFile Condition="'$(_AstridAllRuntimes)' != 'true'">false</RestorePackagesWithLockFile>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <RestoreLockedMode Condition="'$(_AstridAllRuntimes)' == 'true' and '$(CI)' == 'true'">true</RestoreLockedMode>
+    <!-- A -r restore writes a throwaway lockfile under obj/ instead. NuGet refuses
+         RestorePackagesWithLockFile=false while packages.lock.json exists (NU1005). -->
+    <NuGetLockFilePath Condition="'$(_AstridAllRuntimes)' != 'true'">$(MSBuildProjectDirectory)\obj\packages.single-runtime.lock.json</NuGetLockFilePath>
   </PropertyGroup>
 
 </Project>

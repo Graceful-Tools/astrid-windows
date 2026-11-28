@@ -57,7 +57,7 @@ fn package_references(csproj: &str) -> Vec<(String, String)> {
 #[test]
 fn adev_353_every_project_restores_with_a_lockfile_and_ci_restores_locked() {
     assert!(
-        PROPS.contains("<RestorePackagesWithLockFile>$(_AstridAllRuntimes)</RestorePackagesWithLockFile>"),
+        PROPS.contains("<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>"),
         "app/Directory.Build.props must turn lockfiles on for every project"
     );
     assert!(
@@ -70,7 +70,7 @@ fn adev_353_every_project_restores_with_a_lockfile_and_ci_restores_locked() {
     );
     assert!(
         PROPS.contains("<_AstridAllRuntimes Condition=\"'$(RuntimeIdentifier)' == '' and '$(RuntimeIdentifiers)' == 'win-x64;win-arm64'\">true</_AstridAllRuntimes>")
-            && PROPS.contains("<RestorePackagesWithLockFile Condition=\"'$(_AstridAllRuntimes)' != 'true'\">false</RestorePackagesWithLockFile>"),
+            && PROPS.contains("<NuGetLockFilePath Condition=\"'$(_AstridAllRuntimes)' != 'true'\">$(MSBuildProjectDirectory)\\obj\\"),
         "only a restore without -r may use the lockfile: a -r restore resolves one runtime (NU1004)"
     );
 }
