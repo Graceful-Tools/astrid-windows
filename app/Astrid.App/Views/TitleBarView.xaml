@@ -55,7 +55,7 @@
                    VerticalAlignment="Center"
                    AutomationProperties.Name="{x:Bind local:BrandCopy.AppName}" />
             <TextBlock Grid.Column="1" Text="{x:Bind local:BrandCopy.AppName}"
-                       FontSize="13"
+                       FontSize="{StaticResource AstridTypeCompactDetailBodySize}"
                        FontWeight="SemiBold"
                        VerticalAlignment="Center"
                        Foreground="{ThemeResource AstridTextPrimary}" />

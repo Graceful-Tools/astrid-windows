@@ -50,7 +50,7 @@
                                      Click="OnAstridModelChosen">
                             <StackPanel>
                                 <TextBlock Text="{x:Bind Name}" />
-                                <TextBlock FontSize="11" Foreground="{ThemeResource AstridTextMuted}">
+                                <TextBlock FontSize="{StaticResource AstridTypeCompactLabelSize}" Foreground="{ThemeResource AstridTextMuted}">
                                     <Run x:Uid="powered_by" Text="Powered by " /><Run Text="{x:Bind ServiceLabel}" />
                                 </TextBlock>
                             </StackPanel>
@@ -60,7 +60,7 @@
             </ItemsControl>
         </StackPanel>
         <TextBlock Text="{x:Bind local:BrandCopy.AgentModelHint}"
-                   FontSize="11"
+                   FontSize="{StaticResource AstridTypeCompactLabelSize}"
                    TextWrapping="Wrap"
                    Foreground="{ThemeResource AstridTextMuted}" />
 
@@ -121,7 +121,7 @@
                         <TextBlock Grid.Column="2"
                                    Text="{x:Bind Configured, Converter={StaticResource CredentialState}}"
                                    VerticalAlignment="Center"
-                                   FontSize="11"
+                                   FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                    Foreground="{ThemeResource AstridTextMuted}" />
                     </Grid>
                 </DataTemplate>
@@ -158,7 +158,7 @@
                  Title="Copy this now"
                  Message="{x:Bind Shell.Settings.Agents.NewWebhookSecret, Mode=OneWay}" />
         <TextBlock Text="{x:Bind Shell.Settings.Agents.WebhookTestResult, Mode=OneWay}"
-                   FontSize="11"
+                   FontSize="{StaticResource AstridTypeCompactLabelSize}"
                    Foreground="{ThemeResource AstridTextMuted}" />
         <!--
             The server calls back with a client-credentials
@@ -178,7 +178,7 @@
                 Visibility="{x:Bind Shell.Settings.Agents.HasWebhookCredentials, Mode=OneWay, Converter={StaticResource Visible}}">
             <StackPanel Spacing="6">
                 <TextBlock x:Uid="copy_the_secret_now_it_is" Text="Copy the secret now - it is not shown again."
-                           FontSize="11"
+                           FontSize="{StaticResource AstridTypeCompactLabelSize}"
                            Foreground="{ThemeResource AstridTextMuted}" />
                 <TextBox x:Uid="client_id" Text="{x:Bind Shell.Settings.Agents.WebhookCredentials.ClientId, Mode=OneWay}"
                          AutomationProperties.Name="Client id"

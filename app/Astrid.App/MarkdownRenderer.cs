@@ -51,7 +51,8 @@ internal sealed class MarkdownRenderer
 
     private UIElement Block(MarkdownBlock block) => block.Kind switch
     {
-        "heading" => Paragraph(block.Inlines, MarkdownTypeScale.Heading(block.Level),
+        "heading" => Paragraph(block.Inlines,
+            Step(MarkdownTypeScale.HeadingKeys(block.Level), MarkdownTypeScale.Heading(block.Level)),
             new Thickness(0, block.Level <= 2 ? 6 : 4, 0, 0)),
         "code" => CodeBlock(block.Text),
         "list" => List(block),
@@ -64,8 +65,20 @@ internal sealed class MarkdownRenderer
         },
         "table" => Table(block),
         "tradeoffGrid" => TradeoffGrid(block),
-        _ => Paragraph(block.Inlines, MarkdownTypeScale.Body, new Thickness(0)),
+        _ => Paragraph(block.Inlines, Step(MarkdownTypeScale.BodyKeys, MarkdownTypeScale.Body), new Thickness(0)),
     };
+
+    /// <summary>
+    /// A step of the type scale as the generated dictionary states it, or the numbers
+    /// <see cref="MarkdownTypeScale"/> holds when there are no application resources (task 737b31a8).
+    /// </summary>
+    private static (double Size, int Weight) Step((string Size, string Weight) keys, (double Size, int Weight) fallback)
+    {
+        var resources = Application.Current?.Resources;
+        var size = resources?.TryGetValue(keys.Size, out var s) == true && s is double sized ? sized : fallback.Size;
+        var weight = resources?.TryGetValue(keys.Weight, out var w) == true && w is double weighed ? (int)weighed : fallback.Weight;
+        return (size, weight);
+    }
 
     /// <summary>A paragraph in one of <see cref="MarkdownTypeScale"/>'s steps.</summary>
     private RichTextBlock Paragraph(IReadOnlyList<MarkdownInline> inlines,

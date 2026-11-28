@@ -9,9 +9,10 @@ namespace Astrid.App.Tests;
 /// </summary>
 /// <remarks>
 /// The steps are read from the vendored <c>tokens.resolved.json</c>, not typed here, so a
-/// re-vendor that moves a step fails this until <see cref="MarkdownTypeScale"/> follows. The
-/// generated <c>AstridTokens.xaml</c> carries no type scale yet (astrid-core's Windows emitter
-/// writes none), which is why the numbers live in code at all.
+/// re-vendor that moves a step fails this until <see cref="MarkdownTypeScale"/> follows. Since
+/// ADEV-217 the generated <c>AstridTokens.xaml</c> carries the scale too, and the renderer reads it
+/// through the keys <see cref="MarkdownTypeScale"/> names (task <c>737b31a8</c>); the numbers are
+/// the fallback, and both are held here.
 /// </remarks>
 public sealed class MarkdownTypeScaleTests
 {
@@ -62,5 +63,33 @@ public sealed class MarkdownTypeScaleTests
         Assert.Contains("MarkdownTypeScale.Heading(block.Level)", source);
         Assert.Contains("MarkdownTypeScale.Body", source);
         Assert.DoesNotContain("HeadingSize", source);
+    }
+
+    /// <summary>A generated double, by key.</summary>
+    private static double Generated(string key) =>
+        double.Parse(System.Xml.Linq.XDocument.Load(DesignTokenTests.TokenDictionaryPath()).Root!
+            .Elements()
+            .Single(e => (string?)e.Attribute((System.Xml.Linq.XNamespace)"http://schemas.microsoft.com/winfx/2006/xaml" + "Key") == key)
+            .Value, System.Globalization.CultureInfo.InvariantCulture);
+
+    [Fact]
+    public void Task737b31a8_the_keys_the_renderer_reads_hold_the_same_steps()
+    {
+        Assert.Equal(MarkdownTypeScale.Body,
+            (Generated(MarkdownTypeScale.BodyKeys.Size), (int)Generated(MarkdownTypeScale.BodyKeys.Weight)));
+        for (var level = 1; level <= 6; level++)
+        {
+            var keys = MarkdownTypeScale.HeadingKeys(level);
+            Assert.Equal(MarkdownTypeScale.Heading(level), (Generated(keys.Size), (int)Generated(keys.Weight)));
+        }
+    }
+
+    [Fact]
+    public void Task737b31a8_the_renderer_resolves_the_generated_keys()
+    {
+        var source = File.ReadAllText(Path.Combine(DesignTokenTests.RepoRoot(), "app", "Astrid.App",
+            "MarkdownRenderer.cs"));
+        Assert.Contains("MarkdownTypeScale.HeadingKeys(block.Level)", source);
+        Assert.Contains("MarkdownTypeScale.BodyKeys", source);
     }
 }

@@ -39,7 +39,7 @@
             </Border>
             <StackPanel Spacing="{StaticResource AstridSpace4}" VerticalAlignment="Center">
                 <Button x:Name="ChangePhotoButton" Click="OnChangePhoto" />
-                <TextBlock x:Name="PhotoHint" FontSize="11"
+                <TextBlock x:Name="PhotoHint" FontSize="{StaticResource AstridTypeCompactLabelSize}"
                            Foreground="{ThemeResource AstridTextMuted}" />
             </StackPanel>
         </StackPanel>
@@ -118,7 +118,7 @@
                        Text="{x:Bind Shell.Settings.Account.UpdatedOn, Mode=OneWay}" />
             <TextBlock x:Name="InfoIdLabel" Grid.Row="2" Grid.Column="0"
                        Foreground="{ThemeResource AstridTextMuted}" />
-            <TextBlock Grid.Row="2" Grid.Column="1" FontSize="11"
+            <TextBlock Grid.Row="2" Grid.Column="1" FontSize="{StaticResource AstridTypeCompactLabelSize}"
                        FontFamily="Consolas" IsTextSelectionEnabled="True"
                        Text="{x:Bind Shell.Settings.Account.AccountId, Mode=OneWay}" />
         </Grid>
@@ -153,7 +153,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="{x:Bind Label}" />
-                            <TextBlock FontSize="11" Foreground="{ThemeResource AstridTextMuted}"
+                            <TextBlock FontSize="{StaticResource AstridTypeCompactLabelSize}" Foreground="{ThemeResource AstridTextMuted}"
                                        Text="{x:Bind CreatedAt, Converter={StaticResource PasskeyAdded}}" />
                         </StackPanel>
                         <Button x:Uid="rename_passkey" Grid.Column="1" Tag="{x:Bind Id}" Click="OnRenamePasskey"

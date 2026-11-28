@@ -16,7 +16,7 @@
                 <TextBlock Text="{x:Bind Sigil}" Width="14" TextAlignment="Center"
                            Foreground="{ThemeResource AstridTextMuted}" />
                 <TextBlock Text="{x:Bind Label}" />
-                <TextBlock Text="{x:Bind Secondary}" FontSize="11"
+                <TextBlock Text="{x:Bind Secondary}" FontSize="{StaticResource AstridTypeCompactLabelSize}"
                            Foreground="{ThemeResource AstridTextMuted}"
                            VerticalAlignment="Center"
                            Visibility="{x:Bind HasSecondary, Converter={StaticResource Visible}}" />
@@ -316,7 +316,7 @@
                             BorderThickness="1" BorderBrush="{ThemeResource AstridBorder}"
                             AutomationProperties.Name="Won't do"
                             Visibility="{x:Bind Shell.Detail.IsCanceled, Mode=OneWay, Converter={StaticResource Visible}}">
-                        <TextBlock x:Name="WontDoChip" FontSize="11"
+                        <TextBlock x:Name="WontDoChip" FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                    Foreground="{ThemeResource AstridTextSecondary}" />
                     </Border>
                 </StackPanel>
@@ -1251,7 +1251,7 @@
                                                    VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="2" Text="{x:Bind SizeLabel}"
                                                    VerticalAlignment="Center"
-                                                   FontSize="11"
+                                                   FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                                    Foreground="{ThemeResource AstridTextMuted}" />
                                     </Grid>
                                 </Button>
@@ -1290,7 +1290,7 @@
                             Margin="8,0,0,0"
                             Background="Transparent" BorderThickness="0"
                             Padding="4,2"
-                            FontSize="11"
+                            FontSize="{StaticResource AstridTypeCompactLabelSize}"
                             Foreground="{ThemeResource AstridTextMuted}"
                             Content="Show system"
                             AutomationProperties.Name="Show system comments"
@@ -1298,7 +1298,7 @@
                     <Button x:Uid="refresh_comments" x:Name="RefreshCommentsButton" Grid.Column="2"
                             Background="Transparent" BorderThickness="0"
                             Padding="4,2"
-                            FontSize="11"
+                            FontSize="{StaticResource AstridTypeCompactLabelSize}"
                             Foreground="{ThemeResource AstridTextMuted}"
                             AutomationProperties.Name="Refresh comments"
                             ToolTipService.ToolTip="Refresh comments"
@@ -1327,7 +1327,7 @@
                                         HorizontalAlignment="{x:Bind IsMine, Converter={StaticResource BubbleAlign}}">
                                 <!-- A system note is nobody's voice, so it takes neither side. -->
                                 <TextBlock Text="{x:Bind Content}"
-                                           FontSize="11"
+                                           FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                            TextWrapping="Wrap"
                                            TextAlignment="Center"
                                            Foreground="{ThemeResource AstridTextMuted}"
@@ -1365,7 +1365,7 @@
                                         Visibility="{x:Bind ShowsBubble, Converter={StaticResource Visible}}">
                                     <StackPanel Spacing="6">
                                         <TextBlock Text="{x:Bind AuthorName}"
-                                                   FontSize="11"
+                                                   FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                                    FontWeight="SemiBold"
                                                    Foreground="{ThemeResource AstridTextMuted}"
                                                    Visibility="{x:Bind AuthorName, Converter={StaticResource Visible}}" />
@@ -1441,7 +1441,7 @@
                                                                            TextTrimming="CharacterEllipsis"
                                                                            MaxWidth="160" />
                                                                 <TextBlock Text="{x:Bind SizeLabel}"
-                                                                           FontSize="11"
+                                                                           FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                                                            Foreground="{ThemeResource AstridTextMuted}" />
                                                             </StackPanel>
                                                         </Button>
@@ -1450,7 +1450,7 @@
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
                                         <TextBlock x:Uid="not_synced_yet" Text="Not synced yet"
-                                                   FontSize="11"
+                                                   FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                                    Foreground="{ThemeResource AstridTextMuted}"
                                                    Visibility="{x:Bind IsPending, Converter={StaticResource Visible}}" />
                                     </StackPanel>
@@ -1507,7 +1507,7 @@
                 <!-- What the last timed run came to. The button is in the bar below. -->
                 <TextBlock Margin="0,10,0,0"
                            TextAlignment="Center"
-                           FontSize="11"
+                           FontSize="{StaticResource AstridTypeCompactLabelSize}"
                            Foreground="{ThemeResource AstridTextMuted}"
                            Text="{x:Bind Shell.Detail.Timer, Mode=OneWay, Converter={StaticResource LoggedTime}}"
                            Visibility="{x:Bind Shell.Detail.HasLoggedTime, Mode=OneWay, Converter={StaticResource Visible}}" />

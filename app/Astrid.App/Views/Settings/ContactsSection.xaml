@@ -24,7 +24,7 @@
                 <DataTemplate x:DataType="bindings:ContactSummary">
                     <StackPanel Padding="0,3">
                         <TextBlock Text="{x:Bind Label}" />
-                        <TextBlock Text="{x:Bind Email}" FontSize="11"
+                        <TextBlock Text="{x:Bind Email}" FontSize="{StaticResource AstridTypeCompactLabelSize}"
                                    Foreground="{ThemeResource AstridTextMuted}" />
                     </StackPanel>
                 </DataTemplate>
