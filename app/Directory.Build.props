@@ -1,0 +1,23 @@
+<Project>
+
+  <!--
+    Every NuGet version a restore resolves is locked (ADEV-353): each project commits a
+    packages.lock.json, transitive packages included, so a version cannot change without a commit
+    that shows it, and astrid-web's Socket gate checks every one of them on each pull request.
+
+    CI restores in locked mode: GitHub Actions sets CI=true, and a restore that would change a
+    lockfile fails instead of quietly resolving something new. Locally a restore updates the
+    lockfile, and the diff is part of the change. How to add or upgrade a package: docs/DEPENDENCIES.md.
+
+    RuntimeIdentifiers on every project, not only the app: the app is built with -r win-x64 and
+    -r win-arm64, which restores the projects it references for that runtime too, while
+    `dotnet test` restores them without one. Naming both runtimes everywhere makes every restore
+    produce the same lockfile, so locked mode holds for each of those commands.
+  -->
+  <PropertyGroup>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
+    <RuntimeIdentifiers Condition="'$(RuntimeIdentifiers)' == ''">win-x64;win-arm64</RuntimeIdentifiers>
+  </PropertyGroup>
+
+</Project>

@@ -67,6 +67,10 @@ repo's lockfile, so it needs the network and `cargo install cargo-deny --locked`
 job in `.github/workflows/ci.yml` runs it on every push and PR and again every Monday, because an
 advisory is published between commits. `.github/dependabot.yml` proposes the bumps.
 
+**NuGet versions are locked too** (ADEV-353): every project commits a `packages.lock.json`, and CI
+restores in locked mode. After changing a `PackageReference`, commit the updated lockfiles with it
+(`dotnet restore`, or the `nuget-lockfiles` artifact from a pull request): [docs/DEPENDENCIES.md](./docs/DEPENDENCIES.md).
+
 **`deny.toml` here is GENERATED and must not be hand-edited** (task `32d7c04d`). astrid-core owns
 the content; `cargo xtask gen-deny` there writes `supply-chain/deny.astrid-windows.toml`, and
 `crates/astrid-ffi/tests/supply_chain_contract.rs` asserts this copy against `astrid_core::supply_chain`
