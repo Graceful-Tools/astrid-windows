@@ -804,6 +804,38 @@ public sealed partial class RemoteImageConverter : IValueConverter
 }
 
 /// <summary>
+/// An empty board column's art: its empathy frame when the core sent a local path to one, otherwise
+/// the brand mark (task b9893539).
+/// </summary>
+/// <remarks>
+/// The core answers a path only once the frame is in this installation's cache, so a missing file
+/// here means it was evicted between the answer and the draw. A frame that exists but will not
+/// decode is caught by the view's <c>ImageFailed</c>, which puts the mark back — web's
+/// preload-then-swap, where the mascot stays until the frame has loaded.
+/// </remarks>
+public sealed partial class EmptyFrameConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        if (value is not string path || string.IsNullOrEmpty(path) || !File.Exists(path))
+        {
+            return Brand.SmallMark;
+        }
+        try
+        {
+            return new BitmapImage(new Uri(path));
+        }
+        catch (Exception)
+        {
+            return Brand.SmallMark;
+        }
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>
 /// What goes in the priority-coloured square at the start of a row that is not yours
 /// (PRODUCT_CONTRACT.md §4): the unassigned mark — a resource, because it is the first letter of
 /// the reader's word for "unassigned", not a literal U — or the first letter of the assignee's name.

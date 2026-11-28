@@ -75,6 +75,7 @@
     <local:ChipTintConverter x:Key="ChipTint" />
     <local:ChipColourConverter x:Key="ChipColour" />
     <local:FileThumbnailConverter x:Key="FileThumbnail" />
+    <local:EmptyFrameConverter x:Key="EmptyFrame" />
     <local:RemoteImageConverter x:Key="RemoteImage" />
     <local:ChipGlyphConverter x:Key="ChipGlyph" />
     <local:LeadingMarkConverter x:Key="LeadingMark" />

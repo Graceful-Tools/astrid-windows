@@ -20,19 +20,21 @@ namespace Astrid.App.UITests;
 public sealed class BoardEmptyColumnUITests
 {
     /// <summary>
-    /// What an empty column says today: the generic <c>board.empty.custom</c>, because the core's
-    /// board answer at the current pin does not send each column's key (task 4ac294ab bound the
-    /// key; the core half is filed). When it does, this becomes Ready's own "Nothing queued up!…"
-    /// and the test should assert Doing's and Waiting's own messages too.
+    /// What each empty column says: its OWN message, the key the core's board answer carries per
+    /// column since astrid-core ADEV-347 (task b9893539) — no longer the generic
+    /// <c>board.empty.custom</c> for all of them.
     /// </summary>
-    private const string Message = "Nothing here yet! Drag a task in to move it along.";
+    private const string Ready = "Nothing queued up! Move a task here when it's ready to start.";
+    private const string Doing = "Nothing in progress. Pick something from Ready and get going!";
+    private const string Waiting = "Nothing on hold! Tasks waiting on a date or another task show up here.";
+    private const string Generic = "Nothing here yet! Drag a task in to move it along.";
 
     private readonly Xunit.Abstractions.ITestOutputHelper _output;
 
     public BoardEmptyColumnUITests(Xunit.Abstractions.ITestOutputHelper output) => _output = output;
 
     [Fact]
-    public void An_empty_column_is_the_art_beside_a_speech_bubble_task_e0692268_4ac294ab()
+    public void An_empty_column_is_the_art_beside_a_speech_bubble_task_e0692268_4ac294ab_b9893539()
     {
         using var app = AstridApp.Launch(signedIn: true, seed: Seeds.BoardWithADoneCard);
         Thread.Sleep(1200);
@@ -40,22 +42,26 @@ public sealed class BoardEmptyColumnUITests
         Thread.Sleep(700);
 
         using var shot = Capture.Window(new IntPtr(app.Window.Current.NativeWindowHandle));
-        var saved = shot.SavePng(Path.Combine(Path.GetTempPath(), "astrid-uitests", "board-empty-column-4ac294ab.png"));
+        var saved = shot.SavePng(Path.Combine(Path.GetTempPath(), "astrid-uitests", "board-empty-column-b9893539.png"));
         _output.WriteLine($"capture: {saved}");
 
-        var messages = app.Window.FindAll(TreeScope.Descendants,
-                new PropertyCondition(AutomationElement.NameProperty, Message))
+        AutomationElement[] Said(string message) => app.Window.FindAll(TreeScope.Descendants,
+                new PropertyCondition(AutomationElement.NameProperty, message))
             .Cast<AutomationElement>()
-            .ToList();
-        Assert.True(messages.Count > 0, "no empty column drew the DS36 message");
+            .ToArray();
 
+        var ready = Said(Ready);
+        Assert.True(ready.Length > 0, "Ready's empty column did not say its own message");
         // Doing and Waiting are past the window's edge at the harness's size and report an empty
-        // rectangle; Ready is on screen.
-        var onScreen = messages.Select(message => message.Current.BoundingRectangle)
+        // rectangle, but they are still in the tree; Ready is on screen.
+        Assert.True(Said(Doing).Length > 0, "Doing's empty column did not say its own message");
+        Assert.True(Said(Waiting).Length > 0, "Waiting's empty column did not say its own message");
+        Assert.Empty(Said(Generic));
+
+        var onScreen = ready.Select(message => message.Current.BoundingRectangle)
             .Where(bounds => !bounds.IsEmpty && bounds.Width > 0 && bounds.Height > 0)
             .ToList();
-        _output.WriteLine($"messages {messages.Count}, on screen {onScreen.Count}: {string.Join(" ", onScreen)}");
-        Assert.True(onScreen.Count > 0, "no empty column's message has a size on screen");
-
+        _output.WriteLine($"ready {ready.Length}, on screen {onScreen.Count}: {string.Join(" ", onScreen)}");
+        Assert.True(onScreen.Count > 0, "Ready's empty message has no size on screen");
     }
 }

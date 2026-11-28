@@ -1799,6 +1799,12 @@ public sealed record BoardColumn
     /// </summary>
     [JsonPropertyName("emptyMessageKey")] public string EmptyMessageKey { get; init; } = string.Empty;
 
+    /// <summary>
+    /// The local file of the empathy frame an empty column shows (astrid-core ADEV-347). Null for a
+    /// column holding cards, and while the art is not in this installation's cache.
+    /// </summary>
+    [JsonPropertyName("emptyFramePath")] public string? EmptyFramePath { get; init; }
+
 }
 
 /// <summary>A project board.</summary>

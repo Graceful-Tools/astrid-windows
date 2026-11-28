@@ -96,6 +96,45 @@ fn every_command_the_shell_sends_is_one_the_core_understands() {
 /// the core Windows deliberately leaves alone, so "not needed" is not a reason and will not pass:
 /// say what this shell does instead, or name the task that will bind it.
 const NOT_BOUND: &[(&str, &str)] = &[
+    // ── Goal signals: goal links, estimates, experiments (core ADEV-285, ADEV-328) ───────────
+    // Arrived with the pin bump for task b9893539. Web's GoalChips and the Apple apps' goal chips
+    // are their consumers; this shell's task detail draws no goal chip, estimate or experiment
+    // panel, so there is nothing yet to populate or edit. Binding them is that surface's task.
+    (
+        "getTaskGoalLinks",
+        "A task's goal links, for a goal chip in task detail. This shell's detail has no goal \
+         chip yet, so it reads nothing.",
+    ),
+    (
+        "setTaskGoalLinks",
+        "Writes a task's goal links from that chip. No chip here, so nothing to write.",
+    ),
+    (
+        "unlinkTaskGoal",
+        "Removes one goal from a task from that chip. No chip here, so nothing to remove.",
+    ),
+    (
+        "getListGoalLinks",
+        "A list's goal links, for list settings' goals. This shell's list settings edit no goals \
+         yet.",
+    ),
+    (
+        "setListGoalLinks",
+        "Writes a list's goal links. List settings here edit no goals yet.",
+    ),
+    (
+        "unlinkListGoal",
+        "Removes one goal from a list. List settings here edit no goals yet.",
+    ),
+    (
+        "getTaskEstimate",
+        "A task's trade-off estimate, for an estimate panel in detail. This shell draws no \
+         estimate; the policy sort it feeds is the core's, inside the list answer.",
+    ),
+    (
+        "getTaskExperiment",
+        "A task's experiment results, for an experiment panel in detail. This shell draws none.",
+    ),
     // ── Moving a list between projects (astrid-ios AITD-680, D68) ────────────────────────────
     (
         "setListProject",
