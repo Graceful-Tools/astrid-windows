@@ -36,6 +36,15 @@ public sealed class TaskRowsAlignmentTests
     private static double Left(string? thickness)
     {
         Assert.False(string.IsNullOrWhiteSpace(thickness));
+        // A {StaticResource} names a generated Thickness, as the row padding does (task 5988cf90).
+        var reference = System.Text.RegularExpressions.Regex.Match(thickness!, @"^\{StaticResource (?<key>\w+)\}$");
+        if (reference.Success)
+        {
+            thickness = XDocument.Load(DesignTokenTests.TokenDictionaryPath()).Root!
+                .Elements()
+                .Single(e => (string?)e.Attribute(Xaml + "Key") == reference.Groups["key"].Value)
+                .Value;
+        }
         var parts = thickness!.Split(',', StringSplitOptions.TrimEntries);
         return double.Parse(parts[0], CultureInfo.InvariantCulture);
     }

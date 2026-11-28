@@ -350,12 +350,18 @@
         hand-typed numbers for the next change to retype. The radii come off the scale
         (task 77d17dc8) rather than being chosen per element.
     -->
+    <!--
+        A swimlane card is a board card (DS35): layout.compact.board-card-*, copied here because
+        this style resolves before the merged dictionaries (task 5988cf90). The gap between cards
+        is the cell's Spacing, in ProjectBoardView, rather than a margin on each.
+    -->
+    <CornerRadius x:Key="AstridBoardCardRadius">6</CornerRadius>
+    <Thickness x:Key="AstridBoardCardPadding">8</Thickness>
     <Style x:Key="SwimlaneCardStyle" TargetType="views:BoardCard">
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="HorizontalContentAlignment" Value="Left" />
-        <Setter Property="Margin" Value="0,0,0,6" />
-        <Setter Property="Padding" Value="8,6" />
-        <Setter Property="CornerRadius" Value="{StaticResource AstridRadiusMedium}" />
+        <Setter Property="Padding" Value="{StaticResource AstridBoardCardPadding}" />
+        <Setter Property="CornerRadius" Value="{StaticResource AstridBoardCardRadius}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="BorderBrush" Value="{ThemeResource AstridBorder}" />
         <Setter Property="Background" Value="{ThemeResource AstridSurface}" />
@@ -427,18 +433,22 @@
         does (`theme-bg-secondary`). It was AstridSurfaceHover, which is `bg-tertiary` in Light and
         Dark alike - the DS37 badge's own colour - so the count read as plain caption text.
     -->
-    <x:Double x:Key="AstridBoardColumnMinWidth">250</x:Double>
-    <x:Double x:Key="AstridBoardColumnGap">12</x:Double>
     <Thickness x:Key="AstridBoardInset">16,0,16,16</Thickness>
-    <Thickness x:Key="AstridBoardColumnBodyPadding">10,0</Thickness>
+    <!--
+        This file's own copies of the generated layout tokens its styles use: a style here resolves
+        at load, before the merged dictionaries do. DesignLayoutScaleTests holds each to the
+        generated value and refuses one no style here uses (task 5988cf90).
+    -->
+    <CornerRadius x:Key="AstridBoardColumnRadius">8</CornerRadius>
+    <Thickness x:Key="AstridBoardColumnHeaderPadding">10,10,10,8</Thickness>
     <Style x:Key="BoardColumnStyle" TargetType="Border">
-        <Setter Property="CornerRadius" Value="{StaticResource AstridRadiusMedium}" />
+        <Setter Property="CornerRadius" Value="{StaticResource AstridBoardColumnRadius}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="BorderBrush" Value="{ThemeResource AstridBorder}" />
         <Setter Property="Background" Value="{ThemeResource AstridBgSecondary}" />
     </Style>
     <Style x:Key="BoardColumnHeaderStyle" TargetType="Border">
-        <Setter Property="Padding" Value="10,10,10,8" />
+        <Setter Property="Padding" Value="{StaticResource AstridBoardColumnHeaderPadding}" />
     </Style>
     <!--
         An empty board column (astrid-core DS36, task e0692268): the art beside a speech bubble

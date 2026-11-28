@@ -82,9 +82,11 @@ The sha to take is normally whatever `crates/astrid-ffi/Cargo.toml` pins, since 
 it. Taking a *newer* design revision than the pin is allowed — nothing here compiles — but say so
 in the commit, because the next person to read `REVISION` will assume it is the pin.
 
-**`REVISION` equals the pin** (`a8d279a`, task `c2c185cb`, after the bump in task `8c543a42`). A
-copy taken ahead of the pin is still allowed. When that happens, say so here and close the gap
-at the next bump.
+**`REVISION` is AHEAD of the pin** (task `5988cf90`): `58fe8cb` (astrid-core `main`, 2026-11-27)
+against the pin's `a8d279a`. The pin lacks ADEV-215's compact `layout.*` tokens and the Thickness
+form of the space scale, and ADEV-217's type scale; between the two revisions the only change to
+these three files is those additions to `AstridTokens.xaml`, so no brush moved. Close the gap at
+the next pin bump.
 
 ## What does not follow the tokens, and why
 

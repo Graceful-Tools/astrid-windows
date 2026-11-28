@@ -103,7 +103,13 @@
                     DragOver="OnCardDragOver"
                     Drop="OnCardDropped">
                 <ItemsControl ItemsSource="{x:Bind Cards}"
-                              ItemTemplate="{StaticResource SwimlaneCardTemplate}" />
+                              ItemTemplate="{StaticResource SwimlaneCardTemplate}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Spacing="{StaticResource AstridBoardCardGap}" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
             </Border>
         </DataTemplate>
     </UserControl.Resources>

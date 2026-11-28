@@ -186,7 +186,6 @@
                 <GradientStop Color="#F9FAFB" Offset="1" />
             </LinearGradientBrush>
 
-            <x:Double x:Key="RowIndentPerDepth">24</x:Double>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -33,9 +33,8 @@
             -->
             <views:BoardCard HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Left"
-                    Margin="0,0,0,8"
-                    Padding="10,8"
-                    CornerRadius="10"
+                    Padding="{StaticResource AstridBoardCardPadding}"
+                    CornerRadius="{StaticResource AstridBoardCardRadius}"
                     BorderThickness="1"
                     BorderBrush="{ThemeResource AstridBorder}"
                     Background="{ThemeResource AstridSurface}"
@@ -366,8 +365,17 @@
                                             spliced in among them, so opening a card moves
                                             nothing in the column.
                                         -->
+                                        <!-- layout.compact.board-card-gap between cards; the
+                                             trailing gap keeps the last card off the add field. -->
                                         <ItemsControl ItemsSource="{x:Bind Cards}"
-                                                      ItemTemplate="{StaticResource BoardCardTemplate}" />
+                                                      Padding="0,0,0,8"
+                                                      ItemTemplate="{StaticResource BoardCardTemplate}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Spacing="{StaticResource AstridBoardCardGap}" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                        </ItemsControl>
                                     </StackPanel>
                                 </ScrollViewer>
 
@@ -527,7 +535,7 @@
             -->
             <Grid x:Name="CardCalloutRoot">
                 <Border x:Name="CardCalloutFrame"
-                        CornerRadius="{ThemeResource AstridRadiusLarge}"
+                        CornerRadius="{StaticResource AstridDetailPanelRadius}"
                         BorderThickness="1"
                         BorderBrush="{ThemeResource AstridBorder}"
                         Background="{ThemeResource AstridSurface}">
