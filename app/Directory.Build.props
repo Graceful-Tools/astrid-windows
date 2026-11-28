@@ -21,9 +21,12 @@
   <PropertyGroup>
     <RuntimeIdentifiers Condition="'$(RuntimeIdentifiers)' == ''">win-x64;win-arm64</RuntimeIdentifiers>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(RuntimeIdentifier)' == '' and '$(RuntimeIdentifiers)' == 'win-x64;win-arm64'">
-    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
+  <PropertyGroup>
+    <_AstridAllRuntimes Condition="'$(RuntimeIdentifier)' == '' and '$(RuntimeIdentifiers)' == 'win-x64;win-arm64'">true</_AstridAllRuntimes>
+    <RestorePackagesWithLockFile>$(_AstridAllRuntimes)</RestorePackagesWithLockFile>
+    <!-- NuGet uses a packages.lock.json that exists unless this is false, not merely unset. -->
+    <RestorePackagesWithLockFile Condition="'$(_AstridAllRuntimes)' != 'true'">false</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(_AstridAllRuntimes)' == 'true' and '$(CI)' == 'true'">true</RestoreLockedMode>
   </PropertyGroup>
 
 </Project>

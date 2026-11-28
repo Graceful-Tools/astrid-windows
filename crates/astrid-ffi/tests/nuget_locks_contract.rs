@@ -57,11 +57,11 @@ fn package_references(csproj: &str) -> Vec<(String, String)> {
 #[test]
 fn adev_353_every_project_restores_with_a_lockfile_and_ci_restores_locked() {
     assert!(
-        PROPS.contains("<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>"),
+        PROPS.contains("<RestorePackagesWithLockFile>$(_AstridAllRuntimes)</RestorePackagesWithLockFile>"),
         "app/Directory.Build.props must turn lockfiles on for every project"
     );
     assert!(
-        PROPS.contains("<RestoreLockedMode Condition=\"'$(CI)' == 'true'\">true</RestoreLockedMode>"),
+        PROPS.contains("<RestoreLockedMode Condition=\"'$(_AstridAllRuntimes)' == 'true' and '$(CI)' == 'true'\">true</RestoreLockedMode>"),
         "CI must restore in locked mode, so a restore that would change a lockfile fails"
     );
     assert!(
@@ -69,7 +69,8 @@ fn adev_353_every_project_restores_with_a_lockfile_and_ci_restores_locked() {
         "every project names both runtimes, so the lockfile records both"
     );
     assert!(
-        PROPS.contains("<PropertyGroup Condition=\"'$(RuntimeIdentifier)' == '' and '$(RuntimeIdentifiers)' == 'win-x64;win-arm64'\">"),
+        PROPS.contains("<_AstridAllRuntimes Condition=\"'$(RuntimeIdentifier)' == '' and '$(RuntimeIdentifiers)' == 'win-x64;win-arm64'\">true</_AstridAllRuntimes>")
+            && PROPS.contains("<RestorePackagesWithLockFile Condition=\"'$(_AstridAllRuntimes)' != 'true'\">false</RestorePackagesWithLockFile>"),
         "only a restore without -r may use the lockfile: a -r restore resolves one runtime (NU1004)"
     );
 }
