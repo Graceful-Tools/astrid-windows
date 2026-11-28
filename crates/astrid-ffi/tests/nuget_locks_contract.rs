@@ -69,7 +69,7 @@ fn adev_353_every_project_restores_with_a_lockfile_and_ci_restores_locked() {
         "every project names both runtimes, so the lockfile records both"
     );
     assert!(
-        PROPS.contains("<PropertyGroup Condition=\"'$(RuntimeIdentifier)' == ''\">"),
+        PROPS.contains("<PropertyGroup Condition=\"'$(RuntimeIdentifier)' == '' and '$(RuntimeIdentifiers)' == 'win-x64;win-arm64'\">"),
         "only a restore without -r may use the lockfile: a -r restore resolves one runtime (NU1004)"
     );
 }
