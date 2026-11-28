@@ -1793,6 +1793,12 @@ public sealed record BoardColumn
 
     [JsonPropertyName("cards")] public IReadOnlyList<TaskRow> Cards { get; init; } = [];
 
+    /// <summary>
+    /// The catalog key of what the column says when it is empty (<c>board.empty.*</c>, astrid-core
+    /// ADEV-221): chosen by the column's id and kind, never its name, so a rename keeps it.
+    /// </summary>
+    [JsonPropertyName("emptyMessageKey")] public string EmptyMessageKey { get; init; } = string.Empty;
+
 }
 
 /// <summary>A project board.</summary>

@@ -193,6 +193,13 @@ internal static class Strings
         // The screen reader hears board.card.completed_on instead, so the glyph is never read.
         ["board.card.completed_pill"] = "\u2713 on {0}",
         ["board.card.completed_on"] = "Completed {0}",
+        // What an empty column says, by which column it is (astrid-core ADEV-221, task 4ac294ab).
+        ["board.empty.custom"] = "Nothing here yet! Drag a task in to move it along.",
+        ["board.empty.doing"] = "Nothing in progress. Pick something from Ready and get going!",
+        ["board.empty.done"] = "No finished tasks yet. Complete one and celebrate it here!",
+        ["board.empty.inbox"] = "Nothing new to sort! Tasks without a status land here.",
+        ["board.empty.ready"] = "Nothing queued up! Move a task here when it's ready to start.",
+        ["board.empty.waiting"] = "Nothing on hold! Tasks waiting on a date or another task show up here.",
         ["passkeys.synced"] = "Synced",
         ["passkeys.rename"] = "Rename",
         ["passkeys.revoke"] = "Revoke",
