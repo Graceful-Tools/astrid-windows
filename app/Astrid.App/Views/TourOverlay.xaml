@@ -23,7 +23,7 @@
                 VerticalAlignment="Center"
                 HorizontalAlignment="Center"
                 CornerRadius="{StaticResource AstridRadiusMedium}"
-                Padding="24"
+                Padding="{StaticResource AstridInset24}"
                 Background="{ThemeResource LayerFillColorAltBrush}"
                 BorderThickness="1"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">

@@ -213,7 +213,7 @@
                    AutomationProperties.Name="{x:Bind local:BrandCopy.AppName}" />
             <Grid Grid.Column="1" VerticalAlignment="Top" Margin="0,10,0,0">
                 <Border CornerRadius="{StaticResource AstridRadiusXLarge}"
-                        Padding="16"
+                        Padding="{StaticResource AstridInset16}"
                         BorderThickness="2"
                         BorderBrush="{ThemeResource AstridBorderHover}"
                         Background="{ThemeResource AstridSurfaceHover}">

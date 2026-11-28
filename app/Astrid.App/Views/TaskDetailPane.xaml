@@ -74,7 +74,7 @@
             are pinned by TaskDetailAlignmentTests (task 439e94a4).
         -->
         <Border Grid.Row="0"
-                Padding="16"
+                Padding="{StaticResource AstridInset16}"
                 BorderThickness="0,0,0,1"
                 BorderBrush="{ThemeResource AstridBorder}">
                 <Grid ColumnSpacing="{StaticResource DetailFieldGap}">
@@ -823,7 +823,7 @@
                                                                FontSize="12"
                                                                VerticalAlignment="Center"
                                                                Foreground="White" />
-                                                    <Button Padding="4" MinWidth="0" MinHeight="0"
+                                                    <Button Padding="{StaticResource AstridInset4}" MinWidth="0" MinHeight="0"
                                                             Background="Transparent" BorderThickness="0"
                                                             Tag="{x:Bind Id}"
                                                             AutomationProperties.Name="{x:Bind RemoveActionName}"
@@ -1359,7 +1359,7 @@
                                     large step now (task 77d17dc8).
                                 -->
                                 <Border CornerRadius="{StaticResource AstridRadiusLarge}"
-                                        Padding="12"
+                                        Padding="{StaticResource AstridInset12}"
                                         MaxWidth="260"
                                         Background="{x:Bind IsMine, Converter={StaticResource BubbleBrush}}"
                                         Visibility="{x:Bind ShowsBubble, Converter={StaticResource Visible}}">
@@ -1522,7 +1522,7 @@
             at all now that it has left the body.
         -->
         <Border Grid.Row="2"
-                Padding="12"
+                Padding="{StaticResource AstridInset12}"
                 BorderThickness="0,1,0,0"
                 BorderBrush="{ThemeResource AstridBorder}">
             <StackPanel Spacing="{StaticResource AstridSpace8}">

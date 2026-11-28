@@ -170,6 +170,33 @@ public sealed class DesignLayoutScaleTests
     }
 
     /// <summary>
+    /// No view writes, by hand, a uniform margin or padding that is a step of the space scale
+    /// (task 2bd2ea4f): since ADEV-215 the dictionary emits each step as a Thickness too.
+    /// </summary>
+    /// <remarks>
+    /// Only the one-number form. A <c>"0,8,0,0"</c> has no token to name, and off-scale numbers
+    /// are left alone here as they are in the gap and radius checks above.
+    /// </remarks>
+    [Fact]
+    public void No_view_restates_a_uniform_inset_task_2bd2ea4f()
+    {
+        var space = SpaceSteps();
+        var restated = new List<string>();
+        foreach (var (file, text) in ViewTexts().Append(("ShellResources.xaml",
+                     File.ReadAllText(Path.Combine(LocalisationTests.AppDirectory(), "Views", "ShellResources.xaml")))))
+        {
+            foreach (Match match in Regex.Matches(text, @"\b(?<property>Margin|Padding)=""(?<value>[0-9.]+)""|<Setter Property=""(?<property>Margin|Padding)"" Value=""(?<value>[0-9.]+)"""))
+            {
+                if (space.TryGetValue(match.Groups["value"].Value, out var key))
+                {
+                    restated.Add($"{file}: {match.Value} is {{StaticResource {key.Replace("Space", "Inset")}}}");
+                }
+            }
+        }
+        Assert.True(restated.Count == 0, string.Join(Environment.NewLine, restated));
+    }
+
+    /// <summary>
     /// The general compact type steps — label, detail body, row meta, row title — by size, each
     /// with the generated key a view names instead (task 737b31a8).
     /// </summary>
@@ -313,7 +340,8 @@ public sealed class DesignLayoutScaleTests
         var text = File.ReadAllText(path);
         // The type steps too (task 737b31a8): the same load-order reason, the same two rules.
         var layout = LayoutKeys()
-            .Concat(GeneratedKeys().Where(key => key.StartsWith("AstridType", StringComparison.Ordinal)))
+            .Concat(GeneratedKeys().Where(key => key.StartsWith("AstridType", StringComparison.Ordinal)
+                || key.StartsWith("AstridInset", StringComparison.Ordinal)))
             .ToHashSet(StringComparer.Ordinal);
 
         var wrong = new List<string>();
