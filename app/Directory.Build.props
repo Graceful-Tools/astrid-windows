@@ -9,15 +9,20 @@
     lockfile fails instead of quietly resolving something new. Locally a restore updates the
     lockfile, and the diff is part of the change. How to add or upgrade a package: docs/DEPENDENCIES.md.
 
-    RuntimeIdentifiers on every project, not only the app: the app is built with -r win-x64 and
-    -r win-arm64, which restores the projects it references for that runtime too, while
-    `dotnet test` restores them without one. Naming both runtimes everywhere makes every restore
-    produce the same lockfile, so locked mode holds for each of those commands.
+    Only a restore WITHOUT -r uses the lockfile. Every project names both runtimes, so that restore
+    resolves win-x64 and win-arm64 together and the lockfile records both. A restore with -r (the
+    app's `dotnet build -r win-x64`, a release's `dotnet publish -r`) resolves only the runtime it
+    was given, which locked mode reports as NU1004 against a two-runtime lockfile, and which would
+    rewrite the lockfile with one runtime on every local build. So -r restores neither check nor
+    write it. They resolve the same versions, because no reference floats, and `dotnet test` on the
+    solution, which every gate runs, is the locked restore that proves it.
   -->
   <PropertyGroup>
+    <RuntimeIdentifiers Condition="'$(RuntimeIdentifiers)' == ''">win-x64;win-arm64</RuntimeIdentifiers>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' == ''">
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
-    <RuntimeIdentifiers Condition="'$(RuntimeIdentifiers)' == ''">win-x64;win-arm64</RuntimeIdentifiers>
   </PropertyGroup>
 
 </Project>

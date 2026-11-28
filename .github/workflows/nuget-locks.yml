@@ -35,7 +35,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $unlocked = @('--force-evaluate', '-p:RestoreLockedMode=false')
-          dotnet restore app/Astrid.App/Astrid.App.csproj -r win-x64 @unlocked; if ($LASTEXITCODE) { exit 1 }
+          dotnet restore app/Astrid.App/Astrid.App.csproj @unlocked; if ($LASTEXITCODE) { exit 1 }
           dotnet restore app/Astrid.sln @unlocked; if ($LASTEXITCODE) { exit 1 }
           dotnet restore app/Astrid.App.UITests/Astrid.App.UITests.csproj @unlocked; if ($LASTEXITCODE) { exit 1 }
 
@@ -45,18 +45,27 @@ jobs:
           path: app/**/packages.lock.json
           if-no-files-found: error
 
-      # The restores ci.yml, release.yml and predeploy run, in locked mode: each must accept the
-      # lockfiles just written, unchanged.
-      - name: Every CI and release restore accepts them
+      # Locked, as CI restores: the solution (what `dotnet test` restores), the app and the UI tests.
+      # Then the -r restores CI, a release and predeploy make, which must leave the lockfiles alone.
+      - name: Locked restores accept them, and -r restores leave them alone
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          foreach ($rid in 'win-x64', 'win-arm64') {
-            dotnet restore app/Astrid.App/Astrid.App.csproj -r $rid --locked-mode; if ($LASTEXITCODE) { exit 1 }
-            dotnet restore app/Astrid.App/Astrid.App.csproj -r $rid --locked-mode -p:SelfContained=true; if ($LASTEXITCODE) { exit 1 }
-            dotnet restore app/Astrid.App.UITests/Astrid.App.UITests.csproj -r $rid --locked-mode; if ($LASTEXITCODE) { exit 1 }
-          }
           dotnet restore app/Astrid.sln --locked-mode; if ($LASTEXITCODE) { exit 1 }
+          dotnet restore app/Astrid.App/Astrid.App.csproj --locked-mode; if ($LASTEXITCODE) { exit 1 }
+          dotnet restore app/Astrid.App.UITests/Astrid.App.UITests.csproj --locked-mode; if ($LASTEXITCODE) { exit 1 }
+          New-Item -ItemType Directory -Force locks-before | Out-Null
+          Get-ChildItem app -Recurse -Filter packages.lock.json | ForEach-Object { Copy-Item $_.FullName ("locks-before/" + $_.Directory.Name + ".json") }
+          foreach ($rid in 'win-x64', 'win-arm64') {
+            dotnet restore app/Astrid.App/Astrid.App.csproj -r $rid; if ($LASTEXITCODE) { exit 1 }
+            dotnet restore app/Astrid.App/Astrid.App.csproj -r $rid -p:SelfContained=true; if ($LASTEXITCODE) { exit 1 }
+            dotnet restore app/Astrid.App.UITests/Astrid.App.UITests.csproj -r $rid; if ($LASTEXITCODE) { exit 1 }
+          }
+          Get-ChildItem app -Recurse -Filter packages.lock.json | ForEach-Object {
+            $before = Get-Content -Raw ("locks-before/" + $_.Directory.Name + ".json")
+            if ($before -ne (Get-Content -Raw $_.FullName)) { Write-Error "a -r restore rewrote $($_.FullName)"; exit 1 }
+          }
+          Remove-Item -Recurse locks-before
 
       - name: The committed lockfiles are current
         shell: bash

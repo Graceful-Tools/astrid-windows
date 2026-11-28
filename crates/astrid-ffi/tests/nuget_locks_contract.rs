@@ -66,7 +66,11 @@ fn adev_353_every_project_restores_with_a_lockfile_and_ci_restores_locked() {
     );
     assert!(
         PROPS.contains("win-x64;win-arm64"),
-        "every project names both runtimes, so -r builds and `dotnet test` produce the same lockfile"
+        "every project names both runtimes, so the lockfile records both"
+    );
+    assert!(
+        PROPS.contains("<PropertyGroup Condition=\"'$(RuntimeIdentifier)' == ''\">"),
+        "only a restore without -r may use the lockfile: a -r restore resolves one runtime (NU1004)"
     );
 }
 
@@ -99,7 +103,7 @@ fn adev_353_every_project_commits_a_lockfile_that_matches_its_references() {
 #[test]
 fn adev_353_windows_checks_the_lockfiles_against_every_ci_restore() {
     assert!(LOCKS_YML.contains("--locked-mode"), "nuget-locks.yml must restore in locked mode");
-    for restore in ["-r $rid", "SelfContained=true", "Astrid.App.UITests", "app/Astrid.sln"] {
+    for restore in ["app/Astrid.sln --locked-mode", "-r $rid", "SelfContained=true", "Astrid.App.UITests", "rewrote"] {
         assert!(LOCKS_YML.contains(restore), "nuget-locks.yml must cover the restore with {restore}");
     }
 }
