@@ -33,7 +33,7 @@ public sealed class TaskRowsAlignmentTests
         XDocument.Load(Path.Combine(LocalisationTests.AppDirectory(), "Views", "TaskRowsView.xaml")).Root!;
 
     /// <summary>The left component of a Margin/Padding/Thickness, in its 1, 2 and 4 value forms.</summary>
-    private static double Left(string? thickness)
+    internal static double Left(string? thickness)
     {
         Assert.False(string.IsNullOrWhiteSpace(thickness));
         // A {StaticResource} names a generated Thickness, as the row padding does (task 5988cf90).

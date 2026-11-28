@@ -26,6 +26,8 @@
     -->
     <x:Double x:Key="AstridTypeCompactLabelSize">11</x:Double>
     <x:Double x:Key="AstridTypeCompactDetailBodySize">13</x:Double>
+    <!-- The one step of the Thickness space scale a style here pads with (task 2bd2ea4f). -->
+    <Thickness x:Key="AstridInset12">12</Thickness>
     <local:PriorityBrushConverter x:Key="PriorityBrush" />
     <local:DepthIndentConverter x:Key="DepthIndent" />
     <local:BoolToVisibilityConverter x:Key="Visible" />
@@ -473,7 +475,7 @@
     <x:Double x:Key="AstridEmptyArt">96</x:Double>
     <Style x:Key="BoardEmptyBubbleStyle" TargetType="Border">
         <Setter Property="Margin" Value="16,0,0,0" />
-        <Setter Property="Padding" Value="12" />
+        <Setter Property="Padding" Value="{StaticResource AstridInset12}" />
         <Setter Property="CornerRadius" Value="{StaticResource AstridRadiusXLarge}" />
         <Setter Property="BorderThickness" Value="2" />
         <Setter Property="BorderBrush" Value="{ThemeResource AstridBorder}" />

@@ -28,7 +28,7 @@
                 VerticalAlignment="Top"
                 HorizontalAlignment="Center"
                 CornerRadius="{StaticResource AstridRadiusLarge}"
-                Padding="12"
+                Padding="{StaticResource AstridInset12}"
                 Background="{ThemeResource AstridSurface}"
                 BorderThickness="1"
                 BorderBrush="{ThemeResource AstridBorder}">

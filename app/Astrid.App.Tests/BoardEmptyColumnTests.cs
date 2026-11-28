@@ -51,7 +51,7 @@ public sealed class BoardEmptyColumnTests
     public void TaskE0692268_the_bubble_pads_12_with_radius_16_and_a_2_border()
     {
         var bubble = Setters("BoardEmptyBubbleStyle");
-        Assert.Equal("12", bubble["Padding"]);
+        Assert.Equal("{StaticResource AstridInset12}", bubble["Padding"]); // the 12 step, task 2bd2ea4f
         Assert.Equal("{StaticResource AstridRadiusXLarge}", bubble["CornerRadius"]);
         Assert.Equal("2", bubble["BorderThickness"]);
         Assert.Equal("{ThemeResource AstridBorder}", bubble["BorderBrush"]);

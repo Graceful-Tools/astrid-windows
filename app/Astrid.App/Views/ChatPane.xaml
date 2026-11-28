@@ -93,7 +93,7 @@
                                            Visibility="{x:Bind IsSystem, Converter={StaticResource Visible}}" />
 
                                 <Border CornerRadius="10"
-                                        Padding="12"
+                                        Padding="{StaticResource AstridInset12}"
                                         MaxWidth="240"
                                         Background="{x:Bind IsMine, Converter={StaticResource BubbleBrush}}"
                                         Visibility="{x:Bind IsSystem, Converter={StaticResource NotVisible}}">
@@ -124,7 +124,7 @@
 
         <!-- The same bar as the task thread's, minus the paperclip: a list chat takes no files. -->
         <Border Grid.Row="2"
-                Padding="12"
+                Padding="{StaticResource AstridInset12}"
                 BorderThickness="0,1,0,0"
                 BorderBrush="{ThemeResource AstridBorder}">
             <StackPanel Spacing="{StaticResource AstridSpace8}">

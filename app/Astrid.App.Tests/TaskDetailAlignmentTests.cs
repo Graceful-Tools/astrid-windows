@@ -96,14 +96,9 @@ public sealed class TaskDetailAlignmentTests
         var body = pane.Descendants()
             .Single(element => element.Name.LocalName == "ScrollViewer"
                                && (string?)element.Attribute("Grid.Row") == "1");
-        var inset = double.Parse(
-            ((string)header.Attribute("Padding")!).Split(',')[0],
-            System.Globalization.CultureInfo.InvariantCulture);
-        Assert.Equal(
-            inset,
-            double.Parse(
-                ((string)body.Attribute("Padding")!).Split(',')[0],
-                System.Globalization.CultureInfo.InvariantCulture));
+        // A padding may name a generated inset (task 2bd2ea4f); Left reads through it.
+        var inset = TaskRowsAlignmentTests.Left((string?)header.Attribute("Padding"));
+        Assert.Equal(inset, TaskRowsAlignmentTests.Left((string?)body.Attribute("Padding")));
 
         // The whole of the invariant, as one sum, in the terms web states it in.
         Assert.Equal(16d, inset);

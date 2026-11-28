@@ -326,7 +326,7 @@
         </ScrollViewer>
 
         <!-- The same shape as quick add, because it is the same gesture one column over. -->
-        <Grid Grid.Row="2" Margin="12" ColumnSpacing="{StaticResource AstridSpace8}">
+        <Grid Grid.Row="2" Margin="{StaticResource AstridInset12}" ColumnSpacing="{StaticResource AstridSpace8}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -453,7 +453,7 @@
                     HorizontalContentAlignment="Stretch"
                     Background="Transparent"
                     BorderThickness="0"
-                    Padding="12"
+                    Padding="{StaticResource AstridInset12}"
                     AutomationProperties.Name="Account"
                     ToolTipService.ToolTip="Account and settings"
                     Click="OnOpenSettings">
