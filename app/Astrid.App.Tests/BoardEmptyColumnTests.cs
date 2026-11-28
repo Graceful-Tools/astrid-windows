@@ -87,17 +87,43 @@ public sealed class BoardEmptyColumnTests
         Assert.DoesNotContain("nothing_here_yet", board);
     }
 
-    [Fact]
-    public void TaskE0692268_the_message_is_webs_generic_column_message_in_both_languages()
-    {
-        static string Value(string language) =>
-            XDocument.Load(AppPath("Strings", language, "Resources.resw"))
-                .Descendants("data")
-                .Single(data => (string?)data.Attribute("name") == "board_empty_custom.Text")
-                .Element("value")!.Value;
+    /// <summary>The six messages an empty column can say (astrid-core ADEV-221, <c>board.empty.*</c>).</summary>
+    public static readonly string[] EmptyMessageKeys =
+    [
+        "board.empty.inbox", "board.empty.ready", "board.empty.doing",
+        "board.empty.waiting", "board.empty.done", "board.empty.custom",
+    ];
 
-        // astrid-web lib/i18n/locales/{en,de}.json → board.empty.custom.
-        Assert.Equal("Nothing here yet! Drag a task in to move it along.", Value("en-US"));
-        Assert.Equal("Noch nichts hier! Ziehe eine Aufgabe hinein, um sie voranzubringen.", Value("de-DE"));
+    /// <remarks>
+    /// Under the core's spelling with the dots flattened, which is what <c>Strings.Get</c> looks up
+    /// and what <c>copy_catalog_contract.rs</c> asks for — never an <c>x:Uid</c> scope of the same
+    /// name, which the PRI compiler refuses beside a flat key (task 4ac294ab).
+    /// </remarks>
+    [Theory]
+    [InlineData("en-US")]
+    [InlineData("de-DE")]
+    public void Task4ac294ab_every_empty_message_has_a_word_in_both_languages(string language)
+    {
+        var names = XDocument.Load(AppPath("Strings", language, "Resources.resw"))
+            .Descendants("data")
+            .Select(data => (string?)data.Attribute("name"))
+            .ToHashSet();
+        foreach (var key in EmptyMessageKeys)
+        {
+            Assert.Contains(key.Replace('.', '_'), names);
+        }
+        Assert.DoesNotContain("board_empty_custom.Text", names);
+    }
+
+    /// <summary>
+    /// An empty column says ITS OWN message — the key the core chose for that column — not one
+    /// fixed string for every column (task 4ac294ab).
+    /// </summary>
+    [Fact]
+    public void Task4ac294ab_the_empty_bubble_says_the_columns_own_message()
+    {
+        var board = File.ReadAllText(AppPath("Views", "BoardView.xaml"));
+        Assert.Contains("Text=\"{x:Bind EmptyMessageKey, Converter={StaticResource PickTitle}}\"", board);
+        Assert.DoesNotContain("x:Uid=\"board_empty_custom\"", board);
     }
 }

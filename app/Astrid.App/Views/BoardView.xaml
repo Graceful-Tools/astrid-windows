@@ -335,8 +335,8 @@
                                             <Grid Grid.Column="1">
                                                 <Border Style="{StaticResource BoardEmptyBubbleStyle}"
                                                         VerticalAlignment="Top">
-                                                    <TextBlock x:Uid="board_empty_custom"
-                                                               Text="Nothing here yet! Drag a task in to move it along."
+                                                    <!-- The column's own message, chosen by the core (task 4ac294ab). -->
+                                                    <TextBlock Text="{x:Bind EmptyMessageKey, Converter={StaticResource PickTitle}}"
                                                                Style="{StaticResource BoardEmptyMessageStyle}" />
                                                 </Border>
                                                 <!--

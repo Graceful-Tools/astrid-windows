@@ -19,6 +19,12 @@ namespace Astrid.App.UITests;
 [Collection("ui")]
 public sealed class BoardEmptyColumnUITests
 {
+    /// <summary>
+    /// What an empty column says today: the generic <c>board.empty.custom</c>, because the core's
+    /// board answer at the current pin does not send each column's key (task 4ac294ab bound the
+    /// key; the core half is filed). When it does, this becomes Ready's own "Nothing queued up!…"
+    /// and the test should assert Doing's and Waiting's own messages too.
+    /// </summary>
     private const string Message = "Nothing here yet! Drag a task in to move it along.";
 
     private readonly Xunit.Abstractions.ITestOutputHelper _output;
@@ -26,7 +32,7 @@ public sealed class BoardEmptyColumnUITests
     public BoardEmptyColumnUITests(Xunit.Abstractions.ITestOutputHelper output) => _output = output;
 
     [Fact]
-    public void An_empty_column_is_the_art_beside_a_speech_bubble_task_e0692268()
+    public void An_empty_column_is_the_art_beside_a_speech_bubble_task_e0692268_4ac294ab()
     {
         using var app = AstridApp.Launch(signedIn: true, seed: Seeds.BoardWithADoneCard);
         Thread.Sleep(1200);
@@ -34,7 +40,7 @@ public sealed class BoardEmptyColumnUITests
         Thread.Sleep(700);
 
         using var shot = Capture.Window(new IntPtr(app.Window.Current.NativeWindowHandle));
-        var saved = shot.SavePng(Path.Combine(Path.GetTempPath(), "astrid-uitests", "board-empty-column-e0692268.png"));
+        var saved = shot.SavePng(Path.Combine(Path.GetTempPath(), "astrid-uitests", "board-empty-column-4ac294ab.png"));
         _output.WriteLine($"capture: {saved}");
 
         var messages = app.Window.FindAll(TreeScope.Descendants,
@@ -50,5 +56,6 @@ public sealed class BoardEmptyColumnUITests
             .ToList();
         _output.WriteLine($"messages {messages.Count}, on screen {onScreen.Count}: {string.Join(" ", onScreen)}");
         Assert.True(onScreen.Count > 0, "no empty column's message has a size on screen");
+
     }
 }

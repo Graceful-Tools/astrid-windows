@@ -532,6 +532,15 @@ public sealed class BoardColumnView
     /// <summary><c>inbox</c>, <c>status</c> or <c>done</c>.</summary>
     public string Kind => _column.Kind;
 
+    /// <summary>What this column says when it holds no cards: a key, which the view puts into words (task 4ac294ab).</summary>
+    /// <remarks>
+    /// The core's board answer does not send it yet (the rule chooses it, but the command's column
+    /// JSON leaves it out), so an absent key is the generic <c>board.empty.custom</c> — what every
+    /// empty column said before this task, rather than a blank bubble.
+    /// </remarks>
+    public string EmptyMessageKey =>
+        string.IsNullOrEmpty(_column.EmptyMessageKey) ? "board.empty.custom" : _column.EmptyMessageKey;
+
     /// <summary>How many cards the column holds, not how many crossed the boundary.</summary>
     public int Total => _column.Total;
 

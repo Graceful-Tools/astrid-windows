@@ -85,6 +85,52 @@ public sealed class BoardViewModelTests
         Assert.Empty(view.Columns[0].Cards);
     }
 
+    /// <summary>
+    /// A column carries the empty message the core chose for it (task 4ac294ab, astrid-core
+    /// ADEV-221) — a key, which the view turns into words.
+    /// </summary>
+    [Fact]
+    public async Task Task4ac294ab_a_column_carries_its_own_empty_message_key()
+    {
+        var core = new FakeCore().AnswerOk("board", new
+        {
+            projectId = "p1",
+            columns = new[]
+            {
+                new { id = "__virtual_inbox__", name = "Inbox", description = "", kind = "inbox", total = 0, emptyMessageKey = "board.empty.inbox", cards = Array.Empty<object>() },
+                new { id = "doing", name = "Doing", description = "", kind = "status", total = 0, emptyMessageKey = "board.empty.doing", cards = Array.Empty<object>() },
+            },
+        });
+        var view = new BoardViewModel(core);
+
+        await view.LoadAsync("l1");
+
+        Assert.Equal("board.empty.inbox", view.Columns[0].EmptyMessageKey);
+        Assert.Equal("board.empty.doing", view.Columns[1].EmptyMessageKey);
+    }
+
+    /// <summary>
+    /// A column the core sent no key for says the generic message, never nothing (task 4ac294ab):
+    /// the board answer at the current pin leaves the key out.
+    /// </summary>
+    [Fact]
+    public async Task Task4ac294ab_a_column_with_no_key_says_the_generic_message()
+    {
+        var core = new FakeCore().AnswerOk("board", new
+        {
+            projectId = "p1",
+            columns = new[]
+            {
+                new { id = "ready", name = "Ready", description = "", kind = "status", total = 0, cards = Array.Empty<object>() },
+            },
+        });
+        var view = new BoardViewModel(core);
+
+        await view.LoadAsync("l1");
+
+        Assert.Equal("board.empty.custom", view.Columns[0].EmptyMessageKey);
+    }
+
     /// <summary>A list that belongs to no board is not an error; there is simply nothing to draw.</summary>
     [Fact]
     public async Task A_list_with_no_board_shows_nothing_and_says_nothing()
