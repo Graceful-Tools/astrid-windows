@@ -18,10 +18,9 @@ namespace Astrid.App.Tests;
 /// comfortable <c>body</c>, 17, wrapped two words a line in a 288-wide column.
 /// </para>
 /// <para>
-/// What is NOT here yet, and why: the column's OWN message (web's <c>boardColumnEmptyKey</c>, iOS's
-/// <c>BoardColumnEmptyMessage</c>) and its empathy frame are rules the core does not hand the
-/// shell yet, so every column says web's generic <c>board.empty.custom</c> and the art slot holds
-/// the brand mark. Both are filed on the Astrid Web board as the core half.
+/// The column's OWN message and its empathy frame are the core's (astrid-core ADEV-347): the board
+/// answer carries <c>emptyMessageKey</c> and <c>emptyFramePath</c> per column, and the shell keeps
+/// the brand mark only while the frame is null or will not load (task b9893539).
 /// </para>
 /// </remarks>
 public sealed class BoardEmptyColumnTests
@@ -125,5 +124,23 @@ public sealed class BoardEmptyColumnTests
         var board = File.ReadAllText(AppPath("Views", "BoardView.xaml"));
         Assert.Contains("Text=\"{x:Bind EmptyMessageKey, Converter={StaticResource PickTitle}}\"", board);
         Assert.DoesNotContain("x:Uid=\"board_empty_custom\"", board);
+    }
+
+    /// <summary>
+    /// The art beside the bubble is the column's empathy frame, through a converter that keeps the
+    /// brand mark while the core has no frame for it (task b9893539) — no longer the brand mark
+    /// bound directly.
+    /// </summary>
+    [Fact]
+    public void TaskB9893539_the_empty_art_is_the_columns_frame_with_the_mark_as_fallback()
+    {
+        var board = File.ReadAllText(AppPath("Views", "BoardView.xaml"));
+        Assert.Contains("Source=\"{x:Bind EmptyFramePath, Converter={StaticResource EmptyFrame}}\"", board);
+        Assert.Contains("ImageFailed=\"OnEmptyFrameFailed\"", board);
+        var resources = File.ReadAllText(AppPath("Views", "ShellResources.xaml"));
+        Assert.Contains("<local:EmptyFrameConverter x:Key=\"EmptyFrame\" />", resources);
+        var converters = File.ReadAllText(AppPath("Converters.cs"));
+        Assert.Contains("class EmptyFrameConverter", converters);
+        Assert.Contains("Brand.SmallMark", converters);
     }
 }

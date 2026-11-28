@@ -534,12 +534,17 @@ public sealed class BoardColumnView
 
     /// <summary>What this column says when it holds no cards: a key, which the view puts into words (task 4ac294ab).</summary>
     /// <remarks>
-    /// The core's board answer does not send it yet (the rule chooses it, but the command's column
-    /// JSON leaves it out), so an absent key is the generic <c>board.empty.custom</c> — what every
-    /// empty column said before this task, rather than a blank bubble.
+    /// The core's board answer carries it on every column since astrid-core ADEV-347 (the rule's
+    /// column type holds it as a non-optional field), so it is passed through as sent — no
+    /// fallback of the shell's own (task b9893539).
     /// </remarks>
-    public string EmptyMessageKey =>
-        string.IsNullOrEmpty(_column.EmptyMessageKey) ? "board.empty.custom" : _column.EmptyMessageKey;
+    public string EmptyMessageKey => _column.EmptyMessageKey;
+
+    /// <summary>
+    /// The local empathy frame beside the empty bubble, or null — the view then keeps the brand
+    /// mark (task b9893539).
+    /// </summary>
+    public string? EmptyFramePath => _column.EmptyFramePath;
 
     /// <summary>How many cards the column holds, not how many crossed the boundary.</summary>
     public int Total => _column.Total;

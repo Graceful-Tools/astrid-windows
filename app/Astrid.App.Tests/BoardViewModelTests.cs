@@ -110,25 +110,50 @@ public sealed class BoardViewModelTests
     }
 
     /// <summary>
-    /// A column the core sent no key for says the generic message, never nothing (task 4ac294ab):
-    /// the board answer at the current pin leaves the key out.
+    /// The key is the core's word, passed through untouched (task b9893539): the board answer
+    /// carries it on every column since astrid-core ADEV-347, so the shell no longer guesses
+    /// <c>board.empty.custom</c> for Ready's column.
     /// </summary>
     [Fact]
-    public async Task Task4ac294ab_a_column_with_no_key_says_the_generic_message()
+    public async Task TaskB9893539_ready_says_its_own_message_not_the_generic_one()
     {
         var core = new FakeCore().AnswerOk("board", new
         {
             projectId = "p1",
             columns = new[]
             {
-                new { id = "ready", name = "Ready", description = "", kind = "status", total = 0, cards = Array.Empty<object>() },
+                new { id = "ready", name = "Ready", description = "", kind = "status", total = 0, emptyMessageKey = "board.empty.ready", cards = Array.Empty<object>() },
             },
         });
         var view = new BoardViewModel(core);
 
         await view.LoadAsync("l1");
 
-        Assert.Equal("board.empty.custom", view.Columns[0].EmptyMessageKey);
+        Assert.Equal("board.empty.ready", view.Columns[0].EmptyMessageKey);
+    }
+
+    /// <summary>
+    /// An empty column carries the local path of its empathy frame, or null while the art is not
+    /// cached (task b9893539, astrid-core ADEV-347) — the view keeps the brand mark for null.
+    /// </summary>
+    [Fact]
+    public async Task TaskB9893539_a_column_carries_its_empty_frame_path_or_null()
+    {
+        var core = new FakeCore().AnswerOk("board", new
+        {
+            projectId = "p1",
+            columns = new object[]
+            {
+                new { id = "ready", name = "Ready", description = "", kind = "status", total = 0, emptyMessageKey = "board.empty.ready", emptyFramePath = @"C:\cache\empathy\ready.png", cards = Array.Empty<object>() },
+                new { id = "doing", name = "Doing", description = "", kind = "status", total = 0, emptyMessageKey = "board.empty.doing", emptyFramePath = (string?)null, cards = Array.Empty<object>() },
+            },
+        });
+        var view = new BoardViewModel(core);
+
+        await view.LoadAsync("l1");
+
+        Assert.Equal(@"C:\cache\empathy\ready.png", view.Columns[0].EmptyFramePath);
+        Assert.Null(view.Columns[1].EmptyFramePath);
     }
 
     /// <summary>A list that belongs to no board is not an error; there is simply nothing to draw.</summary>

@@ -316,11 +316,10 @@
                                             blank looks the same as one whose cards did not
                                             arrive.
 
-                                            The art is the brand mark until the core hands the
-                                            shell the column's empathy frame, and the message
-                                            is web's generic one until it hands the column's
-                                            own — both are the core's rules, filed on the
-                                            Astrid Web board.
+                                            The art is the column's empathy frame and the
+                                            message the column's own — both chosen by the core
+                                            (ADEV-347, task b9893539). The brand mark stands in
+                                            while the frame is not cached or will not load.
                                         -->
                                         <Grid Visibility="{x:Bind Cards.Count, Converter={StaticResource CountVisible}, ConverterParameter=empty}">
                                             <Grid.ColumnDefinitions>
@@ -330,7 +329,8 @@
                                             <Image Grid.Column="0"
                                                    Width="{StaticResource AstridEmptyArt}"
                                                    VerticalAlignment="Top"
-                                                   Source="{x:Bind local:Brand.SmallMark}"
+                                                   Source="{x:Bind EmptyFramePath, Converter={StaticResource EmptyFrame}}"
+                                                   ImageFailed="OnEmptyFrameFailed"
                                                    AutomationProperties.AccessibilityView="Raw" />
                                             <Grid Grid.Column="1">
                                                 <Border Style="{StaticResource BoardEmptyBubbleStyle}"

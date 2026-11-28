@@ -198,6 +198,18 @@ public sealed partial class BoardView : UserControl
     /// column, and finishing it outright from here is the trapdoor task 3c0dfb73 closed.
     /// </remarks>
     /// <summary>
+    /// An empty column's frame that would not decode puts the brand mark back (task b9893539), so
+    /// the art slot is never blank — the swap half of web's preload-then-swap.
+    /// </summary>
+    private void OnEmptyFrameFailed(object sender, ExceptionRoutedEventArgs args)
+    {
+        if (sender is Image image && !ReferenceEquals(image.Source, Brand.SmallMark))
+        {
+            image.Source = Brand.SmallMark;
+        }
+    }
+
+    /// <summary>
     /// DS16's pop for the card whose task was just completed (task 27c773f5).
     /// </summary>
     /// <remarks>
