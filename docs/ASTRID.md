@@ -148,6 +148,7 @@ intelligence, native Sign in with Apple). `docs/PARITY.md` tracks it row by row 
 
 - [CLAUDE.md](../CLAUDE.md) / [AGENTS.md](../AGENTS.md) — commands and workflow
 - [CONTRACTS.md](./CONTRACTS.md) — cross-platform rules and known divergences
+- [DEPENDENCIES.md](./DEPENDENCIES.md) — NuGet lockfiles, locked restores and the Socket gate
 - [context/stack.md](./context/stack.md) — pinned tool versions and machine setup
 - `astrid-ios/ASTRID.md` — the Apple clients' architecture, which this mirrors
 - `astrid-web/docs/PRODUCT_CONTRACT.md` — shared behaviour and copy

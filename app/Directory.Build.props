@@ -1,0 +1,33 @@
+<Project>
+
+  <!--
+    Every NuGet version a restore resolves is locked (ADEV-353): each project commits a
+    packages.lock.json, transitive packages included, so a version cannot change without a commit
+    that shows it, and astrid-web's Socket gate checks every one of them on each pull request.
+
+    CI restores in locked mode: GitHub Actions sets CI=true, and a restore that would change a
+    lockfile fails instead of quietly resolving something new. Locally a restore updates the
+    lockfile, and the diff is part of the change. How to add or upgrade a package: docs/DEPENDENCIES.md.
+
+    Only a restore WITHOUT -r uses the lockfile. Every project names both runtimes, so that restore
+    resolves win-x64 and win-arm64 together and the lockfile records both. A restore with -r (the
+    app's `dotnet build -r win-x64`, a release's `dotnet publish -r`) resolves only the runtime it
+    was given (`dotnet restore -r` sets RuntimeIdentifiers, `dotnet build -r` RuntimeIdentifier,
+    both as global properties that win over the line above), which locked mode reports as NU1004 against a two-runtime lockfile, and which would
+    rewrite the lockfile with one runtime on every local build. So -r restores neither check nor
+    write it: they use a lockfile under obj/. They resolve the same versions, because no reference floats, and `dotnet test` on the
+    solution, which every gate runs, is the locked restore that proves it.
+  -->
+  <PropertyGroup>
+    <RuntimeIdentifiers Condition="'$(RuntimeIdentifiers)' == ''">win-x64;win-arm64</RuntimeIdentifiers>
+  </PropertyGroup>
+  <PropertyGroup>
+    <_AstridAllRuntimes Condition="'$(RuntimeIdentifier)' == '' and '$(RuntimeIdentifiers)' == 'win-x64;win-arm64'">true</_AstridAllRuntimes>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(_AstridAllRuntimes)' == 'true' and '$(CI)' == 'true'">true</RestoreLockedMode>
+    <!-- A -r restore writes a throwaway lockfile under obj/ instead. NuGet refuses
+         RestorePackagesWithLockFile=false while packages.lock.json exists (NU1005). -->
+    <NuGetLockFilePath Condition="'$(_AstridAllRuntimes)' != 'true'">$(MSBuildProjectDirectory)\obj\packages.single-runtime.lock.json</NuGetLockFilePath>
+  </PropertyGroup>
+
+</Project>

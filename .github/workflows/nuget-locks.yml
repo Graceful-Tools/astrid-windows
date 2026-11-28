@@ -1,0 +1,77 @@
+name: NuGet lockfiles
+
+# ADEV-353: writes app/**/packages.lock.json on Windows, then restores the way CI and a release do,
+# in locked mode, to prove one set of lockfiles holds for all of them. The result is uploaded as the
+# `nuget-lockfiles` artifact, and the job fails when it differs from what is committed.
+#
+# Use it after changing a PackageReference from a machine without the .NET SDK (the dev Mac):
+# push the branch, download the artifact, commit the files. On Windows a plain `dotnet restore`
+# does the same. Dependabot updates the lockfiles in its own NuGet pull requests.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "app/**/*.csproj"
+      - "app/**/packages.lock.json"
+      - "app/Directory.Build.props"
+      - ".github/workflows/nuget-locks.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  lockfiles:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Write the lockfiles
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $unlocked = @('--force-evaluate', '-p:RestoreLockedMode=false')
+          dotnet restore app/Astrid.App/Astrid.App.csproj @unlocked; if ($LASTEXITCODE) { exit 1 }
+          dotnet restore app/Astrid.sln @unlocked; if ($LASTEXITCODE) { exit 1 }
+          dotnet restore app/Astrid.App.UITests/Astrid.App.UITests.csproj @unlocked; if ($LASTEXITCODE) { exit 1 }
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nuget-lockfiles
+          path: app/**/packages.lock.json
+          if-no-files-found: error
+
+      # Locked, as CI restores: the solution (what `dotnet test` restores), the app and the UI tests.
+      # Then the -r restores CI, a release and predeploy make, which must leave the lockfiles alone.
+      - name: Locked restores accept them, and -r restores leave them alone
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          dotnet restore app/Astrid.sln --locked-mode; if ($LASTEXITCODE) { exit 1 }
+          dotnet restore app/Astrid.App/Astrid.App.csproj --locked-mode; if ($LASTEXITCODE) { exit 1 }
+          dotnet restore app/Astrid.App.UITests/Astrid.App.UITests.csproj --locked-mode; if ($LASTEXITCODE) { exit 1 }
+          New-Item -ItemType Directory -Force locks-before | Out-Null
+          Get-ChildItem app -Recurse -Filter packages.lock.json | ForEach-Object { Copy-Item $_.FullName ("locks-before/" + $_.Directory.Name + ".json") }
+          foreach ($rid in 'win-x64', 'win-arm64') {
+            dotnet restore app/Astrid.App/Astrid.App.csproj -r $rid; if ($LASTEXITCODE) { exit 1 }
+            dotnet restore app/Astrid.App/Astrid.App.csproj -r $rid -p:SelfContained=true; if ($LASTEXITCODE) { exit 1 }
+            dotnet restore app/Astrid.App.UITests/Astrid.App.UITests.csproj -r $rid; if ($LASTEXITCODE) { exit 1 }
+          }
+          Get-ChildItem app -Recurse -Filter packages.lock.json | ForEach-Object {
+            $before = Get-Content -Raw ("locks-before/" + $_.Directory.Name + ".json")
+            if ($before -ne (Get-Content -Raw $_.FullName)) { Write-Error "a -r restore rewrote $($_.FullName)"; exit 1 }
+          }
+          Remove-Item -Recurse locks-before
+
+      - name: The committed lockfiles are current
+        shell: bash
+        run: |
+          git add -N app
+          if ! git diff --exit-code --stat -- 'app/**/packages.lock.json'; then
+            echo "::error::The committed packages.lock.json files are missing or stale. Commit the nuget-lockfiles artifact from this run (docs/DEPENDENCIES.md)."
+            exit 1
+          fi
