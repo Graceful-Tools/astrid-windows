@@ -54,6 +54,16 @@ public sealed class BoardColumnLayoutTests
             .Attribute("Color")!;
     }
 
+    /// <summary>A layout token as the generated <c>design/AstridTokens.xaml</c> states it (task 5988cf90).</summary>
+    private static string Generated(string element, string key)
+    {
+        var value = XDocument.Load(DesignTokenTests.TokenDictionaryPath()).Root!
+            .Elements()
+            .SingleOrDefault(e => e.Name.LocalName == element && (string?)e.Attribute(Xaml + "Key") == key);
+        Assert.True(value is not null, $"the generated dictionary has no {element} {key}");
+        return value!.Value.Trim();
+    }
+
     private static string Board() => File.ReadAllText(AppPath("Views", "BoardView.xaml"));
 
     [Fact]
@@ -63,9 +73,9 @@ public sealed class BoardColumnLayoutTests
         Assert.Equal("{ThemeResource AstridBgSecondary}", column["Background"]);
         Assert.Equal("{ThemeResource AstridBorder}", column["BorderBrush"]);
         Assert.Equal("1", column["BorderThickness"]);
-        // board-column-radius 8 is the md step.
-        Assert.Equal("8", Layout("board-column-radius"));
-        Assert.Equal("{StaticResource AstridRadiusMedium}", column["CornerRadius"]);
+        // The generated board-column-radius, through ShellResources' own copy (task 5988cf90).
+        Assert.Equal("{StaticResource AstridBoardColumnRadius}", column["CornerRadius"]);
+        Assert.Equal(Layout("board-column-radius"), Resource("CornerRadius", "AstridBoardColumnRadius"));
     }
 
     [Theory]
@@ -84,9 +94,10 @@ public sealed class BoardColumnLayoutTests
     {
         var header = Setters("BoardColumnHeaderStyle");
         var x = Layout("board-column-header-padding-x");
+        Assert.Equal("{StaticResource AstridBoardColumnHeaderPadding}", header["Padding"]);
         Assert.Equal(
             $"{x},{Layout("board-column-header-padding-top")},{x},{Layout("board-column-header-padding-bottom")}",
-            header["Padding"]);
+            Resource("Thickness", "AstridBoardColumnHeaderPadding"));
         Assert.False(header.ContainsKey("BorderThickness"), "compact DS34 is one surface: no rule under the header");
     }
 
@@ -95,14 +106,14 @@ public sealed class BoardColumnLayoutTests
     {
         Assert.Equal(
             $"{Layout("board-column-body-padding-x")},{Layout("board-column-body-padding-y")}",
-            Resource("Thickness", "AstridBoardColumnBodyPadding"));
+            Generated("Thickness", "AstridBoardColumnBodyPadding"));
     }
 
     [Fact]
     public void Task9fedf44e_columns_are_at_least_the_min_width_12_apart_inside_the_board_inset()
     {
-        Assert.Equal(Layout("board-column-min-width"), Resource("Double", "AstridBoardColumnMinWidth"));
-        Assert.Equal(Layout("board-column-gap"), Resource("Double", "AstridBoardColumnGap"));
+        Assert.Equal(Layout("board-column-min-width"), Generated("Double", "AstridBoardColumnMinWidth"));
+        Assert.Equal(Layout("board-column-gap"), Generated("Double", "AstridBoardColumnGap"));
         var inset = Layout("board-padding");
         Assert.Equal($"{inset},0,{inset},{inset}", Resource("Thickness", "AstridBoardInset"));
     }
@@ -110,8 +121,9 @@ public sealed class BoardColumnLayoutTests
     [Fact]
     public void Task9fedf44e_cards_are_the_card_gap_apart()
     {
-        // The gap is the card's bottom margin in the card template.
-        Assert.Contains($"Margin=\"0,0,0,{Layout("board-card-gap")}\"", Board());
+        // The gap is the card list's Spacing, from the generated token (task 5988cf90).
+        Assert.Contains("Spacing=\"{StaticResource AstridBoardCardGap}\"", Board());
+        Assert.Equal(Layout("board-card-gap"), Generated("Double", "AstridBoardCardGap"));
     }
 
     [Fact]

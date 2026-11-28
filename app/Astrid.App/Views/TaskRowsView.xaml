@@ -262,10 +262,10 @@
                     <Setter Property="FocusVisualMargin" Value="-1" />
                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                     <Setter Property="VerticalContentAlignment" Value="Center" />
-                    <Setter Property="Padding" Value="12,8" />
+                    <Setter Property="Padding" Value="{StaticResource AstridRowPadding}" />
                     <Setter Property="Margin" Value="0,0,0,6" />
-                    <Setter Property="MinHeight" Value="64" />
-                    <Setter Property="CornerRadius" Value="12" />
+                    <Setter Property="MinHeight" Value="{StaticResource AstridRowMinHeight}" />
+                    <Setter Property="CornerRadius" Value="{StaticResource AstridRowRadius}" />
                     <Setter Property="BorderThickness" Value="1" />
                     <Setter Property="BorderBrush" Value="{ThemeResource AstridBorder}" />
                     <Setter Property="Background" Value="{ThemeResource AstridSurface}" />
@@ -368,7 +368,7 @@
             </ListView.ItemContainerStyle>
             <ListView.ItemTemplate>
                 <DataTemplate x:DataType="bindings:TaskRow">
-                    <Grid ColumnSpacing="{StaticResource AstridSpace12}"
+                    <Grid ColumnSpacing="{StaticResource AstridRowGap}"
                           Margin="{x:Bind Depth, Converter={StaticResource DepthIndent}}"
                           Opacity="{x:Bind Completed, Converter={StaticResource CompletedOpacity}}">
                         <Grid.ColumnDefinitions>

@@ -100,6 +100,14 @@ public sealed class ThemedBrushReadsTests
             .Where(key => !themed.Contains(key))
             .ToHashSet();
 
+        // And the generated dictionary's root keys, merged into App.xaml beside it: the layout
+        // tokens a converter reads from code (`AstridSubtaskIndent`, task 5988cf90).
+        root.UnionWith(XDocument.Load(DesignTokenTests.TokenDictionaryPath()).Root!
+            .Elements()
+            .Select(element => (string?)element.Attribute(Xaml + "Key"))
+            .OfType<string>()
+            .Where(key => !themed.Contains(key)));
+
         // ShellResources.xaml counts too. It is the other file the design-metrics budget exempts,
         // and it holds the keyed values that are NOT brushes but are read from code the same way:
         // `AstridCompletePopScale`, `AstridSpringDamping` and `AstridSpringMs` (DS16), and the

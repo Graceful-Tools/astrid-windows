@@ -60,17 +60,30 @@ public sealed partial class PriorityBrushConverter : IValueConverter
 public sealed partial class DepthIndentConverter : IValueConverter
 {
     /// <summary>
-    /// How far one level of nesting moves a row.
+    /// How far one level of nesting moves a row, and how many levels are drawn as indent: the
+    /// generated <c>layout.compact.subtask-indent</c> and <c>subtask-max-depth</c> (task 5988cf90).
     /// </summary>
     /// <remarks>
-    /// Enough to read as nested at a glance and small enough that four levels still leave room for
-    /// a title. The depth itself is capped by the core — see <c>filters::subtasks</c> — so a bad
-    /// parent chain cannot indent a row off the screen.
+    /// Read from the resources rather than typed here — this was a hand-written 24 against the
+    /// register's 16. The depth cap is the drawing's, not a rule about tasks: a row nested deeper
+    /// than the token's levels still shows, at the deepest indent, so a long parent chain cannot
+    /// push a title off the screen. The fallbacks are the token values, for a converter used
+    /// before the application's resources exist (a test).
     /// </remarks>
-    private const double PerDepth = 24;
+    private static double Token(string key, double fallback) =>
+        Application.Current?.Resources.TryGetValue(key, out var found) == true && found is double value
+            ? value
+            : fallback;
 
-    public object Convert(object value, Type targetType, object parameter, string language) =>
-        new Thickness(value is int depth ? depth * PerDepth : 0, 0, 0, 0);
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        if (value is not int depth || depth <= 0)
+        {
+            return new Thickness(0);
+        }
+        var levels = Math.Min(depth, Token("AstridSubtaskMaxDepth", 4));
+        return new Thickness(levels * Token("AstridSubtaskIndent", 16), 0, 0, 0);
+    }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("indentation is read-only in the UI");
